@@ -10,6 +10,7 @@ A tiny operate system running on i386. It's a funny toy for me.
     BiscuitOS v0.0.1
 
   * Platform
+
     Intel-i386/32bit
 
 ### Usage
