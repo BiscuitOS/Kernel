@@ -1,0 +1,48 @@
+# ----------------------------------------------------------------------
+# Qemu option
+# Maintainer: Buddy <buddy.zhang@aliyun.com>
+#
+# Copyright (C) 2017 BiscuitOS
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+
+# -----------------------------------
+# Platform 
+# -----------------------------------
+ifeq ($(ARCH), i386)
+QEMU := qemu-system-x86_64
+else
+QEMU := qemu
+endif
+
+
+# -----------------------------------
+# Boot from
+# -----------------------------------
+BOOTLOADER := Floppy
+#BOOTLOADER := Disk
+
+# -----------------------------------
+# Image File
+# -----------------------------------
+IMAGE_FILE := BiscuitOS.img
+
+# -----------------------------------
+# Virtual device
+# -----------------------------------
+ifeq ($(BOOTLOADER), Floppy)
+  VIRTUAL_DEVICE := /dev/loop0
+else
+  VIRTUAL_DEVICE := 
+endif
+
+# -----------------------------------
+# Qemu flags
+# -----------------------------------
+QEMU_FLAGS :=
+
+ifneq ($(DEBUG),)
+QEMU_FLAGS += -s -S
+endif
