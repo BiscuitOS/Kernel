@@ -50,9 +50,9 @@ endif
 # -------------------------
 debug:
 ifeq ($(BOOTLOADER), Floppy)
-		$(Q)$(QEMU) $(QEMU_FLAGS) -boot order=a -fda $(VIRTUAL_DEVICE)
+		$(Q)$(QEMU) $(QEMU_FLAGS) -s -S -boot order=a -fda $(VIRTUAL_DEVICE)
 else
-		$(Q)$(QEMU) $(QEMU_FLAGS) -boot a -hda $(IMAGE_FILE)
+		$(Q)$(QEMU) $(QEMU_FLAGS) -s -S -boot a -hda $(IMAGE_FILE)
 endif
 
 else # DEBUG_TOOLS

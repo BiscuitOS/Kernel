@@ -43,6 +43,3 @@ endif
 # -----------------------------------
 QEMU_FLAGS :=
 
-ifneq ($(DEBUG),)
-QEMU_FLAGS += -s -S
-endif
