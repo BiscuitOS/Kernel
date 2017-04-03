@@ -25,9 +25,8 @@ ifeq ($(DEBUG_TOOLS), qemu)
 System: 
 	$(Q)dd if=/dev/zero of=$(IMAGE_FILE) bs=512 count=2880 
 ifeq ($(BOOTLOADER), Floppy)
-		$(Q) - losetup -d $(VIRTUAL_DEVICE)
 		$(Q)losetup $(VIRTUAL_DEVICE) $(IMAGE_FILE)
-		$(Q)dd if=Image ibs=512 skip=4096 of=$(VIRTUAL_DEVICE) \
+		$(Q)dd if=Image ibs=512 skip=8 of=$(VIRTUAL_DEVICE) \
                     obs=512 seek=0 count=1
 else
 		$(Q)dd if=Image ibs=512 skip=4096 of=$(IMAGE_FILE) \
