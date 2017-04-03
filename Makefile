@@ -46,10 +46,12 @@ CC      = $(CROSS_COMPILE)gcc
 
 # Compile flags
 ASFLAGS  = 
-CFLAGS  = 
+CFLAGS   =
+LDFLAGS  =
 
 ifeq ($(ARCH), i386)
   ASFLAGS += --32
+  LDFLAGS += -m elf_i386
 endif
 
 ifneq ($(DEBUG),)
@@ -58,7 +60,7 @@ endif
 
 export VERSION NAME
 export ARCH CROSS_COMPILE AS LD CC
-export ASFLAGS CFLAGS
+export ASFLAGS CFLAGS LDFLAGS
 
 # Subdir 
 SUBDIR += boot arch
