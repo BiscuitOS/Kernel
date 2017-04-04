@@ -21,8 +21,8 @@ endif
 # -----------------------------------
 # Boot from
 # -----------------------------------
-BOOTLOADER := Floppy
-#BOOTLOADER := Disk
+#BOOTLOADER := Floppy
+BOOTLOADER := Disk
 
 # -----------------------------------
 # Image File
