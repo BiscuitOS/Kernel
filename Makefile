@@ -43,6 +43,9 @@ CROSS_COMPILE :=
 AS      = $(CROSS_COMPILE)as
 LD      = $(CROSS_COMPILE)ld
 CC      = $(CROSS_COMPILE)gcc
+OBJCOPY = $(CROSS_COMPILE)objcopy
+NM      = $(CROSS_COMPILE)nm
+STRIP   = $(CROSS_COMPILE)strip
 
 # Compile flags
 ASFLAGS  = 
@@ -52,24 +55,26 @@ LDFLAGS  =
 ifeq ($(ARCH), i386)
   ASFLAGS += --32
   LDFLAGS += -m elf_i386
+  CFLAGS  += -m32
 endif
 
 ifneq ($(DEBUG),)
-  ASFLAGS += -gstabs -g -g3 -gdwarf-2
+  ASFLAGS += -ggdb -am 
 endif
 
 export VERSION NAME
-export ARCH CROSS_COMPILE AS LD CC
+export ARCH CROSS_COMPILE AS LD CC OBJCOPY NM
+export STRIP
 export ASFLAGS CFLAGS LDFLAGS
 
 # Subdir 
-SUBDIR += boot arch
+SUBDIR += boot arch init
 
 export SUBDIR
 
 # General Rule
-.c.s:
-	$(Q)$(CC) $(CFLAGS) -S -o $*.s $<
+.c.o:
+	$(Q)$(CC) $(CFLAGS) -c -o $*.o $<
 .s.o:
 	$(Q)$(AS) $(ASFLAGS) -o $*.o $<
 

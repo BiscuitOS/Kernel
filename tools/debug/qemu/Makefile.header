@@ -21,13 +21,37 @@ endif
 # -----------------------------------
 # Boot from
 # -----------------------------------
-#BOOTLOADER := Floppy
-BOOTLOADER := Disk
+BOOTLOADER := Floppy
+#BOOTLOADER := Disk
 
 # -----------------------------------
 # Image File
 # -----------------------------------
 IMAGE_FILE := BiscuitOS.img
+
+# -----------------------------------
+# Memory size 
+# -----------------------------------
+MEMORY_SIZE := 16M
+
+# -----------------------------------
+# Boot order
+# On X86 machine
+# a: floppy 1
+# b: floppy 2
+# c: first hard disk
+# d: first CD-ROM
+# n: Etherboot from network adapter 1 
+# o: Etherboot from network adapter 2 
+# p: Etherboot from network adapter 3 
+# q: Etherboot from network adapter 4
+# Hard disk boot is the default
+# -----------------------------------
+ifeq ($(BOOTLOADER), Floppy)
+  BOOT_DEVICE := a
+else
+  BOOT_DEVICE := c
+endif
 
 # -----------------------------------
 # Virtual device
@@ -39,7 +63,35 @@ else
 endif
 
 # -----------------------------------
+# Block device options
+# Utilize file as block 
+# For floppy:
+# -fda : floppy disk 0 image
+# -fdb : floppy disk 1 image
+# For Disk:
+# -hda : hard disk 0 image
+# -hdb : hard disk 1 image
+# -hdc : hard disk 2 image
+# -hdd : hard disk 3 image
+# -----------------------------------
+ifeq ($(BOOTLOADER), Floppy)
+  BLOCK_DEVICE := -fda Image
+else
+  BLOCK_DEVICE := -fda Image
+endif
+
+
+# -----------------------------------
 # Qemu flags
 # -----------------------------------
-QEMU_FLAGS :=
+QEMU_FLAGS := 
+
+
+
+
+QEMU_FLAGS += -m $(MEMORY_SIZE) -boot order=$(BOOT_DEVICE)
+
+QEMU_FLAGS += $(BLOCK_DEVICE)
+
+export QEMU_FLAGS
 
