@@ -153,7 +153,6 @@ endif # End DEBUG
 # -------------------------
 # Link all objects
 # -------------------------
-LDFLAGS += -Ttext 0
 
 bootsect: ECHO 
 	$(Q)$(LD) $(LDFLAGS) -o $@ $(srctree)/boot/bootsect.o
@@ -169,9 +168,11 @@ ifneq ($(DEBUG),)
 endif	
 	$(Q)$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary $@
 
+
 system: ECHO
-	$(Q)$(LD) $(LDFLAGS) -o $@ $(srctree)/boot/head.o \
-	                           $(srctree)/init/main.o
+	$(LD) $(LDFLAGS) -e startup_32 -o $@ $(srctree)/boot/head.o \
+	                           $(srctree)/init/main.o \
+							   $(IMAGE_PACKAGE)
 	$(Q)$(NM) $@ | grep -v '\(compiled\)\|\(\.o$$\)\|\( [aU] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)'| sort > System.map
 
 ECHO:
@@ -181,10 +182,4 @@ clean:
 	$(Q)rm bootsect setup system System.map Image
 ifneq ($(DEBUG),)
 		$(Q)rm .debug_bootsect .debug_setup
-endif
-ifeq ($(DEBUG_TOOLS), qemu)
-ifeq ($(BOOTLOADER), Floppy)
-		#- losetup -d $(VIRTUAL_DEVICE)
-		$(warning "")
-endif
 endif

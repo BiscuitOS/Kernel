@@ -12,8 +12,7 @@
 # SYS_SIZE is the number of clicks (16 bytes) to be loaded.
 # 0x3000 is 0x30000 bytes = 196KB, more than enough for current
 # version of linux
-	#.equ SYSSIZE, 0x3000
-	.equ SYSSIZE, 0x0d
+	.equ SYSSIZE, 0x3000
 
 	.global _start, begtext, begdata, begbss, endtxt, enddata, endbss
 	.text
@@ -140,8 +139,6 @@ ok_load_setup:
 
 	#seg cs
 	mov %cs:root_dev+0, %ax
-	mov %ax, %ax
-	mov %bx, %bx
 	cmp $0, %ax
 	jne root_defined
 	#seg cs
@@ -240,7 +237,6 @@ read_track:
 	and $0x0100, %dx  # boot from floppy
 	mov $2, %ah
 	int $0x13
-	mov %ax, %ax
 	jc bad_rt
 	pop %dx
 	pop %cx

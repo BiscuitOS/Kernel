@@ -46,6 +46,7 @@ CC      = $(CROSS_COMPILE)gcc
 OBJCOPY = $(CROSS_COMPILE)objcopy
 NM      = $(CROSS_COMPILE)nm
 STRIP   = $(CROSS_COMPILE)strip
+AR      = $(CROSS_COMPILE)ar
 
 # Compile flags
 ASFLAGS  = 
@@ -54,23 +55,34 @@ LDFLAGS  =
 
 ifeq ($(ARCH), i386)
   ASFLAGS += --32
-  LDFLAGS += -m elf_i386
-  CFLAGS  += -m32
+  LDFLAGS += -m elf_i386 --traditional-format
+  CFLAGS  += -m32 -fno-stack-protector -fgnu89-inline -g 
 endif
 
 ifneq ($(DEBUG),)
   ASFLAGS += -ggdb -am 
 endif
 
+# Header
+CFLAGS += -I$(srctree)/include
+LDFLAGS += -Ttext 0
+
 export VERSION NAME
-export ARCH CROSS_COMPILE AS LD CC OBJCOPY NM
+export ARCH CROSS_COMPILE AS LD CC OBJCOPY NM AR
 export STRIP
 export ASFLAGS CFLAGS LDFLAGS
 
 # Subdir 
-SUBDIR += boot arch init
+SUBDIR += boot init lib drivers kernel
 
-export SUBDIR
+ARCHIVES := $(srctree)/kernel/kernel.o
+DRIVERS  := $(srctree)/drivers/chr_drv/chr_drv.o
+LIBS     := $(srctree)/lib/lib.o
+MATH     := 
+
+IMAGE_PACKAGE := $(ARCHIVES) $(DRIVERS) $(LIBS) $(MATH)
+
+export SUBDIR IMAGE_PACKAGE
 
 # General Rule
 .c.o:
@@ -81,6 +93,7 @@ export SUBDIR
 
 # To do compile
 all: CHECK_START $(SUBDIR) Image 
+	$(Q)figlet "BiscuitOS"
 
 CHECK_START:
 
@@ -88,6 +101,7 @@ $(SUBDIR): ECHO
 	$(Q)make -s -C $@ 
 
 ECHO:
+
 
 Image: 
 	$(Q)make -s -C $(srctree)/tools/build 
@@ -97,6 +111,7 @@ start:
 
 debug:
 	$(Q)make -s -C $(srctree)/tools/build debug 
+
 
 help:
 	@echo "<<< BiscuitOS Help >>>"

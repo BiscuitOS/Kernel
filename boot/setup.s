@@ -39,7 +39,6 @@
 	ljmp $SETUPSEG, $_start	
 _start:
 
-#
 # Get current cursor position and save it on 0x90000
 	mov $INITSEG, %ax
 	mov %ax, %ds
@@ -169,9 +168,6 @@ end_move:
 	.word	0x00eb,0x00eb
 	out	%al, $0xA1
 
-	mov %ax, %ax
-	mov %bx, %bx
-
 # Simple jmp to 0x00000
 	
 	mov %cr0, %eax    # Get machine status
@@ -181,6 +177,7 @@ end_move:
 	# Segment-desciptor  (INDEX:IT:RPL)
 	.equ sel_cs0, 0x0008 # Select for code segment 0 (001:0:00)
 	ljmp $sel_cs0, $0    # jmp offset 0 of code segment 0 in GDT
+
 
 gdt:
 	.word	0,0,0,0		# dummy
