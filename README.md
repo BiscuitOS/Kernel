@@ -2,6 +2,7 @@ BiscuitOS
 --------------------------------------------
 
 > Hello everybody:
+>
 > I'm doing a OS for X86.
 > This has been brewing since March, I'd like any feedback on things
 > people like/dislike in Linux. as my OS resembles it somewhat.
@@ -9,6 +10,7 @@ BiscuitOS
 > virtual file-system, virtual memory and general device driver.
 > BTW, it's only a toy (just a hobby), I only want to know machanism of linux,
 > and won't be big and professional like Linux.
+>
 >                          Buddy (buddy.zhang@aliyun.com)  ^_^
 > 
 
@@ -16,17 +18,23 @@ BiscuitOS
 
 ### Basic information
 
-  * Current Version
+  OS information:
 
-      BiscuitOS v0.0.1
+  | Item                    | contents                      | 
+  | ----------------------- | ----------------------------- |
+  | OS Name                 | BiscuitOS                     |
+  | Release Version         | V0.0.1                        |
+  | Target Platform         | I386(X86 family)              |
+  | Emulator                | Qemu                          |
+  | Memory limit            | 16 M                          |
+  | Disk                    | Floppy                        |
+  | Rootfs                  | none                          |
+  | Host Machine            | Ubuntu16.04                   |
+  | Paging                  | Support                       |
+  | Segmenting              | Support                       |
+  | Bit                     | 32-bit                        |
 
-  * Target Platform
-
-      Intel-i386/32bit
-
-  * Host Platform
-    
-	  Ubuntu16.04 X64_64
+-------------------------------------------------
 
 ### Usage
 
@@ -136,9 +144,11 @@ BiscuitOS
   ```
     buddy.zhang@aliyun.com
   ```
+----------------------------------------------------
 
 ### Other
 
   > Software is like sex. It's better when it's free
+  >
   >                      --- Linus Torvalds
 
