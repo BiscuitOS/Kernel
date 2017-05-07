@@ -3,11 +3,13 @@ BiscuitOS
 
 > Hello everybody:
 >
-> I'm doing a OS for X86.
+> I'm doing an OS for X86.
 > This has been brewing since March, I'd like any feedback on things
 > people like/dislike in Linux. as my OS resembles it somewhat.
+>
 > A tiny operate system has work on i386. I'll add more features like 
 > virtual file-system, virtual memory and general device driver.
+>
 > BTW, it's only a toy (just a hobby), I only want to know machanism of linux,
 > and won't be big and professional like Linux.
 >
