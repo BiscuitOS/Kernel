@@ -75,16 +75,20 @@ BiscuitOS
   4. Debug BiscuitOS
 
     If you want to debug BiscuitOS, please open debug macro on top Makefile.
-	```
-	vi */BiscuitOS/Makefile
-	--- DEBUG := 
-	+++ DEBUG := 1
-	```
+	
+	  ```
+	  vi */BiscuitOS/Makefile
+	  --- DEBUG := 
+	  +++ DEBUG := 1
+	  ```
+	
 	Then, recompile source code.
-	```
-	make clean
-	make
-	```
+	
+	  ```
+	  make clean
+	  make
+	  ```
+	
 	Now, we can start to debug OS.
 	On Host:
       ```
@@ -93,7 +97,7 @@ BiscuitOS
     On Target:
 
 	  You can utilize `gdb` to single debug and so on. follow these steps:
-	  ```
+	    ```
 	    gdb tools/build/system
 	    (gdb)target remote :1234
 	    (gdb)b main
@@ -101,15 +105,15 @@ BiscuitOS
 	    (gdb)n
 	    or 
 	    (gdb)s
-	  ```
+	    ```
 	  You can also utilize `objdump` to get more useful information, such as:
-	  ```
+	    ```
 	    objdump -x -s -S -dh tools/build/system
-	  ```
+	    ```
 
 	  If you want to debug `bootsect.s` and `setup.s`, you should follow
 	  these steps:
-      ```
+        ```
         gdb tools/build/.debug_bootsect
 	    or 
         gdb tools/build/.debug_setup
@@ -121,11 +125,11 @@ BiscuitOS
 	    (gdb)ni
 	    or 
 	    (gdb)si
-      ```
+        ```
 	  You can also uitlize `objdump` to get more useful information,like:
-	  ```
+	    ```
 	    objdump -x -s -S -dh tools/build/.debug_bootsect
-	  ```
+	    ```
 
 --------------------------------------------------
 
