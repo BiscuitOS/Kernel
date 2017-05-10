@@ -46,31 +46,34 @@ BiscuitOS
   specific steps to make it work.
 
   1. Install essential tools
-	```
-	sudo apt-get install qemu
-	sudo apt-get install figlet gcc make gdb git
-	sudo apt-get install cflow graphviz gawk
-	```
+
+	  ```
+	  sudo apt-get install qemu
+	  sudo apt-get install figlet gcc make gdb git
+	  sudo apt-get install cflow graphviz gawk
+	  ```
 
 	If you use 64 bit system, please install 32 bit library.
-	```
-	sudo apt-get install lib32z1 lib32z1-dev
-	```
+	
+	  ```
+	  sudo apt-get install lib32z1 lib32z1-dev
+	  ```
 
   2. Download source code
 
     Download souce code from github, please connect network first.
-	```
-	git clone https://github.com/BuddyZhang1/BiscuitOS.git
-	```
+	
+	  ```
+	  git clone https://github.com/BuddyZhang1/BiscuitOS.git
+	  ```
 
   3. Compile BiscuitOS
   
-	```
-    make clean  
-    make 
-    make start
-    ```
+	  ```
+      make clean  
+      make 
+      make start
+      ```
 
   4. Debug BiscuitOS
 
@@ -91,13 +94,15 @@ BiscuitOS
 	
 	Now, we can start to debug OS.
 	On Host:
-      ```
+      
+	  ```
       make debug
       ```
     On Target:
 
 	  You can utilize `gdb` to single debug and so on. follow these steps:
-	    ```
+	    
+		```
 	    gdb tools/build/system
 	    (gdb)target remote :1234
 	    (gdb)b main
@@ -106,14 +111,17 @@ BiscuitOS
 	    or 
 	    (gdb)s
 	    ```
+	  
 	  You can also utilize `objdump` to get more useful information, such as:
-	    ```
+	    
+		```
 	    objdump -x -s -S -dh tools/build/system
 	    ```
 
 	  If you want to debug `bootsect.s` and `setup.s`, you should follow
 	  these steps:
-        ```
+        
+		```
         gdb tools/build/.debug_bootsect
 	    or 
         gdb tools/build/.debug_setup
@@ -126,8 +134,10 @@ BiscuitOS
 	    or 
 	    (gdb)si
         ```
+	  
 	  You can also uitlize `objdump` to get more useful information,like:
-	    ```
+	    
+		```
 	    objdump -x -s -S -dh tools/build/.debug_bootsect
 	    ```
 
@@ -137,6 +147,7 @@ BiscuitOS
 
   I have collected more useful documentions, you can access my github to 
   get it. The github link:
+  
   ```
     https://github.com/BuddyZhang1/Book-Segment
   ```
@@ -147,6 +158,7 @@ BiscuitOS
 
   If you have any new source code or problem, you can send email to me.
   This is my frequently used email:
+  
   ```
     buddy.zhang@aliyun.com
   ```
