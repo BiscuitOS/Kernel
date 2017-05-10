@@ -46,10 +46,10 @@ BiscuitOS
   specific steps to make it work.
 
   1. Install essential tools
-
-    ```
+	```
 	sudo apt-get install qemu
 	sudo apt-get install figlet gcc make gdb git
+	sudo apt-get install cflow graphviz gawk
 	```
 
 	If you use 64 bit system, please install 32 bit library.
@@ -64,7 +64,7 @@ BiscuitOS
 	git clone https://github.com/BuddyZhang1/BiscuitOS.git
 	```
 
-  3. Comple BiscuitOS
+  3. Compile BiscuitOS
   
 	```
     make clean  

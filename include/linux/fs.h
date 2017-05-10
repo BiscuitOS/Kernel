@@ -36,4 +36,6 @@ struct file {
 	off_t f_pos;
 };
 
+
+extern int ROOT_DEV;
 #endif

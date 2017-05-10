@@ -153,14 +153,38 @@ struct task_struct {
 			"d" (_TSS(n)), "c" ((long) task[n]));  \
 }
 
+static inline unsigned long _get_base(char *addr)
+{
+	unsigned long __base;
+
+	__asm__ ("movb %3, %%dh\n\t"
+			 "movb %2, %%dl\n\t"
+			 "shll $16, %%edx\n\t"
+			 "movw %1, %%dx"
+			 : "=&d" (__base)
+			 : "m" (*((addr) + 2)),
+			   "m" (*((addr) + 4)),
+			   "m" (*((addr) + 7)));
+	return __base;
+}
+
+#define get_base(ldt) _get_base((char *)&(ldt))
+
+#define get_limit(segment)  ({    \
+	unsigned long __limit;        \
+	__asm__ ("lsll %1, %0\n\tincl %0":"=r" (__limit):"r" (segment));  \
+	__limit;})
+
 extern struct task_struct *current;
 extern struct task_struct *task[NR_TASKS];
+extern struct task_struct *last_task_used_math;
 extern struct task_struct *last_task_used_math;
 
 extern void schedule(void);
 extern int tty_write(unsigned minor, char *buf, int count);
 extern void interruptible_sleep_on(struct task_struct **);
 extern void wake_up(struct task_struct **);
+extern void trap_init(void);
 
 #ifndef PANIC
 void panic(const char *str);

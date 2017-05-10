@@ -56,7 +56,7 @@ LDFLAGS  =
 ifeq ($(ARCH), i386)
   ASFLAGS += --32
   LDFLAGS += -m elf_i386 --traditional-format
-  CFLAGS  += -m32 -fno-stack-protector -fgnu89-inline -g 
+  CFLAGS  += -m32 -fno-stack-protector -fgnu89-inline -g  
 endif
 
 ifneq ($(DEBUG),)
@@ -73,14 +73,16 @@ export STRIP
 export ASFLAGS CFLAGS LDFLAGS
 
 # Subdir 
-SUBDIR += boot init lib drivers kernel
+SUBDIR += boot init lib drivers kernel fs mm kernel/math
 
 ARCHIVES := $(srctree)/kernel/kernel.o
 DRIVERS  := $(srctree)/drivers/chr_drv/chr_drv.o
 LIBS     := $(srctree)/lib/lib.o
-MATH     := 
+MATH     := $(srctree)/kernel/math/math.o 
+FS       := $(srctree)/fs/fs.o
+MM       := $(srctree)/mm/mm.o
 
-IMAGE_PACKAGE := $(ARCHIVES) $(DRIVERS) $(LIBS) $(MATH)
+IMAGE_PACKAGE := $(ARCHIVES) $(DRIVERS) $(LIBS) $(MATH) $(FS) $(MM)
 
 export SUBDIR IMAGE_PACKAGE
 
@@ -112,6 +114,8 @@ start:
 debug:
 	$(Q)make -s -C $(srctree)/tools/build debug 
 
+call:
+	$(Q)$(srctree)/tools/callgraph/call.sh $(srctree) $(FUN) 
 
 help:
 	@echo "<<< BiscuitOS Help >>>"
@@ -126,4 +130,5 @@ help:
 clean: $(SUBDIR)
 	$(Q)for i in $(SUBDIR); do make clean -s -C $$i; done
 	$(Q)make clean -s -C $(srctree)/tools/build
+	$(Q)rm -rf $(srctree)/tools/callgraph/*.svg
 	

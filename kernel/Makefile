@@ -4,7 +4,10 @@ OBJS := sched.o
 OBJS += vsprintf.o
 OBJS += printk.o
 OBJS += panic.o
-
+OBJS += asm.o
+OBJS += traps.o
+OBJS += system_call.o
+OBJS += signal.o
 
 all: $(OBJS) KERNEL 
 
