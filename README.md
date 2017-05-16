@@ -53,7 +53,7 @@ BiscuitOS
 	  sudo apt-get install cflow graphviz gawk
 	  ```
 
-	If you use 64 bit system, please install 32 bit library.
+	 If you use 64 bit system, please install 32 bit library.
 	
 	  ```
 	  sudo apt-get install lib32z1 lib32z1-dev
@@ -61,7 +61,7 @@ BiscuitOS
 
   2. Download source code
 
-    Download souce code from github, please connect network first.
+     Download souce code from github, please connect network first.
 	
 	  ```
 	  git clone https://github.com/BuddyZhang1/BiscuitOS.git
@@ -77,7 +77,7 @@ BiscuitOS
 
   4. Debug BiscuitOS
 
-    If you want to debug BiscuitOS, please open debug macro on top Makefile.
+     If you want to debug BiscuitOS, please open debug macro on top Makefile.
 	
 	  ```
 	  vi */BiscuitOS/Makefile
@@ -85,22 +85,22 @@ BiscuitOS
 	  +++ DEBUG := 1
 	  ```
 	
-	Then, recompile source code.
+	 Then, recompile source code.
 	
 	  ```
 	  make clean
 	  make
 	  ```
 	
-	Now, we can start to debug OS.
-	On Host:
+	 Now, we can start to debug OS.
+	 On Host:
       
 	  ```
       make debug
       ```
-    On Target:
+     On Target:
 
-	  You can utilize `gdb` to single debug and so on. follow these steps:
+	    You can utilize `gdb` to single debug and so on. follow these steps:
 	    
 		```
 	    gdb tools/build/system

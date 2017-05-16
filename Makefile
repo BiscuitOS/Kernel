@@ -21,7 +21,7 @@ ifndef KBUILD_VERBOSE
   KBUILD_VERBOSE = 0
 endif
 
-ifeq ($(KBUILD_VERBOSE), 1)
+ifeq ($(KBUILD_VERBOSE),)
   Q =
 else
   Q = @
@@ -47,36 +47,41 @@ OBJCOPY = $(CROSS_COMPILE)objcopy
 NM      = $(CROSS_COMPILE)nm
 STRIP   = $(CROSS_COMPILE)strip
 AR      = $(CROSS_COMPILE)ar
+CPP     = $(CROSS_COMPILE)cpp
 
 # Compile flags
 ASFLAGS  = 
 CFLAGS   =
 LDFLAGS  =
+CPPFLAGS =
 
 ifeq ($(ARCH), i386)
   ASFLAGS += --32
   LDFLAGS += -m elf_i386 --traditional-format
-  CFLAGS  += -m32 -fno-stack-protector -fgnu89-inline -g  
+  CFLAGS  += -m32 -fno-stack-protector -fgnu89-inline -fomit-frame-pointer 
 endif
 
 ifneq ($(DEBUG),)
   ASFLAGS += -ggdb -am 
+  CFLAGS  += -g -Wall -Wunused
 endif
 
 # Header
 CFLAGS += -I$(srctree)/include
 LDFLAGS += -Ttext 0
+CPPFLAGS += -I$(srctree)/include -nostdinc
 
 export VERSION NAME
 export ARCH CROSS_COMPILE AS LD CC OBJCOPY NM AR
 export STRIP
 export ASFLAGS CFLAGS LDFLAGS
+export CPP CPPFLAGS
 
 # Subdir 
 SUBDIR += boot init lib drivers kernel fs mm kernel/math
 
 ARCHIVES := $(srctree)/kernel/kernel.o
-DRIVERS  := $(srctree)/drivers/chr_drv/chr_drv.o
+DRIVERS  := $(srctree)/drivers/drivers.o
 LIBS     := $(srctree)/lib/lib.o
 MATH     := $(srctree)/kernel/math/math.o 
 FS       := $(srctree)/fs/fs.o
@@ -109,7 +114,9 @@ Image:
 	$(Q)make -s -C $(srctree)/tools/build 
 
 start:
+	$(Q)figlet "BiscuitOS"
 	$(Q)make -s -C $(srctree)/tools/build start 
+	$(Q)figlet "BiscuitOS"
 
 debug:
 	$(Q)make -s -C $(srctree)/tools/build debug 

@@ -100,6 +100,12 @@ struct tty_queue * table_list[] = {
 	&tty_table[2].read_q, &tty_table[2].write_q,		
 };
 
+void tty_init(void)
+{
+	rs_init();
+	con_init();
+}
+
 void tty_intr(struct tty_struct *tty, int mask)
 {
 	int i;
@@ -110,14 +116,6 @@ void tty_intr(struct tty_struct *tty, int mask)
 	for (i = 0; i < NR_TASKS; i++)
 		if (task[i] && task[i]->pgrp == tty->pgrp)
 			task[i]->signal |= mask;
-}
-
-static void sleep_if_empty(struct tty_queue *queue)
-{
-	cli();
-	while (!current->signal && EMPTY(*queue))
-		interruptible_sleep_on(&queue->proc_list);
-	sti();
 }
 
 static void sleep_if_full(struct tty_queue *queue)
@@ -256,4 +254,27 @@ int tty_write(unsigned channel, char *buf, int nr)
 			schedule();
 	}
 	return (b - buf);
+}
+
+/*
+ * Jeh, sometime I really like the 386.
+ * This routine is called from an interrupt,
+ * and there should be absolutely no problem
+ * with sleeping even in an interrupt (I hope).
+ * Of cource, if somebody proves me wrong, I'll
+ * hate intel for all time :-). We'll have to 
+ * be careful and see to reinstating the interrupt
+ * chips before calling this, though.
+ *
+ * I don't think we sleep here under normal circumstances
+ * anyway, which is good, as the task sleeping might be
+ * totally innocent.
+ */
+void do_tty_interrupt(int tty)
+{
+	copy_to_cooked(tty_table + tty);	
+}
+
+void chr_dev_init(void)
+{
 }

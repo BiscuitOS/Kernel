@@ -185,6 +185,8 @@ extern int tty_write(unsigned minor, char *buf, int count);
 extern void interruptible_sleep_on(struct task_struct **);
 extern void wake_up(struct task_struct **);
 extern void trap_init(void);
+extern void sched_init(void);
+extern void add_timer(long, void (*fn)(void));
 
 #ifndef PANIC
 void panic(const char *str);

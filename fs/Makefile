@@ -1,6 +1,7 @@
 LDFLAGS += -r
 
 OBJS := super.o
+OBJS += buffer.o
 
 all: $(OBJS) fs.o ECHO
 

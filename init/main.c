@@ -8,10 +8,15 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+#include <time.h>
 
 #include <linux/kernel.h>
 #include <linux/fs.h>
 #include <linux/sched.h>
+#include <linux/tty.h>
+
+#include <asm/io.h>
+
 
 /*
  * This is set up by the setup-routine at boot-time
@@ -19,6 +24,19 @@
 #define EXT_MEM_K        (*(unsigned short *)0x90002)
 #define DRIVE_INFO       (*(struct drive_info *)0x90080)
 #define ORIG_ROOT_DEV    (*(unsigned short *)0x901FC)
+
+/*
+ * Yeah, yeah, it's ugly, but I cannot find how to do this correctly
+ * and this seems to work. I anybody has more info on the real-time
+ * clock I'd be interested. Most of this was trial and error, and some
+ * bios-listing reading. Urghh.
+ */
+#define CMOS_READ(addr)  ({   \
+	outb_p(0x80 | addr, 0x70);   \
+	inb_p(0x71);                 \
+})
+
+#define BCD_TO_BIN(val)  ((val)=((val) & 15) + ((val) >> 4) * 10)
 
 struct drive_info {
 	char dummy[32];
@@ -29,6 +47,35 @@ static long buffer_memory_end = 0;
 static long main_memory_start = 0;
 
 extern void mem_init(long, long);
+extern void blk_dev_init(void);
+extern void chr_dev_init(void);
+extern void hd_init(void);
+extern void floppy_init(void);
+extern long kernel_mktime(struct tm *);
+extern long startup_time;
+
+static void time_init(void)
+{
+	struct tm time;
+
+	do {
+		time.tm_sec   = CMOS_READ(0);
+		time.tm_min   = CMOS_READ(2);
+		time.tm_hour  = CMOS_READ(4);
+		time.tm_mday  = CMOS_READ(7);
+		time.tm_mon   = CMOS_READ(8);
+		time.tm_year  = CMOS_READ(9);
+	} while (time.tm_sec != CMOS_READ(0));
+
+	BCD_TO_BIN(time.tm_sec);
+	BCD_TO_BIN(time.tm_min);
+	BCD_TO_BIN(time.tm_hour);
+	BCD_TO_BIN(time.tm_mday);
+	BCD_TO_BIN(time.tm_mon);
+	BCD_TO_BIN(time.tm_year);
+	time.tm_mon--;
+	startup_time = kernel_mktime(&time);
+}
 
 void main(void)
 {
@@ -52,4 +99,12 @@ void main(void)
 	main_memory_start = buffer_memory_end;
 	mem_init(main_memory_start, memory_end);
 	trap_init();
+	blk_dev_init();
+	chr_dev_init();
+	tty_init();
+	time_init();
+	sched_init();
+	buffer_init(buffer_memory_end);
+	hd_init();
+	floppy_init();
 }

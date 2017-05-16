@@ -5,6 +5,33 @@
 
 #define NR_OPEN 20
 
+#define NR_HASH    307
+#define BLOCK_SIZE 1024
+#ifndef NULL
+#define NULL ((void *) 0)
+#endif
+
+#define READ       0
+#define WRITE      1
+#define READA      2   /* read-ahead - don't pause */
+#define WRITEA     3   /* "write-ahead" - silly, but somewhat useful */
+
+
+struct buffer_head {
+	char *b_data;
+	unsigned long b_blocknr;
+	unsigned short b_dev;
+	unsigned char b_uptodate;
+	unsigned char b_dirt;
+	unsigned char b_count;
+	unsigned char b_lock;
+	struct task_struct *b_wait;
+	struct buffer_head *b_prev;
+	struct buffer_head *b_next;
+	struct buffer_head *b_prev_free;
+	struct buffer_head *b_next_free;
+};
+
 struct m_inode {
 	unsigned short i_mode;
 	unsigned short i_uid;
@@ -36,6 +63,11 @@ struct file {
 	off_t f_pos;
 };
 
+#define MAJOR(a)        (((unsigned)(a)) >> 8)
+#define MINOR(a)        ((a)&0xff)
+
+void buffer_init(long);
 
 extern int ROOT_DEV;
 #endif
+

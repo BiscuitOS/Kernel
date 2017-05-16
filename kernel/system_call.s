@@ -7,7 +7,8 @@ signal    = 12
 blocked   = (33 * 16)
 
 .globl coprocessor_error, parallel_interrupt
-.globl device_not_available
+.globl device_not_available, timer_interrupt, system_call
+.globl hd_interrupt, floppy_interrupt
 
 .align 2
 bad_sys_call:
@@ -61,7 +62,23 @@ coprocessor_error:
 	jmp math_error
 
 .align 2
+timer_interrupt:
+	ret
+
+.align 2
 device_not_available:
+	ret
+
+.align 2
+system_call:
+	ret
+
+.align 2
+hd_interrupt:
+	ret
+
+.align 2
+floppy_interrupt:
 	ret
 
 parallel_interrupt:

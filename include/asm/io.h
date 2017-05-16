@@ -9,6 +9,7 @@
 	__asm__ volatile ("inb %%dx, %%al" \
 	: "=a" (_v) \
 	: "d" (port)); \
+	_v; \
 })
 
 #define outb_p(value, port)  \
