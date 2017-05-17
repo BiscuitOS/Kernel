@@ -1,4 +1,4 @@
-/* ----------------------------------------------------------
+/* 
  * main.c
  * Maintainer: Buddy <buddy.zhang@aliyun.com>
  *
@@ -77,6 +77,15 @@ static void time_init(void)
 	startup_time = kernel_mktime(&time);
 }
 
+void info_init(void)
+{
+	printk("Compressing kernel.....\n");
+	printk("Booting BisuitOS on physical CPU 0x0\n");
+	printk("Machine:Intel i386\n");
+	printk("Kernel command line: loglevel=8 console=ttyS0,115200\n");
+	printk("Welcome to BisuitOS :-)\n");
+}
+
 void main(void)
 {
 	/* 
@@ -102,6 +111,7 @@ void main(void)
 	blk_dev_init();
 	chr_dev_init();
 	tty_init();
+	info_init();
 	time_init();
 	sched_init();
 	buffer_init(buffer_memory_end);

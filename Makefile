@@ -63,7 +63,10 @@ endif
 
 ifneq ($(DEBUG),)
   ASFLAGS += -ggdb -am 
-  CFLAGS  += -g -Wall -Wunused
+  # Debug option
+  CFLAGS  += -g 
+  # High level warning
+# CFLAGS  +=  -Wall -Wunused
 endif
 
 # Header
