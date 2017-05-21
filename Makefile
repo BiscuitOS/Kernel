@@ -65,8 +65,8 @@ ifneq ($(DEBUG),)
   ASFLAGS += -ggdb -am 
   # Debug option
   CFLAGS  += -g 
-  # High level warning
-# CFLAGS  +=  -Wall -Wunused
+  # Highest level warning
+  CFLAGS  +=  -Wall -Wunused
 endif
 
 # Header
@@ -124,7 +124,7 @@ start:
 debug:
 	$(Q)make -s -C $(srctree)/tools/build debug 
 
-call:
+draw:
 	$(Q)$(srctree)/tools/callgraph/call.sh $(srctree) $(FUN) 
 
 help:

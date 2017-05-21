@@ -24,7 +24,7 @@ pg_dir:
 	.globl startup_32
 
 startup_32:
-	movl $0x10, %eax
+	movl $0x10, %eax  # 0x10, Global data segment.
 	mov %ax, %ds
 	mov %ax, %es
 	mov %ax, %fs

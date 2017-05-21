@@ -1,6 +1,17 @@
+/*
+ * Memory manage
+ * Maintainer: Buddy <buddy.zhang@aliyun.com>
+ *
+ * Copyright (C) 2017 BiscuitOS
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
 
 /*
  * These are not to be changed without changing head.s etc.
+ * Current version only support litter than 16Mb.
  */
 #define LOW_MEM        0x100000
 #define PAGING_MEMORY  (15 * 1024 * 1024)
@@ -12,6 +23,9 @@ static long HIGH_MEMORY = 0;
 
 static unsigned char mem_map[PAGING_PAGES] = {0,};
 
+/*
+ * Initialize memory, build mapping array.
+ */
 void mem_init(long start_mem, long end_mem)
 {
 	int i;

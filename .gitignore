@@ -17,3 +17,6 @@ bootsect
 system
 
 !.gitignore
+
+# output
+keyboard.s

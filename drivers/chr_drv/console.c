@@ -1,3 +1,13 @@
+/* 
+ * console.c
+ * Maintainer: Buddy <buddy.zhang@aliyun.com>
+ *
+ * Copyright (C) 2017 BiscuitOS
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
 
 #include <linux/sched.h>
 #include <linux/tty.h>
@@ -624,38 +634,44 @@ void con_init(void)
 	register unsigned char a;
 	char *display_desc = "????";
 	char *display_ptr;
-
+	
 	video_num_columns = ORIG_VIDEO_COLS;
 	video_size_row = video_num_columns * 2;
 	video_num_lines = ORIG_VIDEO_LINES;
 	video_page = ORIG_VIDEO_PAGE;
 	video_erase_char = 0x0720;
 
+	/* black-white Mode */
 	if (ORIG_VIDEO_MODE == 7) {
-		video_mem_start = 0xb0000;
-		video_port_reg  = 0x3b4;
-		video_port_val  = 0x3b5;
+		video_mem_start = 0xb0000; /* Display buffer */
+		video_port_reg  = 0x3b4;   /* Display control register */
+		video_port_val  = 0x3b5;   /* Display data register */
 		if ((ORIG_VIDEO_EGA_BX & 0xff) != 0x10) {
+			/* EGA black-white */
 			video_type = VIDEO_TYPE_EGAM;
 			video_mem_end = 0xb8000;
 			display_desc = "EGAm";
 		} else {
+			/* DMA black-white */
 			video_type = VIDEO_TYPE_MDA;
 			video_mem_end = 0xb2000;
 			display_desc = "*MDA";
 
 		}
 	} else {
-		video_mem_start = 0xb8000;
-		video_port_reg  = 0x3d4;
-		video_port_val  = 0x3d5;
+		/* Colour Mode */
+		video_mem_start = 0xb8000; /* Display buffer */
+		video_port_reg  = 0x3d4;   /* Display control register */
+		video_port_val  = 0x3d5;   /* Display data register */
 		if ((ORIG_VIDEO_EGA_BX & 0xff) != 0x10) {
+			/* EGA colour */
 			video_type = VIDEO_TYPE_EGAC;
-			video_mem_end = 0xbc000;
-			display_desc  = "EGAc";
+			video_mem_end = 0xbc000; /* 16KB */
+			display_desc  = "EGAc";  
 		} else {
+			/* CGA colour */
 			video_type = VIDEO_TYPE_CGA;
-			video_mem_end = 0xba000;
+			video_mem_end = 0xba000; /* 8KB */
 			display_desc  = "*CGA";
 		}
 	}

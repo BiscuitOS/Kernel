@@ -42,6 +42,7 @@ struct drive_info {
 	char dummy[32];
 } drive_info;
 
+const char *command_line = "loglevel=8 console=ttyS0,115200";
 static long memory_end = 0;
 static long buffer_memory_end = 0;
 static long main_memory_start = 0;
@@ -77,12 +78,33 @@ static void time_init(void)
 	startup_time = kernel_mktime(&time);
 }
 
-void info_init(void)
+/*
+ * Detect memory from setup-routine.
+ */
+static void memory_detect(void)
+{
+	memory_end = (1 << 20) + (EXT_MEM_K << 10);
+	memory_end &= 0xFFFFF000;
+	
+	/* Current version only support litter than 16Mb */
+	if (memory_end > 16 * 1024 * 1024)
+		memory_end = 16 * 1024 * 1024;
+	if (memory_end > 12 * 1024 * 1024)
+		buffer_memory_end = 4 * 1024 * 1024;
+	else if (memory_end > 6 * 1024 * 1024)
+		buffer_memory_end = 2 * 1024 * 1024;
+	else
+		buffer_memory_end = 1 * 1024 * 1024;
+
+	main_memory_start = buffer_memory_end;
+}
+
+static void info_init(void)
 {
 	printk("Compressing kernel.....\n");
 	printk("Booting BisuitOS on physical CPU 0x0\n");
 	printk("Machine:Intel i386\n");
-	printk("Kernel command line: loglevel=8 console=ttyS0,115200\n");
+	printk("Kernel command line: %s\n", command_line);
 	printk("Welcome to BisuitOS :-)\n");
 }
 
@@ -94,18 +116,7 @@ void main(void)
 	 */
 	ROOT_DEV = ORIG_ROOT_DEV;
 	drive_info = DRIVE_INFO;
-	memory_end = (1 << 20) + (EXT_MEM_K << 10);
-	memory_end &= 0xfffff000;
-
-	if (memory_end > 16 * 1024 * 1024)
-		memory_end = 16 * 1024 * 1024;
-	if (memory_end > 12 * 1024 * 1024)
-		buffer_memory_end = 4 * 1024 * 1024;
-	else if (memory_end > 6 * 1024 * 1024)
-		buffer_memory_end = 2 * 1024 * 1024;
-	else
-		buffer_memory_end = 1 * 1024 * 1024;
-	main_memory_start = buffer_memory_end;
+	memory_detect();
 	mem_init(main_memory_start, memory_end);
 	trap_init();
 	blk_dev_init();

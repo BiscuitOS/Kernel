@@ -23,10 +23,12 @@
 	begbss:
 	.text
 
+	# BiscuitOS support boot from floppy and hard disk
     # Boot from first hard disk
+	# .equ DEVICE_NR, 0x80
+    # Boot from first floppy
 	.equ DEVICE_NR, 0x00
-	# Boot from first floppy
-	#.equ DEVICE_NR 0x00
+
 	.equ SETUPLEN, 4        # nr of setup-sectors
 	.equ BOOTSEG, 0x07C0    # original address of boot-sector
 	.equ INITSEG, 0x9000    # we move boot here - out of the way
