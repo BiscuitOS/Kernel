@@ -9,6 +9,11 @@
 # published by the Free Software Foundation.
 
 # -----------------------------------
+# Qemu flags
+# -----------------------------------
+QEMU_FLAGS := 
+
+# -----------------------------------
 # Platform 
 # -----------------------------------
 ifeq ($(ARCH), i386)
@@ -17,12 +22,12 @@ else
 QEMU := qemu
 endif
 
-
 # -----------------------------------
 # Boot from
 # -----------------------------------
 BOOTLOADER := Floppy
 #BOOTLOADER := Disk
+QEMU_FALGS += -boot order=$(BOOT_DEVICE)
 
 # -----------------------------------
 # Image File
@@ -33,6 +38,7 @@ IMAGE_FILE := BiscuitOS.img
 # Memory size 
 # -----------------------------------
 MEMORY_SIZE := 16M
+QEMU_FLAGS  += -m $(MEMORY_SIZE)
 
 # -----------------------------------
 # Boot order
@@ -79,19 +85,26 @@ ifeq ($(BOOTLOADER), Floppy)
 else
   BLOCK_DEVICE := -fda Image
 endif
-
-
-# -----------------------------------
-# Qemu flags
-# -----------------------------------
-QEMU_FLAGS := 
-
-
-
-
-QEMU_FLAGS += -m $(MEMORY_SIZE) -boot order=$(BOOT_DEVICE)
-
 QEMU_FLAGS += $(BLOCK_DEVICE)
 
-export QEMU_FLAGS
+# -----------------------------------
+# Display options
+# -----------------------------------
+CONS :=
+QEMU_FLAGS += $(CONS)
+
+# -----------------------------------
+# Real Time Chip(RTC)
+# -----------------------------------
+# Specify time
+# RTC := -rtc base=2017-10-16T16:01:21
+# Local time
+RTC := -rtc base=localtime
+# UTL time (default)
+# RTC := -rtc base=utc
+QEMU_FLAGS += $(RTC)
+
+
+# Export Argument
+export QEMU_FLAGS QEMU
 

@@ -55,10 +55,14 @@ extern void floppy_init(void);
 extern long kernel_mktime(struct tm *);
 extern long startup_time;
 
+/*
+ * Initialize system time.
+ */
 static void time_init(void)
 {
 	struct tm time;
 
+	printk("Initialize system Time.\n");
 	do {
 		time.tm_sec   = CMOS_READ(0);
 		time.tm_min   = CMOS_READ(2);
@@ -74,8 +78,12 @@ static void time_init(void)
 	BCD_TO_BIN(time.tm_mday);
 	BCD_TO_BIN(time.tm_mon);
 	BCD_TO_BIN(time.tm_year);
+	printk("Boot system time: 20%d-%d-%d: %d-%d-%d\n", 
+		time.tm_year, time.tm_mon, time.tm_mday,
+		time.tm_hour, time.tm_min, time.tm_sec);
 	time.tm_mon--;
 	startup_time = kernel_mktime(&time);
+	printk("starttime %ld\n", startup_time);
 }
 
 /*
@@ -105,7 +113,6 @@ static void info_init(void)
 	printk("Booting BisuitOS on physical CPU 0x0\n");
 	printk("Machine:Intel i386\n");
 	printk("Kernel command line: %s\n", command_line);
-	printk("Welcome to BisuitOS :-)\n");
 }
 
 void main(void)
