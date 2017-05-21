@@ -141,6 +141,23 @@ BiscuitOS
 	    objdump -x -s -S -dh tools/build/.debug_bootsect
 	    ```
 
+  5. Draw calling graph
+
+     BiscuitOS supports automatic draw calling graph of function. If you want
+	 to utilize this tools, you should follow these steps:
+	 ```
+       cd */BiscuitOS/
+	   make draw FUN=xxx
+	 ```
+	 Basic command `make draw` that draws a new calling graph, you should
+	 input function name (like `make draw FUN=printk`).
+
+	 And, The `firefox` browser will display the calling graph. 
+
+	 Note! This tools base on `firefox` browser, so you should install 
+	 `firefox` on your PC. 
+
+	 
 --------------------------------------------------
 
 ### Documention

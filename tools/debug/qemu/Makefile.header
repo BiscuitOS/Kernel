@@ -27,7 +27,6 @@ endif
 # -----------------------------------
 BOOTLOADER := Floppy
 #BOOTLOADER := Disk
-QEMU_FALGS += -boot order=$(BOOT_DEVICE)
 
 # -----------------------------------
 # Image File
@@ -58,6 +57,7 @@ ifeq ($(BOOTLOADER), Floppy)
 else
   BOOT_DEVICE := c
 endif
+QEMU_FLAGS += -boot order=$(BOOT_DEVICE)
 
 # -----------------------------------
 # Virtual device
@@ -103,7 +103,6 @@ RTC := -rtc base=localtime
 # UTL time (default)
 # RTC := -rtc base=utc
 QEMU_FLAGS += $(RTC)
-
 
 # Export Argument
 export QEMU_FLAGS QEMU
