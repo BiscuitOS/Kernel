@@ -622,6 +622,55 @@ static void sysbeep(void)
 }
 
 /*
+ * Clear a line
+ * @n: number of line
+ * @buffer: start memory address of display buffer.
+ */
+static void clear_line(char *buffer, int n)
+{
+	int i;
+	char *ptr = buffer + n * ORIG_VIDEO_COLS * 2;
+	char *cont = " ";
+
+	for (i = 0; i < ORIG_VIDEO_COLS * 2; i++) 
+		ptr[i * 2] = *cont;
+}
+
+/*
+ * Display BiscuitOS Basice version
+ * @buffer: start memory address of display buffer.
+ * @n: number of start line.
+ */
+static void BicuitOS_version(char *buffer, int n)
+{
+	char *version[7] ={ 
+					"BiscuitOS V0.0.2 buddy.zhang@aliyun.com" ,
+				    " ____  _                _ _    ___  ____  " ,
+					"| __ )(_)___  ___ _   _(_) |_ / _ \\\/ ___| " ,
+					"|  _ \\\| / __|/ __| | | | | __| | | \\\___ \\\ " ,
+					"| |_) | \\\__ \\\ (__| |_| | | |_| |_| |___) |" ,
+					"|____/|_|___/\\\___|\\\__,_|_|\\\__|\\\___/|____/"  ,
+					NULL 
+	};
+	int i = 6;
+
+	/* clear firt 6 lines */
+	while (i--)
+		clear_line(buffer, i + n);
+
+	/* Display information */
+	for (i = 0; i < 6; i++) {
+		char *tmp = version[i];
+		char *mem = buffer + (i + n) * ORIG_VIDEO_COLS * 2;
+
+		while (*tmp) {
+			*mem++ = *tmp++;
+			mem++;
+		}
+	}
+}
+
+/*
  * This routine initialize console interrupts, and does nothing
  * else. If you want the screen to clear, call tty_write with 
  * the appropriate escape-sequence.
@@ -676,6 +725,8 @@ void con_init(void)
 		}
 	}
 
+	/* Display system information */
+	BicuitOS_version((char *)video_mem_start, 0);
 	/* 
 	 * Let the user known what kind of display driver we are using.
 	 */
