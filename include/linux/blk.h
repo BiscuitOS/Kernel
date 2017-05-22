@@ -1,7 +1,6 @@
 #ifndef _BLK_H_
 #define _BLK_H_
 
-
 #define NR_BLK_DEV 7
 /*
  * NR_REQUEST is the number of entries in the request-queue.
@@ -17,7 +16,7 @@
 /*
  * Ok, this is an expanded form so that we can use the same
  * request for paging requests when that is implemented. In
- * paging, 'bh' is NULL, and 'waiting' is used to wait for 
+ * paging, 'bh' is NULL, and 'waiting' is used to wait for
  * read/write completion.
  */
 struct request {
@@ -33,7 +32,7 @@ struct request {
 };
 
 struct blk_dev_struct {
-	void (*request_fn)(void);
+	void (*request_fn) (void);
 	struct request *current_request;
 };
 

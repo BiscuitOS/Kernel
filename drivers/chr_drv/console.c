@@ -1,4 +1,4 @@
-/* 
+/*
  * console.c
  * Maintainer: Buddy <buddy.zhang@aliyun.com>
  *
@@ -28,10 +28,10 @@
 #define ORIG_VIDEO_EGA_BX    (*(unsigned short *)0x9000a)
 #define ORIG_VIDEO_EGA_CX    (*(unsigned short *)0x9000c)
 
-#define VIDEO_TYPE_MDA       0x10  /* Monochrome Text Display */
-#define VIDEO_TYPE_CGA       0x11  /* CGA Display */
-#define VIDEO_TYPE_EGAM      0x20  /* EGA/VGA in Monochrome Mode */
-#define VIDEO_TYPE_EGAC      0x21  /* EGA/VGA in Color Mode */
+#define VIDEO_TYPE_MDA       0x10	/* Monochrome Text Display */
+#define VIDEO_TYPE_CGA       0x11	/* CGA Display */
+#define VIDEO_TYPE_EGAM      0x20	/* EGA/VGA in Monochrome Mode */
+#define VIDEO_TYPE_EGAC      0x21	/* EGA/VGA in Color Mode */
 
 #define NPAR 16
 
@@ -41,18 +41,18 @@
  */
 #define RESPONSE "\033[?1;2c"
 
-static unsigned char video_type;         /* Type of display being used */
-static unsigned long video_size_row;     /* Bytes per row */
-static unsigned long video_num_columns;  /* Number of text colums */
-static unsigned long video_num_lines;    /* Number of test lines */
-static unsigned long video_page;         /* Initial video page */
-static unsigned long video_mem_start;    /* Start of video RAM */
-static unsigned long video_mem_end;      /* End of video RAM */
-static unsigned long video_port_reg;     /* Video register select port */
-static unsigned long video_port_val;     /* Video register value port */
-static unsigned long video_erase_char;   /* Char+Attrib to erase with */
-static unsigned long origin;             /* Used for EGA/VGA fast scroll */
-static unsigned long scr_end;            /* Used for EGA/VGA fast scroll */
+static unsigned char video_type;	/* Type of display being used */
+static unsigned long video_size_row;	/* Bytes per row */
+static unsigned long video_num_columns;	/* Number of text colums */
+static unsigned long video_num_lines;	/* Number of test lines */
+static unsigned long video_page;	/* Initial video page */
+static unsigned long video_mem_start;	/* Start of video RAM */
+static unsigned long video_mem_end;	/* End of video RAM */
+static unsigned long video_port_reg;	/* Video register select port */
+static unsigned long video_port_val;	/* Video register value port */
+static unsigned long video_erase_char;	/* Char+Attrib to erase with */
+static unsigned long origin;	/* Used for EGA/VGA fast scroll */
+static unsigned long scr_end;	/* Used for EGA/VGA fast scroll */
 
 static unsigned long pos;
 static unsigned long x, y;
@@ -88,7 +88,7 @@ static void lf(void)
 		y++;
 		pos += video_size_row;
 		return;
-	}	
+	}
 	scrup();
 }
 
@@ -104,7 +104,7 @@ static void del(void)
 		pos -= 2;
 		x--;
 		*(unsigned short *)pos = video_erase_char;
-	}	
+	}
 }
 
 /*
@@ -128,7 +128,7 @@ static void save_cur(void)
 
 static void restore_cur(void)
 {
-	gotoxy(saved_x, saved_y);	
+	gotoxy(saved_x, saved_y);
 }
 
 static inline void set_cursor(void)
@@ -161,27 +161,25 @@ static void csi_J(int par)
 	long start;
 
 	switch (par) {
-		case 0: /* erase from cursor to end of display */
-			count = (scr_end - pos) >> 1;
-			start = pos;
-			break;
-		case 1: /* erase from start to cursor */
-			count = (pos - origin) >> 1;
-			start = origin;
-			break;
-		case 2: /* erase whole display */
-			count = video_num_columns * video_num_lines;
-			start = origin;
-			break;
-		default:
-			return;
+	case 0:		/* erase from cursor to end of display */
+		count = (scr_end - pos) >> 1;
+		start = pos;
+		break;
+	case 1:		/* erase from start to cursor */
+		count = (pos - origin) >> 1;
+		start = origin;
+		break;
+	case 2:		/* erase whole display */
+		count = video_num_columns * video_num_lines;
+		start = origin;
+		break;
+	default:
+		return;
 	}
 	__asm__("cld\n\t"
-			"rep\n\t"
-			"stosw\n\t"
-			::"c" (count),
-			"D" (start), "a" (video_erase_char)
-			);
+		"rep\n\t"
+		"stosw\n\t"::"c"(count), "D"(start), "a"(video_erase_char)
+	    );
 }
 
 static void csi_K(int par)
@@ -190,59 +188,49 @@ static void csi_K(int par)
 	long start;
 
 	switch (par) {
-		case 0: /* erase from cursor to end of line */
-			if (x >= video_num_columns)
-				return;
-			count = video_num_columns - x;
-			start = pos;
-			break;
-		case 1: /* erase from start of line to cursor */
-			start = pos - (x << 1);
-			count = (x < video_num_columns) ? x : video_num_columns;
-			break;
-		case 2: /* erase whole line */
-			start = pos - (x << 1);
-			count = video_num_columns;
-			break;
-		default:
+	case 0:		/* erase from cursor to end of line */
+		if (x >= video_num_columns)
 			return;
+		count = video_num_columns - x;
+		start = pos;
+		break;
+	case 1:		/* erase from start of line to cursor */
+		start = pos - (x << 1);
+		count = (x < video_num_columns) ? x : video_num_columns;
+		break;
+	case 2:		/* erase whole line */
+		start = pos - (x << 1);
+		count = video_num_columns;
+		break;
+	default:
+		return;
 	}
 	__asm__("cld\n\t"
-			"rep\n\t"
-			"stosw\n\t"
-			::"c" (count),
-			"D" (start), "a" (video_erase_char)
-			);
+		"rep\n\t"
+		"stosw\n\t"::"c"(count), "D"(start), "a"(video_erase_char)
+	    );
 }
 
 static void scrdown(void)
 {
 	if (video_type == VIDEO_TYPE_EGAC || video_type == VIDEO_TYPE_EGAM) {
-		__asm__("std\n\t"
-				"rep\n\t"
-				"movsl\n\t"
-				"addl $2, %%edi\n\t" /* %edi has been decremented by 4 */
-				"movl video_num_columns, %%ecx\n\t"
-				"rep\n\t"
-				"stosw"
-				::"a" (video_erase_char),
-				"c" ((bottom - top - 1) * video_num_columns >> 1),
-				"D" (origin + video_size_row * bottom - 4),
-				"S" (origin + video_size_row * (bottom - 1) - 4)
-				);	
-	} else { /* Not EGA/VGA */
-		__asm__("std\n\t"
-				"rep\n\t"
-				"movsl\n\t"
-				"addl $2, %%edi\n\t" /* %edi has been decremented by 4 */
-				"movl video_num_columns, %%ecx\n\t"
-				"rep\n\t"
-				"stosw"
-				::"a" (video_erase_char),
-				"c" ((bottom - top - 1) * video_num_columns >> 1),
-				"D" (origin + video_size_row * bottom - 4),
-				"S" (origin + video_size_row * (bottom - 1) - 4)
-				);	
+		__asm__("std\n\t" "rep\n\t" "movsl\n\t" "addl $2, %%edi\n\t"	/* %edi has been decremented by 4 */
+			"movl video_num_columns, %%ecx\n\t"
+			"rep\n\t"
+			"stosw"::"a"(video_erase_char),
+			"c"((bottom - top - 1) * video_num_columns >> 1),
+			"D"(origin + video_size_row * bottom - 4),
+			"S"(origin + video_size_row * (bottom - 1) - 4)
+		    );
+	} else {		/* Not EGA/VGA */
+		__asm__("std\n\t" "rep\n\t" "movsl\n\t" "addl $2, %%edi\n\t"	/* %edi has been decremented by 4 */
+			"movl video_num_columns, %%ecx\n\t"
+			"rep\n\t"
+			"stosw"::"a"(video_erase_char),
+			"c"((bottom - top - 1) * video_num_columns >> 1),
+			"D"(origin + video_size_row * bottom - 4),
+			"S"(origin + video_size_row * (bottom - 1) - 4)
+		    );
 	}
 }
 
@@ -256,55 +244,52 @@ static void scrup(void)
 
 			if (scr_end > video_mem_end) {
 				__asm__("cld\n\t"
-						"rep\n\t"
-						"movsl\n\t"
-						"movl video_num_columns, %1\n\t"
-						"rep\n\t"
-						"stosw"
-						::"a" (video_erase_char),
-						"c" ((video_num_lines - 1) * video_num_columns >> 1),
-						"D" (video_mem_start),
-						"S" (origin)
-						);
+					"rep\n\t"
+					"movsl\n\t"
+					"movl video_num_columns, %1\n\t"
+					"rep\n\t"
+					"stosw"::"a"(video_erase_char),
+					"c"((video_num_lines -
+					     1) * video_num_columns >> 1),
+					"D"(video_mem_start), "S"(origin)
+				    );
 				scr_end -= origin - video_mem_start;
-				pos -= origin -video_mem_start;
+				pos -= origin - video_mem_start;
 				origin = video_mem_start;
 			} else {
 				__asm__("cld\n\t"
-						"rep\n\t"
-						"stosw"
-						::"a" (video_erase_char),
-						"c" (video_num_columns),
-						"D" (scr_end - video_size_row)
-						);	
+					"rep\n\t"
+					"stosw"::"a"(video_erase_char),
+					"c"(video_num_columns),
+					"D"(scr_end - video_size_row)
+				    );
 			}
 			set_origin();
 		} else {
 			__asm__("cld\n\t"
-					"rep\n\t"
-					"movsl\n\t"
-					"movl video_num_columns, %%ecx\n\t"
-					"rep\n\t"
-					"stosw"
-					::"a" (video_erase_char),
-					"c" ((bottom - top - 1) * video_num_columns >> 1),
-					"D" (origin + video_size_row * top),
-					"S" (origin + video_size_row * (top + 1))
-					);	
-		}
-	} else { /*Not EGA/VGA */
-		__asm__("cld\n\t"
 				"rep\n\t"
 				"movsl\n\t"
 				"movl video_num_columns, %%ecx\n\t"
 				"rep\n\t"
-				"stosw"
-				::"a" (video_erase_char),
-				"c" ((bottom - top - 1) * video_num_columns >> 1),
-				"D" (origin + video_size_row * top),
-				"S" (origin + video_size_row * (top + 1))
-				);
-	}		
+				"stosw"::"a"(video_erase_char),
+				"c"((bottom - top -
+				     1) * video_num_columns >> 1),
+				"D"(origin + video_size_row * top),
+				"S"(origin + video_size_row * (top + 1))
+			    );
+		}
+	} else {		/*Not EGA/VGA */
+		__asm__("cld\n\t"
+			"rep\n\t"
+			"movsl\n\t"
+			"movl video_num_columns, %%ecx\n\t"
+			"rep\n\t"
+			"stosw"::"a"(video_erase_char),
+			"c"((bottom - top - 1) * video_num_columns >> 1),
+			"D"(origin + video_size_row * top),
+			"S"(origin + video_size_row * (top + 1))
+		    );
+	}
 }
 
 static void ri(void)
@@ -313,7 +298,7 @@ static void ri(void)
 		y--;
 		pos -= video_size_row;
 		return;
-	}	
+	}
 	scrdown();
 }
 
@@ -421,11 +406,21 @@ void csi_m(void)
 
 	for (i = 0; i <= npar; i++)
 		switch (par[i]) {
-			case 0: attr = 0x07; break;
-			case 1: attr = 0x0f; break;
-			case 4: attr = 0x0f; break;
-			case 7: attr = 0x70; break;
-			case 27: attr= 0x07; break;
+		case 0:
+			attr = 0x07;
+			break;
+		case 1:
+			attr = 0x0f;
+			break;
+		case 4:
+			attr = 0x0f;
+			break;
+		case 7:
+			attr = 0x70;
+			break;
+		case 27:
+			attr = 0x07;
+			break;
 		}
 }
 
@@ -438,171 +433,171 @@ void con_write(struct tty_struct *tty)
 	while (nr--) {
 		GETCH(tty->write_q, c);
 		switch (state) {
-			case 0:
-				if (c > 31 && c < 127) {
-					if (x >= video_num_columns) {
-						x -= video_num_columns;
-						pos -= video_size_row;
-						lf();
-					}	
-					__asm__("movb attr, %%ah\n\t"
-							"movw %%ax, %1\n\t"
-							::"a" (c), "m" (*(short *)pos)
-							);
-					pos += 2;
-					x++;
-				} else if (c == 27)
-					state = 1;
-				else if (c == 10 || c == 11 || c == 12)
+		case 0:
+			if (c > 31 && c < 127) {
+				if (x >= video_num_columns) {
+					x -= video_num_columns;
+					pos -= video_size_row;
 					lf();
-				else if (c == 13)
-					cr();
-				else if (c == ERASE_CHAR(tty))
-					del();
-				else if (c == 8) {
-					if (x) {
-						x--;
-						pos -= 2;
-					}	
-				} else if (c == 9) {
-					c = 8 - (x & 7);
-					x += c;
-					pos += c << 1;
-					if (x > video_num_columns) {
-						x -= video_num_columns;
-						pos -= video_size_row;
-						lf();
-					}
-					c = 9;
-				} else if (c == 7)
-					sysbeep();
-				break;
-			case 1:
-				state = 0;
-				if (c == '[')
-					state = 2;
-				else if (c == 'E')
-					gotoxy(0, y+1);
-				else if (c == 'M')
-					ri();
-				else if (c == 'D')
-					lf();
-				else if (c == 'Z')
-					respond(tty);
-				else if (x == '7')
-					save_cur();
-				else if (x == '8')
-					restore_cur();
-				break;
-			case 2:
-				for (npar = 0; npar < NPAR; npar++)
-					par[npar] = 0;
-				npar = 0;
-				state = 3;
-				if ((ques = (c == '?')))
-					break;
-			case 3:
-				if (c == ';' && npar < NPAR - 1) {
-					npar++;
-					break;
-				} else if (c >= '0' && c <= '9') {
-					par[npar] = 10 * par[npar] + c - '0';
-					break;
-				} else
-					state = 4;
-			case 4:
-				state = 0;
-				switch (c) {
-					case 'G':
-					case '`':
-					if (par[0])
-						par[0]--;
-						gotoxy(par[0], y);
-						break;
-					case 'A':
-						if (!par[0]) 
-							par[0]++;
-						gotoxy(x, y - par[0]);
-						break;
-					case 'B':
-					case 'e':
-						if (!par[0]) 
-							par[0]++;
-						gotoxy(x, y + par[0]);
-						break;
-					case 'C':
-					case 'a':
-						if (!par[0]) 
-							par[0]++;
-						gotoxy(x + par[0], y);
-						break;
-					case 'D':
-						if (!par[0]) 
-							par[0]++;
-						gotoxy(x - par[0], y);
-						break;
-					case 'E':
-						if (!par[0]) 
-							par[0]++;
-						gotoxy(0, y + par[0]);
-						break;
-					case 'F':
-						if (!par[0]) 
-							par[0]++;
-						gotoxy(0, y - par[0]);
-						break;
-					case 'd':
-						if (par[0]) 
-							par[0]++;
-						gotoxy(x, par[0]);
-						break;
-					case 'H':
-					case 'f':
-						if (par[0]) 
-							par[0]--;
-						if (par[1])
-							par[1]--;
-						gotoxy(par[1], par[0]);
-						break;
-					case 'J':
-						csi_J(par[0]);
-						break;
-					case 'K':
-						csi_K(par[0]);
-						break;
-					case 'L':
-						csi_L(par[0]);
-						break;
-					case 'M':
-						csi_M(par[0]);
-						break;
-					case 'P':
-						csi_P(par[0]);
-						break;
-					case '@':
-						csi_at(par[0]);
-						break;
-					case 'm':
-						csi_m();
-						break;
-					case 'r':
-						if (par[0])
-							par[0]--;
-						if (!par[1])
-							par[1] = video_num_lines;
-						if (par[0] < par[1] && 
-							par[1] <= video_num_lines) {
-							top = par[0];
-							bottom = par[1];
-						}
-						break;
-					case 's':
-						save_cur();
-						break;
-					case 'u':
-						restore_cur();
-						break;
 				}
+				__asm__("movb attr, %%ah\n\t"
+					"movw %%ax, %1\n\t"::"a"(c),
+					"m"(*(short *)pos)
+				    );
+				pos += 2;
+				x++;
+			} else if (c == 27)
+				state = 1;
+			else if (c == 10 || c == 11 || c == 12)
+				lf();
+			else if (c == 13)
+				cr();
+			else if (c == ERASE_CHAR(tty))
+				del();
+			else if (c == 8) {
+				if (x) {
+					x--;
+					pos -= 2;
+				}
+			} else if (c == 9) {
+				c = 8 - (x & 7);
+				x += c;
+				pos += c << 1;
+				if (x > video_num_columns) {
+					x -= video_num_columns;
+					pos -= video_size_row;
+					lf();
+				}
+				c = 9;
+			} else if (c == 7)
+				sysbeep();
+			break;
+		case 1:
+			state = 0;
+			if (c == '[')
+				state = 2;
+			else if (c == 'E')
+				gotoxy(0, y + 1);
+			else if (c == 'M')
+				ri();
+			else if (c == 'D')
+				lf();
+			else if (c == 'Z')
+				respond(tty);
+			else if (x == '7')
+				save_cur();
+			else if (x == '8')
+				restore_cur();
+			break;
+		case 2:
+			for (npar = 0; npar < NPAR; npar++)
+				par[npar] = 0;
+			npar = 0;
+			state = 3;
+			if ((ques = (c == '?')))
+				break;
+		case 3:
+			if (c == ';' && npar < NPAR - 1) {
+				npar++;
+				break;
+			} else if (c >= '0' && c <= '9') {
+				par[npar] = 10 * par[npar] + c - '0';
+				break;
+			} else
+				state = 4;
+		case 4:
+			state = 0;
+			switch (c) {
+			case 'G':
+			case '`':
+				if (par[0])
+					par[0]--;
+				gotoxy(par[0], y);
+				break;
+			case 'A':
+				if (!par[0])
+					par[0]++;
+				gotoxy(x, y - par[0]);
+				break;
+			case 'B':
+			case 'e':
+				if (!par[0])
+					par[0]++;
+				gotoxy(x, y + par[0]);
+				break;
+			case 'C':
+			case 'a':
+				if (!par[0])
+					par[0]++;
+				gotoxy(x + par[0], y);
+				break;
+			case 'D':
+				if (!par[0])
+					par[0]++;
+				gotoxy(x - par[0], y);
+				break;
+			case 'E':
+				if (!par[0])
+					par[0]++;
+				gotoxy(0, y + par[0]);
+				break;
+			case 'F':
+				if (!par[0])
+					par[0]++;
+				gotoxy(0, y - par[0]);
+				break;
+			case 'd':
+				if (par[0])
+					par[0]++;
+				gotoxy(x, par[0]);
+				break;
+			case 'H':
+			case 'f':
+				if (par[0])
+					par[0]--;
+				if (par[1])
+					par[1]--;
+				gotoxy(par[1], par[0]);
+				break;
+			case 'J':
+				csi_J(par[0]);
+				break;
+			case 'K':
+				csi_K(par[0]);
+				break;
+			case 'L':
+				csi_L(par[0]);
+				break;
+			case 'M':
+				csi_M(par[0]);
+				break;
+			case 'P':
+				csi_P(par[0]);
+				break;
+			case '@':
+				csi_at(par[0]);
+				break;
+			case 'm':
+				csi_m();
+				break;
+			case 'r':
+				if (par[0])
+					par[0]--;
+				if (!par[1])
+					par[1] = video_num_lines;
+				if (par[0] < par[1] &&
+				    par[1] <= video_num_lines) {
+					top = par[0];
+					bottom = par[1];
+				}
+				break;
+			case 's':
+				save_cur();
+				break;
+			case 'u':
+				restore_cur();
+				break;
+			}
 		}
 	}
 	set_cursor();
@@ -618,7 +613,7 @@ static void sysbeep(void)
 	outb_p(0x37, 0x42);
 	outb(0x06, 0x42);
 	/* 1/8 second */
-	beepcount = HZ/8;
+	beepcount = HZ / 8;
 }
 
 /*
@@ -632,7 +627,7 @@ static void clear_line(char *buffer, int n)
 	char *ptr = buffer + n * ORIG_VIDEO_COLS * 2;
 	char *cont = " ";
 
-	for (i = 0; i < ORIG_VIDEO_COLS * 2; i++) 
+	for (i = 0; i < ORIG_VIDEO_COLS * 2; i++)
 		ptr[i * 2] = *cont;
 }
 
@@ -643,14 +638,14 @@ static void clear_line(char *buffer, int n)
  */
 static void BicuitOS_version(char *buffer, int n)
 {
-	char *version[7] ={ 
-					"BiscuitOS V0.0.2 buddy.zhang@aliyun.com" ,
-				    " ____  _                _ _    ___  ____  " ,
-					"| __ )(_)___  ___ _   _(_) |_ / _ \\\/ ___| " ,
-					"|  _ \\\| / __|/ __| | | | | __| | | \\\___ \\\ " ,
-					"| |_) | \\\__ \\\ (__| |_| | | |_| |_| |___) |" ,
-					"|____/|_|___/\\\___|\\\__,_|_|\\\__|\\\___/|____/"  ,
-					NULL 
+	char *version[7] = {
+		"BiscuitOS V0.0.2 buddy.zhang@aliyun.com",
+		" ____  _                _ _    ___  ____  ",
+		"| __ )(_)___  ___ _   _(_) |_ / _ \\\/ ___| ",
+		"|  _ \\\| / __|/ __| | | | | __| | | \\\___ \\\ ",
+		"| |_) | \\\__ \\\ (__| |_| | | |_| |_| |___) |",
+		"|____/|_|___/\\\___|\\\__,_|_|\\\__|\\\___/|____/",
+		NULL
 	};
 	int i = 6;
 
@@ -672,10 +667,10 @@ static void BicuitOS_version(char *buffer, int n)
 
 /*
  * This routine initialize console interrupts, and does nothing
- * else. If you want the screen to clear, call tty_write with 
+ * else. If you want the screen to clear, call tty_write with
  * the appropriate escape-sequence.
  *
- * Reads the information preserved by setup.s to determine the 
+ * Reads the information preserved by setup.s to determine the
  * current display type and set everything accordingly.
  */
 void con_init(void)
@@ -683,7 +678,7 @@ void con_init(void)
 	register unsigned char a;
 	char *display_desc = "????";
 	char *display_ptr;
-	
+
 	video_num_columns = ORIG_VIDEO_COLS;
 	video_size_row = video_num_columns * 2;
 	video_num_lines = ORIG_VIDEO_LINES;
@@ -692,9 +687,9 @@ void con_init(void)
 
 	/* black-white Mode */
 	if (ORIG_VIDEO_MODE == 7) {
-		video_mem_start = 0xb0000; /* Display buffer */
-		video_port_reg  = 0x3b4;   /* Display control register */
-		video_port_val  = 0x3b5;   /* Display data register */
+		video_mem_start = 0xb0000;	/* Display buffer */
+		video_port_reg = 0x3b4;	/* Display control register */
+		video_port_val = 0x3b5;	/* Display data register */
 		if ((ORIG_VIDEO_EGA_BX & 0xff) != 0x10) {
 			/* EGA black-white */
 			video_type = VIDEO_TYPE_EGAM;
@@ -709,25 +704,25 @@ void con_init(void)
 		}
 	} else {
 		/* Colour Mode */
-		video_mem_start = 0xb8000; /* Display buffer */
-		video_port_reg  = 0x3d4;   /* Display control register */
-		video_port_val  = 0x3d5;   /* Display data register */
+		video_mem_start = 0xb8000;	/* Display buffer */
+		video_port_reg = 0x3d4;	/* Display control register */
+		video_port_val = 0x3d5;	/* Display data register */
 		if ((ORIG_VIDEO_EGA_BX & 0xff) != 0x10) {
 			/* EGA colour */
 			video_type = VIDEO_TYPE_EGAC;
-			video_mem_end = 0xbc000; /* 16KB */
-			display_desc  = "EGAc";  
+			video_mem_end = 0xbc000;	/* 16KB */
+			display_desc = "EGAc";
 		} else {
 			/* CGA colour */
 			video_type = VIDEO_TYPE_CGA;
-			video_mem_end = 0xba000; /* 8KB */
-			display_desc  = "*CGA";
+			video_mem_end = 0xba000;	/* 8KB */
+			display_desc = "*CGA";
 		}
 	}
 
 	/* Display system information */
 	BicuitOS_version((char *)video_mem_start, 0);
-	/* 
+	/*
 	 * Let the user known what kind of display driver we are using.
 	 */
 	display_ptr = ((char *)video_mem_start) + video_size_row - 8;
@@ -739,15 +734,15 @@ void con_init(void)
 	/*
 	 * Initialize the variables used for scrolling (most EGA/VGA)
 	 */
-	 origin  = video_mem_start;
-	 scr_end = video_mem_start + video_num_lines * video_size_row;
-	 top = 0;
-	 bottom = video_num_lines;
+	origin = video_mem_start;
+	scr_end = video_mem_start + video_num_lines * video_size_row;
+	top = 0;
+	bottom = video_num_lines;
 
-	 gotoxy(ORIG_X, ORIG_Y);
-	 set_trap_gate(0x21, &keyboard_interrupt);
-	 outb_p(inb_p(0x21) & 0xfd, 0x21);
-	 a = inb_p(0x61);
-	 outb_p(a | 0x80, 0x61);
-	 outb(a, 0x61);
+	gotoxy(ORIG_X, ORIG_Y);
+	set_trap_gate(0x21, &keyboard_interrupt);
+	outb_p(inb_p(0x21) & 0xfd, 0x21);
+	a = inb_p(0x61);
+	outb_p(a | 0x80, 0x61);
+	outb(a, 0x61);
 }

@@ -45,7 +45,7 @@
 # floppy   : 2
 # Disk     : 3
 # ttyx     : 4
-# tty      : 5 
+# tty      : 5
 # parallel : 6
 # non-pipo : 7
 # 0x300    : /dev/hd0 - The first hard disk
@@ -157,7 +157,7 @@ root_defined:
 	#seg cs
 	mov %ax, %cs:root_dev+0
 
-# after that (everything loaded), we jump to 
+# after that (everything loaded), we jump to
 # the setup-routine loaded directly after
 # the bootblock:
 	ljmp $SETUPSEG, $0
@@ -233,7 +233,7 @@ read_track:
 	mov sread, %cx
 	inc %cx             # Sectors
 	mov %dl, %ch        # Cylinders
-	mov head, %dx       
+	mov head, %dx
 	mov %dl, %dh        # Heads
 	mov $DEVICE_NR, %dl
 	and $0x0100, %dx  # boot from floppy
@@ -255,8 +255,8 @@ bad_rt:
 	pop %ax
 	jmp read_track
 
-# 
-# This procedure turns off the floppy dirve motor, so 
+#
+# This procedure turns off the floppy dirve motor, so
 # that we enter the kernel a known state, and
 # don't have to worry about it later.
 kill_motor:

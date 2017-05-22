@@ -81,7 +81,7 @@ struct termios {
 
 /* c_cflag bit meaning */
 #define CBAUD    0000017
-#define B0       0000000 /* hang up */
+#define B0       0000000	/* hang up */
 #define B50      0000001
 #define B75      0000002
 #define B110     0000003
@@ -110,8 +110,8 @@ struct termios {
 #define CPARODD  0001000
 #define HUPCL    0002000
 #define CLOCAL   0004000
-#define CIBAUD   03600000      /* input baud rate (not used) */
-#define CRTSCTS  020000000000  /* flow control */
+#define CIBAUD   03600000	/* input baud rate (not used) */
+#define CRTSCTS  020000000000	/* flow control */
 
 #define PARENB CPARENB
 #define PARODD CPARODD

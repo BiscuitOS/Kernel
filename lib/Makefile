@@ -12,4 +12,4 @@ lib.o: $(OBJS)
 ECHO:
 
 clean:
-	$(Q)rm *.o 
+	$(Q)rm *.o

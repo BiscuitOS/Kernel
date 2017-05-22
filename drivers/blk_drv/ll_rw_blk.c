@@ -1,4 +1,4 @@
-/* 
+/*
  * base block device
  * Maintainer: Buddy <buddy.zhang@aliyun.com>
  *
@@ -13,7 +13,6 @@
 #include <linux/kernel.h>
 #include <linux/blk.h>
 
-
 /*
  * The request-struct contains all necessary data
  * to load a nr of sectors into memory.
@@ -26,19 +25,19 @@ struct request request[NR_REQUEST];
  * next->request
  */
 struct blk_dev_struct blk_dev[NR_BLK_DEV] = {
-	{ NULL, NULL},    /* no_dev */	
-	{ NULL, NULL},	  /* dev mem */
-	{ NULL, NULL},	  /* dev fd */
-	{ NULL, NULL},	  /* dev hd */
-	{ NULL, NULL},	  /* dev ttyx */
-	{ NULL, NULL},	  /* dev tty */
-	{ NULL, NULL},	  /* dev lp */
+	{NULL, NULL},		/* no_dev */
+	{NULL, NULL},		/* dev mem */
+	{NULL, NULL},		/* dev fd */
+	{NULL, NULL},		/* dev hd */
+	{NULL, NULL},		/* dev ttyx */
+	{NULL, NULL},		/* dev tty */
+	{NULL, NULL},		/* dev lp */
 };
 
 /*
  * used to wait on when there are no free request.
  */
-struct task_struct *wait_for_request = NULL;
+struct task_struct *wait_for_request;
 
 void blk_dev_init(void)
 {

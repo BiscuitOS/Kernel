@@ -11,10 +11,10 @@
 # -----------------------------------
 # Qemu flags
 # -----------------------------------
-QEMU_FLAGS := 
+QEMU_FLAGS :=
 
 # -----------------------------------
-# Platform 
+# Platform
 # -----------------------------------
 ifeq ($(ARCH), i386)
 QEMU := qemu-system-x86_64
@@ -34,7 +34,7 @@ BOOTLOADER := Floppy
 IMAGE_FILE := BiscuitOS.img
 
 # -----------------------------------
-# Memory size 
+# Memory size
 # -----------------------------------
 MEMORY_SIZE := 16M
 QEMU_FLAGS  += -m $(MEMORY_SIZE)
@@ -46,9 +46,9 @@ QEMU_FLAGS  += -m $(MEMORY_SIZE)
 # b: floppy 2
 # c: first hard disk
 # d: first CD-ROM
-# n: Etherboot from network adapter 1 
-# o: Etherboot from network adapter 2 
-# p: Etherboot from network adapter 3 
+# n: Etherboot from network adapter 1
+# o: Etherboot from network adapter 2
+# p: Etherboot from network adapter 3
 # q: Etherboot from network adapter 4
 # Hard disk boot is the default
 # -----------------------------------
@@ -65,12 +65,12 @@ QEMU_FLAGS += -boot order=$(BOOT_DEVICE)
 ifeq ($(BOOTLOADER), Floppy)
   VIRTUAL_DEVICE := /dev/loop0
 else
-  VIRTUAL_DEVICE := 
+  VIRTUAL_DEVICE :=
 endif
 
 # -----------------------------------
 # Block device options
-# Utilize file as block 
+# Utilize file as block
 # For floppy:
 # -fda : floppy disk 0 image
 # -fdb : floppy disk 1 image

@@ -5,7 +5,7 @@ blk_OBJS = $(srctree)/drivers/blk_drv/blk_drv.o
 OBJS :=
 
 all: $(OBJS) $(chr_OBJS) $(blk_OBJS)
-	$(Q)$(LD) $(LDFLAGS) -o drivers.o $^ 
+	$(Q)$(LD) $(LDFLAGS) -o drivers.o $^
 
 $(chr_OBJS):
 	$(Q)make -C chr_drv all

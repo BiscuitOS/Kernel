@@ -12,7 +12,7 @@
 # ROOT_DEV
 # --------------------------
 ifeq ($(BOOTLOADER), Floppy)
-  DEFAULT_MAJOR_ROOT := 4 
+  DEFAULT_MAJOR_ROOT := 4
   DEFAULT_MINOR_ROOT := 2
 else
   DEFAULT_MAJOR_ROOT := 3
@@ -106,7 +106,7 @@ start:
 ifeq ($(BOOTLOADER), Floppy)
 		$(Q)$(QEMU) $(QEMU_FLAGS)
 else
-		$(Q)$(QEMU) $(QEMU_FLAGS) 
+		$(Q)$(QEMU) $(QEMU_FLAGS)
 endif
 
 # -------------------------
@@ -114,9 +114,9 @@ endif
 # -------------------------
 debug:
 ifeq ($(BOOTLOADER), Floppy)
-		$(Q)$(QEMU) $(QEMU_FLAGS) -s -S 
+		$(Q)$(QEMU) $(QEMU_FLAGS) -s -S
 else
-		$(Q)$(QEMU) $(QEMU_FLAGS) -s -S 
+		$(Q)$(QEMU) $(QEMU_FLAGS) -s -S
 endif
 
 else # DEBUG_TOOLS
@@ -154,18 +154,18 @@ endif # End DEBUG
 # Link all objects
 # -------------------------
 
-bootsect: ECHO 
+bootsect: ECHO
 	$(Q)$(LD) $(LDFLAGS) -o $@ $(srctree)/boot/bootsect.o
 ifneq ($(DEBUG),)
 		$(Q)cp $@ .debug_bootsect
-endif	
+endif
 	$(Q)$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary $@
 
-setup: ECHO 
+setup: ECHO
 	$(Q)$(LD) $(LDFLAGS) -o $@ $(srctree)/boot/setup.o
 ifneq ($(DEBUG),)
 		$(Q)cp $@ .debug_setup
-endif	
+endif
 	$(Q)$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary $@
 
 

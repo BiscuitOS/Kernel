@@ -1,4 +1,4 @@
-/* 
+/*
  * TTY device
  * Maintainer: Buddy <buddy.zhang@aliyun.com>
  *
@@ -48,55 +48,50 @@
 #define O_NLRET(tty)     _O_FLAG((tty), ONLRET)
 #define O_LCUC(tty)      _O_FLAG((tty), OLCUC)
 
-
-
 struct tty_struct tty_table[] = {
 	{
-		{
-			ICRNL,
-			OPOST | ONLCR,
-			0,
-			ISIG | ICANON | ECHO | ECHOCTL | ECHOKE,
-			0,
-			INIT_C_CC
-		},
-		0,
-		0,
-		con_write,
-		{0, 0, 0, 0, ""},
-		{0, 0, 0, 0, ""},
-		{0, 0, 0, 0, ""}
-	}, {
-		{
-			0,
-			0,
-			B2400 | CS8,
-			0,
-			0,
-			INIT_C_CC
-		},
-		0,
-		0,
-		rs_write,
-		{0x3f8, 0, 0, 0, ""},
-		{0x3f8, 0, 0, 0, ""},
-		{0, 0, 0, 0, ""}
-	}, {
-		{
-			0,
-			0,
-			B2400 | CS8,
-			0,
-			0,
-			INIT_C_CC
-		},
-		0,
-		0,
-		rs_write,
-		{0x2f8, 0, 0, 0, ""},
-		{0x2f8, 0, 0, 0, ""},
-		{0, 0, 0, 0, ""}
-	}	
+	 {
+	  ICRNL,
+	  OPOST | ONLCR,
+	  0,
+	  ISIG | ICANON | ECHO | ECHOCTL | ECHOKE,
+	  0,
+	  INIT_C_CC},
+	 0,
+	 0,
+	 con_write,
+	 {0, 0, 0, 0, ""},
+	 {0, 0, 0, 0, ""},
+	 {0, 0, 0, 0, ""}
+	 }, {
+	     {
+	      0,
+	      0,
+	      B2400 | CS8,
+	      0,
+	      0,
+	      INIT_C_CC},
+	     0,
+	     0,
+	     rs_write,
+	     {0x3f8, 0, 0, 0, ""},
+	     {0x3f8, 0, 0, 0, ""},
+	     {0, 0, 0, 0, ""}
+	     }, {
+		 {
+		  0,
+		  0,
+		  B2400 | CS8,
+		  0,
+		  0,
+		  INIT_C_CC},
+		 0,
+		 0,
+		 rs_write,
+		 {0x2f8, 0, 0, 0, ""},
+		 {0x2f8, 0, 0, 0, ""},
+		 {0, 0, 0, 0, ""}
+		 }
 };
 
 /*
@@ -104,10 +99,10 @@ struct tty_struct tty_table[] = {
  * you can implement pseudo-tty's or something by changing
  * them. Currently not done.
  */
-struct tty_queue * table_list[] = {
-	&tty_table[0].read_q, &tty_table[0].write_q,		
-	&tty_table[1].read_q, &tty_table[1].write_q,		
-	&tty_table[2].read_q, &tty_table[2].write_q,		
+struct tty_queue *table_list[] = {
+	&tty_table[0].read_q, &tty_table[0].write_q,
+	&tty_table[1].read_q, &tty_table[1].write_q,
+	&tty_table[2].read_q, &tty_table[2].write_q,
 };
 
 void tty_init(void)
@@ -150,31 +145,31 @@ void copy_to_cooked(struct tty_struct *tty)
 				c = 10;
 			else if (I_NOCR(tty))
 				continue;
-			else
-				;
+			else;
 		else if (c == 10 && I_NLCR(tty))
 			c = 13;
 		if (I_UCLC(tty))
 			c = tolower(c);
 		if (L_CANON(tty)) {
 			if (c == KILL_CHAR(tty)) {
-				/* deal with killing the input line */	
+				/* deal with killing the input line */
 				while (!EMPTY(tty->secondary) ||
-					(c = LAST(tty->secondary)) == 10 ||
-					 c == EOF_CHAR(tty)) {
+				       (c = LAST(tty->secondary)) == 10 ||
+				       c == EOF_CHAR(tty)) {
 					if (L_ECHO(tty)) {
 						if (c < 32)
-							PUTCH(127, tty->write_q);
+							PUTCH(127,
+							      tty->write_q);
 						PUTCH(127, tty->write_q);
 						tty->write(tty);
-					}	
+					}
 					DEC(tty->secondary.head);
 				}
 				continue;
 			}
 			if (c == ERASE_CHAR(tty)) {
 				if (EMPTY(tty->secondary) ||
-				   (c = LAST(tty->secondary)) == 10 ||
+				    (c = LAST(tty->secondary)) == 10 ||
 				    c == EOF_CHAR(tty))
 					continue;
 				if (L_ECHO(tty)) {
@@ -212,10 +207,10 @@ void copy_to_cooked(struct tty_struct *tty)
 				PUTCH(10, tty->write_q);
 				PUTCH(13, tty->write_q);
 			} else if (c < 32) {
-				if (L_ECHOCTL(tty))	{
+				if (L_ECHOCTL(tty)) {
 					PUTCH('^', tty->write_q);
 					PUTCH(c + 64, tty->write_q);
-				}	
+				}
 			} else
 				PUTCH(c, tty->write_q);
 			tty->write(tty);
@@ -231,10 +226,10 @@ int tty_write(unsigned channel, char *buf, int nr)
 	struct tty_struct *tty;
 	char c, *b = buf;
 
-	if (channel > 2 || nr < 0) 
+	if (channel > 2 || nr < 0)
 		return -1;
 	tty = channel + tty_table;
-	
+
 	while (nr > 0) {
 		sleep_if_full(&tty->write_q);
 		if (current->signal)
@@ -242,7 +237,7 @@ int tty_write(unsigned channel, char *buf, int nr)
 		while (nr > 0 && !FULL(tty->write_q)) {
 			c = get_fs_byte(b);
 			if (O_POST(tty)) {
-				if (c == '\r' && O_CRNL(tty))	
+				if (c == '\r' && O_CRNL(tty))
 					c = '\n';
 				else if (c == '\n' && O_NLRET(tty))
 					c = '\r';
@@ -254,7 +249,7 @@ int tty_write(unsigned channel, char *buf, int nr)
 				if (O_LCUC(tty))
 					c = toupper(c);
 			}
-			b++; 
+			b++;
 			nr--;
 			cr_flag = 0;
 			PUTCH(c, tty->write_q);
@@ -272,7 +267,7 @@ int tty_write(unsigned channel, char *buf, int nr)
  * and there should be absolutely no problem
  * with sleeping even in an interrupt (I hope).
  * Of cource, if somebody proves me wrong, I'll
- * hate intel for all time :-). We'll have to 
+ * hate intel for all time :-). We'll have to
  * be careful and see to reinstating the interrupt
  * chips before calling this, though.
  *
@@ -282,7 +277,7 @@ int tty_write(unsigned channel, char *buf, int nr)
  */
 void do_tty_interrupt(int tty)
 {
-	copy_to_cooked(tty_table + tty);	
+	copy_to_cooked(tty_table + tty);
 }
 
 void chr_dev_init(void)

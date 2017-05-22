@@ -8,9 +8,9 @@
 # it under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 
-OBJS := bootsect.o 
-OBJS += setup.o 
-OBJS += head.o 
+OBJS := bootsect.o
+OBJS += setup.o
+OBJS += head.o
 
 all: $(OBJS)
 

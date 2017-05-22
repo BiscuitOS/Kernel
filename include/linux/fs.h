@@ -13,9 +13,8 @@
 
 #define READ       0
 #define WRITE      1
-#define READA      2   /* read-ahead - don't pause */
-#define WRITEA     3   /* "write-ahead" - silly, but somewhat useful */
-
+#define READA      2		/* read-ahead - don't pause */
+#define WRITEA     3		/* "write-ahead" - silly, but somewhat useful */
 
 struct buffer_head {
 	char *b_data;
@@ -70,4 +69,3 @@ void buffer_init(long);
 
 extern int ROOT_DEV;
 #endif
-

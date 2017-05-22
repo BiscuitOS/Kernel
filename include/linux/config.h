@@ -18,7 +18,7 @@
  *
  * In case of two harddisk, the info should be sepatated by
  * commas:
- * 
+ *
  * #define HD_TYPE {h, s, c, wpcom, lz, ctl}, {h, s, c, wpcom, lz, ctl}
  *
  * This is an example, two drives, first is type 2,second is type 3:

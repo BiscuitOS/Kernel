@@ -17,12 +17,11 @@ struct tty_struct {
 	struct termios termios;
 	int pgrp;
 	int stopped;
-	void (*write)(struct tty_struct *tty);
+	void (*write) (struct tty_struct * tty);
 	struct tty_queue read_q;
 	struct tty_queue write_q;
 	struct tty_queue secondary;
 };
-
 
 /*  intr=^C     quit=^|     erase=del   kill=^U
     eof=^D      vtime=\0    vmin=\1     sxtc=\0

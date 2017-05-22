@@ -27,7 +27,6 @@
 #define set_system_gate(n, addr) \
 	_set_gate(&idt[n], 15, 3, addr)
 
-
 #define _set_tssldt_desc(n, addr, type)  \
 	__asm__("movw $104, %1\n\t"          \
 			"movw %%ax, %2\n\t"          \
@@ -48,4 +47,3 @@
 	_set_tssldt_desc(((char *) (n)), ((int)(addr)), "0x82")
 
 #endif
-
