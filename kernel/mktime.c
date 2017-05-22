@@ -32,7 +32,7 @@ long kernel_mktime(struct tm *tm)
 	if (tm->tm_year >= 70)
 		year = tm->tm_year - 70;
 	else
-		year = tm->tm_year + 100 - 70; 
+		year = tm->tm_year + 100 - 70;
 	/* magic offsets (y+1) needed to get leapyears right. */
 	res = YEAR * year + DAY * ((year + 1) / 4);
 	res += month[tm->tm_mon];

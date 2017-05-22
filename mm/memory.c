@@ -21,7 +21,7 @@
 
 static long HIGH_MEMORY = 0;
 
-static unsigned char mem_map[PAGING_PAGES] = {0,};
+static unsigned char mem_map[PAGING_PAGES] = { 0, };
 
 /*
  * Initialize memory, build mapping array.

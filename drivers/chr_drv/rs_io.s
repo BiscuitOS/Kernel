@@ -6,7 +6,7 @@
 .globl rs1_interrupt, rs2_interrupt
 
 /*
- * Must be power of two! and must match the value 
+ * Must be power of two! and must match the value
  * in tty_io.c !!
  */
 size      = 1024
@@ -20,7 +20,7 @@ tail      = 8
 proc_list = 12
 buf       = 16
 
-/* 
+/*
  * Chars left in write queue when we restart it.
  */
 startup   = 256
@@ -141,13 +141,14 @@ write_buffer_empty:
 	testl %ebx, %ebx
 	je 1f
 	movl $0, (%ebx)
-1: 
+1:
 	incl %edx
 	inb %dx, %al
 	jmp 1f
-1: 
+1:
 	jmp 1f
-1: 
+1:
 	andb $0xd, %al
 	outb %al, %dx
 	ret
+

@@ -16,28 +16,29 @@ long user_stack[PAGE_SIZE >> 2];
 struct {
 	long *a;
 	short b;
-} stack_start = { &user_stack[PAGE_SIZE >> 2], 0x10};
+} stack_start = {
+&user_stack[PAGE_SIZE >> 2], 0x10};
 
 union task_union {
 	struct task_struct task;
 	char stak[PAGE_SIZE];
 };
 
-static union task_union init_task = {INIT_TASK,};
+static union task_union init_task = { INIT_TASK, };
 
 long volatile jiffies = 0;
 long startup_time = 0;
 struct task_struct *current = &(init_task.task);
 struct task_struct *last_task_used_math = NULL;
 
-struct task_struct *task[NR_TASKS] = {&(init_task.task), };
+struct task_struct *task[NR_TASKS] = { &(init_task.task), };
 
 extern int timer_interrupt(void);
 extern int system_call(void);
 
 /*
  * schedule() is the scheduler function. This is GOOD CODE!
- * There probably won't be any reason to change this, as it should 
+ * There probably won't be any reason to change this, as it should
  * work well in all circumstances (ie gives IO-bound processes good
  * response etc).
  * The one thing you might take a look at is the signal-handler
@@ -51,7 +52,7 @@ void schedule(void)
 	int i, next, c;
 	struct task_struct **p;
 
-	/* 
+	/*
 	 * Check alarm, wake up any interruptible tasks that have
 	 * got a signal.
 	 */
@@ -60,32 +61,32 @@ void schedule(void)
 			if ((*p)->alarm && (*p)->alarm < jiffies) {
 				(*p)->signal |= (1 << (SIGALRM - 1));
 				(*p)->alarm = 0;
-			}	
-		if (((*p)->signal & ~(_BLOCKABLE & (*p)->blocked)) && 
-			(*p)->state == TASK_INTERRUPTIBLE )
-			(*p)->state = TASK_RUNNING;
-		}	 
-		
+			}
+			if (((*p)->signal & ~(_BLOCKABLE & (*p)->blocked)) &&
+			    (*p)->state == TASK_INTERRUPTIBLE)
+				(*p)->state = TASK_RUNNING;
+		}
+
 		/* This is the schedule proper: */
 		while (1) {
 			c = -1;
 			next = 0;
 			i = NR_TASKS;
 			p = &task[NR_TASKS];
-			
+
 			while (--i) {
 				if (!*--p)
 					continue;
-				if ((*p)->state == TASK_RUNNING && 
-					(*p)->counter > c)
+				if ((*p)->state == TASK_RUNNING &&
+				    (*p)->counter > c)
 					c = (*p)->counter, next = i;
 			}
 			if (c)
 				break;
 			for (p = &LAST_TASK; p > &FIRST_TASK; --p)
 				if (*p)
-					(*p)->counter = ((*p)->counter >> 1) + 
-							(*p)->priority;
+					(*p)->counter = ((*p)->counter >> 1) +
+					    (*p)->priority;
 		}
 		switch_to(next);
 	}
@@ -97,7 +98,7 @@ void interruptible_sleep_on(struct task_struct **p)
 
 	if (!p)
 		return;
-	
+
 	if (current == &(init_task.task))
 		panic("task[0] trying to sleep");
 	tmp = *p;
@@ -113,7 +114,7 @@ void wake_up(struct task_struct **p)
 	if (p && *p) {
 		(**p).state = 0;
 		*p = NULL;
-	}	
+	}
 }
 
 void sched_init(void)
@@ -138,9 +139,9 @@ void sched_init(void)
 	__asm__("pushfl ; andl $0xffffbfff, (%esp) ; popfl");
 	ltr(0);
 	lldt(0);
-	outb_p(0x36, 0x43); /* binary, mode 3, LSB/MSB, ch 0 */
-	outb_p(LATCH & 0xff, 0x40);   /* LSB */
-	outb(LATCH >> 8, 0x40);       /* MSB */
+	outb_p(0x36, 0x43);	/* binary, mode 3, LSB/MSB, ch 0 */
+	outb_p(LATCH & 0xff, 0x40);	/* LSB */
+	outb(LATCH >> 8, 0x40);	/* MSB */
 	set_intr_gate(0x20, &timer_interrupt);
 	outb(inb_p(0x21) & ~0x01, 0x21);
 	set_system_gate(0x80, &system_call);
@@ -150,11 +151,11 @@ void sched_init(void)
 
 static struct timer_list {
 	long jiffies;
-	void (*fn)();
+	void (*fn) ();
 	struct timer_list *next;
 } timer_list[TIME_REQUESTS], *next_timer = NULL;
 
-void add_timer(long jiffies, void (*fn)(void))
+void add_timer(long jiffies, void (*fn) (void))
 {
 	struct timer_list *p;
 
@@ -162,7 +163,7 @@ void add_timer(long jiffies, void (*fn)(void))
 		return;
 	cli();
 	if (jiffies <= 0)
-		(fn)();
+		(fn) ();
 	else {
 		for (p = timer_list; p < timer_list + TIME_REQUESTS; p++)
 			if (!p->fn)
@@ -173,7 +174,7 @@ void add_timer(long jiffies, void (*fn)(void))
 		p->jiffies = jiffies;
 		p->next = next_timer;
 		next_timer = p;
-		
+
 		while (p->next && p->next->jiffies < p->jiffies) {
 			p->jiffies -= p->next->jiffies;
 			fn = p->fn;
@@ -210,9 +211,10 @@ void sleep_on(struct task_struct **p)
  * proper. They are here because the floppy needs a timer, and this
  * was the easiest way of doing it.
  */
-static struct task_struct *wait_motor[4] = { NULL, NULL, NULL, NULL};
-static int mon_timer[4]  = {0, 0, 0, 0};
-static int moff_timer[4] = {0, 0, 0, 0};
+static struct task_struct *wait_motor[4] = { NULL, NULL, NULL, NULL };
+static int mon_timer[4] = { 0, 0, 0, 0 };
+static int moff_timer[4] = { 0, 0, 0, 0 };
+
 unsigned char current_DOR = 0x0C;
 
 int ticks_to_floppy_on(unsigned int nr)
@@ -222,8 +224,8 @@ int ticks_to_floppy_on(unsigned int nr)
 
 	if (nr > 3)
 		panic("floppy_on: nr>3");
-	moff_timer[nr] = 10000;  /* 100s = very big :-) */
-	cli();                   /* use floppy_off to turn it off */
+	moff_timer[nr] = 10000;	/* 100s = very big :-) */
+	cli();			/* use floppy_off to turn it off */
 	mask |= current_DOR;
 	if (!selected) {
 		mask &= 0xFC;
@@ -251,44 +253,5 @@ void floppy_on(unsigned int nr)
 
 void floppy_off(unsigned int nr)
 {
-	moff_timer[nr] = 3 * HZ;	
+	moff_timer[nr] = 3 * HZ;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

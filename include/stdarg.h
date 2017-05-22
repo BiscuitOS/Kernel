@@ -1,7 +1,7 @@
 #ifndef _STDARG_H_
 #define _STDARG_H_
 
-typedef char * va_list;
+typedef char *va_list;
 
 /*
  * Amount of spacerequired in an argument list for an arg of type TYPE.
@@ -19,7 +19,7 @@ typedef char * va_list;
 	AP = ((char *)&(LASTARG) + __va_rounded_size(LASTARG)))
 #endif
 
-void va_end(va_list);     /* Defined in GUNlib */
+void va_end(va_list);		/* Defined in GUNlib */
 #define va_end(AP)
 
 #define va_arg(AP, TYPE)        \

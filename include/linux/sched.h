@@ -61,7 +61,7 @@ struct tss_struct {
 
 struct task_struct {
 	/* these are hardcoded - don't touch */
-	long state;      /* -1 unrunable, 0 runable, >0 stopped */
+	long state;		/* -1 unrunable, 0 runable, >0 stopped */
 	long counter;
 	long priority;
 	long signal;
@@ -87,7 +87,7 @@ struct task_struct {
 };
 
 /*
- * INIT_TASK is used to set up the first task table, touch at 
+ * INIT_TASK is used to set up the first task table, touch at
  * your own risk! Base=0, limit=0x9ffff (=640kB)
  */
 #define INIT_TASK  \
@@ -133,9 +133,9 @@ struct task_struct {
 
 /*
  * switch_to(n) - should switch tasks to task nr n, first
- * checking that n isn't the current task, in which case it 
+ * checking that n isn't the current task, in which case it
  * does nothing.
- * This also clears the TS-flag if the task we switched to 
+ * This also clears the TS-flag if the task we switched to
  * has used tha math co-processor latest.
  */
 #define switch_to(n) { \
@@ -157,14 +157,8 @@ static inline unsigned long _get_base(char *addr)
 {
 	unsigned long __base;
 
-	__asm__ ("movb %3, %%dh\n\t"
-			 "movb %2, %%dl\n\t"
-			 "shll $16, %%edx\n\t"
-			 "movw %1, %%dx"
-			 : "=&d" (__base)
-			 : "m" (*((addr) + 2)),
-			   "m" (*((addr) + 4)),
-			   "m" (*((addr) + 7)));
+__asm__("movb %3, %%dh\n\t" "movb %2, %%dl\n\t" "shll $16, %%edx\n\t" "movw %1, %%dx":"=&d"(__base)
+:		"m"(*((addr) + 2)), "m"(*((addr) + 4)), "m"(*((addr) + 7)));
 	return __base;
 }
 
@@ -186,7 +180,7 @@ extern void interruptible_sleep_on(struct task_struct **);
 extern void wake_up(struct task_struct **);
 extern void trap_init(void);
 extern void sched_init(void);
-extern void add_timer(long, void (*fn)(void));
+extern void add_timer(long, void (*fn) (void));
 
 #ifndef PANIC
 void panic(const char *str);

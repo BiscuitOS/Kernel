@@ -1,4 +1,4 @@
-/* 
+/*
  * main.c
  * Maintainer: Buddy <buddy.zhang@aliyun.com>
  *
@@ -16,7 +16,6 @@
 #include <linux/tty.h>
 
 #include <asm/io.h>
-
 
 /*
  * This is set up by the setup-routine at boot-time
@@ -43,9 +42,9 @@ struct drive_info {
 } drive_info;
 
 const char *command_line = "loglevel=8 console=ttyS0,115200";
-static long memory_end = 0;
-static long buffer_memory_end = 0;
-static long main_memory_start = 0;
+static long memory_end;
+static long buffer_memory_end;
+static long main_memory_start;
 
 extern void mem_init(long, long);
 extern void blk_dev_init(void);
@@ -64,12 +63,12 @@ static void time_init(void)
 
 	printk("Initialize system Time.\n");
 	do {
-		time.tm_sec   = CMOS_READ(0);
-		time.tm_min   = CMOS_READ(2);
-		time.tm_hour  = CMOS_READ(4);
-		time.tm_mday  = CMOS_READ(7);
-		time.tm_mon   = CMOS_READ(8);
-		time.tm_year  = CMOS_READ(9);
+		time.tm_sec = CMOS_READ(0);
+		time.tm_min = CMOS_READ(2);
+		time.tm_hour = CMOS_READ(4);
+		time.tm_mday = CMOS_READ(7);
+		time.tm_mon = CMOS_READ(8);
+		time.tm_year = CMOS_READ(9);
 	} while (time.tm_sec != CMOS_READ(0));
 
 	BCD_TO_BIN(time.tm_sec);
@@ -78,9 +77,9 @@ static void time_init(void)
 	BCD_TO_BIN(time.tm_mday);
 	BCD_TO_BIN(time.tm_mon);
 	BCD_TO_BIN(time.tm_year);
-	printk("Boot system time: 20%d-%d-%d: %d-%d-%d\n", 
-		time.tm_year, time.tm_mon, time.tm_mday,
-		time.tm_hour, time.tm_min, time.tm_sec);
+	printk("Boot system time: 20%d-%d-%d: %d-%d-%d\n",
+	       time.tm_year, time.tm_mon, time.tm_mday,
+	       time.tm_hour, time.tm_min, time.tm_sec);
 	time.tm_mon--;
 	startup_time = kernel_mktime(&time);
 	printk("starttime %ld\n", startup_time);
@@ -93,7 +92,7 @@ static void memory_detect(void)
 {
 	memory_end = (1 << 20) + (EXT_MEM_K << 10);
 	memory_end &= 0xFFFFF000;
-	
+
 	/* Current version only support litter than 16Mb */
 	if (memory_end > 16 * 1024 * 1024)
 		memory_end = 16 * 1024 * 1024;
@@ -117,7 +116,7 @@ static void info_init(void)
 
 int main(void)
 {
-	/* 
+	/*
 	 * Interrupts are still disabled. Do necessary setups, then
 	 * enable them.
 	 */

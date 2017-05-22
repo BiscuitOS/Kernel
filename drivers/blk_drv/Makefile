@@ -11,4 +11,4 @@ blk_drv.o: $(OBJS)
 	$(Q)sync
 
 clean:
-	$(Q)rm *.o 
+	$(Q)rm *.o

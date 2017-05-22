@@ -1,5 +1,4 @@
 
-
 /*
  * This function is used through-out the kernel (include mm and fs)
  * to indicate a major problem.
@@ -20,5 +19,5 @@ void panic(const char *s)
 		printk("In swapper task - not syncing\n\r");
 	else
 		sys_sync();
-	for(;;);
+	for (;;) ;
 }

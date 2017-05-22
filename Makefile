@@ -50,7 +50,7 @@ AR      = $(CROSS_COMPILE)ar
 CPP     = $(CROSS_COMPILE)cpp
 
 # Compile flags
-ASFLAGS  = 
+ASFLAGS  =
 CFLAGS   =
 LDFLAGS  =
 CPPFLAGS =
@@ -58,13 +58,13 @@ CPPFLAGS =
 ifeq ($(ARCH), i386)
   ASFLAGS += --32
   LDFLAGS += -m elf_i386 --traditional-format
-  CFLAGS  += -m32 -fno-stack-protector -fgnu89-inline -fomit-frame-pointer 
+  CFLAGS  += -m32 -fno-stack-protector -fgnu89-inline -fomit-frame-pointer
 endif
 
 ifneq ($(DEBUG),)
-  ASFLAGS += -ggdb -am 
+  ASFLAGS += -ggdb -am
   # Debug option
-  CFLAGS  += -g 
+  CFLAGS  += -g
   # Highest level warning
   CFLAGS  +=  -Wall -Wunused
 endif
@@ -80,13 +80,13 @@ export STRIP
 export ASFLAGS CFLAGS LDFLAGS
 export CPP CPPFLAGS
 
-# Subdir 
+# Subdir
 SUBDIR += boot init lib drivers kernel fs mm kernel/math
 
 ARCHIVES := $(srctree)/kernel/kernel.o
 DRIVERS  := $(srctree)/drivers/drivers.o
 LIBS     := $(srctree)/lib/lib.o
-MATH     := $(srctree)/kernel/math/math.o 
+MATH     := $(srctree)/kernel/math/math.o
 FS       := $(srctree)/fs/fs.o
 MM       := $(srctree)/mm/mm.o
 
@@ -102,30 +102,30 @@ export SUBDIR IMAGE_PACKAGE
 
 
 # To do compile
-all: CHECK_START $(SUBDIR) Image 
+all: CHECK_START $(SUBDIR) Image
 	$(Q)figlet "BiscuitOS"
 
 CHECK_START:
 
-$(SUBDIR): ECHO 
-	$(Q)make -s -C $@ 
+$(SUBDIR): ECHO
+	$(Q)make -s -C $@
 
 ECHO:
 
 
-Image: 
-	$(Q)make -s -C $(srctree)/tools/build 
+Image:
+	$(Q)make -s -C $(srctree)/tools/build
 
 start:
 	$(Q)figlet "BiscuitOS"
-	$(Q)make -s -C $(srctree)/tools/build start 
+	$(Q)make -s -C $(srctree)/tools/build start
 	$(Q)figlet "BiscuitOS"
 
 debug:
-	$(Q)make -s -C $(srctree)/tools/build debug 
+	$(Q)make -s -C $(srctree)/tools/build debug
 
 draw:
-	$(Q)$(srctree)/tools/callgraph/call.sh $(srctree) $(FUN) 
+	$(Q)$(srctree)/tools/callgraph/call.sh $(srctree) $(FUN)
 
 help:
 	@echo "<<< BiscuitOS Help >>>"
@@ -141,4 +141,4 @@ clean: $(SUBDIR)
 	$(Q)for i in $(SUBDIR); do make clean -s -C $$i; done
 	$(Q)make clean -s -C $(srctree)/tools/build
 	$(Q)rm -rf $(srctree)/tools/callgraph/*.svg
-	
+

@@ -1,6 +1,6 @@
 LDFLAGS += -r
 
-OBJS := sched.o 
+OBJS := sched.o
 OBJS += vsprintf.o
 OBJS += printk.o
 OBJS += panic.o
@@ -10,9 +10,9 @@ OBJS += system_call.o
 OBJS += signal.o
 OBJS += mktime.o
 
-all: $(OBJS) KERNEL 
+all: $(OBJS) KERNEL
 
-KERNEL: $(OBJS) 
+KERNEL: $(OBJS)
 	$(Q)$(LD) $(LDFLAGS) -o kernel.o $^
 	$(Q)sync
 

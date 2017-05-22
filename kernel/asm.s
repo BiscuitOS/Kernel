@@ -86,7 +86,7 @@ irq13:
 	jmp 1f
 1:
 	jmp 1f
-1: 
+1:
 	outb %al, $0xA0
 	popl %eax
 	jmp coprocessor_error

@@ -36,7 +36,7 @@
 	begbss:
 	.text
 
-	ljmp $SETUPSEG, $_start	
+	ljmp $SETUPSEG, $_start
 _start:
 
 # Get current cursor position and save it on 0x90000
@@ -48,13 +48,13 @@ _start:
 	mov %dx, %ds:0
 
 # Get Memory size
-	
+
 	mov $0x88, %ah
 	int $0x15
 	mov %ax, %ds:2
 
 # Get video-card data:
-	
+
 	mov $0x0f, %ah
 	int $0x10
 	mov %bx, %ds:4
@@ -75,7 +75,7 @@ _start:
 	movsb
 
 # Get hd1 data
-	
+
 	mov $0x0000, %ax
 	mov %ax, %ds
 	lds %ds:4*0x46, %si
@@ -87,7 +87,7 @@ _start:
 	movsb
 
 # Check that there IS a hd1 :)
-	
+
 	mov $0x01500, %ax
 	mov $0x81, %dl
 	int $0x13
@@ -105,7 +105,7 @@ no_disk1:
 is_disk1:
 
 # now we want to move to protected mode ...
-	
+
 	cli	     # Forbidden interrupt
 
 # first mov system to rightful place.
@@ -128,20 +128,19 @@ do_move:
 end_move:
 	mov $SETUPSEG, %ax
 	mov %ax, %ds
-	lidt idt_48         # load IDT 
-	lgdt gdt_48         # load GDT 
-	
-	
+	lidt idt_48         # load IDT
+	lgdt gdt_48         # load GDT
+
+
 # Enable A20
-	
+
 	inb $0x92, %al    # Open A20 line(Fast Gate A20)
 	orb $0b00000010, %al
 	outb %al, $0x92
 
 # Reprogram interrupt
-	
+
 	mov	$0x11, %al		# initialization sequence(ICW1)
-					# ICW4 needed(1),CASCADE mode,Level-triggered
 	out	%al, $0x20		# send it to 8259A-1
 	.word	0x00eb,0x00eb		# jmp $+2, jmp $+2
 	out	%al, $0xA0		# and to 8259A-2
@@ -169,7 +168,7 @@ end_move:
 	out	%al, $0xA1
 
 # Simple jmp to 0x00000
-	
+
 	mov %cr0, %eax    # Get machine status
 	bts $0, %eax      # Turn on the PE-bit
 	mov %eax, %cr0    # Protection enable
@@ -198,9 +197,9 @@ idt_48:
 
 gdt_48:
 	.word	0x800			# gdt limit=2048, 256 GDT entries
-	.word   512+gdt, 0x9		# gdt base = 0X9xxxx, 
+	.word   512+gdt, 0x9		# gdt base = 0X9xxxx,
 	# 512+gdt is the real gdt after setup is moved to 0x9020 * 0x10
-	
+
 .text
 endtext:
 .data

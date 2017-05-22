@@ -50,7 +50,7 @@ BiscuitOS
 	  ```
 	  sudo apt-get install qemu
 	  sudo apt-get install figlet gcc make gdb git
-	  sudo apt-get install cflow graphviz gawk
+	  sudo apt-get install cflow graphviz gawk indent
 	  ```
 
 	 If you use 64 bit system, please install 32 bit library.

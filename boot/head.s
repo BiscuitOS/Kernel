@@ -42,13 +42,13 @@ startup_32:
 1:
 	incl %eax                # Check that A20 really is enabled
 	movl %eax, 0x000000      # loop forever if it isn't
-	cmpl %eax, 0x100000 
+	cmpl %eax, 0x100000
 	je 1b
 
 /*
- * NOTE! 486 should set bit 16, to check for write-protect in 
- * supervisor mode. Then it would be unnecessary with the 
- * "verify_area()" -calls. 486 users probably want to set the 
+ * NOTE! 486 should set bit 16, to check for write-protect in
+ * supervisor mode. Then it would be unnecessary with the
+ * "verify_area()" -calls. 486 users probably want to set the
  * NE (#5) bit also, so as to use int 16 for math errors.
  */
 	movl %cr0, %eax          # Check math chip
@@ -73,19 +73,19 @@ check_x87:
 	ret
 
 .align 2
-1: 
+1:
 	.byte 0xDB, 0xE4    /* fsetpm for 287, ignored by 387 */
 	ret
 
 /*
  * setup_idt
- * 
- * Sets up IDT with 256 entries pointing to 
+ *
+ * Sets up IDT with 256 entries pointing to
  * ignore_int, interrupt gates. It then loads IDT.
- * Everything that wants to install itself in the 
+ * Everything that wants to install itself in the
  * idt-table may do so themselves. Interrupts
  * are enabled elsewhere, when we can be relatively
- * sure everthing is ok. This routine will be 
+ * sure everthing is ok. This routine will be
  * over-written by the page tables.
  */
 setup_idt:
@@ -129,7 +129,7 @@ pg0:
 
 .org 0x2000
 pg1:
-	
+
 .org 0x3000
 pg2:
 
@@ -155,7 +155,7 @@ after_page_tables:
 	jmp setup_paging
 
 L6:
-	jmp L6           # main should never return here, but 
+	jmp L6           # main should never return here, but
 	                 # Just in case, we know what happens.
 
 /* This is the default interrupt "handler" */
@@ -186,7 +186,7 @@ ignore_int:
 
 /*
  * Setup_paging
- * 
+ *
  * This routine sets up paging by setting the page bit
  * in cr0. The page tables are set up, identity-mapping
  * the first 16MB. The pager assmes that no illegal
@@ -196,7 +196,7 @@ ignore_int:
  * mapped by this routine, only the kernel page functions
  * use the > 1Mb address directly. All "normal" functions
  * use just the lower 1Mb, or the local data space, which
- * will be mapped to some other place - mm keeps track of 
+ * will be mapped to some other place - mm keeps track of
  * that.
  *
  * For those with more momory than 16 Mb - tough luck. I've
@@ -213,12 +213,12 @@ setup_paging:
 	movl $1024*5, %ecx      /* 5 pages - pg_dir+4 page tables */
 	xorl %eax, %eax
 	xorl %edi, %edi         /* pg_dir is at 0x00 */
-	cld                    
+	cld
 	movl $pg0+7, pg_dir     /* set present bit/user r/w */
 	movl $pg1+7, pg_dir+4   /* ------------ " " -------------- */
 	movl $pg2+7, pg_dir+8   /* ------------ " " -------------- */
 	movl $pg3+7, pg_dir+12  /* ------------ " " -------------- */
-	movl $pg3+4092, %edi  
+	movl $pg3+4092, %edi
 	movl $0xfff007, %eax    /* 16Mb - 4096 + 7 (r/w user, p) */
 	std
 1:  stosl                   /* fill pages backwards - more efficient :-) */
@@ -244,7 +244,7 @@ gdt_descr:
 	.long gdt                # magic number, but it works for me:^)
 
 	.align 8
-idt: 
+idt:
 	.fill 256,8,0            # IDT is uninitialized
 
 gdt:

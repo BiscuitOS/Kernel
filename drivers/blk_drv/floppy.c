@@ -29,7 +29,7 @@ repeat:              \
         panic(": block not locked");       \
     }
 
-static void (do_fd_request)(void);
+static void (do_fd_request) (void);
 
 /*
  * This struct defines the different floppy types. Unlike minix
@@ -37,21 +37,29 @@ static void (do_fd_request)(void);
  * for that is convoluted and weird. I'vd got enough problem with
  * this driver as it is.
  * The 'stretch' tells if the tracks need to be boubled for some
- * types (ie 360kb diskette in 1.2Mb drive etc). Others should 
+ * types (ie 360kb diskette in 1.2Mb drive etc). Others should
  * be self-explanatory.
  */
 static struct floppy_struct {
 	unsigned int size, sect, head, track, stretch;
 	unsigned char gap, rate, spec1;
 } floppy_type[] = {
-	{    0,  0,  0,  0, 0, 0x00, 0x00, 0x00 }, /* no thing */
-	{  720,  9,  2, 40, 0, 0x2A, 0x02, 0xDF }, /* 360kb PC diskettes */
-	{ 2400, 15,  2, 80, 0, 0x1B, 0x00, 0xDF }, /* 1.2 MB AT-diskettes */
-	{  720,  9,  2, 40, 0, 0x1B, 0x02, 0xDF }, /* 360kB in 720kB drive */
-	{ 1400,  9,  2, 80, 0, 0x2A, 0x02, 0xDF }, /* 3.5" 720KB diskette */
-	{  720,  9,  2, 40, 1, 0x23, 0x01, 0xDF }, /* 360kB in 1.2MB drive */
-	{ 1400,  9,  2, 80, 0, 0x23, 0x01, 0xDF }, /* 720kB in 1.2MB drive */
-	{ 2880, 18,  2, 80, 0, 0x1B, 0x00, 0xCF }, /* 1.44MB diskette */
+	{
+	0, 0, 0, 0, 0, 0x00, 0x00, 0x00},	/* no thing */
+	{
+	720, 9, 2, 40, 0, 0x2A, 0x02, 0xDF},	/* 360kb PC diskettes */
+	{
+	2400, 15, 2, 80, 0, 0x1B, 0x00, 0xDF},	/* 1.2 MB AT-diskettes */
+	{
+	720, 9, 2, 40, 0, 0x1B, 0x02, 0xDF},	/* 360kB in 720kB drive */
+	{
+	1400, 9, 2, 80, 0, 0x2A, 0x02, 0xDF},	/* 3.5" 720KB diskette */
+	{
+	720, 9, 2, 40, 1, 0x23, 0x01, 0xDF},	/* 360kB in 1.2MB drive */
+	{
+	1400, 9, 2, 80, 0, 0x23, 0x01, 0xDF},	/* 720kB in 1.2MB drive */
+	{
+	2880, 18, 2, 80, 0, 0x1B, 0x00, 0xCF},	/* 1.44MB diskette */
 };
 
 /*
@@ -70,12 +78,12 @@ static unsigned char reply_buffer[MAX_REPLIES];
  * request.
  */
 static int cur_spec1 = -1;
-static int cur_rate  = -1;
+static int cur_rate = -1;
 static struct floppy_struct *floppy = floppy_type;
 static unsigned char current_drive = 0;
 static unsigned char sector = 0;
-static unsigned char head   = 0;
-static unsigned char track  = 0;
+static unsigned char head = 0;
+static unsigned char track = 0;
 static unsigned char seek_track = 0;
 static unsigned char current_track = 255;
 static unsigned char command = 0;
@@ -97,7 +105,7 @@ extern unsigned char current_DOR;
 
 void do_fd_request(void);
 
-void (*do_floppy)(void) = NULL;
+void (*do_floppy) (void) = NULL;
 
 #define immoutb_p(val, port)   \
 	__asm__ ("outb %0, %1\n\tjmp 1f\n1:\tjmp 1f\n1:" \
@@ -110,32 +118,32 @@ void (*do_floppy)(void) = NULL;
  */
 #define MAX_ERRORS 8
 
-static void (do_fd_request)(void);
+static void (do_fd_request) (void);
 
 static inline void unlock_buffer(struct buffer_head *bh)
 {
-    if (!bh->b_lock)
-        printk(": free buffer being unlocked\n");
-    bh->b_lock = 0;
-    wake_up(&bh->b_wait);
+	if (!bh->b_lock)
+		printk(": free buffer being unlocked\n");
+	bh->b_lock = 0;
+	wake_up(&bh->b_wait);
 }
 
 static inline void end_request(int uptodate)
 {
-    floppy_off(CURRENT->dev);
-    if (CURRENT->bh) {
-        CURRENT->bh->b_uptodate = uptodate;
-        unlock_buffer(CURRENT->bh);
-    }
-    if (!uptodate) {
-        printk(" I/O error\n\r");
-        printk("dev %04x, block %d\n\r", CURRENT->dev,
-            CURRENT->bh->b_blocknr);
-    }
-    wake_up(&CURRENT->waiting);
-    wake_up(&wait_for_request);
-    CURRENT->dev = -1;
-    CURRENT = CURRENT->next;
+	floppy_off(CURRENT->dev);
+	if (CURRENT->bh) {
+		CURRENT->bh->b_uptodate = uptodate;
+		unlock_buffer(CURRENT->bh);
+	}
+	if (!uptodate) {
+		printk(" I/O error\n\r");
+		printk("dev %04x, block %d\n\r", CURRENT->dev,
+		       CURRENT->bh->b_blocknr);
+	}
+	wake_up(&CURRENT->waiting);
+	wake_up(&wait_for_request);
+	CURRENT->dev = -1;
+	CURRENT = CURRENT->next;
 }
 
 void floppy_deselect(unsigned int nr)
@@ -171,8 +179,8 @@ static int result(void)
 	if (reset)
 		return -1;
 	for (counter = 0; counter < 10000; counter++) {
-		status = inb_p(FD_STATUS) & (STATUS_DIR | STATUS_READY | 
-				STATUS_BUSY);
+		status = inb_p(FD_STATUS) & (STATUS_DIR | STATUS_READY |
+					     STATUS_BUSY);
 		if (status == STATUS_READY)
 			return i;
 		if (status == (STATUS_DIR | STATUS_READY | STATUS_BUSY)) {
@@ -191,8 +199,8 @@ static void reset_interrupt(void)
 	output_byte(FD_SENSEI);
 	(void)result();
 	output_byte(FD_SPECIFY);
-	output_byte(cur_spec1);     /* hut etc */
-	output_byte(6);             /* Head load time = 6ms, DMA */
+	output_byte(cur_spec1);	/* hut etc */
+	output_byte(6);		/* Head load time = 6ms, DMA */
 	do_fd_request();
 }
 
@@ -218,7 +226,7 @@ static void reset_floppy(void)
 
 	reset = 0;
 	cur_spec1 = -1;
-	cur_rate  = -1;
+	cur_rate = -1;
 	recalibrate = 1;
 	printk("Reset-floppy called\n\r");
 	cli();
@@ -276,24 +284,27 @@ static void setup_DMA(void)
 	 * output command byte. I don't know why, but everything(minix,
 	 * sanches & canton) output this twice, first to 12 thenn to 11
 	 */
-	 __asm__("outb %%al, $12\n\tjmp 1f\n1:jmp 1f\n1:\t"
-			 "outb %%al, $11\n\tjmp 1f\n1:jmp 1f\n1:" ::
-			 "a" ((char) ((command == FD_READ) ? DMA_READ : DMA_WRITE)));
-	 /* 8 low bits of addr */
-	 immoutb_p(addr, 4);
-	 addr >>= 8;
-	 /* bits 8-15 addr */
-	 immoutb_p(addr, 4);
-	 addr >>= 8;
-	 /* bits 16-19 of addr */
-	 immoutb_p(addr, 0x81);
-	 /* low 8 bits of count-1 (1024-1=0x3ff) */
-	 immoutb_p(0xff, 5);
-	 /* high 8 bits of count-1 */
-	 immoutb_p(3, 5);
-	 /* activate DMA 2 */
-	 immoutb_p(0 | 2, 10);
-	 sti();
+	__asm__("outb %%al, $12\n\tjmp 1f\n1:jmp 1f\n1:\t"
+		"outb %%al, $11\n\tjmp 1f\n1:jmp 1f\n1:"::"a"((char)
+							      ((command ==
+								FD_READ) ?
+							       DMA_READ :
+							       DMA_WRITE)));
+	/* 8 low bits of addr */
+	immoutb_p(addr, 4);
+	addr >>= 8;
+	/* bits 8-15 addr */
+	immoutb_p(addr, 4);
+	addr >>= 8;
+	/* bits 16-19 of addr */
+	immoutb_p(addr, 0x81);
+	/* low 8 bits of count-1 (1024-1=0x3ff) */
+	immoutb_p(0xff, 5);
+	/* high 8 bits of count-1 */
+	immoutb_p(3, 5);
+	/* activate DMA 2 */
+	immoutb_p(0 | 2, 10);
+	sti();
 }
 
 /*
@@ -304,7 +315,8 @@ static void rw_interrupt(void)
 {
 	if (result() != 7 || (ST0 & 0xf8) || (ST1 & 0xbf) || (ST2 & 0x73)) {
 		if (ST1 & 0x02) {
-			printk("Drive %d is write protected\n\r", current_drive);
+			printk("Drive %d is write protected\n\r",
+			       current_drive);
 			floppy_deselect(current_drive);
 			end_request(0);
 		} else
@@ -366,7 +378,7 @@ static void transfer(void)
 		output_byte(FD_SPECIFY);
 		output_byte(cur_spec1);
 		output_byte(6);
-	}	
+	}
 	if (cur_rate != floppy->rate)
 		outb_p(cur_rate = floppy->rate, FD_DCR);
 	if (reset) {
@@ -393,9 +405,9 @@ static void transfer(void)
 static void floppy_on_interrupt(void)
 {
 	/*
-	 * We cannot do a floppy-select, as that might sleep. 
+	 * We cannot do a floppy-select, as that might sleep.
 	 * We just force it.
-	 */	
+	 */
 	selected = 1;
 	if (current_drive != (current_DOR & 3)) {
 		current_DOR &= 0xFC;

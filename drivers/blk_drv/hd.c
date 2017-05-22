@@ -33,28 +33,30 @@ repeat:              \
         panic(": block not locked");       \
     }
 
-
 static int recalibrate = 0;
 static int reset = 0;
 /*
  * This struct define the HD's and their types.
  */
 struct hd_i_struct {
-	int head, sect, cyl, wpcom, lzone, ctl;	
+	int head, sect, cyl, wpcom, lzone, ctl;
 };
 
 #ifdef HD_TYPE
 struct hd_i_struct hd_info[] = { HD_TYPE };
+
 #define NR_HD ((sizeof(hd_info)) / (sizeof(struct hd_i_struct)))
 #else
-struct hd_i_struct hd_info[] = { {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}};
+struct hd_i_struct hd_info[] = { {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0} };
+
 static int NR_HD = 0;
 #endif
 
 static struct hd_struct {
 	long start_sect;
 	long nr_sects;
-} hd[5 * MAX_HD] = {{0, 0},};
+} hd[5 * MAX_HD] = { {
+0, 0},};
 
 #define port_read(port, buf, nr) \
 	__asm__("cld;rep;insw"::"d" (port),"D" (buf),"c" (nr))
@@ -63,32 +65,32 @@ static struct hd_struct {
 	__asm__("cld;rep;outsw"::"d" (port),"S" (buf),"c" (nr))
 
 extern void hd_interrupt(void);
-static void (do_hd_request)(void); 
-void (*do_hd)(void) = NULL;
+static void (do_hd_request) (void);
+void (*do_hd) (void) = NULL;
 
 static inline void unlock_buffer(struct buffer_head *bh)
 {
-    if (!bh->b_lock)
-        printk(": free buffer being unlocked\n");
-    bh->b_lock = 0;
-    wake_up(&bh->b_wait);
+	if (!bh->b_lock)
+		printk(": free buffer being unlocked\n");
+	bh->b_lock = 0;
+	wake_up(&bh->b_wait);
 }
 
 static inline void end_request(int uptodate)
 {
-    if (CURRENT->bh) {
-        CURRENT->bh->b_uptodate = uptodate;
-        unlock_buffer(CURRENT->bh);
-    }
-    if (!uptodate) {
-        printk(" I/O error\n\r");
-        printk("dev %04x, block %d\n\r", CURRENT->dev,
-            CURRENT->bh->b_blocknr);
-    }
-    wake_up(&CURRENT->waiting);
-    wake_up(&wait_for_request);
-    CURRENT->dev = -1;
-    CURRENT = CURRENT->next;
+	if (CURRENT->bh) {
+		CURRENT->bh->b_uptodate = uptodate;
+		unlock_buffer(CURRENT->bh);
+	}
+	if (!uptodate) {
+		printk(" I/O error\n\r");
+		printk("dev %04x, block %d\n\r", CURRENT->dev,
+		       CURRENT->bh->b_blocknr);
+	}
+	wake_up(&CURRENT->waiting);
+	wake_up(&wait_for_request);
+	CURRENT->dev = -1;
+	CURRENT = CURRENT->next;
 }
 
 static int drive_busy(void)
@@ -101,22 +103,22 @@ static int drive_busy(void)
 	i = inb(HD_STATUS);
 	i &= BUSY_STAT | READY_STAT | SEEK_STAT;
 	if (i == (READY_STAT | SEEK_STAT))
-		return(0);
+		return (0);
 	printk("HD controller times out\n\r");
-	return(1);
+	return (1);
 }
 
 static int controller_ready(void)
 {
 	int retries = 100000;
 
-	while (--retries && (inb_p(HD_STATUS) & 0x80));
+	while (--retries && (inb_p(HD_STATUS) & 0x80)) ;
 	return (retries);
 }
 
 static void hd_out(unsigned int drive, unsigned int nsect, unsigned int sect,
-	unsigned int head, unsigned int cyl, unsigned int cmd,
-	void (*intr_addr)(void))
+		   unsigned int head, unsigned int cyl, unsigned int cmd,
+		   void (*intr_addr) (void))
 {
 	register int port asm("dx");
 
@@ -127,7 +129,7 @@ static void hd_out(unsigned int drive, unsigned int nsect, unsigned int sect,
 	do_hd = intr_addr;
 	outb_p(hd_info[drive].ctl, HD_CMD);
 	port = HD_DATA;
-	outb_p(hd_info[drive].wpcom>>2, ++port);
+	outb_p(hd_info[drive].wpcom >> 2, ++port);
 	outb_p(nsect, ++port);
 	outb_p(sect, ++port);
 	outb_p(cyl, ++port);
@@ -141,7 +143,7 @@ static void reset_controller(void)
 	int i;
 
 	outb(4, HD_CMD);
-	for (i = 0; i < 100; i++) 
+	for (i = 0; i < 100; i++)
 		nop();
 
 	outb(hd_info[0].ctl & 0x0f, HD_CMD);
@@ -156,8 +158,8 @@ static int win_result(void)
 	int i = inb_p(HD_STATUS);
 
 	if ((i & (BUSY_STAT | READY_STAT | WRERR_STAT | SEEK_STAT | ERR_STAT))
-			== (READY_STAT | SEEK_STAT))
-		return(0); /* ok */
+	    == (READY_STAT | SEEK_STAT))
+		return (0);	/* ok */
 	if (i & 1)
 		i = inb(HD_ERROR);
 	return 1;
@@ -182,7 +184,7 @@ static void reset_hd(int nr)
 {
 	reset_controller();
 	hd_out(nr, hd_info[nr].sect, hd_info[nr].sect, hd_info[nr].head - 1,
-		hd_info[nr].cyl, WIN_SPECIFY, &recal_intr);
+	       hd_info[nr].cyl, WIN_SPECIFY, &recal_intr);
 }
 
 static void write_intr(void)
@@ -191,7 +193,7 @@ static void write_intr(void)
 		bad_rw_intr();
 		do_hd_request();
 		return;
-	}	
+	}
 	if (--CURRENT->nr_sectors) {
 		CURRENT->sector++;
 		CURRENT->buffer += 512;
@@ -209,7 +211,7 @@ static void read_intr(void)
 		bad_rw_intr();
 		do_hd_request();
 		return;
-	}	
+	}
 	port_read(HD_DATA, CURRENT->buffer, 256);
 	CURRENT->errors = 0;
 	CURRENT->buffer += 512;
@@ -240,10 +242,12 @@ void do_hd_request(void)
 	}
 	block += hd[dev].start_sect;
 	dev /= 5;
-	__asm__("divl %4":"=a" (block),"=d" (sec):"0" (block),"1" (0),
-		"r" (hd_info[dev].sect));
-	__asm__("divl %4":"=a" (block),"=d" (head):"0" (block),"1" (0),
-		"r" (hd_info[dev].head));
+__asm__("divl %4": "=a"(block), "=d"(sec):"0"(block), "1"(0),
+		"r"(hd_info[dev].
+		    sect));
+__asm__("divl %4": "=a"(block), "=d"(head):"0"(block), "1"(0),
+		"r"(hd_info[dev].
+		    head));
 	sec++;
 	nsect = CURRENT->nr_sectors;
 
@@ -257,21 +261,21 @@ void do_hd_request(void)
 	if (recalibrate) {
 		recalibrate = 0;
 		hd_out(dev, hd_info[CURRENT_DEV].sect, 0, 0, 0,
-			WIN_RESTORE, &recal_intr);
+		       WIN_RESTORE, &recal_intr);
 		return;
 	}
 
 	if (CURRENT->cmd == WRITE) {
 		hd_out(dev, nsect, sec, head, cyl, WIN_WRITE, &write_intr);
 		for (i = 0; i < 3000 && !(r = inb_p(HD_STATUS) & DRQ_STAT); i++)
-			/* nothing */;
+			/* nothing */ ;
 		if (!r) {
 			bad_rw_intr();
 			goto repeat;
 		}
 		port_write(HD_DATA, CURRENT->buffer, 256);
 	} else if (CURRENT->cmd == READ) {
-		hd_out(dev, nsect, sec, head, cyl, WIN_READ, &read_intr);	
+		hd_out(dev, nsect, sec, head, cyl, WIN_READ, &read_intr);
 	} else
 		panic("unknow hd-command");
 }

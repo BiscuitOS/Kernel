@@ -1,14 +1,14 @@
 #ifndef _CTYPE_H_
 #define _CTYPE_H_
 
-#define _U  0x01    /* Upper */
-#define _L  0x02    /* Lower */
-#define _D  0x04    /* Digit */
-#define _C  0x08    /* Cntrl */
-#define _P  0x10    /* Punct */
-#define _S  0x20    /* White space (space/lf/tab) */
-#define _X  0x40    /* Hex digit */
-#define _SP 0x80    /* Hard space (0x20) */
+#define _U  0x01		/* Upper */
+#define _L  0x02		/* Lower */
+#define _D  0x04		/* Digit */
+#define _C  0x08		/* Cntrl */
+#define _P  0x10		/* Punct */
+#define _S  0x20		/* White space (space/lf/tab) */
+#define _X  0x40		/* Hex digit */
+#define _SP 0x80		/* Hard space (0x20) */
 
 extern unsigned char _ctype[];
 extern char _ctmp;
