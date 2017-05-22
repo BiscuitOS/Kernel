@@ -1,7 +1,7 @@
 #ifndef _BLK_H_
 #define _BLK_H_
 
-#define NR_BLK_DEV 7
+#define NR_BLK_DEV 6
 /*
  * NR_REQUEST is the number of entries in the request-queue.
  * NOTE that writes may ues only the low 2/3 of these: reads

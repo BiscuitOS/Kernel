@@ -31,7 +31,6 @@ struct blk_dev_struct blk_dev[NR_BLK_DEV] = {
 	{NULL, NULL},		/* dev hd */
 	{NULL, NULL},		/* dev ttyx */
 	{NULL, NULL},		/* dev tty */
-	{NULL, NULL},		/* dev lp */
 };
 
 /*
