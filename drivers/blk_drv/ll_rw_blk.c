@@ -17,7 +17,7 @@
  * The request-struct contains all necessary data
  * to load a nr of sectors into memory.
  */
-struct request request[NR_REQUEST];
+static struct request request[NR_REQUEST];
 
 /*
  * blk_dev_struct is:
