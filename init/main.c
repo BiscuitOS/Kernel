@@ -16,6 +16,7 @@
 #include <linux/tty.h>
 
 #include <asm/io.h>
+#include <asm/system.h>
 
 /*
  * This is set up by the setup-routine at boot-time
@@ -82,7 +83,6 @@ static void time_init(void)
 	       time.tm_hour, time.tm_min, time.tm_sec);
 	time.tm_mon--;
 	startup_time = kernel_mktime(&time);
-	printk("starttime %ld\n", startup_time);
 }
 
 /*
@@ -128,10 +128,12 @@ int main(void)
 	blk_dev_init();
 	chr_dev_init();
 	tty_init();
-	info_init();
+	printk("%d\n", 99);
 	time_init();
 	sched_init();
 	buffer_init(buffer_memory_end);
 	hd_init();
 	floppy_init();
+	sti();
+	//move_to_user_mode();
 }

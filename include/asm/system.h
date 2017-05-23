@@ -1,6 +1,22 @@
 #ifndef _ASM_SYSTEM_H_
 #define _ASM_SYSTEM_H_
 
+#define move_to_user_mode() \
+	__asm__("movl %%esp, %%eax\n\t"   \
+			"pushl $0x17\n\t"   \
+			"pushl %%eax\n\t"   \
+			"pushfl\n\t"        \
+			"pushl $0x0f\n\t"   \
+			"pushl $1f\n\t"     \
+			"iret\n"            \
+			"1:\t"              \
+			"movl $0x17, %%eax\n\t"  \
+			"movw %%ax, %%ds\n\t"    \
+			"movw %%ax, %%es\n\t"    \
+			"movw %%ax, %%fs\n\t"    \
+			"movw %%ax, %%gs\n\t"    \
+			:::"ax")
+
 #define sti()  __asm__("sti"::)
 #define cli()  __asm__("cli"::)
 #define nop()  __asm__("nop"::)
