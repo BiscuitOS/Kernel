@@ -114,7 +114,7 @@ static void info_init(void)
 	printk("Kernel command line: %s\n", command_line);
 }
 
-void main(void)
+int main(void)
 {
 	/*
 	 * Interrupts are still disabled. Do necessary setups, then

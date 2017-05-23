@@ -17,7 +17,7 @@
  * The request-struct contains all necessary data
  * to load a nr of sectors into memory.
  */
-struct request request[NR_REQUEST];
+static struct request request[NR_REQUEST];
 
 /*
  * blk_dev_struct is:
@@ -31,7 +31,6 @@ struct blk_dev_struct blk_dev[NR_BLK_DEV] = {
 	{NULL, NULL},		/* dev hd */
 	{NULL, NULL},		/* dev ttyx */
 	{NULL, NULL},		/* dev tty */
-	{NULL, NULL},		/* dev lp */
 };
 
 /*
