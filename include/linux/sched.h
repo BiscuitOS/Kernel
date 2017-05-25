@@ -162,6 +162,36 @@ __asm__("movb %3, %%dh\n\t" "movb %2, %%dl\n\t" "shll $16, %%edx\n\t" "movw %1, 
 	return __base;
 }
 
+#define _set_base(addr, base)       \
+	__asm__("push %%edx\n\t"        \
+			"movw %%dx, %0\n\t"     \
+			"rorl $16, %%edx\n\t"   \
+			"movb %%dl, %1\n\t"     \
+			"movb %%dh, %2\n\t"     \
+			"pop %%edx"             \
+			:: "m" (*((addr) + 2)), \
+			"m" (*((addr) + 4)),    \
+			"m" (*((addr) + 7)),    \
+			"d" (base)              \
+			)
+
+#define _set_limit(addr, limit)     \
+	__asm__("push %%edx\n\t"        \
+			"movw %%dx, %0\n\t"     \
+			"rorl $16, %%edx\n\t"   \
+			"movb %1, %%dh\n\t"     \
+			"andb $0xf0, %%dh\n\t"  \
+			"orb %%dh, %%dl\n\t"    \
+			"movb %%dl, %1\n\t"     \
+			"pop %%edx"             \
+			:: "m" (*(addr)),       \
+			"m" (*((addr) + 6)),    \
+			"d" (limit)             \
+			)
+
+#define set_base(ldt, base)   _set_base( ((char *)&(ldt)),(base) )
+#define set_limit(ldt, limit) _set_limit( ((char *)&(ldt)), (limit - 1) >> 12)
+
 #define get_base(ldt) _get_base((char *)&(ldt))
 
 #define get_limit(segment)  ({    \
@@ -173,6 +203,7 @@ extern struct task_struct *current;
 extern struct task_struct *task[NR_TASKS];
 extern struct task_struct *last_task_used_math;
 extern struct task_struct *last_task_used_math;
+extern long volatile jiffies;
 
 extern void schedule(void);
 extern int tty_write(unsigned minor, char *buf, int count);
@@ -181,6 +212,8 @@ extern void wake_up(struct task_struct **);
 extern void trap_init(void);
 extern void sched_init(void);
 extern void add_timer(long, void (*fn) (void));
+extern int copy_page_tables(unsigned long, unsigned long, long);
+extern int free_page_tables(unsigned long, unsigned long);
 
 #ifndef PANIC
 void panic(const char *str);

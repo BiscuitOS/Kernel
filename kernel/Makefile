@@ -9,6 +9,7 @@ OBJS += traps.o
 OBJS += system_call.o
 OBJS += signal.o
 OBJS += mktime.o
+OBJS += fork.o
 
 all: $(OBJS) KERNEL
 

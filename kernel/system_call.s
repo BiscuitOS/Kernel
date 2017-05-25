@@ -9,6 +9,7 @@ blocked   = (33 * 16)
 .globl coprocessor_error, parallel_interrupt
 .globl device_not_available, timer_interrupt, system_call
 .globl hd_interrupt, floppy_interrupt
+.globl sys_fork
 
 .align 2
 bad_sys_call:
@@ -80,6 +81,20 @@ hd_interrupt:
 .align 2
 floppy_interrupt:
 	ret
+
+.align 2
+sys_fork:
+	call find_empty_process
+	testl %eax, %eax
+	js 1f
+	push %gs
+	pushl %esi
+	pushl %edi
+	pushl %ebp
+	pushl %eax
+	call copy_process
+	addl $20, %esp
+1:  ret
 
 parallel_interrupt:
 	pushl %eax

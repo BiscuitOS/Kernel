@@ -1,14 +1,12 @@
 /*
- * main.c
- * Maintainer: Buddy <buddy.zhang@aliyun.com>
+ *  linux/init/main.c
  *
- * Copyright (C) 2017 BiscuitOS
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ *  (C) 1991  Linus Torvalds
  */
+#define __LIBRARY__
 #include <time.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include <linux/kernel.h>
 #include <linux/fs.h>
@@ -17,6 +15,21 @@
 
 #include <asm/io.h>
 #include <asm/system.h>
+
+/*
+ * we need this inline - forking for kernel space will result
+ * in NO COPY ON WRITE (!!!), until an execve is executed. This
+ * is no problem, but for the stack. This is handled by not letting
+ * main() use the stack at all after fork(). Thus, no function
+ * calls - which means inline code for fork too, as otherwise we
+ * would use the stack upon exit from 'fork()'.
+ *
+ * Actually only pause and fork are needed inline, so that there
+ * won't be any messing with the stack from main(), but we define
+ * some others too.
+ */
+static inline fork(void) __attribute__((always_inline));
+static inline _syscall0(int, fork)
 
 /*
  * This is set up by the setup-routine at boot-time
@@ -128,12 +141,15 @@ int main(void)
 	blk_dev_init();
 	chr_dev_init();
 	tty_init();
-	printk("%d\n", 99);
+	info_init();
 	time_init();
 	sched_init();
 	buffer_init(buffer_memory_end);
 	hd_init();
 	floppy_init();
 	sti();
-	//move_to_user_mode();
+	move_to_user_mode();
+	if (!fork()) {
+		printk("Fork test\n");
+	}
 }
