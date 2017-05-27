@@ -242,12 +242,10 @@ void do_hd_request(void)
 	}
 	block += hd[dev].start_sect;
 	dev /= 5;
-__asm__("divl %4": "=a"(block), "=d"(sec):"0"(block), "1"(0),
-		"r"(hd_info[dev].
-		    sect));
-__asm__("divl %4": "=a"(block), "=d"(head):"0"(block), "1"(0),
-		"r"(hd_info[dev].
-		    head));
+	__asm__("divl %4": "=a"(block), "=d"(sec):"0"(block), "1"(0),
+		"r"(hd_info[dev].sect));
+	__asm__("divl %4": "=a"(block), "=d"(head):"0"(block), "1"(0),
+		"r"(hd_info[dev].head));
 	sec++;
 	nsect = CURRENT->nr_sectors;
 

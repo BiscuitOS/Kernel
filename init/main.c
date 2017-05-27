@@ -152,4 +152,5 @@ int main(void)
 	if (!fork()) {
 		printk("Fork test\n");
 	}
+	return 0;
 }

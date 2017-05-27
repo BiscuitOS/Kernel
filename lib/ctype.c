@@ -1,6 +1,6 @@
 #include <ctype.h>
 
-char _ctmp;
+unsigned char _ctmp;
 unsigned char _ctype[] = {
 	0x00,			/* EOF */
 	_C, _C, _C, _C, _C, _C, _C, _C,	/* 0-7 */

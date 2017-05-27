@@ -77,9 +77,9 @@ struct task_struct {
 	unsigned short used_math;
 	int tty;
 	unsigned short umask;
-	struct m_inode *pwd;
-	struct m_inode *root;
-	struct m_inode *executable;
+	struct vfs_inode *pwd;
+	struct vfs_inode *root;
+	struct vfs_inode *executable;
 	unsigned long close_on_exec;
 	struct file *filp[NR_OPEN];
 	struct desc_struct ldt[3];

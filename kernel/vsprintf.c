@@ -105,7 +105,6 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 	int field_width;
 	int precision;
 
-	int qualifier;
 
 	for (str = buf; *fmt; ++fmt) {
 		if (*fmt != '%') {
@@ -161,12 +160,8 @@ repeat:
 				precision = 0;
 		}
 
-		/* get the conversion qulifier */
-		qualifier = -1;
-		if (*fmt == 'h' || *fmt == 'l' || *fmt == 'L') {
-			qualifier = *fmt;
+		if (*fmt == 'h' || *fmt == 'l' || *fmt == 'L')
 			++fmt;
-		}
 
 		switch (*fmt) {
 		case 'c':

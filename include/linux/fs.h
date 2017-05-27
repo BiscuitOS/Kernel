@@ -31,7 +31,7 @@ struct buffer_head {
 	struct buffer_head *b_next_free;
 };
 
-struct m_inode {
+struct vfs_inode {
 	unsigned short i_mode;
 	unsigned short i_uid;
 	unsigned long i_size;
@@ -58,7 +58,7 @@ struct file {
 	unsigned short f_mode;
 	unsigned short f_flags;
 	unsigned short f_count;
-	struct m_inode *f_inode;
+	struct vfs_inode *f_inode;
 	off_t f_pos;
 };
 

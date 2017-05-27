@@ -136,7 +136,7 @@ static void sleep_if_full(struct tty_queue *queue)
 
 void copy_to_cooked(struct tty_struct *tty)
 {
-	signed char c;
+	unsigned char c;
 
 	while (!EMPTY(tty->read_q) && !FULL(tty->secondary)) {
 		GETCH(tty->read_q, c);
