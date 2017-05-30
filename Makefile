@@ -61,6 +61,7 @@ ifeq ($(ARCH), i386)
   ASFLAGS += --32
   LDFLAGS += -m elf_i386 --traditional-format
   CFLAGS  += -m32 -fno-stack-protector -fgnu89-inline -fomit-frame-pointer
+  CFLAGS  += -fno-builtin
 endif
 
 ifneq ($(DEBUG),)

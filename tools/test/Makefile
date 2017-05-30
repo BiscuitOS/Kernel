@@ -1,8 +1,8 @@
 LDFLAGS += -r
-EXTRA_CFLAGS += -DCONFIG_TESTCODE
 
-OBJS := stringlib.o
-OBJS += test_main.o
+OBJS := common.o
+OBJS += stringlib.o
+OBJS += inline_assembly.o
 
 all: $(OBJS) testcode.o ECHO
 
