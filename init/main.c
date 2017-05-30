@@ -31,6 +31,10 @@
 static inline fork(void) __attribute__((always_inline));
 static inline _syscall0(int, fork)
 
+#ifdef CONFIG_TESTCODE
+extern void TestCode(void);
+#endif
+
 /*
  * This is set up by the setup-routine at boot-time
  */
@@ -147,10 +151,8 @@ int main(void)
 	buffer_init(buffer_memory_end);
 	hd_init();
 	floppy_init();
-	sti();
-	move_to_user_mode();
-	if (!fork()) {
-		printk("Fork test\n");
-	}
+#ifdef CONFIG_TESTCODE
+	TestCode();
+#endif
 	return 0;
 }
