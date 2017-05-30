@@ -12,7 +12,8 @@ VERSION = 0.0.2
 NAME = BiscuitOS
 
 DEBUG := 1
-export DEBUG
+VERSION_TEST := 1
+export DEBUG VERSION_TEST
 # Beautify output
 ifeq ("$(origin V)", "command line")
   KBUILD_VERBOSE = $(V)
@@ -54,6 +55,7 @@ ASFLAGS  =
 CFLAGS   =
 LDFLAGS  =
 CPPFLAGS =
+EXTRA_CFLAGS =
 
 ifeq ($(ARCH), i386)
   ASFLAGS += --32
@@ -74,14 +76,22 @@ CFLAGS += -I$(srctree)/include
 LDFLAGS += -Ttext 0
 CPPFLAGS += -I$(srctree)/include -nostdinc
 
+# Emulate Kbuild
+-include $(srctree)/.config
+CFLAGS += $(EXTRA_CFLAGS)
+
 export VERSION NAME
 export ARCH CROSS_COMPILE AS LD CC OBJCOPY NM AR
 export STRIP
-export ASFLAGS CFLAGS LDFLAGS
+export ASFLAGS CFLAGS LDFLAGS EXTRA_FLAGS
 export CPP CPPFLAGS
 
 # Subdir
 SUBDIR += boot init lib drivers kernel fs mm kernel/math
+
+ifneq ($(VERSION_TEST),)
+	SUBDIR += tools/test
+endif
 
 ARCHIVES := $(srctree)/kernel/kernel.o
 DRIVERS  := $(srctree)/drivers/drivers.o
@@ -90,7 +100,15 @@ MATH     := $(srctree)/kernel/math/math.o
 FS       := $(srctree)/fs/fs.o
 MM       := $(srctree)/mm/mm.o
 
+ifneq ($(VERSION_TEST),)
+TESTCODE := $(srctree)/tools/test/testcode.o
+endif
+
 IMAGE_PACKAGE := $(ARCHIVES) $(DRIVERS) $(LIBS) $(MATH) $(FS) $(MM)
+
+ifneq ($(VERSION_TEST),)
+IMAGE_PACKAGE += $(TESTCODE)
+endif
 
 export SUBDIR IMAGE_PACKAGE
 
@@ -102,7 +120,7 @@ export SUBDIR IMAGE_PACKAGE
 
 
 # To do compile
-all: CHECK_START $(SUBDIR) Image
+all: CHECK_START $(SUBDIR) Image config
 	$(Q)figlet "BiscuitOS"
 
 CHECK_START:
@@ -112,6 +130,11 @@ $(SUBDIR): ECHO
 
 ECHO:
 
+config:
+	$(Q)if [ ! -f $(srctree)/.config ]; then \
+		cp $(srctree)/arch/x86/configs/BiscuitOS_defconfig \
+			$(srctree)/.config; \
+		fi
 
 Image:
 	$(Q)make -s -C $(srctree)/tools/build
