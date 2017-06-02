@@ -28,7 +28,7 @@
  * won't be any messing with the stack from main(), but we define
  * some others too.
  */
-static inline fork(void) __attribute__((always_inline));
+static inline int fork(void) __attribute__((always_inline));
 static inline _syscall0(int, fork)
 
 #ifdef CONFIG_TESTCODE
