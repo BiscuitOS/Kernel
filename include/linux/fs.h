@@ -7,6 +7,9 @@
 
 #define NR_HASH    307
 #define BLOCK_SIZE 1024
+#define KB_SHIFT       10
+#define MB_SHIFT       (KB_SHIFT << 1)
+
 #ifndef NULL
 #define NULL ((void *) 0)
 #endif

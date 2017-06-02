@@ -107,18 +107,18 @@ static void time_init(void)
  */
 static void memory_detect(void)
 {
-	memory_end = (1 << 20) + (EXT_MEM_K << 10);
+	memory_end = (1 << MB_SHIFT) + (EXT_MEM_K << KB_SHIFT);
 	memory_end &= 0xFFFFF000;
 
 	/* Current version only support litter than 16Mb */
-	if (memory_end > 16 * 1024 * 1024)
-		memory_end = 16 * 1024 * 1024;
-	if (memory_end > 12 * 1024 * 1024)
-		buffer_memory_end = 4 * 1024 * 1024;
-	else if (memory_end > 6 * 1024 * 1024)
-		buffer_memory_end = 2 * 1024 * 1024;
+	if (memory_end > 16 << MB_SHIFT)
+		memory_end = 16 << MB_SHIFT;
+	if (memory_end > 12 << MB_SHIFT)
+		buffer_memory_end = 4 << MB_SHIFT;
+	else if (memory_end > 6 << MB_SHIFT)
+		buffer_memory_end = 2 << MB_SHIFT;
 	else
-		buffer_memory_end = 1 * 1024 * 1024;
+		buffer_memory_end = 1 << MB_SHIFT;
 
 	main_memory_start = buffer_memory_end;
 }
