@@ -24,9 +24,10 @@ void TestCode(void)
 	//test_set_and_get_register();
 	//test_interrupt0_divide_error();
 	//test_interrupt1_debug();
-	test_interrupt2_nmi();
+	//test_interrupt2_nmi();
 	//test_interrupt3_int3();
 	//test_interrupt4_overflow();
+	test_interrupt5_bound();
 	//test_call_c_in_assembly();
 	//test_get_c_return_address();
 }

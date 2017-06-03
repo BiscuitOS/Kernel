@@ -25,6 +25,7 @@ extern void test_interrupt1_debug(void);
 extern void test_interrupt2_nmi(void);
 extern void test_interrupt3_int3(void);
 extern void test_interrupt4_overflow(void);
+extern void test_interrupt5_bound(void);
 #endif
 
 #endif
