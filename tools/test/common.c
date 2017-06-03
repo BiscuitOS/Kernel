@@ -23,7 +23,8 @@ void TestCode(void)
 	//test_set_multi_register();
 	//test_set_and_get_register();
 	//test_divide_error();
-	test_debug();
+	//test_debug();
+	test_int3();
 	//test_call_c_in_assembly();
 	//test_get_c_return_address();
 }

@@ -21,7 +21,7 @@ extern void test_divide_error(void);
 extern void test_call_c_in_assembly(void);
 extern void test_get_c_return_address(void);
 extern void test_debug(void);
-
+extern void test_int3(void);
 #endif
 
 #endif

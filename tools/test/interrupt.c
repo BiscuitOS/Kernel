@@ -37,7 +37,7 @@ void test_divide_error(void)
 }
 
 /*
- * Test interrupt 0 - debug
+ * Test interrupt 1 - debug
  */
 void test_debug(void)
 {
@@ -52,6 +52,21 @@ void test_debug(void)
 			"popf\n\t"
 			"popl %%eax"
 			::);
+}
+
+/*
+ * Test Interrupt 3 - int3 
+ */
+void test_int3(void)
+{
+	/* general interrupt entry */
+	__asm__("pushl %%eax\n\t"
+			"pushf\n\t"
+			"movl %%esp, %%eax\n\t"
+			"orl $0x0100, (%%eax)\n\t"
+			"popf\n\t"
+			"popl %%eax"
+			::);	
 }
 
 #endif
