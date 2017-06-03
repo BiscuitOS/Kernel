@@ -5,7 +5,7 @@
 /*
  * Test interrupt 0 - divide zero
  */
-void test_divide_error(void)
+void test_interrupt0_divide_error(void)
 {
 #ifdef CONFIG_DIVIDE_ERROR0
 	int a;
@@ -39,7 +39,7 @@ void test_divide_error(void)
 /*
  * Test interrupt 1 - debug
  */
-void test_debug(void)
+void test_interrupt1_debug(void)
 {
 	/* case 0 */
 	/*
@@ -57,7 +57,7 @@ void test_debug(void)
 /*
  * Test Interrupt 3 - int3 
  */
-void test_int3(void)
+void test_interrupt3_int3(void)
 {
 	/* general interrupt entry */
 	__asm__("pushl %%eax\n\t"
@@ -67,6 +67,38 @@ void test_int3(void)
 			"popf\n\t"
 			"popl %%eax"
 			::);	
+}
+
+/*
+ * Test Interrupt 4 - overflow error
+ * The type 4 interrupt is dedicated to handle overflow conditions. 
+ * There are two ways by which a type 4 interrupt can be generated: 
+ * either by 'int4' or by 'into' . Like the breakpoint interrupt, 
+ * 'into' requires only one byte to encode, as it does not require 
+ * the specification of the interrupt type number as part of the 
+ * instruction. Unlike 'int4', which unconditionally generates a 
+ * type 4 interrupt, 'into' generates a type 4 interrupt only if the
+ * overflow flag is set. We do not normally use 'into' , as the 
+ * overflow condition is usually detected and processed by using 
+ * the conditional jump instructions 'jo' and 'jno'.
+ */
+void test_interrupt4_overflow(void)
+{
+#ifndef CONFIG_SOFT_INTERRUPT
+	/* case 0 */
+	/* 
+	 * 'OF' set and call 'into'
+	 */
+	__asm__("pushl %%ebx\n\t"
+			"movb $0x7f, %%bl\n\t"
+			"addb $10, %%bl\n\t"
+			"into\n\t"
+			"popl %%ebx"
+			::);
+#else
+	/* case 1 */
+	__asm__("int $4");
+#endif
 }
 
 #endif

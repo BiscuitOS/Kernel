@@ -17,11 +17,13 @@ extern void test_strncmp(void);
 extern void test_strchr(void);
 extern void test_set_multi_register(void);
 extern void test_set_and_get_register(void);
-extern void test_divide_error(void);
 extern void test_call_c_in_assembly(void);
 extern void test_get_c_return_address(void);
-extern void test_debug(void);
-extern void test_int3(void);
+/* Interrupt table */
+extern void test_interrupt0_divide_error(void);
+extern void test_interrupt1_debug(void);
+extern void test_interrupt3_int3(void);
+extern void test_interrupt4_overflow(void);
 #endif
 
 #endif

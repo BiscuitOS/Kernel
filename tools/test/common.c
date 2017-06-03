@@ -22,9 +22,10 @@ void TestCode(void)
 	//test_set_eax();
 	//test_set_multi_register();
 	//test_set_and_get_register();
-	//test_divide_error();
-	//test_debug();
-	test_int3();
+	//test_interrupt0_divide_error();
+	//test_interrupt1_debug();
+	//test_interrupt3_int3();
+	test_interrupt4_overflow();
 	//test_call_c_in_assembly();
 	//test_get_c_return_address();
 }
