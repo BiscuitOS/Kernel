@@ -20,6 +20,7 @@ extern void test_set_and_get_register(void);
 extern void test_divide_error(void);
 extern void test_call_c_in_assembly(void);
 extern void test_get_c_return_address(void);
+extern void test_debug(void);
 
 #endif
 

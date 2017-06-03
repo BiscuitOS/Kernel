@@ -2,6 +2,9 @@
 
 #ifdef CONFIG_TESTCODE
 
+/*
+ * Test interrupt 0 - divide zero
+ */
 void test_divide_error(void)
 {
 #ifdef CONFIG_DIVIDE_ERROR0
@@ -31,6 +34,24 @@ void test_divide_error(void)
 			: "=m" (_res) : "m" (_rax));
 	printk("The result %#x\n", _res);
 #endif
+}
+
+/*
+ * Test interrupt 0 - debug
+ */
+void test_debug(void)
+{
+	/* case 0 */
+	/*
+	 * Set TF on EFLAGS will invoke interrupt 1 (debug).
+	 */
+	__asm__("pushl %%eax\n\t"
+			"pushf\n\t"
+			"movl %%esp, %%eax\n\t"
+			"orl $0x0100, (%%eax)\n\t" // set TF bit.
+			"popf\n\t"
+			"popl %%eax"
+			::);
 }
 
 #endif
