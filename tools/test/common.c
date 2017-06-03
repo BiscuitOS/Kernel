@@ -14,11 +14,16 @@ void TestCode(void)
 	//test_strncat();
 	//test_strcmp();
 	//test_strncmp();
-	test_strchr();
+	//test_strchr();
 	//simple_inline_assembly();
 	//test_get_eax();
 	//test_get_ebx();
 	//test_multi_output();
 	//test_set_eax();
+	//test_set_multi_register();
+	//test_set_and_get_register();
+	test_divide_error();
+	//test_call_c_in_assembly();
+	//test_get_c_return_address();
 }
 #endif

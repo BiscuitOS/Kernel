@@ -3,6 +3,8 @@ LDFLAGS += -r
 OBJS := common.o
 OBJS += stringlib.o
 OBJS += inline_assembly.o
+OBJS += interrupt.o
+OBJS += common_assembly.o
 
 all: $(OBJS) testcode.o ECHO
 
