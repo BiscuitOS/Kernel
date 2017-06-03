@@ -16,7 +16,7 @@ QEMU_FLAGS :=
 # -----------------------------------
 # Platform
 # -----------------------------------
-ifeq ($(ARCH), i386)
+ifeq ($(ARCH), x86)
 QEMU := qemu-system-x86_64
 else
 QEMU := qemu

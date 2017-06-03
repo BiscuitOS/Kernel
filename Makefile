@@ -38,7 +38,7 @@ obj     := $(CURDIR)
 export srctree objtree
 
 # Machine and compiler
-ARCH    := i386
+ARCH    := x86
 CROSS_COMPILE :=
 
 AS      = $(CROSS_COMPILE)as
@@ -57,7 +57,7 @@ LDFLAGS  =
 CPPFLAGS =
 EXTRA_CFLAGS =
 
-ifeq ($(ARCH), i386)
+ifeq ($(ARCH), x86)
   ASFLAGS += --32
   LDFLAGS += -m elf_i386 --traditional-format
   CFLAGS  += -m32 -fno-stack-protector -fgnu89-inline -fomit-frame-pointer
@@ -88,7 +88,8 @@ export ASFLAGS CFLAGS LDFLAGS EXTRA_FLAGS
 export CPP CPPFLAGS
 
 # Subdir
-SUBDIR += boot init lib drivers kernel fs mm kernel/math
+SUBDIR += init lib drivers kernel fs mm kernel/math
+SUBDIR += $(srctree)/arch/$(ARCH)/boot
 
 ifneq ($(VERSION_TEST),)
 	SUBDIR += tools/test

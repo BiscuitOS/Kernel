@@ -155,14 +155,14 @@ endif # End DEBUG
 # -------------------------
 
 bootsect: ECHO
-	$(Q)$(LD) $(LDFLAGS) -o $@ $(srctree)/boot/bootsect.o
+	$(Q)$(LD) $(LDFLAGS) -o $@ $(srctree)/arch/$(ARCH)/boot/bootsect.o
 ifneq ($(DEBUG),)
 		$(Q)cp $@ .debug_bootsect
 endif
 	$(Q)$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary $@
 
 setup: ECHO
-	$(Q)$(LD) $(LDFLAGS) -o $@ $(srctree)/boot/setup.o
+	$(Q)$(LD) $(LDFLAGS) -o $@ $(srctree)/arch/$(ARCH)/boot/setup.o
 ifneq ($(DEBUG),)
 		$(Q)cp $@ .debug_setup
 endif
@@ -170,7 +170,7 @@ endif
 
 
 system: ECHO
-	$(LD) $(LDFLAGS) -e startup_32 -o $@ $(srctree)/boot/head.o \
+	$(LD) $(LDFLAGS) -e startup_32 -o $@ $(srctree)/arch/$(ARCH)/boot/head.o \
 	                           $(srctree)/init/main.o \
 							   $(IMAGE_PACKAGE)
 	$(Q)$(NM) $@ | grep -v '\(compiled\)\|\(\.o$$\)\|\( [aU] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)'| sort > System.map
