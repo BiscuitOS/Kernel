@@ -42,6 +42,11 @@ extern void test_interrupt16_coprocessor_error(void);
 extern void test_interrupt17_47_Reserved(void);
 extern void test_interrupt39_parallel_interrupt(void);
 extern void test_interrupt45_irq13(void);
+/* Memory manage test */
+extern void test_get_free_page(void);
+extern void test_free_page(void);
+extern void test_calc_mem(void);
+extern void test_copy_page_table(void);
 #endif
 
 #endif

@@ -1,7 +1,7 @@
 #include <linux/kernel.h>
-#include <linux/testcode.h>
 
 #ifdef CONFIG_TESTCODE
+#include <linux/testcode.h>
 
 /*
  * Test code entry
@@ -40,9 +40,13 @@ void TestCode(void)
 	//test_interrupt15_intel_reserved();
 	//test_interrupt16_coprocessor_error();
 	//test_interrupt17_47_Reserved();
-	test_interrupt39_parallel_interrupt();
+	//test_interrupt39_parallel_interrupt();
 	//test_interrupt45_irq13();
 	//test_call_c_in_assembly();
 	//test_get_c_return_address();
+	//test_get_free_page();
+	//test_free_page();
+	//test_calc_mem();
+	test_copy_page_table();
 }
 #endif
