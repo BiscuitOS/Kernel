@@ -27,7 +27,21 @@ void TestCode(void)
 	//test_interrupt2_nmi();
 	//test_interrupt3_int3();
 	//test_interrupt4_overflow();
-	test_interrupt5_bound();
+	//test_interrupt5_bound();
+	//test_interrupt6_invalid_op();
+	//test_interrupt7_device_not_available();
+	//test_interrupt8_double_fault();
+	//test_interrupt9_coprocessor_segment_overrun();
+	//test_interrupt10_invalid_TSS();
+	//test_interrupt11_segment_not_present();
+	//test_interrupt12_task_segment();
+	//test_interrupt13_general_protection();
+	//test_interrupt14_page_fault();
+	//test_interrupt15_intel_reserved();
+	//test_interrupt16_coprocessor_error();
+	//test_interrupt17_47_Reserved();
+	test_interrupt39_parallel_interrupt();
+	//test_interrupt45_irq13();
 	//test_call_c_in_assembly();
 	//test_get_c_return_address();
 }

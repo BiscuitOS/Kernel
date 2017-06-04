@@ -1,4 +1,16 @@
+/*
+ * Test code for Interrupt table
+ * Maintainer: Buddy <buddy.zhang@aliyun.com>
+ *
+ * Copyright (C) 2017 BiscuitOS
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
 #include <linux/kernel.h>
+
 
 #ifdef CONFIG_TESTCODE
 
@@ -209,4 +221,164 @@ void test_interrupt5_bound(void)
 #endif
 }
 
+/*
+ * Test Interrupt 6 - Invalid operand
+ */
+void test_interrupt6_invalid_op(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	__asm__("int $6");
+#endif
+}
+
+/*
+ * Test Interrupt 7 - device not available.
+ * Not used - 20170603
+ */
+void test_interrupt7_device_not_available(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	__asm__("int $7");
+#endif
+}
+
+/*
+ * Test Interrupt 8 - double fault
+ * On the x86 architecture, a double fault exception occurs if the 
+ * processor encounters a problem while trying to service a pending 
+ * interrupt or exception. An example situation when a double fault 
+ * would occur is when an interrupt is triggered but the segment in 
+ * which the interrupt handler resides is invalid. If the processor 
+ * encounters a problem when calling the double fault handler, a triple
+ * fault is generated and the processor shuts down.
+ * As double faults can only happen due to kernel bugs, they are rarely 
+ * caused by user space programs in a modern protected mode operating
+ * system, unless the program somehow gains kernel access (some viruses
+ * and also some low-level DOS programs). Other processors like PowerPC 
+ * or SPARC generally save state to predefined and reserved machine 
+ * registers. A double fault will then be a situation where another 
+ * exception happens while the processor is still using the contents of 
+ * these registers to process the exception. SPARC processors have four 
+ * levels of such registers, i.e. they have a 4-window register system.
+ */
+void test_interrupt8_double_fault(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	__asm__("int $8");
+#endif
+}
+
+/*
+ * Test Interrupt 9 - Coprocessor segment overrun 
+ */
+void test_interrupt9_coprocessor_segment_overrun(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	__asm__("int $9");
+#endif
+}
+
+/*
+ * Test Interrupt 10 - invalid TSS segment
+ */
+void test_interrupt10_invalid_TSS(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	__asm__("int $10");
+#endif
+}
+
+/*
+ * Test Interrupt 11 - Segment not present.
+ */
+void test_interrupt11_segment_not_present(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	__asm__("int $11");
+#endif
+}
+
+/*
+ * Test Interrupt 12 - Stack segment
+ */
+void test_interrupt12_task_segment(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	__asm__("int $12");
+#endif
+}
+
+/*
+ * Test Interrupt 13 - General protection
+ */
+void test_interrupt13_general_protection(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	__asm__("int $13");
+#endif
+}
+
+/*
+ * Test Interrupt 14 - page fault
+ * Cannot use
+ */
+void test_interrupt14_page_fault(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	__asm__("int $14");
+#endif
+}
+
+/*
+ * Test Interrupt 15 - Intel reserved
+ */
+void test_interrupt15_intel_reserved(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	__asm__("int $15");
+#endif
+}
+
+/*
+ * Test Interrupt 16 - Coprocessor error
+ * Cannot use
+ */
+void test_interrupt16_coprocessor_error(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	__asm__("int $16");	
+#endif
+}
+
+/*
+ * Test Interrupt 17-48 - Intel Reserved 
+ */
+void test_interrupt17_47_Reserved(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	//__asm__("int $17");
+	__asm__("int $47");
+#endif
+}
+
+/*
+ * Test Interrupt 39 - parallel interrupt
+ */
+void test_interrupt39_parallel_interrupt(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	__asm__("int $39");
+#endif
+}
+
+/*
+ * Test Interrupt 45 - irq13
+ * Cannot use
+ */
+void test_interrupt45_irq13(void)
+{
+#ifdef CONFIG_SOFT_INTERRUPT
+	__asm__("int $45");
+#endif
+}
 #endif
