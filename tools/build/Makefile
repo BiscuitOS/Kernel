@@ -179,7 +179,7 @@ ECHO:
 
 .PHONY: clean
 clean:
-	$(Q)rm bootsect setup system System.map Image
+	$(Q)rm -rf bootsect setup system System.map Image
 ifneq ($(DEBUG),)
-		$(Q)rm .debug_bootsect .debug_setup
+		$(Q)rm -rf .debug_bootsect .debug_setup
 endif
