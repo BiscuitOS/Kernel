@@ -3,6 +3,7 @@ LDFLAGS += -r
 OBJS := string.o
 OBJS += ctype.o
 OBJS += errno.o
+OBJS += malloc.o
 
 all: $(OBJS) lib.o ECHO
 

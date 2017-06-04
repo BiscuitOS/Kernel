@@ -47,6 +47,8 @@ extern void test_get_free_page(void);
 extern void test_free_page(void);
 extern void test_calc_mem(void);
 extern void test_copy_page_table(void);
+extern void test_kmalloc(void);
+extern void test_kfree(void);
 #endif
 
 #endif

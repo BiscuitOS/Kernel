@@ -123,4 +123,49 @@ void test_copy_page_table(void)
 	copy_page_tables(old_data_base, new_data_base, data_limit);
 #endif
 }
+
+/*
+ * Test kmalloc()
+ */
+void test_kmalloc(void)
+{
+#ifdef CONFIG_TESTCODE_LINUX0_11
+	unsigned long __address;
+	unsigned int len = 34;
+	int i;
+
+	/*
+	 * Case 0
+	 * Normal kmalloc routine.
+	 */
+	for (i = 0; i < 5; i++) {
+		__address = (unsigned long)kmalloc(len);
+		printk("Allocate memory from memory() %#x\n", __address);
+	}
+#endif
+}
+
+/*
+ * Test kfree()
+ */
+void test_kfree(void)
+{
+#ifdef CONFIG_TESTCODE_LINUX0_11
+	unsigned long __address;
+	int len = 34;
+	int i;
+
+	/*
+	 * Case 0
+	 * Normal free routine.
+	 */
+	for (i = 0; i < 5; i++) {
+		__address = (unsigned long)kmalloc(len);
+		/* Physical address all same */
+		printk("Allocate memory from memory() %#x\n", __address);
+		kfree(__address);
+	}
+	
+#endif
+}
 #endif
