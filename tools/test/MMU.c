@@ -130,18 +130,98 @@ void test_copy_page_table(void)
 void test_kmalloc(void)
 {
 #ifdef CONFIG_TESTCODE_LINUX0_11
-	unsigned long __address;
-	unsigned int len = 34;
-	int i;
+
+#define DEBUG_KMALLOC_CASE0 0 
+#define DEBUG_KMALLOC_CASE1 0
+#define DEBUG_KMALLOC_CASE2 0
+#define DEBUG_KMALLOC_CASE3 0
+#define DEBUG_KMALLOC_CASE4 1
+
+#if DEBUG_KMALLOC_CASE0
 
 	/*
 	 * Case 0
 	 * Normal kmalloc routine.
 	 */
-	for (i = 0; i < 5; i++) {
-		__address = (unsigned long)kmalloc(len);
-		printk("Allocate memory from memory() %#x\n", __address);
-	}
+	unsigned long __address;
+	unsigned int len = 34;
+
+	__address = (unsigned long)kmalloc(len);
+	printk("Allocate memory from kmalloc() %#x\n", __address);
+	/* non-kfree */
+#elif DEBUG_KMALLOC_CASE1
+	
+	/*
+	 * Case 1
+	 * Request size larger than Max bucket size.
+	 */
+	unsigned long __address;
+	unsigned long len = 4097; /* MAX is 4096 */
+
+	__address = (unsigned long)kmalloc(len);
+	printk("Allocate memory from kmalloc() %#x\n", __address);
+#elif DEBUG_KMALLOC_CASE2
+
+	/*
+	 * Case 2
+	 * Kmalloc can't get memory from get_free_page() - OOM
+	 * OOM in init_bucket_desc()
+	 */
+	unsigned long __address;
+	unsigned long max_paging_pages = ((15 << 20) >> 12);
+	unsigned long len = 32;
+	int i;
+
+	/* waste all free pages */
+	for (i = 0; i < max_paging_pages; i++) 
+		__address = get_free_page();
+	
+	__address = (unsigned long)kmalloc(len);
+	printk("Allocate memory from kmalloc() %#x\n", __address);
+#elif DEBUG_KMALLOC_CASE3
+
+	/*
+	 * Case 3
+	 * Kmalloc can't get free memory, 'freeptr' and 'page' can't get 
+	 * free page on struct bucket_desc.
+	 */
+	unsigned long __address;
+	unsigned long max_paging_pages = ((11 << 20) >> 12); /* 11M for mapping */
+	unsigned long len = 32;
+	unsigned long last_pages = 224; /* statistics */
+	int i;
+
+	for (i = 0; i < max_paging_pages + last_pages; i++)
+		__address = get_free_page();
+
+	/* Only reserved a free page for init_bucket_desc() */
+	free_page(__address);
+
+	/* failed request memory for 'freeptr' and 'page' on struct bucket_desc */
+	__address = (unsigned long)kmalloc(len);
+	printk("Allocate memory from kmalloc() %#x\n", __address);
+#elif DEBUG_KMALLOC_CASE4
+
+	/* 
+	 * Case 4
+	 * Utilize hole memory
+	 */
+	unsigned long __address0, __address1;
+	unsigned long size = 24;
+
+	/* allocate memory */
+	__address0 = (unsigned long)kmalloc(size);
+	__address1 = (unsigned long)kmalloc(size);
+	printk("Area[%#x - %#x] HOLE [%#x - %#x]\n", __address0, __address1,
+			(unsigned long)((char *)__address0 + size), __address1);
+	__address0 = (unsigned long)((char *)__address0 + size);
+	/* Utilize hole area */
+	*((char *)__address0) = 'A';
+	*((char *)__address0 + 1) = 'B';
+	*((char *)__address0 + 2) = 'C';
+	*((char *)__address0 + 3) = '\0';
+	printk("Hole area %s\n", __address0);
+#endif
 #endif
 }
 

@@ -48,7 +48,7 @@ void TestCode(void)
 	//test_free_page();
 	//test_calc_mem();
 	//test_copy_page_table();
-	//test_kmalloc();
-	test_kfree();
+	test_kmalloc();
+	//test_kfree();
 }
 #endif
