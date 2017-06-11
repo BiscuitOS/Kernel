@@ -1,47 +1,98 @@
 #include <linux/fs.h>
+#include <sys/types.h>
+#include <linux/list.h>
+#include <string.h>
+#include <asm/system.h>
+#include <linux/sched.h>
+
 
 extern int end;
 
-struct buffer_head *start_buffer = (struct buffer_head *)&end;
-struct buffer_head *hash_table[NR_HASH];
-static struct buffer_head *free_list;
+/* 640KB-1MB is used by BIOS and Vedio, it is hard coded, sorry */
+#define BIOS_USED_START	(640 << KB_SHIFT)
+#define BIOS_USED_END	(1 << MB_SHIFT)
+#define COPYBLK(from, to) \
+__asm__("cld\n\t" \
+	"rep\n\t" \
+	"movsl\n\t" \
+	: : "c" (BLOCK_SIZE/4), "S" (from), "D" (to) \
+	)
 
-int NR_BUFFERS = 0;
+static LIST_HEAD(free_list);
+static int NR_BUFFERS;
+static struct task_struct *buffer_wait;
 
+static struct buffer_head *start_buffer = (struct buffer_head *)&end;
+static struct list_head hash_table[NR_HASH];
+
+static void wait_on_buffer(struct buffer_head *bh)
+{
+	irq_disable();
+	while (bh->b_lock)
+		sleep_on(&buffer_wait);
+	irq_enable();
+}
+
+void brelse(struct buffer_head *bh)
+{
+	if (!bh)
+		return;
+
+	wait_on_buffer(bh);
+	if (!(bh->b_count--))
+		panic("Trying to free freed buffer.");
+	wake_up(&buffer_wait);
+}
+
+/* TODO */
+static struct buffer_head *getblk(int dev, int block)
+{
+	struct buffer_head *bh = NULL;
+
+	return bh;
+}
+
+struct buffer_head *bread(int dev, int block)
+{
+	struct buffer_head *bh = getblk(dev, block);
+
+	if (!bh)
+		panic("Can't get a valid buffer.");
+
+	if (bh->b_uptodate)
+		return bh;
+
+	ll_rw_block(READ, bh);
+	wait_on_buffer(bh);
+	if (bh->b_uptodate)
+		return bh;
+
+	brelse(bh);
+	return NULL;
+}
+
+/* In BiscuitOS, buffer_end is at 4MB currently */
 void buffer_init(long buffer_end)
 {
-	struct buffer_head *h = start_buffer;
-	void *b;
-	int i;
+	struct buffer_head *bh = start_buffer;
+	void *block;
 
-	if (buffer_end == 1 << 20)
-		b = (void *)(640 * 1024);
+	/* Skip bios used memory */
+	if (buffer_end == BIOS_USED_END)
+		block = (void *)(BIOS_USED_START);
 	else
-		b = (void *)buffer_end;
+		block = (void *)buffer_end;
 
-	while ((b -= BLOCK_SIZE) >= ((void *)(h + 1))) {
-		h->b_dev = 0;
-		h->b_dirt = 0;
-		h->b_count = 0;
-		h->b_lock = 0;
-		h->b_uptodate = 0;
-		h->b_wait = NULL;
-		h->b_next = NULL;
-		h->b_prev = NULL;
-		h->b_data = (char *)b;
-		h->b_prev_free = h - 1;
-		h->b_next_free = h + 1;
-		h++;
+	while ((block -= BLOCK_SIZE) >= ((void *)(bh + 1))) {
+		memset(bh, 0, sizeof(struct buffer_head));
+		bh->b_data = (char *)block;
+		list_add_tail(&bh->b_list, &free_list);
+		bh++;
 		NR_BUFFERS++;
 
-		if (b == (void *)0x100000)
-			b = (void *)0xA0000;
+		if (block == (void *)(BIOS_USED_END))
+			block = (void *)(BIOS_USED_START);
 	}
-	h--;
-	free_list = start_buffer;
-	free_list->b_prev_free = h;
-	h->b_next_free = free_list;
 
-	for (i = 0; i < NR_HASH; i++)
-		hash_table[i] = NULL;
+	memset(hash_table, 0, sizeof(struct list_head) * NR_HASH);
 }

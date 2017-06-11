@@ -1,7 +1,6 @@
 #ifndef _BLK_H_
 #define _BLK_H_
 
-#define NR_BLK_DEV 6
 /*
  * NR_REQUEST is the number of entries in the request-queue.
  * NOTE that writes may ues only the low 2/3 of these: reads
@@ -36,7 +35,17 @@ struct blk_dev_struct {
 	struct request *current_request;
 };
 
-extern struct blk_dev_struct blk_dev[NR_BLK_DEV];
+static inline int IN_ORDER(struct request *s1, struct request *s2)
+{
+	if (s1->cmd < s2->cmd || (s1->cmd == s2->cmd && s1->dev < s2->dev)
+		|| (s1->cmd == s2->cmd && s1->dev == s2->dev
+			&& s1->sector < s2->sector))
+		return 1;
+
+	return 0;
+}
+
+extern struct blk_dev_struct blk_dev[];
 extern struct task_struct *wait_for_request;
 
 #endif

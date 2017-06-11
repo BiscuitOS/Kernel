@@ -140,3 +140,13 @@ inline int strlen(const char *s)
 			"a"(0),"0" (0xffffffff));
 	return __res;
 }
+
+inline void *memset(void *s, char c, int count)
+{
+	__asm__("cld\n\t"
+			"rep\n\t"
+			"stosb"
+			: : "a"(c), "D"(s), "c"(count)
+			);
+	return s;
+}

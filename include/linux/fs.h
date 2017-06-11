@@ -1,7 +1,9 @@
 #ifndef _FS_H_
 #define _FS_H_
 
+#include <linux/types.h>
 #include <sys/types.h>
+
 
 #define NR_OPEN 20
 
@@ -14,10 +16,7 @@
 #define NULL ((void *) 0)
 #endif
 
-#define READ       0
-#define WRITE      1
-#define READA      2		/* read-ahead - don't pause */
-#define WRITEA     3		/* "write-ahead" - silly, but somewhat useful */
+enum {READ, WRITE, READA};
 
 struct buffer_head {
 	char *b_data;
@@ -28,10 +27,10 @@ struct buffer_head {
 	unsigned char b_count;
 	unsigned char b_lock;
 	struct task_struct *b_wait;
-	struct buffer_head *b_prev;
-	struct buffer_head *b_next;
-	struct buffer_head *b_prev_free;
-	struct buffer_head *b_next_free;
+	/* used in hash list */
+	struct list_head b_hash_list;
+	/* used in free_list */
+	struct list_head b_list;
 };
 
 struct vfs_inode {
@@ -69,6 +68,6 @@ struct file {
 #define MINOR(a)        ((a)&0xff)
 
 void buffer_init(long);
-
+extern void ll_rw_block(int rw, struct buffer_head *bh);
 extern int ROOT_DEV;
 #endif

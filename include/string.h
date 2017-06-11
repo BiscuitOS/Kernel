@@ -9,4 +9,5 @@ extern inline int strncmp(const char *cs, const char *ct, int count);
 extern inline char *strchr(const char *s, char c);
 extern inline int strcmp(const char *cs, const char *ct);
 extern inline int strlen(const char *s);
+extern inline void *memset(void *s, char c, int count);
 #endif

@@ -208,6 +208,8 @@ extern struct task_struct *task[NR_TASKS];
 extern struct task_struct *last_task_used_math;
 extern struct task_struct *last_task_used_math;
 extern long volatile jiffies;
+extern void sleep_on(struct task_struct **p);
+
 
 extern void schedule(void);
 extern int tty_write(unsigned minor, char *buf, int count);

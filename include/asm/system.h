@@ -21,6 +21,9 @@
 #define cli()  __asm__("cli"::)
 #define nop()  __asm__("nop"::)
 
+#define irq_disable	sti
+#define irq_enable	cli
+
 #define iret() __asm__("iret"::)
 
 #define _set_gate(gate_addr, type, dpl, addr)  \
