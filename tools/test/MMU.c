@@ -231,20 +231,68 @@ void test_kmalloc(void)
 void test_kfree(void)
 {
 #ifdef CONFIG_TESTCODE_LINUX0_11
-	unsigned long __address;
-	int len = 34;
-	int i;
+#define DEBUG_KFREE_CASE0    0
+#define DEBUG_KFREE_CASE1    0
+#define DEBUG_KFREE_CASE2    0
+#define DEBUG_KFREE_CASE3    1
+#define DEBUG_KFREE_CASE4    0
 
+#if DEBUG_KFREE_CASE0
 	/*
 	 * Case 0
 	 * Normal free routine.
 	 */
+	unsigned long __address;
+	int len = 34;
+	int i;
+
 	for (i = 0; i < 5; i++) {
 		__address = (unsigned long)kmalloc(len);
 		/* Physical address all same */
 		printk("Allocate memory from memory() %#x\n", __address);
 		kfree(__address);
 	}
+#elif DEBUG_KFREE_CASE1
+	/*
+	 * Case 1
+	 * unknown address.
+	 */
+	unsigned long __address;
+	int len = 34;
+
+	__address = (unsigned long)kmalloc(len);
+	__address += PAGE_SIZE * 4;
+	printk("Alter allocated address is %#x\n", __address);
+	kfree(__address);
+#elif DEBUG_KFREE_CASE2
+	/*
+	 * Case 2
+	 * Free size overflow bucket size.
+	 */
+	unsigned long __address;
+	int len = 34;
+
+	__address = (unsigned long)kmalloc(len);
+	printk("Allocate memory from memory() %#x\n", __address);
+	free_s((void *)__address, len * 2);
+#elif DEBUG_KFREE_CASE3
+	/*
+	 * Case 3
+	 * Invalid free size.
+	 * Max bucket size is 4096.
+	 */
+	unsigned long __address;
+	int len = 4096;
+
+	__address = (unsigned long)kmalloc(len);
+	printk("Allocate memory from memory() %#x\n", __address);
+	free_s((void *)__address, 4097);
+#elif DEBUG_KFREE_CASE4
+	/*
+	 * Case 4
+	 * Malloc bucket chanis corrupted.
+	 */
+#endif
 	
 #endif
 }
