@@ -64,6 +64,27 @@ coprocessor_error:
 
 .align 2
 timer_interrupt:
+	push %ds              # save ds, es and put kernel data space
+	push %es              # into them. %fs is used by _system_call
+	push %fs
+	pushl %edx            # we save %eax, %ecx, %edx as gcc doesn't
+	pushl %ecx            # save those across function calls. %ebx
+	pushl %ebx            # is saved as we use that in ret_sys_call
+	pushl %eax
+	movl $0x10, %eax
+	mov %ax, %ds
+	mov %ax, %es
+	movl $0x17, %eax
+	mov %ax, %fs
+	incl jiffies
+	movb $0x20, %al       # EOI to interrupt controller #1
+	outb %al, $0x20
+	movl CS(%esp), %eax
+	andl $3, %eax
+	pushl %eax
+	call do_timer
+	addl $4, %esp
+	jmp ret_from_sys_call
 	ret
 
 .align 2

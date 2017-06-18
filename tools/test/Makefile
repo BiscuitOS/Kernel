@@ -2,11 +2,11 @@ LDFLAGS += -r
 
 OBJS := common.o
 OBJS += stringlib.o
-OBJS += inline_assembly.o
 OBJS += interrupt.o
 OBJS += common_assembly.o
 OBJS += system_call.o
 OBJS += MMU.o
+OBJS += task_system.o
 
 all: $(OBJS) testcode.o ECHO
 

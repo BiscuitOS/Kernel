@@ -22,6 +22,7 @@ void TestCode(void)
 	//test_set_eax();
 	//test_set_multi_register();
 	//test_set_and_get_register();
+	test_set_EFLAGS();
 	//test_interrupt0_divide_error();
 	//test_interrupt1_debug();
 	//test_interrupt2_nmi();
@@ -49,6 +50,7 @@ void TestCode(void)
 	//test_calc_mem();
 	//test_copy_page_table();
 	//test_kmalloc();
-	test_kfree();
+	//test_kfree();
+	//test_tss_ldt_entry();
 }
 #endif

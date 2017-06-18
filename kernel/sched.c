@@ -1,3 +1,9 @@
+/*
+ *  linux/kernel/sched.c
+ *
+ *  (C) 1991  Linus Torvalds
+ */
+
 #include <linux/sched.h>
 #include <linux/mm.h>
 
@@ -21,7 +27,7 @@ struct {
 
 union task_union {
 	struct task_struct task;
-	char stak[PAGE_SIZE];
+	char stack[PAGE_SIZE];
 };
 
 static union task_union init_task = { INIT_TASK, };
@@ -275,4 +281,58 @@ void math_state_restore()
 		__asm__("fninit" ::);
 		current->used_math = 1;
 	}
+}
+
+void do_floppy_timer(void)
+{
+	int i;
+	unsigned char mask = 0x10;
+
+	for (i = 0; i < 4; i++, mask <<= 1) {
+		if (!(mask & current_DOR))	
+			continue;
+		if (mon_timer[i]) {
+			if (!--mon_timer[i])
+				wake_up(i + wait_motor);
+		} else if (!moff_timer[i]) {
+			current_DOR &= ~mask;
+			outb(current_DOR, FD_DOR);
+		} else
+			moff_timer[i]--;
+	}
+}
+
+void do_timer(long cpl)
+{
+	extern int beepcount;
+	extern void sysbeepstop(void);
+
+	if (beepcount)
+		if (!--beepcount)
+			sysbeepstop();
+
+	if (cpl)
+		current->utime++;
+	else
+		current->stime++;
+
+	if (next_timer) {
+		next_timer->jiffies--;		
+		while (next_timer && next_timer->jiffies <= 0) {
+			void (*fn)(void);
+
+			fn = next_timer->fn;
+			next_timer->fn = NULL;
+			next_timer = next_timer->next;
+			(fn)();
+		}
+	}
+	if (current_DOR & 0xf0)
+		do_floppy_timer();
+	if ((--current->counter) > 0) 
+		return;
+	current->counter = 0;
+	if (!cpl)
+		return;
+	schedule();
 }

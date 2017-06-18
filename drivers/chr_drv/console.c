@@ -603,6 +603,12 @@ void con_write(struct tty_struct *tty)
 	set_cursor();
 }
 
+void sysbeepstop(void)
+{
+	/* disable counter 2 */
+	outb(inb_p(0x61) & 0xFC, 0x61);
+}
+
 static void sysbeep(void)
 {
 	/* enable counter 2 */

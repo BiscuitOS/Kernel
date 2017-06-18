@@ -21,6 +21,7 @@ extern void test_set_multi_register(void);
 extern void test_set_and_get_register(void);
 extern void test_call_c_in_assembly(void);
 extern void test_get_c_return_address(void);
+extern void test_set_EFLAGS(void);
 /* Interrupt table */
 extern void test_interrupt0_divide_error(void);
 extern void test_interrupt1_debug(void);
@@ -49,6 +50,8 @@ extern void test_calc_mem(void);
 extern void test_copy_page_table(void);
 extern void test_kmalloc(void);
 extern void test_kfree(void);
+/* task system */
+extern void test_tss_ldt_entry(void);
 #endif
 
 #endif
