@@ -49,5 +49,6 @@
 #define ID_ERR         0x10	/* ? */
 #define ECC_ERR        0x40	/* ? */
 #define BBD_ERR        0x80	/* ? */
+#define HD_NO_ERR	   MARK_ERR /* Used in HD_ERROR status check */
 
 #endif

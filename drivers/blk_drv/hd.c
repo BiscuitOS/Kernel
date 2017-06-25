@@ -112,7 +112,7 @@ static int controller_ready(void)
 {
 	int retries = 100000;
 
-	while (--retries && (inb_p(HD_STATUS) & 0x80)) ;
+	while (--retries && (inb_p(HD_STATUS) & BUSY_STAT));
 	return (retries);
 }
 
@@ -120,22 +120,19 @@ static void hd_out(unsigned int drive, unsigned int nsect, unsigned int sect,
 		   unsigned int head, unsigned int cyl, unsigned int cmd,
 		   void (*intr_addr) (void))
 {
-	register int port asm("dx");
-
 	if (drive > 1 || head > 15)
 		panic("trying to write bad sector");
 	if (!controller_ready())
 		panic("HD controller not ready");
 	do_hd = intr_addr;
 	outb_p(hd_info[drive].ctl, HD_CMD);
-	port = HD_DATA;
-	outb_p(hd_info[drive].wpcom >> 2, ++port);
-	outb_p(nsect, ++port);
-	outb_p(sect, ++port);
-	outb_p(cyl, ++port);
-	outb_p(cyl >> 8, ++port);
-	outb_p(0xA0 | (drive << 4) | head, ++port);
-	outb(cmd, ++port);
+	outb_p(hd_info[drive].wpcom >> 2, HD_PRECOMP);
+	outb_p(nsect, HD_NSECTOR);
+	outb_p(sect, HD_SECTOR);
+	outb_p(cyl, HD_LCYL);
+	outb_p(cyl >> 8, HD_HCYL);
+	outb_p(0xA0 | (drive << 4) | head, HD_CURRENT);
+	outb(cmd, HD_COMMAND);
 }
 
 static void reset_controller(void)
@@ -149,7 +146,7 @@ static void reset_controller(void)
 	outb(hd_info[0].ctl & 0x0f, HD_CMD);
 	if (drive_busy())
 		printk("HD-controller still busy\n\r");
-	if ((i = inb(HD_ERROR)) != 1)
+	if ((inb(HD_ERROR)) != HD_NO_ERR)
 		printk("HD-controller reset failed: %02x\n\r", i);
 }
 
@@ -232,7 +229,16 @@ void do_hd_request(void)
 	unsigned int sec, head, cyl;
 	unsigned int nsect;
 
-	INIT_REQUEST;
+repeat:
+	if (!CURRENT)
+		return;
+	if (MAJOR(CURRENT->dev) != MAJOR_NR)
+		panic(DEVICE_NAME ": request list destroyed");
+	if (CURRENT->bh) {
+		if (!CURRENT->bh->b_lock)
+			panic(DEVICE_NAME ": block not locked");
+	}
+
 	dev = MINOR(CURRENT->dev);
 	block = CURRENT->sector;
 
