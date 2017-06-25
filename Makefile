@@ -14,6 +14,7 @@ NAME = BiscuitOS
 DEBUG := 1
 VERSION_TEST := 1
 export DEBUG VERSION_TEST
+VERSION_FILE = $(srctree)/include/version.h
 # Beautify output
 ifeq ("$(origin V)", "command line")
   KBUILD_VERBOSE = $(V)
@@ -122,7 +123,7 @@ export SUBDIR IMAGE_PACKAGE
 
 
 # To do compile
-all: CHECK_START $(SUBDIR) Image config
+all: CHECK_START version $(SUBDIR) Image config
 	$(Q)figlet "BiscuitOS"
 
 CHECK_START:
@@ -149,6 +150,12 @@ start:
 debug:
 	$(Q)make -s -C $(srctree)/tools/build debug
 
+version:
+	@echo -n "#define KERNEL_VERSION \"Kernel Version: " > $(VERSION_FILE); \
+	echo -n $(shell $(SHELL) $(srctree)/scripts/setlocalversion \
+		 $(TOPDIR)) >> $(VERSION_FILE); \
+	echo "\"" >> $(VERSION_FILE)
+
 draw:
 	$(Q)$(srctree)/tools/callgraph/call.sh $(srctree) $(FUN)
 
@@ -166,4 +173,5 @@ clean: $(SUBDIR)
 	$(Q)for i in $(SUBDIR); do make clean -s -C $$i; done
 	$(Q)make clean -s -C $(srctree)/tools/build
 	$(Q)rm -rf $(srctree)/tools/callgraph/*.svg
+	$(Q)rm -rf $(srctree)/include/version.h
 

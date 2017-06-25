@@ -13,6 +13,7 @@
 #include <linux/tty.h>
 #include <asm/system.h>
 #include <asm/io.h>
+#include <version.h>
 
 /*
  * These are set up by the setup-routine at boot-time
@@ -40,6 +41,7 @@
  * query (= vt100 response).
  */
 #define RESPONSE "\033[?1;2c"
+#define LOGO_LINES 9
 
 static unsigned char video_type;	/* Type of display being used */
 static unsigned long video_size_row;	/* Bytes per row */
@@ -644,23 +646,25 @@ static void clear_line(char *buffer, int n)
  */
 static void BicuitOS_version(char *buffer, int n)
 {
-	char *version[7] = {
+	char *version[LOGO_LINES] = {
 		"BiscuitOS V0.0.2 buddy.zhang@aliyun.com",
 		" ____  _                _ _    ___  ____  ",
 		"| __ )(_)___  ___ _   _(_) |_ / _ \\/ ___| ",
 		"|  _ \\| / __|/ __| | | | | __| | | \\___ \\ ",
 		"| |_) | \\__ \\ (__| |_| | | |_| |_| |___) |",
 		"|____/|_|___/\\___|\\__,_|_|\\__|\\___/|____/",
+		"",
+		KERNEL_VERSION,
 		NULL
 	};
-	int i = 6;
+	int i = LOGO_LINES - 1;
 
 	/* clear firt 6 lines */
 	while (i--)
 		clear_line(buffer, i + n);
 
 	/* Display information */
-	for (i = 0; i < 6; i++) {
+	for (i = 0; i < LOGO_LINES - 1; i++) {
 		char const *tmp = version[i];
 		char *mem = buffer + (i + n) * ORIG_VIDEO_COLS * 2;
 
