@@ -52,6 +52,8 @@ extern void test_kmalloc(void);
 extern void test_kfree(void);
 /* task system */
 extern void test_tss_ldt_entry(void);
+extern void test_empty_segment_descriptor(void);
+extern void test_segment_type(void);
 #endif
 
 #endif
