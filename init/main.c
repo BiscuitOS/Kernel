@@ -133,26 +133,26 @@ static void info_init(void)
 
 int main(void)
 {
-	/*
-	 * Interrupts are still disabled. Do necessary setups, then
-	 * enable them.
-	 */
-	ROOT_DEV = ORIG_ROOT_DEV;
-	drive_info = DRIVE_INFO;
-	memory_detect();
-	mem_init(main_memory_start, memory_end);
-	trap_init();
-	blk_dev_init();
-	chr_dev_init();
-	tty_init();
-	info_init();
-	time_init();
-	sched_init();
-	buffer_init(buffer_memory_end);
-	hd_init();
-	floppy_init();
+    /*
+     * Interrupts are still disabled. Do necessary setups, then
+     * enable them.
+     */
+    ROOT_DEV = ORIG_ROOT_DEV;
+    drive_info = DRIVE_INFO;
+    memory_detect();
+    mem_init(main_memory_start, memory_end);
+    trap_init();
+    blk_dev_init();
+    chr_dev_init();
+    tty_init();
+    info_init();
+    time_init();
+    sched_init();
+    buffer_init(buffer_memory_end);
+    hd_init();
+    floppy_init();
 #ifdef CONFIG_TESTCODE
-	TestCode();
+    TestCode();
 #endif
-	return 0;
+    return 0;
 }

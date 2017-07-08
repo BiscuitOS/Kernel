@@ -79,9 +79,9 @@ struct task_struct {
 	/* file system info */
 	int tty;   /* -f if no tty, so it must be signed */
 	unsigned short umask;
-	struct vfs_inode *pwd;
-	struct vfs_inode *root;
-	struct vfs_inode *executable;
+	struct m_inode *pwd;
+	struct m_inode *root;
+	struct m_inode *executable;
 	unsigned long close_on_exec;
 	struct file *filp[NR_OPEN];
 	/* ldt for this task 0 - zero 1 - cs 2 - ds&ss */
@@ -220,6 +220,9 @@ extern void sched_init(void);
 extern void add_timer(long, void (*fn) (void));
 extern int copy_page_tables(unsigned long, unsigned long, long);
 extern int free_page_tables(unsigned long, unsigned long);
+
+extern long startup_time;
+#define CURRENT_TIME (startup_time + jiffies / HZ)
 
 #ifndef PANIC
 void panic(const char *str);

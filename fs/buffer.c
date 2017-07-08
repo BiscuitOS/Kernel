@@ -1,3 +1,8 @@
+/*
+ * linux/fs/buffer.c
+ *
+ * (C) 1991 Linus Torvalds
+ */
 #include <linux/fs.h>
 #include <sys/types.h>
 #include <linux/list.h>
@@ -18,12 +23,15 @@ __asm__("cld\n\t" \
 	: : "c" (BLOCK_SIZE/4), "S" (from), "D" (to) \
 	)
 
-static LIST_HEAD(free_list);
 static int NR_BUFFERS;
 static struct task_struct *buffer_wait;
+static struct buffer_head *free_list;
 
 static struct buffer_head *start_buffer = (struct buffer_head *)&end;
-static struct list_head hash_table[NR_HASH];
+static struct buffer_head *hash_table[NR_HASH];
+
+#define _hashfn(dev, block) (((unsigned)(dev^block))%NR_HASH)
+#define hash(dev, block) hash_table[_hashfn(dev, block)]
 
 static void wait_on_buffer(struct buffer_head *bh)
 {
@@ -74,25 +82,92 @@ struct buffer_head *bread(int dev, int block)
 /* In BiscuitOS, buffer_end is at 4MB currently */
 void buffer_init(long buffer_end)
 {
-	struct buffer_head *bh = start_buffer;
-	void *block;
+    struct buffer_head *h = start_buffer;
+    void *b;
+    int i;
 
-	/* Skip bios used memory */
-	if (buffer_end == BIOS_USED_END)
-		block = (void *)(BIOS_USED_START);
-	else
-		block = (void *)buffer_end;
+    if (buffer_end == 1 << 20)
+        b = (void *)(640 * 1024);
+    else
+        b = (void *)buffer_end;
+    while ((b -= BLOCK_SIZE) >= ((void *)(h + 1))) {
+        h->b_dev    = 0;
+        h->b_dirt   = 0;
+        h->b_count  = 0;
+        h->b_lock   = 0;
+        h->b_uptodate = 0;
+        h->b_wait = NULL;
+        h->b_next = NULL;
+        h->b_prev = NULL;
+        h->b_data = (char *)b;
+        h->b_prev_free = h - 1;
+        h->b_next_free = h + 1;
+        h++;
+        NR_BUFFERS++;
+        if (b == (void *)0x100000)
+            b = (void *)0xA0000;
+    }
+    h--;
+    free_list = start_buffer;
+    free_list->b_prev_free = h;
+    h->b_next_free = free_list;
+    for (i = 0; i < NR_HASH; i++)
+        hash_table[i] = NULL;
+}
 
-	while ((block -= BLOCK_SIZE) >= ((void *)(bh + 1))) {
-		memset(bh, 0, sizeof(struct buffer_head));
-		bh->b_data = (char *)block;
-		list_add_tail(&bh->b_list, &free_list);
-		bh++;
-		NR_BUFFERS++;
+int sync_dev(int dev)
+{
+    int i;
+    struct buffer_head *bh;
 
-		if (block == (void *)(BIOS_USED_END))
-			block = (void *)(BIOS_USED_START);
-	}
+    bh = start_buffer;
+    for (i = 0; i < NR_BUFFERS; i++, bh++) {
+        if (bh->b_dev != dev)
+            continue;
+        wait_on_buffer(bh);
+        if (bh->b_dev == dev && bh->b_dirt)
+            ll_rw_block(WRITE, bh);
+    }
+    sync_inodes();
+    bh = start_buffer;
+    for (i = 0; i < NR_BUFFERS; i++, bh++) {
+        if (bh->b_dev != dev)
+            continue;
+        wait_on_buffer(bh);
+        if (bh->b_dev == dev && bh->b_dirt)
+            ll_rw_block(WRITE, bh);
+    }
+    return 0;
+}
 
-	memset(hash_table, 0, sizeof(struct list_head) * NR_HASH);
+static struct buffer_head *find_buffer(int dev, int block)
+{
+    struct buffer_head *tmp;
+    
+    for (tmp = hash(dev, block); tmp != NULL; tmp = tmp->b_next)
+        if (tmp->b_dev == dev && tmp->b_blocknr == block)
+            return tmp;
+    return NULL;
+}
+
+/*
+ * Why like this, I hear you say... The reason is race-conditions.
+ * As we don't lock buffers (unless we are readint them, that is),
+ * something might happen to it while we sleep (ie a read-error 
+ * will force it bad). This shouldn't really happen currently, but
+ * the code is ready.
+ */
+struct buffer_head *get_hash_table(int dev, int block)
+{
+    struct buffer_head *bh;
+
+    for (;;) {
+        if (!(bh = find_buffer(dev, block)))
+            return NULL;
+        bh->b_count++;
+        wait_on_buffer(bh);
+        if (bh->b_dev == dev && bh->b_blocknr == block)
+            return bh;
+        bh->b_count--;
+    }
 }

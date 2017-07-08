@@ -2,6 +2,10 @@ LDFLAGS += -r
 
 OBJS := super.o
 OBJS += buffer.o
+OBJS += open.o
+OBJS += inode.o
+OBJS += truncate.o
+OBJS += bitmap.o
 
 all: $(OBJS) fs.o ECHO
 
