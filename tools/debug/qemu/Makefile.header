@@ -88,6 +88,13 @@ endif
 QEMU_FLAGS += $(BLOCK_DEVICE)
 
 # -----------------------------------
+# Rootfs
+# -----------------------------------
+ROOTFS := -hda BiscuitOS.img
+
+QEMU_FLAGS += $(ROOTFS)
+
+# -----------------------------------
 # Display options
 # -----------------------------------
 CONS :=
@@ -104,6 +111,13 @@ RTC := -rtc base=localtime
 # RTC := -rtc base=utc
 QEMU_FLAGS += $(RTC)
 
+
+# ----------------------------------
+# Serial Settings
+# ----------------------------------
+SERIAL := -serial pty
+
+QEMU_FLAGS += $(SERIAL)
 # Export Argument
 export QEMU_FLAGS QEMU
 

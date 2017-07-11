@@ -6,6 +6,7 @@
  * root-device by changing the line ROOT_DEV = XXX in boot/bootsect.s
  */
 
+#define KBD_US
 /*
  * Normally, system can get the drive parameters from the BIOS at
  * startup, but if this for some unfathomable reason fails, you'd

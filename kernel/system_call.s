@@ -6,6 +6,13 @@ OLDSS     = 0x2C
 signal    = 12
 blocked   = (33 * 16)
 
+state   = 0
+counter = 4
+signal  = 12
+blocked = (33 * 16)
+
+nr_system_calls = 72
+
 .globl coprocessor_error, parallel_interrupt
 .globl device_not_available, timer_interrupt, system_call
 .globl hd_interrupt, floppy_interrupt
@@ -15,6 +22,32 @@ blocked   = (33 * 16)
 bad_sys_call:
 	movl $-1, %eax
 	iret
+.align 2
+reschedule:
+        pushl $ret_from_sys_call
+        jmp schedule
+.align 2
+system_call:
+        cmpl $nr_system_calls-1,%eax
+        ja bad_sys_call
+        push %ds
+        push %es
+        push %fs
+        pushl %edx
+        pushl %ecx              # push %ebx,%ecx,%edx as parameters
+        pushl %ebx              # to the system call
+        movl $0x10,%edx         # set up ds,es to kernel space
+        mov %dx,%ds
+        mov %dx,%es
+        movl $0x17,%edx         # fs points to local data space
+        mov %dx,%fs
+        call *sys_call_table(,%eax,4)
+        pushl %eax
+        movl current,%eax
+        cmpl $0,state(%eax)             # state
+        jne reschedule
+        cmpl $0,counter(%eax)           # counter
+        je reschedule
 .align 2
 ret_from_sys_call:
 	movl current, %eax
@@ -113,10 +146,6 @@ device_not_available:
 	popl %edi
 	popl %esi
 	popl %ebp
-	ret
-
-.align 2
-system_call:
 	ret
 
 .align 2

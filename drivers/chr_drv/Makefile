@@ -12,7 +12,7 @@ chr_drv.o: $(OBJS)
 	$(Q)$(LD) $(LDFLAGS) -o chr_drv.o $^
 	$(Q)sync
 
-keyboard.s:
+keyboard.s: kb.S ../../include/linux/config.h
 	$(Q)$(CPP) $(CPPFLAGS) kb.S -o keyboard.s
 
 clean:

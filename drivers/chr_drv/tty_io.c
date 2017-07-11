@@ -1,14 +1,15 @@
 /*
- * TTY device
- * Maintainer: Buddy <buddy.zhang@aliyun.com>
+ * linux/kernel/tty_io.c
  *
- * Copyright (C) 2017 BiscuitOS
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * (C) 1991 Linus Torvalds
  */
 
+/*
+ * 'tty_io.c' gives an orthogonal feeling to tty's, be they consoles
+ * or rs-channels. It also implements echoing, cooked mode etc.
+ * 
+ * kill-line thanks to John T Kohl.
+ */
 #include <linux/sched.h>
 #include <linux/tty.h>
 
@@ -107,8 +108,8 @@ struct tty_queue *table_list[] = {
 
 void tty_init(void)
 {
-	rs_init();
-	con_init();
+    rs_init();
+    con_init();
 }
 
 void tty_intr(struct tty_struct *tty, int mask)

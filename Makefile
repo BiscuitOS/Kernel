@@ -120,6 +120,8 @@ export SUBDIR IMAGE_PACKAGE
 	$(Q)$(CC) $(CFLAGS) -c -o $*.o $<
 .s.o:
 	$(Q)$(AS) $(ASFLAGS) -o $*.o $<
+.c.s:
+	$(Q)$(CC) $(CFLAGS) -S -o $*.s $<
 
 
 # To do compile

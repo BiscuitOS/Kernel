@@ -35,4 +35,8 @@ struct sigaction {
 	void (*sa_restorer) (void);
 };
 
+#define SA_NOCLDSTOP 1
+#define SA_NOMASK    0x40000000
+#define SA_ONESHOT   0x80000000
+
 #endif

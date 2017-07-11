@@ -163,12 +163,12 @@ void ll_rw_block(int rw, struct buffer_head *bh)
 
 void blk_dev_init(void)
 {
-	int i;
+    int i;
 
-	for (i = 0; i < NR_REQUEST; i++) {
-		request_queue[i].dev = -1;
-		request_queue[i].next = NULL;
-	}
+    for (i = 0; i < NR_REQUEST; i++) {
+        request_queue[i].dev = -1;
+        request_queue[i].next = NULL;
+    }
 
-	blk_dev_num = sizeof(blk_dev) / sizeof(blk_dev[0]);
+    blk_dev_num = sizeof(blk_dev) / sizeof(blk_dev[0]);
 }

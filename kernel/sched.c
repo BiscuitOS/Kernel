@@ -6,6 +6,8 @@
 
 #include <linux/sched.h>
 #include <linux/mm.h>
+#include <linux/kernel.h>
+#include <linux/sys.h>
 
 #include <asm/system.h>
 #include <asm/io.h>
@@ -147,10 +149,10 @@ void sched_init(void)
     lldt(0);
     outb_p(0x36, 0x43);	/* binary, mode 3, LSB/MSB, ch 0 */
     outb_p(LATCH & 0xff, 0x40);	/* LSB */
-	outb(LATCH >> 8, 0x40);	/* MSB */
-//    set_intr_gate(0x20, &timer_interrupt);
-//    outb(inb_p(0x21) & ~0x01, 0x21);
-//    set_system_gate(0x80, &system_call);
+    outb(LATCH >> 8, 0x40);	/* MSB */
+    set_intr_gate(0x20, &timer_interrupt);
+    outb(inb_p(0x21) & ~0x01, 0x21);
+    set_system_gate(0x80, &system_call);
 }
 
 #define TIME_REQUESTS 64
@@ -335,4 +337,24 @@ void do_timer(long cpl)
 	if (!cpl)
 		return;
 	schedule();
+}
+
+void show_task(int nr, struct task_struct *p)
+{
+    int i, j = 4096 - sizeof(struct task_struct);
+
+    printk("%d: pid=%d, state=%d, ", nr, p->pid, p->state);
+    i = 0;
+    while (i < j && !((char *)(p+1))[i])
+        i++;
+    printk("%d (of %d) chars free in kernel stack\n\r", i, j);
+}
+
+void show_stat(void)
+{
+    int i;
+
+    for (i = 0; i < NR_TASKS; i++)
+        if (task[i])
+            show_task(i, task[i]);
 }

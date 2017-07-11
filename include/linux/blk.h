@@ -19,15 +19,15 @@
  * read/write completion.
  */
 struct request {
-	int dev;
-	int cmd;
-	int errors;
-	unsigned long sector;
-	unsigned long nr_sectors;
-	char *buffer;
-	struct task_struct *waiting;
-	struct buffer_head *bh;
-	struct request *next;
+    int dev;
+    int cmd;
+    int errors;
+    unsigned long sector;
+    unsigned long nr_sectors;
+    char *buffer;
+    struct task_struct *waiting;
+    struct buffer_head *bh;
+    struct request *next;
 };
 
 struct blk_dev_struct {

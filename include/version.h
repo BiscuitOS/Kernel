@@ -1,1 +1,1 @@
-#define KERNEL_VERSION "Kernel Version: 288a26ae-dirty"
+#define KERNEL_VERSION "Kernel Version: e40caecf-dirty"

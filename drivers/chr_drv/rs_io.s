@@ -1,3 +1,8 @@
+/*
+ * linux/kernel/rs_io.s
+ *
+ * (C) 1991 Linux Torvalds
+ */
 
 /*
  * This module implements the rs232 to interrupts.
@@ -42,38 +47,38 @@ rs_int:
 	pushl %ebx
 	pushl %eax
 	push %es
-	push %ds
-	pushl $0x10
+	push %ds             /* as this is an interrupt, we cannot */
+	pushl $0x10          /* know that bs is ok. Load it */
 	pop %ds
 	pushl $0x10
 	pop %es
 	movl 24(%esp), %edx
 	movl (%edx), %edx
 	movl rs_addr(%edx), %edx
-	addl $2, %edx
+	addl $2, %edx         /* interrupt ident. reg */
 rep_int:
 	xorl %eax, %eax
 	inb %dx, %al
 	testb $1, %al
 	jne end
-	cmpb $6, %al
+	cmpb $6, %al          /* this should't happen, but ... */
 	jne end
 	movl 24(%esp), %ecx
 	pushl %edx
 	subl $2, %edx
-	call *jmp_table(,%eax,2)
+	call *jmp_table(,%eax,2)     /* NOTE! not *4, bit0 is 0 already */
 	popl %edx
 	jmp rep_int
 end:
 	movb $0x20, %al
-	outb %al, $0x20
+	outb %al, $0x20       /* EOI */
 	pop %ds
 	pop %es
 	popl %eax
 	popl %ebx
 	popl %ecx
 	popl %edx
-	addl $4, %esp
+	addl $4, %esp         /* jump over _table_list entry */
 	iret
 
 jmp_table:
@@ -81,13 +86,13 @@ jmp_table:
 
 .align 2
 modem_status:
-	addl $6, %edx
-	inb %dx, %al
+	addl $6, %edx     /* clear intr by reading modem status reg */
+	inb %dx, %al      
 	ret
 
 .align 2
 line_status:
-	addl $5, %edx
+	addl $5, %edx      /* clear intr by reading line status reg. */
 	inb %dx, %al
 	ret
 
@@ -113,15 +118,15 @@ read_char:
 
 .align 2
 write_char:
-	movl 4(%ecx), %ecx
-	movl head(%ecx), %ebx
+	movl 4(%ecx), %ecx                   # write-queue
+	movl head(%ecx), %ebx    
 	subl tail(%ecx), %ebx
-	andl $size-1, %ebx
+	andl $size-1, %ebx                   # nr chars in queue
 	je write_buffer_empty
 	cmpl $startup, %ebx
 	ja 1f
-	movl proc_list(%ecx), %ebx
-	testl %ebx, %ebx
+	movl proc_list(%ecx), %ebx           # wake up sleeping process
+	testl %ebx, %ebx                     # is there any?
 	je 1f
 	movl $0, (%ebx)
 1:
@@ -137,8 +142,8 @@ write_char:
 
 .align
 write_buffer_empty:
-	movl proc_list(%ecx), %ebx
-	testl %ebx, %ebx
+	movl proc_list(%ecx), %ebx    # wake up sleeping process
+	testl %ebx, %ebx              # is there any?
 	je 1f
 	movl $0, (%ebx)
 1:
@@ -148,7 +153,6 @@ write_buffer_empty:
 1:
 	jmp 1f
 1:
-	andb $0xd, %al
+	andb $0xd, %al                /* disable transmit interrupt */
 	outb %al, %dx
 	ret
-

@@ -21,6 +21,8 @@
 #define NULL ((void *) 0)
 #endif
 
+typedef int (*fn_ptr)();
+
 struct i387_struct {
 	long cwd;
 	long swd;
@@ -220,6 +222,7 @@ extern void sched_init(void);
 extern void add_timer(long, void (*fn) (void));
 extern int copy_page_tables(unsigned long, unsigned long, long);
 extern int free_page_tables(unsigned long, unsigned long);
+extern void verify_area(void *addr, int size);
 
 extern long startup_time;
 #define CURRENT_TIME (startup_time + jiffies / HZ)
