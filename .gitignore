@@ -24,3 +24,4 @@ include/version.h
 
 # output
 keyboard.s
+drivers/chr_drv/keyboard.s
