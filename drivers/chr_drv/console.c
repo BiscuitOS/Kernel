@@ -80,18 +80,18 @@ static inline void set_origin(void)
 
 static void lf(void)
 {
-	if (y + bottom) {
-		y++;
-		pos += video_size_row;
-		return;
-	}
-	scrup();
+    if (y + 1 < bottom) {
+        y++;
+        pos += video_size_row;
+        return;
+    }
+    scrup();
 }
 
 static void cr(void)
 {
-	pos -= x << 1;
-	x = 0;
+    pos -= x << 1;
+    x = 0;
 }
 
 static void del(void)
@@ -129,12 +129,12 @@ static void restore_cur(void)
 
 static inline void set_cursor(void)
 {
-	cli();
-	outb_p(14, video_port_reg);
-	outb_p(0xff & ((pos - video_mem_start) >> 9), video_port_val);
-	outb_p(15, video_port_reg);
-	outb_p(0xff & ((pos - video_mem_start) >> 1), video_port_val);
-	sti();
+    cli();
+    outb_p(14, video_port_reg);
+    outb_p(0xff & ((pos - video_mem_start) >> 9), video_port_val);
+    outb_p(15, video_port_reg);
+    outb_p(0xff & ((pos - video_mem_start) >> 1), video_port_val);
+    sti();
 }
 
 static void respond(struct tty_struct *tty)
@@ -232,60 +232,61 @@ static void scrdown(void)
 
 static void scrup(void)
 {
-	if (video_type == VIDEO_TYPE_EGAC || video_type == VIDEO_TYPE_EGAM) {
-		if (!top && bottom == video_num_lines) {
-			origin += video_size_row;
-			pos += video_size_row;
-			scr_end += video_size_row;
+    int i;
 
-			if (scr_end > video_mem_end) {
-				__asm__("cld\n\t"
-					"rep\n\t"
-					"movsl\n\t"
-					"movl video_num_columns, %1\n\t"
-					"rep\n\t"
-					"stosw"::"a"(video_erase_char),
-					"c"((video_num_lines -
-					     1) * video_num_columns >> 1),
-					"D"(video_mem_start), "S"(origin)
-				    );
-				scr_end -= origin - video_mem_start;
-				pos -= origin - video_mem_start;
-				origin = video_mem_start;
-			} else {
-				__asm__("cld\n\t"
-					"rep\n\t"
-					"stosw"::"a"(video_erase_char),
-					"c"(video_num_columns),
-					"D"(scr_end - video_size_row)
-				    );
-			}
-			set_origin();
-		} else {
-			__asm__("cld\n\t"
-				"rep\n\t"
-				"movsl\n\t"
-				"movl video_num_columns, %%ecx\n\t"
-				"rep\n\t"
-				"stosw"::"a"(video_erase_char),
-				"c"((bottom - top -
-				     1) * video_num_columns >> 1),
-				"D"(origin + video_size_row * top),
-				"S"(origin + video_size_row * (top + 1))
-			    );
-		}
-	} else {		/*Not EGA/VGA */
-		__asm__("cld\n\t"
-			"rep\n\t"
-			"movsl\n\t"
-			"movl video_num_columns, %%ecx\n\t"
-			"rep\n\t"
-			"stosw"::"a"(video_erase_char),
-			"c"((bottom - top - 1) * video_num_columns >> 1),
-			"D"(origin + video_size_row * top),
-			"S"(origin + video_size_row * (top + 1))
-		    );
-	}
+    i = 1;
+    i += 1;
+    i += 2;
+    if (video_type == VIDEO_TYPE_EGAC || video_type == VIDEO_TYPE_EGAM) {
+        if (!top && bottom == video_num_lines) {
+            origin += video_size_row;
+            pos += video_size_row;
+            scr_end += video_size_row;
+
+            if (scr_end > video_mem_end) {
+                __asm__("cld\n\t"
+                        "rep\n\t"
+                        "movsl\n\t"
+                        "movl video_num_columns, %1\n\t"
+                        "rep\n\t"
+                        "stosw"::"a"(video_erase_char),
+                        "c"((video_num_lines - 1) * 
+                        video_num_columns >> 1),
+                        "D"(video_mem_start), "S"(origin));
+                scr_end -= origin - video_mem_start;
+                pos -= origin - video_mem_start;
+                origin = video_mem_start;
+            } else {
+                __asm__("cld\n\t"
+                        "rep\n\t"
+                        "stosw"::"a"(video_erase_char),
+                        "c"(video_num_columns),
+                        "D"(scr_end - video_size_row));
+            }
+            set_origin();
+        } else {
+            __asm__("cld\n\t"
+                    "rep\n\t"
+                    "movsl\n\t"
+                    "movl video_num_columns, %%ecx\n\t"
+                    "rep\n\t"
+                    "stosw"::"a"(video_erase_char),
+                    "c"((bottom - top - 1) * 
+                    video_num_columns >> 1),
+                    "D"(origin + video_size_row * top),
+                    "S"(origin + video_size_row * (top + 1)));
+        }
+    } else {		/*Not EGA/VGA */
+        __asm__("cld\n\t"
+                "rep\n\t"
+                "movsl\n\t"
+                "movl video_num_columns, %%ecx\n\t"
+                "rep\n\t"
+                "stosw"::"a"(video_erase_char),
+                "c"((bottom - top - 1) * video_num_columns >> 1),
+                "D"(origin + video_size_row * top),
+                "S"(origin + video_size_row * (top + 1)));
+    }
 }
 
 static void ri(void)
@@ -422,181 +423,179 @@ void csi_m(void)
 
 void con_write(struct tty_struct *tty)
 {
-	int nr;
-	char c;
+    int nr;
+    char c;
 
-	nr = CHARS(tty->write_q);
-	while (nr--) {
-		GETCH(tty->write_q, c);
-		switch (state) {
-		case 0:
-			if (c > 31 && c < 127) {
-				if (x >= video_num_columns) {
-					x -= video_num_columns;
-					pos -= video_size_row;
-					lf();
-				}
-				__asm__("movb attr, %%ah\n\t"
-					"movw %%ax, %1\n\t"::"a"(c),
-					"m"(*(short *)pos)
-				    );
-				pos += 2;
-				x++;
-			} else if (c == 27)
-				state = 1;
-			else if (c == 10 || c == 11 || c == 12)
-				lf();
-			else if (c == 13)
-				cr();
-			else if (c == ERASE_CHAR(tty))
-				del();
-			else if (c == 8) {
-				if (x) {
-					x--;
-					pos -= 2;
-				}
-			} else if (c == 9) {
-				c = 8 - (x & 7);
-				x += c;
-				pos += c << 1;
-				if (x > video_num_columns) {
-					x -= video_num_columns;
-					pos -= video_size_row;
-					lf();
-				}
-				c = 9;
-			} else if (c == 7)
-				sysbeep();
-			break;
-		case 1:
-			state = 0;
-			if (c == '[')
-				state = 2;
-			else if (c == 'E')
-				gotoxy(0, y + 1);
-			else if (c == 'M')
-				ri();
-			else if (c == 'D')
-				lf();
-			else if (c == 'Z')
-				respond(tty);
-			else if (x == '7')
-				save_cur();
-			else if (x == '8')
-				restore_cur();
-			break;
-		case 2:
-			for (npar = 0; npar < NPAR; npar++)
-				par[npar] = 0;
-			npar = 0;
-			state = 3;
-			if ((ques = (c == '?')))
-				break;
-		case 3:
-			if (c == ';' && npar < NPAR - 1) {
-				npar++;
-				break;
-			} else if (c >= '0' && c <= '9') {
-				par[npar] = 10 * par[npar] + c - '0';
-				break;
-			} else
-				state = 4;
-		case 4:
-			state = 0;
-			switch (c) {
-			case 'G':
-			case '`':
-				if (par[0])
-					par[0]--;
-				gotoxy(par[0], y);
-				break;
-			case 'A':
-				if (!par[0])
-					par[0]++;
-				gotoxy(x, y - par[0]);
-				break;
-			case 'B':
-			case 'e':
-				if (!par[0])
-					par[0]++;
-				gotoxy(x, y + par[0]);
-				break;
-			case 'C':
-			case 'a':
-				if (!par[0])
-					par[0]++;
-				gotoxy(x + par[0], y);
-				break;
-			case 'D':
-				if (!par[0])
-					par[0]++;
-				gotoxy(x - par[0], y);
-				break;
-			case 'E':
-				if (!par[0])
-					par[0]++;
-				gotoxy(0, y + par[0]);
-				break;
-			case 'F':
-				if (!par[0])
-					par[0]++;
-				gotoxy(0, y - par[0]);
-				break;
-			case 'd':
-				if (par[0])
-					par[0]++;
-				gotoxy(x, par[0]);
-				break;
-			case 'H':
-			case 'f':
-				if (par[0])
-					par[0]--;
-				if (par[1])
-					par[1]--;
-				gotoxy(par[1], par[0]);
-				break;
-			case 'J':
-				csi_J(par[0]);
-				break;
-			case 'K':
-				csi_K(par[0]);
-				break;
-			case 'L':
-				csi_L(par[0]);
-				break;
-			case 'M':
-				csi_M(par[0]);
-				break;
-			case 'P':
-				csi_P(par[0]);
-				break;
-			case '@':
-				csi_at(par[0]);
-				break;
-			case 'm':
-				csi_m();
-				break;
-			case 'r':
-				if (par[0])
-					par[0]--;
-				if (!par[1])
-					par[1] = video_num_lines;
-				if (par[0] < par[1] &&
-				    par[1] <= video_num_lines) {
-					top = par[0];
-					bottom = par[1];
-				}
-				break;
-			case 's':
-				save_cur();
-				break;
-			case 'u':
-				restore_cur();
-				break;
-			}
-		}
-	}
-	set_cursor();
+    nr = CHARS(tty->write_q);
+    while (nr--) {
+        GETCH(tty->write_q, c);
+        switch (state) {
+        case 0:
+            if (c > 31 && c < 127) {
+                if (x >= video_num_columns) {
+                    x -= video_num_columns;
+                    pos -= video_size_row;
+                    lf();
+                }
+                __asm__("movb attr, %%ah\n\t"
+                        "movw %%ax, %1\n\t"::"a"(c),
+                        "m"(*(short *)pos));
+                pos += 2;
+                x++;
+            } else if (c == 27)
+                state = 1;
+            else if (c == 10 || c == 11 || c == 12)
+                lf();
+            else if (c == 13) 
+                cr(); 
+            else if (c == ERASE_CHAR(tty))
+                del();
+            else if (c == 8) {
+                if (x) {
+                    x--;
+                    pos -= 2;
+                }
+            } else if (c == 9) {
+                c = 8 - (x & 7);
+                x += c;
+                pos += c << 1;
+                if (x > video_num_columns) {
+                    x -= video_num_columns;
+                    pos -= video_size_row;
+                    lf();
+                }
+                c = 9;
+            } else if (c == 7)
+                sysbeep();
+                break;
+        case 1:
+            state = 0;
+            if (c == '[')
+                state = 2;
+            else if (c == 'E')
+                gotoxy(0, y + 1);
+            else if (c == 'M')
+                ri();
+            else if (c == 'D')
+                lf();
+            else if (c == 'Z')
+                respond(tty);
+            else if (x == '7')
+                save_cur();
+            else if (x == '8')
+                restore_cur();
+                break;
+        case 2:
+            for (npar = 0; npar < NPAR; npar++)
+                par[npar] = 0;
+            npar = 0;
+            state = 3;
+            if ((ques = (c == '?')))
+                break;
+        case 3:
+            if (c == ';' && npar < NPAR - 1) {
+                npar++;
+                break;
+            } else if (c >= '0' && c <= '9') {
+                par[npar] = 10 * par[npar] + c - '0';
+                break;
+            } else
+                state = 4;
+        case 4:
+            state = 0;
+            switch (c) {
+            case 'G':
+            case '`':
+                if (par[0])
+                    par[0]--;
+                gotoxy(par[0], y);
+                break;
+            case 'A':
+                if (!par[0])
+                    par[0]++;
+                    gotoxy(x, y - par[0]);
+                    break;
+            case 'B':
+            case 'e':
+                if (!par[0])
+                    par[0]++;
+                gotoxy(x, y + par[0]);
+                break;
+            case 'C':
+            case 'a':
+                if (!par[0])
+                    par[0]++;
+                gotoxy(x + par[0], y);
+                break;
+            case 'D':
+                if (!par[0])
+                    par[0]++;
+                gotoxy(x - par[0], y);
+                break;
+            case 'E':
+                if (!par[0])
+                    par[0]++;
+                gotoxy(0, y + par[0]);
+                break;
+            case 'F':
+                if (!par[0])
+                    par[0]++;
+                gotoxy(0, y - par[0]);
+                break;
+            case 'd':
+                if (par[0])
+                    par[0]++;
+                gotoxy(x, par[0]);
+                break;
+            case 'H':
+            case 'f':
+                if (par[0])
+                    par[0]--;
+                if (par[1])
+                    par[1]--;
+                gotoxy(par[1], par[0]);
+                break;
+            case 'J':
+                csi_J(par[0]);
+                break;
+            case 'K':
+                csi_K(par[0]);
+                break;
+            case 'L':
+                csi_L(par[0]);
+                break;
+            case 'M':
+                csi_M(par[0]);
+                break;
+            case 'P':
+                csi_P(par[0]);
+                break;
+            case '@':
+                csi_at(par[0]);
+                break;
+            case 'm':
+                csi_m();
+                break;
+            case 'r':
+                if (par[0])
+                    par[0]--;
+                if (!par[1])
+                    par[1] = video_num_lines;
+                if (par[0] < par[1] && par[1] <= video_num_lines) {
+                    top = par[0];
+                    bottom = par[1];
+                }
+                break;
+            case 's':
+                save_cur();
+                break;
+            case 'u':
+                restore_cur();
+                break;
+            }
+        }
+    }
+    set_cursor();
 }
 
 void sysbeepstop(void)

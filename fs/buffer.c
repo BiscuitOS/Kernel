@@ -9,6 +9,7 @@
 #include <string.h>
 #include <asm/system.h>
 #include <linux/sched.h>
+#include <linux/kernel.h>
 
 
 extern int end;
