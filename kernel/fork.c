@@ -17,7 +17,7 @@ long last_pid = 0;
 void verify_area(void *addr, int size)
 {
     unsigned long start;
-     
+
     start = (unsigned long)addr;
     size += start & 0xfff;
     start &= 0xfffff000;
@@ -31,19 +31,19 @@ void verify_area(void *addr, int size)
 
 int find_empty_process(void)
 {
-	int i;
+    int i;
 
 repeat:
-	if ((++last_pid) < 0)
-		last_pid = 1;
-	for (i = 0; i < NR_TASKS; i++)
-		if (task[i] && task[i]->pid == last_pid)
-			goto repeat;
-	for (i = 1; i < NR_TASKS; i++)
-		if (!task[i])
-			return i;
+    if ((++last_pid) < 0)
+        last_pid = 1;
+    for (i = 0; i < NR_TASKS; i++)
+        if (task[i] && task[i]->pid == last_pid)
+            goto repeat;
+    for (i = 1; i < NR_TASKS; i++)
+        if (!task[i])
+            return i;
 
-	return -EAGAIN;
+    return -EAGAIN;
 }
 
 int copy_mem(int nr, struct task_struct *p)
