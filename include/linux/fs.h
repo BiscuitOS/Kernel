@@ -21,6 +21,13 @@
 #define NULL ((void *) 0)
 #endif
 
+#define I_MAP_SLOTS   8
+#define Z_MAP_SLOTS   8
+#define SUPER_MAGIC   0x137F
+
+#define NR_FILE         64
+#define BLOCK_SIZE_BITS 10
+
 #define INODES_PER_BLOCK ((BLOCK_SIZE) / (sizeof(struct d_inode)))
 #define DIR_ENTRIES_PER_BLOCK ((BLOCK_SIZE) / sizeof(struct dir_entry))
 
@@ -30,7 +37,7 @@ struct buffer_head {
     char *b_data;                 /* pointer to data block (1024 bytes) */
     unsigned long   b_blocknr;    /* block number */
     unsigned short  b_dev;        /* device (0 = free) */
-    unsigned char   b_uptodate;   
+    unsigned char   b_uptodate;
     unsigned char   b_dirt;       /* 0-clean, 1-dirty */
     unsigned char   b_count;      /* users using this block */
     unsigned char   b_lock;       /* 0 - ok, 1 - locked */
@@ -136,4 +143,14 @@ extern struct buffer_head *bread(int dev, int block);
 extern void brelse(struct buffer_head *buf);
 extern void free_block(int dev, int block);
 extern struct buffer_head *get_hash_table(int dev, int block);
+extern struct buffer_head *getblk(int dev, int block);
+extern struct buffer_head *breada(int dev, int first, ...);
+extern void invalidate_inodes(int);
+extern int floppy_change(unsigned int nr);
+extern struct m_inode * iget(int dev,int nr);
+extern void check_disk_change(int dev);
+extern void mount_root(void);
+
+extern struct file file_table[NR_FILE];
+extern struct super_block super_block[NR_SUPER];
 #endif

@@ -7,7 +7,7 @@
 /*
  * 'tty_io.c' gives an orthogonal feeling to tty's, be they consoles
  * or rs-channels. It also implements echoing, cooked mode etc.
- * 
+ *
  * kill-line thanks to John T Kohl.
  */
 #include <linux/sched.h>
@@ -133,6 +133,14 @@ static void sleep_if_full(struct tty_queue *queue)
 	while (!current->signal && LEFT(*queue) < 128)
 		interruptible_sleep_on(&queue->proc_list);
 	sti();
+}
+
+static void sleep_if_empty(struct tty_queue *queue)
+{
+    cli();
+    while (!current->signal && EMPTY(*queue))
+        interruptible_sleep_on(&queue->proc_list);
+    sti();
 }
 
 void copy_to_cooked(struct tty_struct *tty)
@@ -283,4 +291,9 @@ void do_tty_interrupt(int tty)
 
 void chr_dev_init(void)
 {
+}
+
+void wait_for_keypress(void)
+{
+    sleep_if_empty(&tty_table[0].secondary);
 }

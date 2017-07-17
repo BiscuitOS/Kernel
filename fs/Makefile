@@ -6,6 +6,7 @@ OBJS += open.o
 OBJS += inode.o
 OBJS += truncate.o
 OBJS += bitmap.o
+OBJS += file_table.o
 
 all: $(OBJS) fs.o ECHO
 

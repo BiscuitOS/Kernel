@@ -10,4 +10,5 @@ extern inline char *strchr(const char *s, char c);
 extern inline int strcmp(const char *cs, const char *ct);
 extern inline int strlen(const char *s);
 extern inline void *memset(void *s, char c, int count);
+extern inline void * memcpy(void * dest,const void * src, int n);
 #endif

@@ -470,3 +470,25 @@ void floppy_init(void)
 	set_trap_gate(0x26, &floppy_interrupt);
 	outb(inb_p(0x21) & ~0x40, 0x21);
 }
+
+/*
+ * floppy-change is never called from an interrupt, so we can relax a bit
+ * here, sleep etc. Note that floppy-on tries to set current_DOR to point
+ * to the desired drive, but it will probably not survive the sleep if
+ * several floppies are used at the same time: thus the loop.
+ */
+int floppy_change(unsigned int nr)
+{
+repeat:
+    floppy_on(nr);
+    while ((current_DOR & 3) != nr && selected)
+        interruptible_sleep_on(&wait_on_floppy_select);
+    if ((current_DOR & 3) != nr)
+        goto repeat;
+    if (inb(FD_DIR) & 0x80) {
+        floppy_off(nr);
+        return 1;
+    }
+    floppy_off(nr);
+    return 0;
+}
