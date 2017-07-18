@@ -28,6 +28,14 @@
 #define NR_FILE         64
 #define BLOCK_SIZE_BITS 10
 
+#define PIPE_HEAD(inode) ((inode).i_zone[0])
+#define PIPE_TAIL(inode) ((inode).i_zone[1])
+#define PIPE_SIZE(inode) ((PIPE_HEAD(inode)-PIPE_TAIL(inode))&(PAGE_SIZE-1))
+#define PIPE_EMPTY(inode) (PIPE_HEAD(inode) == PIPE_TAIL(inode))
+#define PIPE_FULL(inode) (PIPE_SIZE(inode)==(PAGE_SIZE - 1))
+#define INC_PIPE(head) \
+__asm__("incl %0\n\tandl $4095,%0"::"m" (head))
+
 #define INODES_PER_BLOCK ((BLOCK_SIZE) / (sizeof(struct d_inode)))
 #define DIR_ENTRIES_PER_BLOCK ((BLOCK_SIZE) / sizeof(struct dir_entry))
 
@@ -150,6 +158,8 @@ extern int floppy_change(unsigned int nr);
 extern struct m_inode * iget(int dev,int nr);
 extern void check_disk_change(int dev);
 extern void mount_root(void);
+extern int new_block(int dev);
+extern int bmap(struct m_inode * inode,int block);
 
 extern struct file file_table[NR_FILE];
 extern struct super_block super_block[NR_SUPER];

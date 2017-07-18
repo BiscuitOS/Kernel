@@ -7,6 +7,11 @@ OBJS += inode.o
 OBJS += truncate.o
 OBJS += bitmap.o
 OBJS += file_table.o
+OBJS += read_write.o
+OBJS += pipe.o
+OBJS += char_dev.o
+OBJS += file_dev.o
+OBJS += block_dev.o
 
 all: $(OBJS) fs.o ECHO
 
