@@ -242,7 +242,7 @@ struct m_inode *iget(int dev, int nr)
     return inode;
 }
 
-static int _bmp(struct m_inode *inode, int block, int create)
+static int _bmap(struct m_inode *inode, int block, int create)
 {
     struct buffer_head *bh;
     int i;
@@ -310,5 +310,10 @@ static int _bmp(struct m_inode *inode, int block, int create)
 
 int bmap(struct m_inode *inode, int block)
 {
-    return _bmp(inode, block, 0);
+    return _bmap(inode, block, 0);
+}
+
+int create_block(struct m_inode *inode, int block)
+{
+    return _bmap(inode, block, 1);
 }

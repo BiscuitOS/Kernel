@@ -92,7 +92,7 @@ QEMU_FLAGS += $(BLOCK_DEVICE)
 # -----------------------------------
 ROOTFS := -hda BiscuitOS.img
 
-QEMU_FLAGS += $(ROOTFS)
+#QEMU_FLAGS += $(ROOTFS)
 
 # -----------------------------------
 # Display options

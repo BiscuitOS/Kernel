@@ -160,6 +160,10 @@ extern void check_disk_change(int dev);
 extern void mount_root(void);
 extern int new_block(int dev);
 extern int bmap(struct m_inode * inode,int block);
+extern int create_block(struct m_inode *inode, int block);
+extern int file_write(struct m_inode *inode, struct file *filp, char *buf, int count);
+extern int block_write(int dev, long *pos, char *buf, int count);
+extern int write_pipe(struct m_inode *inode, char *buf, int count);
 
 extern struct file file_table[NR_FILE];
 extern struct super_block super_block[NR_SUPER];
