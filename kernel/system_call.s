@@ -1,5 +1,5 @@
 
-
+EIP       = 0x1C
 CS        = 0x20
 OLDSS     = 0x2C
 
@@ -16,7 +16,7 @@ nr_system_calls = 72
 .globl coprocessor_error, parallel_interrupt
 .globl device_not_available, timer_interrupt, system_call
 .globl hd_interrupt, floppy_interrupt
-.globl sys_fork
+.globl sys_fork, sys_execve
 
 .align 2
 bad_sys_call:
@@ -146,6 +146,14 @@ device_not_available:
 	popl %edi
 	popl %esi
 	popl %ebp
+	ret
+
+.align 2
+sys_execve:
+	lea EIP(%esp), %eax
+	push %eax
+	call do_execve
+	addl $4, %esp
 	ret
 
 .align 2

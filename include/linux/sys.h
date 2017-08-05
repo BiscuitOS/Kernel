@@ -9,6 +9,7 @@ extern int sys_waitpid();
 extern int sys_creat();
 extern int sys_link();
 extern int sys_unlink();
+extern int sys_execve();
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -22,4 +23,5 @@ sys_waitpid, /* wait for process termination */
 sys_creat, /* create a file or device */
 sys_link, /* make a new name for a file */
 sys_unlink, /* delete a name and possibly the file it refers to */
+sys_execve, /* execute program */
 };

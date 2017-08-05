@@ -13,6 +13,7 @@ OBJS += char_dev.o
 OBJS += file_dev.o
 OBJS += block_dev.o
 OBJS += namei.o
+OBJS += exec.o
 
 all: $(OBJS) fs.o ECHO
 

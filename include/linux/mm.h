@@ -9,4 +9,5 @@ extern void free_page(unsigned long);
 extern unsigned long get_free_page(void);
 extern void *kmalloc(unsigned int len);
 extern void free_s(void *obj, int size);
+extern unsigned long put_page(unsigned long page, unsigned long address);
 #endif
