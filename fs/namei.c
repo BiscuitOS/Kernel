@@ -363,3 +363,98 @@ int open_namei(const char *pathname, int flag, int mode,
     *res_inode = inode;
     return 0;
 }
+
+/*
+ * namei()
+ *
+ * is used by most simple commands to get the inode of a specified name.
+ * Open, link etc use their own routines, but this is enough for things
+ * like 'chmod' etc.
+ */
+struct m_inode *namei(const char *pathname)
+{
+    const char *basename;
+    int inr, dev, namelen;
+    struct m_inode *dir;
+    struct buffer_head *bh;
+    struct dir_entry *de;
+
+    if (!(dir = dir_namei(pathname, &namelen, &basename)))
+        return NULL;
+    if (!namelen)       /* special case: '/usr/' etc */
+        return dir;
+    bh = find_entry(&dir, basename, namelen, &de);
+    if (!bh) {
+        iput(dir);
+        return NULL;
+    }
+    inr = de->inode;
+    dev = dir->i_dev;
+    brelse(bh);
+    iput(dir);
+    dir = iget(dev, inr);
+    if (dir) {
+        dir->i_atime = CURRENT_TIME;
+        dir->i_dirt  = 1;
+    }
+    return dir;
+}
+
+int sys_link(const char *oldname, const char *newname)
+{
+    struct dir_entry *de;
+    struct m_inode *oldinode, *dir;
+    struct buffer_head *bh;
+    const char *basename;
+    int namelen;
+
+    oldinode = namei(oldname);
+    if (!oldinode)
+        return -ENOENT;
+    if (S_ISDIR(oldinode->i_mode)) {
+        iput(oldinode);
+        return -EPERM;
+    }
+    dir = dir_namei(newname, &namelen, &basename);
+    if (!dir) {
+        iput(oldinode);
+        return -EACCES;
+    }
+    if (!namelen) {
+        iput(oldinode);
+        iput(dir);
+        return -EPERM;
+    }
+    if (dir->i_dev != oldinode->i_dev) {
+        iput(dir);
+        iput(oldinode);
+        return -EXDEV;
+    }
+    if (!permission(dir, MAY_WRITE)) {
+        iput(dir);
+        iput(oldinode);
+        return -EACCES;
+    }
+    bh = find_entry(&dir, basename, namelen, &de);
+    if (bh) {
+        brelse(bh);
+        iput(dir);
+        iput(oldinode);
+        return -EEXIST;
+    }
+    bh = add_entry(dir, basename, namelen, &de);
+    if (!bh) {
+        iput(dir);
+        iput(oldinode);
+        return -ENOSPC;
+    }
+    de->inode = oldinode->i_num;
+    bh->b_dirt = 1;
+    brelse(bh);
+    iput(dir);
+    oldinode->i_nlinks++;
+    oldinode->i_ctime = CURRENT_TIME;
+    oldinode->i_dirt = 1;
+    iput(oldinode);
+    return 0;
+}
