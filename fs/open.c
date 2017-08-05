@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 
 #include <errno.h>
+#include <fcntl.h>
 
 int sys_close(unsigned int fd)
 {
@@ -80,18 +81,7 @@ int sys_open(const char *filename, int flag, int mode)
     return (fd);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+int sys_creat(const char *pathname, int mode)
+{
+    return sys_open(pathname, O_CREAT | O_TRUNC, mode);
+}
