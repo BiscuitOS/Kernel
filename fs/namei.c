@@ -458,3 +458,61 @@ int sys_link(const char *oldname, const char *newname)
     iput(oldinode);
     return 0;
 }
+
+int sys_unlink(const char *name)
+{
+    const char *basename;
+    int namelen;
+    struct m_inode *dir, *inode;
+    struct buffer_head *bh;
+    struct dir_entry *de;
+
+    if (!(dir = dir_namei(name, &namelen, &basename)))
+        return -ENOENT;
+    if (!namelen) {
+        iput(dir);
+        return -ENOENT;
+    }
+    if (!permission(dir, MAY_WRITE)) {
+        iput(dir);
+        return -EPERM;
+    }
+    bh = find_entry(&dir, basename, namelen, &de);
+    if (!bh) {
+        iput(dir);
+        return -ENOENT;
+    }
+    if (!(inode = iget(dir->i_dev, de->inode))) {
+        iput(dir);
+        brelse(bh);
+        return -ENOENT;
+    }
+    if ((dir->i_mode & S_ISVTX) && !suser() &&
+         current->euid != inode->i_uid &&
+         current->euid != dir->i_uid) {
+        iput(dir);
+        iput(inode);
+        brelse(bh);
+        return -EPERM;
+    }
+    if (S_ISDIR(inode->i_mode)) {
+        iput(inode);
+        iput(dir);
+        brelse(bh);
+        return -EPERM;
+    }
+    if (!inode->i_nlinks) {
+        printk("Deleting nonexistent file (%04x:%d), %d\n",
+               inode->i_dev, inode->i_num, inode->i_nlinks);
+        inode->i_nlinks = 1;
+    }
+    de->inode  = 0;
+    bh->b_dirt = 1;
+    brelse(bh);
+    inode->i_nlinks--;
+    inode->i_dirt = 1;
+    inode->i_ctime = CURRENT_TIME;
+    iput(inode);
+    iput(dir);
+    return 0;
+}
