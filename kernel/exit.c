@@ -8,6 +8,12 @@
 #include <linux/kernel.h>
 #include <linux/mm.h>
 #include <linux/fs.h>
+
+#include <sys/types.h>
+#include <sys/wait.h>
+
+#include <asm/segment.h>
+
 #include <errno.h>
 
 extern int sys_close(unsigned int);
@@ -106,4 +112,59 @@ int do_exit(long code)
 int sys_exit(int error_code)
 {
     return do_exit((error_code & 0xff) << 8);
+}
+
+int sys_waitpid(pid_t pid, unsigned long *stat_addr, int options)
+{
+    int flag, code;
+    struct task_struct **p;
+
+    verify_area(stat_addr, 4);
+repeat:
+    flag = 0;
+    for (p = &LAST_TASK; p > &FIRST_TASK; --p) {
+        if (!*p || *p == current)
+            continue;
+        if ((*p)->father != current->pid)
+            continue;
+        if (pid > 0) {
+            if ((*p)->pid != pid)
+                continue;
+        } else if (!pid) {
+            if ((*p)->pgrp != current->pgrp)
+                continue;
+        } else if (pid != -1) {
+            if ((*p)->pgrp != -pid)
+                continue;
+        }
+        switch ((*p)->state) {
+        case TASK_STOPPED:
+            if (!(options & WUNTRACED))
+                continue;
+            put_fs_long(0x7f, stat_addr);
+            return (*p)->pid;
+        case TASK_ZOMBIE:
+            current->cutime += (*p)->utime;
+            current->cstime += (*p)->stime;
+            flag = (*p)->pid;
+            code = (*p)->exit_code;
+            release(*p);
+            put_fs_long(code, stat_addr);
+            return flag;
+        default:
+            flag = 1;
+            continue;
+        }
+    }
+    if (flag) {
+        if (options & WNOHANG)
+            return 0;
+        current->state = TASK_INTERRUPTIBLE;
+        schedule();
+        if (!(current->signal &= ~(1 << (SIGCHLD - 1))))
+            goto repeat;
+        else
+            return -EINTR;
+    }
+    return -ECHILD;
 }
