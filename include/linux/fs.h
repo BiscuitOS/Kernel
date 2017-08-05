@@ -164,6 +164,10 @@ extern int create_block(struct m_inode *inode, int block);
 extern int file_write(struct m_inode *inode, struct file *filp, char *buf, int count);
 extern int block_write(int dev, long *pos, char *buf, int count);
 extern int write_pipe(struct m_inode *inode, char *buf, int count);
+extern struct m_inode *new_inode(int dev);
+extern struct m_inode * get_empty_inode(void);
+extern int open_namei(const char *pathname, int flag, int mode,
+               struct m_inode **res_inode);
 
 extern struct file file_table[NR_FILE];
 extern struct super_block super_block[NR_SUPER];
