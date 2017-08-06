@@ -1,6 +1,22 @@
 #ifndef _SYS_STAT_H
 #define _SYS_STAT_H
 
+#include <sys/types.h>
+
+struct stat {
+    dev_t    st_dev;
+    ino_t    st_ino;
+    umode_t  st_mode;
+    nlink_t  st_nlink;
+    uid_t    st_uid;
+    gid_t    st_gid;
+    dev_t    st_rdev;
+    off_t    st_size;
+    time_t   st_atime;
+    time_t   st_mtime;
+    time_t   st_ctime;
+};
+
 #define S_IFMT           00170000
 #define S_IFREG          0100000
 #define S_IFBLK          0060000

@@ -14,6 +14,7 @@ OBJS += file_dev.o
 OBJS += block_dev.o
 OBJS += namei.o
 OBJS += exec.o
+OBJS += stat.o
 
 all: $(OBJS) fs.o ECHO
 
