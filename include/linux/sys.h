@@ -18,6 +18,7 @@ extern int sys_chown();
 extern int sys_break();
 extern int sys_stat();
 extern int sys_lseek();
+extern int sys_getpid();
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -40,4 +41,5 @@ sys_chown, /* change ownership of a file */
 sys_break, /* call exists only for compatibility */
 sys_stat, /* --- */
 sys_lseek, /* reposition read/write file offset */
+sys_getpid, /* get process identification */
 };

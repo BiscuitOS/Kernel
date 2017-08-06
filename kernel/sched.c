@@ -274,11 +274,11 @@ void math_state_restore()
 		return;
 	__asm__("fwait");
 	if (last_task_used_math) {
-		__asm__("fnsave %0" :: "m" (last_task_used_math->tss.i387));	
+		__asm__("fnsave %0" :: "m" (last_task_used_math->tss.i387));
 	}
 	last_task_used_math = current;
 	if (current->used_math) {
-		__asm__("frstor %0" :: "m" (current->tss.i387));		
+		__asm__("frstor %0" :: "m" (current->tss.i387));
 	} else {
 		__asm__("fninit" ::);
 		current->used_math = 1;
@@ -291,7 +291,7 @@ void do_floppy_timer(void)
 	unsigned char mask = 0x10;
 
 	for (i = 0; i < 4; i++, mask <<= 1) {
-		if (!(mask & current_DOR))	
+		if (!(mask & current_DOR))
 			continue;
 		if (mon_timer[i]) {
 			if (!--mon_timer[i])
@@ -319,7 +319,7 @@ void do_timer(long cpl)
 		current->stime++;
 
 	if (next_timer) {
-		next_timer->jiffies--;		
+		next_timer->jiffies--;
 		while (next_timer && next_timer->jiffies <= 0) {
 			void (*fn)(void);
 
@@ -331,7 +331,7 @@ void do_timer(long cpl)
 	}
 	if (current_DOR & 0xf0)
 		do_floppy_timer();
-	if ((--current->counter) > 0) 
+	if ((--current->counter) > 0)
 		return;
 	current->counter = 0;
 	if (!cpl)
@@ -357,4 +357,9 @@ void show_stat(void)
     for (i = 0; i < NR_TASKS; i++)
         if (task[i])
             show_task(i, task[i]);
+}
+
+int sys_getpid(void)
+{
+    return current->pid;
 }
