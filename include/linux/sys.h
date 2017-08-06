@@ -11,6 +11,7 @@ extern int sys_link();
 extern int sys_unlink();
 extern int sys_execve();
 extern int sys_chdir();
+extern int sys_time();
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -26,4 +27,5 @@ sys_link, /* make a new name for a file */
 sys_unlink, /* delete a name and possibly the file it refers to */
 sys_execve, /* execute program */
 sys_chdir, /* change working directory */
+sys_time, /* get time in seconds */
 };

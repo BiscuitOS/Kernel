@@ -11,6 +11,7 @@ OBJS += signal.o
 OBJS += mktime.o
 OBJS += fork.o
 OBJS += exit.o
+OBJS += sys.o
 
 all: $(OBJS) KERNEL
 
