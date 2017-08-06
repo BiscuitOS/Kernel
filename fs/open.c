@@ -103,6 +103,23 @@ int sys_chmod(const char *filename, int mode)
     return 0;
 }
 
+int sys_chown(const char *filename, int uid, int gid)
+{
+    struct m_inode *inode;
+
+    if (!(inode = namei(filename)))
+        return -ENOENT;
+    if (!suser()) {
+        iput(inode);
+        return -EACCES;
+    }
+    inode->i_uid = uid;
+    inode->i_gid = gid;
+    inode->i_dirt = 1;
+    iput(inode);
+    return 0;
+}
+
 int sys_chdir(const char *filename)
 {
     struct m_inode *inode;

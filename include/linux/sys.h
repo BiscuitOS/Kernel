@@ -14,6 +14,7 @@ extern int sys_chdir();
 extern int sys_time();
 extern int sys_mknod();
 extern int sys_chmod();
+extern int sys_chown();
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -32,4 +33,5 @@ sys_chdir, /* change working directory */
 sys_time, /* get time in seconds */
 sys_mknod, /* create a directory or special or ordinary file */
 sys_chmod, /* change permissions of a file */
+sys_chown, /* change ownership of a file */
 };
