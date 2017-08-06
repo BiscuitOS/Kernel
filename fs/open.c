@@ -6,6 +6,7 @@
 #include <linux/fs.h>
 #include <linux/sched.h>
 #include <linux/tty.h>
+#include <linux/kernel.h>
 
 #include <sys/stat.h>
 
@@ -84,6 +85,22 @@ int sys_open(const char *filename, int flag, int mode)
 int sys_creat(const char *pathname, int mode)
 {
     return sys_open(pathname, O_CREAT | O_TRUNC, mode);
+}
+
+int sys_chmod(const char *filename, int mode)
+{
+    struct m_inode *inode;
+
+    if (!(inode = namei(filename)))
+        return -ENOENT;
+    if ((current->euid != inode->i_uid) && !suser()) {
+        iput(inode);
+        return -EACCES;
+    }
+    inode->i_mode = (mode & 07777) | (inode->i_mode & ~07777);
+    inode->i_dirt = 1;
+    iput(inode);
+    return 0;
 }
 
 int sys_chdir(const char *filename)

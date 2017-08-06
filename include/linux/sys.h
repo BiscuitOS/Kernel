@@ -13,6 +13,7 @@ extern int sys_execve();
 extern int sys_chdir();
 extern int sys_time();
 extern int sys_mknod();
+extern int sys_chmod();
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -30,4 +31,5 @@ sys_execve, /* execute program */
 sys_chdir, /* change working directory */
 sys_time, /* get time in seconds */
 sys_mknod, /* create a directory or special or ordinary file */
+sys_chmod, /* change permissions of a file */
 };
