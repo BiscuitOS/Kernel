@@ -459,6 +459,57 @@ int sys_link(const char *oldname, const char *newname)
     return 0;
 }
 
+int sys_mknod(const char *filename, int mode, int dev)
+{
+    const char *basename;
+    int namelen;
+    struct m_inode *dir, *inode;
+    struct buffer_head *bh;
+    struct dir_entry *de;
+
+    if (!suser())
+        return -EPERM;
+    if (!(dir = dir_namei(filename, &namelen, &basename)))
+        return -ENOENT;
+    if (!namelen) {
+        iput(dir);
+        return -ENOENT;
+    }
+    if (!permission(dir, MAY_WRITE)) {
+        iput(dir);
+        return -EPERM;
+    }
+    bh = find_entry(&dir, basename, namelen, &de);
+    if (bh) {
+        brelse(bh);
+        iput(dir);
+        return -EEXIST;
+    }
+    inode = new_inode(dir->i_dev);
+    if (!inode) {
+        iput(dir);
+        return -ENOSPC;
+    }
+    inode->i_mode = mode;
+    if (S_ISBLK(mode) || S_ISCHR(mode))
+        inode->i_zone[0] = dev;
+    inode->i_mtime = inode->i_atime = CURRENT_TIME;
+    inode->i_dirt = 1;
+    bh = add_entry(dir, basename, namelen, &de);
+    if (!bh) {
+        iput(dir);
+        inode->i_nlinks = 0;
+        iput(inode);
+        return -ENOSPC;
+    }
+    de->inode = inode->i_num;
+    bh->b_dirt = 1;
+    iput(dir);
+    iput(inode);
+    brelse(bh);
+    return 0;
+}
+
 int sys_unlink(const char *name)
 {
     const char *basename;

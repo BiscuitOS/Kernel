@@ -12,6 +12,7 @@ extern int sys_unlink();
 extern int sys_execve();
 extern int sys_chdir();
 extern int sys_time();
+extern int sys_mknod();
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -28,4 +29,5 @@ sys_unlink, /* delete a name and possibly the file it refers to */
 sys_execve, /* execute program */
 sys_chdir, /* change working directory */
 sys_time, /* get time in seconds */
+sys_mknod, /* create a directory or special or ordinary file */
 };
