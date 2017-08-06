@@ -19,6 +19,7 @@ extern int sys_break();
 extern int sys_stat();
 extern int sys_lseek();
 extern int sys_getpid();
+extern int sys_mount();
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -42,4 +43,5 @@ sys_break, /* call exists only for compatibility */
 sys_stat, /* --- */
 sys_lseek, /* reposition read/write file offset */
 sys_getpid, /* get process identification */
+sys_mount, /* mount filesystems */
 };
