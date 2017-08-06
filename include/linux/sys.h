@@ -17,6 +17,7 @@ extern int sys_chmod();
 extern int sys_chown();
 extern int sys_break();
 extern int sys_stat();
+extern int sys_lseek();
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -38,4 +39,5 @@ sys_chmod, /* change permissions of a file */
 sys_chown, /* change ownership of a file */
 sys_break, /* call exists only for compatibility */
 sys_stat, /* --- */
+sys_lseek, /* reposition read/write file offset */
 };

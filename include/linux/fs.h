@@ -4,6 +4,26 @@
 #include <linux/types.h>
 #include <sys/types.h>
 
+/*
+ * devices are as follows: (same as minix, so we can use the minix
+ * file system. These are major numbers.)
+ *
+ * 0 - unused (nodev)
+ * 1 - /dev/mem
+ * 2 - /dev/fd
+ * 3 - /dev/hd
+ * 4 - /dev/ttyx
+ * 5 - /dev/tty
+ * 6 - /dev/lp
+ * 7 - unnamed pipes
+ */
+
+#define IS_SEEKABLE(x) ((x) >=1 && (x)<=3)
+
+#define READ       0
+#define WRITE      1
+#define READA      2   /* read-ahead - don't pause */
+#define WRITEA     3   /* "write-ahead" -silly, but somewhat useful */
 
 #define NR_OPEN    20
 #define NR_SUPER   8
@@ -38,8 +58,6 @@ __asm__("incl %0\n\tandl $4095,%0"::"m" (head))
 
 #define INODES_PER_BLOCK ((BLOCK_SIZE) / (sizeof(struct d_inode)))
 #define DIR_ENTRIES_PER_BLOCK ((BLOCK_SIZE) / sizeof(struct dir_entry))
-
-enum {READ, WRITE, READA};
 
 struct buffer_head {
     char *b_data;                 /* pointer to data block (1024 bytes) */

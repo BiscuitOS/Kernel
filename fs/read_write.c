@@ -46,6 +46,36 @@ int sys_read(unsigned int fd, char *buf, int count)
     return -EINVAL;
 }
 
+int sys_lseek(unsigned int fd, off_t offset, int origin)
+{
+    struct file *file;
+    int tmp;
+
+    if (fd >= NR_OPEN || !(file = current->filp[fd]) || !(file->f_inode)
+        || !IS_SEEKABLE(MAJOR(file->f_inode->i_dev)))
+        return -EBADF;
+    if (file->f_inode->i_pipe)
+        return -ESPIPE;
+    switch (origin) {
+    case 0:
+        if (offset < 0)
+            return -EINVAL;
+        file->f_pos = offset;
+        break;
+    case 1:
+        if (file->f_pos + offset < 0)
+            return -EINVAL;
+        file->f_pos += offset;
+        break;
+    case 2:
+        if ((tmp = file->f_inode->i_size + offset) < 0)
+            return -EINVAL;
+    default:
+        return -EINVAL;
+    }
+    return file->f_pos;
+}
+
 int sys_write(unsigned int fd, char *buf, int count)
 {
     struct file *file;
