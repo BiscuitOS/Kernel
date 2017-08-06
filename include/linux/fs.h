@@ -190,4 +190,5 @@ extern struct m_inode *namei(const char *pathname);
 
 extern struct file file_table[NR_FILE];
 extern struct super_block super_block[NR_SUPER];
+extern struct m_inode inode_table[NR_INODE];
 #endif

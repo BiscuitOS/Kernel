@@ -250,3 +250,34 @@ int sys_mount(char *dev_name, char *dir_name, int rw_flag)
     dir_i->i_dirt = 1;      /* NOTE! we don't iput(dir_i) */
     return 0;               /* we do that in umount */
 }
+
+int sys_umount(char *dev_name)
+{
+    struct m_inode *inode;
+    struct super_block *sb;
+    int dev;
+
+    if (!(inode = namei(dev_name)))
+        return -ENOENT;
+    dev = inode->i_zone[0];
+    if (!S_ISBLK(inode->i_mode)) {
+        iput(inode);
+        return -ENOTBLK;
+    }
+    iput(inode);
+    if (dev == ROOT_DEV)
+        return -EBUSY;
+    if (!(sb = get_super(dev)) || !(sb->s_imount))
+        return -ENOENT;
+    if (!sb->s_imount->i_mount)
+        printk("Mounted inode has i_mount=0\n");
+    for (inode = inode_table + 0; inode < inode_table + NR_INODE; inode++)
+        if (inode->i_dev == dev && inode->i_count)
+    sb->s_imount->i_mount = 0;
+    iput(sb->s_imount);
+    sb->s_imount = NULL;
+    iput(sb->s_isup);
+    put_super(dev);
+    sync_dev(dev);
+    return 0;
+}
