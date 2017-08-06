@@ -8,6 +8,8 @@
 
 #include <asm/segment.h>
 
+#include <errno.h>
+
 int sys_time(long *tloc)
 {
     int i;
@@ -18,4 +20,9 @@ int sys_time(long *tloc)
         put_fs_long(i, (unsigned long *)tloc);
     }
     return i;
+}
+
+int sys_break()
+{
+    return -ENOSYS;
 }
