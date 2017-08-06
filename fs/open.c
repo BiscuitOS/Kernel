@@ -85,3 +85,18 @@ int sys_creat(const char *pathname, int mode)
 {
     return sys_open(pathname, O_CREAT | O_TRUNC, mode);
 }
+
+int sys_chdir(const char *filename)
+{
+    struct m_inode *inode;
+
+    if (!(inode = namei(filename)))
+        return -ENOENT;
+    if (!S_ISDIR(inode->i_mode)) {
+        iput(inode);
+        return -ENOTDIR;
+    }
+    iput(current->pwd);
+    current->pwd = inode;
+    return 0;
+}
