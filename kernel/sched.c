@@ -363,3 +363,8 @@ int sys_getpid(void)
 {
     return current->pid;
 }
+
+int sys_getuid(void)
+{
+    return current->uid;
+}
