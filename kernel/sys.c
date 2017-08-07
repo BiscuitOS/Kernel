@@ -69,3 +69,8 @@ int sys_stime(long *tptr)
     startup_time = get_fs_long((unsigned long *)tptr) - jiffies / HZ;
     return 0;
 }
+
+int sys_ptrace()
+{
+    return -ENOSYS;
+}

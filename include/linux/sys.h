@@ -23,8 +23,9 @@ extern int sys_mount();
 extern int sys_umount();
 extern int sys_setuid();
 extern int sys_getuid();
-extern int sys_setreuid();
 extern int sys_stime();
+extern int sys_ptrace();
+extern int sys_setreuid();
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -52,6 +53,7 @@ sys_mount, /* mount filesystems */
 sys_umount, /* unmount filesystem */
 sys_setuid, /* set user identity */
 sys_getuid, /* get user identity */
-sys_setreuid, /* set real and/or effective user or group ID */
 sys_stime, /* set time */
+sys_ptrace, /* process trace */
+sys_setreuid, /* set real and/or effective user or group ID */
 };
