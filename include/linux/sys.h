@@ -21,6 +21,8 @@ extern int sys_lseek();
 extern int sys_getpid();
 extern int sys_mount();
 extern int sys_umount();
+extern int sys_setuid();
+extern int sys_setreuid();
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -46,4 +48,6 @@ sys_lseek, /* reposition read/write file offset */
 sys_getpid, /* get process identification */
 sys_mount, /* mount filesystems */
 sys_umount, /* unmount filesystem */
+sys_setuid, /* set user identity */
+sys_setreuid, /* set real and/or effective user or group ID */
 };
