@@ -61,3 +61,11 @@ int sys_setuid(int uid)
 {
     return (sys_setreuid(uid, uid));
 }
+
+int sys_stime(long *tptr)
+{
+    if (!suser())
+        return -EPERM;
+    startup_time = get_fs_long((unsigned long *)tptr) - jiffies / HZ;
+    return 0;
+}
