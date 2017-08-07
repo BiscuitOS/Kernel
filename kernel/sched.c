@@ -368,3 +368,13 @@ int sys_getuid(void)
 {
     return current->uid;
 }
+
+int sys_alarm(long seconds)
+{
+    int old = current->alarm;
+
+    if (old)
+        old = (old - jiffies) / HZ;
+    current->alarm = (seconds > 0) ? (jiffies + HZ * seconds) : 0;
+    return 0;
+}
