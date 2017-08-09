@@ -27,6 +27,7 @@ extern int sys_stime();
 extern int sys_ptrace();
 extern int sys_alarm();
 extern int sys_fstat();
+extern int sys_pause();
 extern int sys_setreuid();
 
 fn_ptr sys_call_table[] = {
@@ -59,5 +60,6 @@ sys_stime, /* set time */
 sys_ptrace, /* process trace */
 sys_alarm, /* set an alarm clock for delivery of a signal */
 sys_fstat, /* */
+sys_pause, /* wait for signal */
 sys_setreuid, /* set real and/or effective user or group ID */
 };

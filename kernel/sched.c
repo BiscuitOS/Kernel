@@ -378,3 +378,10 @@ int sys_alarm(long seconds)
     current->alarm = (seconds > 0) ? (jiffies + HZ * seconds) : 0;
     return 0;
 }
+
+int sys_pause(void)
+{
+    current->state = TASK_INTERRUPTIBLE;
+    schedule();
+    return 0;
+}
