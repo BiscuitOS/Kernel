@@ -74,3 +74,8 @@ int sys_ptrace()
 {
     return -ENOSYS;
 }
+
+int sys_stty()
+{
+    return -ENOSYS;
+}

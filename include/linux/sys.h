@@ -29,6 +29,7 @@ extern int sys_alarm();
 extern int sys_fstat();
 extern int sys_pause();
 extern int sys_utime();
+extern int sys_stty();
 extern int sys_setreuid();
 
 fn_ptr sys_call_table[] = {
@@ -63,5 +64,6 @@ sys_alarm, /* set an alarm clock for delivery of a signal */
 sys_fstat, /* */
 sys_pause, /* wait for signal */
 sys_utime, /* change access and/or modification times of an inode */
+sys_stty, /* set mode of typewriter */
 sys_setreuid, /* set real and/or effective user or group ID */
 };
