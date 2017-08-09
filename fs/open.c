@@ -10,8 +10,11 @@
 
 #include <sys/stat.h>
 
+#include <asm/segment.h>
+
 #include <errno.h>
 #include <fcntl.h>
+#include <utime.h>
 
 int sys_close(unsigned int fd)
 {
@@ -132,5 +135,24 @@ int sys_chdir(const char *filename)
     }
     iput(current->pwd);
     current->pwd = inode;
+    return 0;
+}
+
+int sys_utime(char *filename, struct utimbuf *times)
+{
+    struct m_inode *inode;
+    long actime, modtime;
+
+    if (!(inode = namei(filename)))
+        return -ENOENT;
+    if (times) {
+        actime  = get_fs_long((unsigned long *) &times->actime);
+        modtime = get_fs_long((unsigned long *) &times->modtime);
+    } else
+        actime = modtime = CURRENT_TIME;
+    inode->i_atime = actime;
+    inode->i_mtime = modtime;
+    inode->i_dirt  = 1;
+    iput(inode);
     return 0;
 }
