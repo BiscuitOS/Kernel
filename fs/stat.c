@@ -44,3 +44,14 @@ int sys_stat(char *filename, struct stat *statbuf)
     iput(inode);
     return 0;
 }
+
+int sys_fstat(unsigned int fd, struct stat *statbuf)
+{
+    struct file *f;
+    struct m_inode *inode;
+
+    if (fd >= NR_OPEN || !(f = current->filp[fd]) || !(inode = f->f_inode))
+        return -EBADF;
+    cp_stat(inode, statbuf);
+    return 0;
+}
