@@ -79,3 +79,43 @@ int sys_stty()
 {
     return -ENOSYS;
 }
+
+int sys_gtty()
+{
+    return -ENOSYS;
+}
+
+int sys_rename()
+{
+    return -ENOSYS;
+}
+
+int sys_prof()
+{
+    return -ENOSYS;
+}
+
+int sys_acct()
+{
+    return -ENOSYS;
+}
+
+int sys_phys()
+{
+    return -ENOSYS;
+}
+
+int sys_lock()
+{
+    return -ENOSYS;
+}
+
+int sys_mpx()
+{
+    return -ENOSYS;
+}
+
+int sys_ulimit()
+{
+    return -ENOSYS;
+}

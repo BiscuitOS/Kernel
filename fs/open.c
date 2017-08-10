@@ -156,3 +156,35 @@ int sys_utime(char *filename, struct utimbuf *times)
     iput(inode);
     return 0;
 }
+
+/*
+ * XXX should we use the real or effective uid? BSD uses the real uid,
+ * so as to make this call useful to setuid programs.
+ */
+int sys_access(const char *filename, int mode)
+{
+    struct m_inode *inode;
+    int res, i_mode;
+
+    mode &= 0007;
+    if (!(inode = namei(filename)))
+        return -EACCES;
+    i_mode = res = inode->i_mode & 0777;
+    iput(inode);
+    if (current->uid == inode->i_uid)
+        res >>= 6;
+    else if (current->gid == inode->i_gid)
+        res >>= 6;
+    if ((res & 0007 & mode) == mode)
+        return 0;
+    /*
+     * XXX we are doing this test last because we really should be
+     * swapping the effective with the real user id (temporarily),
+     * and then calling suser() routine. If we do call the suser()
+     * routine, it needs to be called last.
+     */
+    if ((!current->uid) &&
+        (!(mode & 1) || (i_mode & 0111)))
+        return 0;
+    return -EACCES;
+}
