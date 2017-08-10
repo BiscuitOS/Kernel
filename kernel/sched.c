@@ -385,3 +385,10 @@ int sys_pause(void)
     schedule();
     return 0;
 }
+
+int sys_nice(long increment)
+{
+    if (current->priority - increment > 0)
+        current->priority -= increment;
+    return 0;
+}

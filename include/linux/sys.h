@@ -33,6 +33,7 @@ extern int sys_stty();
 extern int sys_gtty();
 extern int sys_access();
 extern int sys_setreuid();
+extern int sys_nice();
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -69,5 +70,6 @@ sys_utime, /* change access and/or modification times of an inode */
 sys_stty, /* set mode of typewriter */
 sys_gtty, /* get typewriter status */
 sys_access, /* check user's permissions for a file */
+sys_nice, /* change process priority */
 sys_setreuid, /* set real and/or effective user or group ID */
 };
