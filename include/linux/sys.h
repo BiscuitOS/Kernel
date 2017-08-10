@@ -35,6 +35,7 @@ extern int sys_access();
 extern int sys_nice();
 extern int sys_ftime();
 extern int sys_sync();
+extern int sys_kill();
 extern int sys_setreuid();
 
 fn_ptr sys_call_table[] = {
@@ -75,5 +76,6 @@ sys_access, /* check user's permissions for a file */
 sys_nice, /* change process priority */
 sys_ftime, /* --- */
 sys_sync, /* write buffer into disk */
+sys_kill, /* send a signal to a process  */
 sys_setreuid, /* set real and/or effective user or group ID */
 };

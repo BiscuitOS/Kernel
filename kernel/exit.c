@@ -168,3 +168,30 @@ repeat:
     }
     return -ECHILD;
 }
+
+/*
+ * XXX need to check permissions needed to send signals to process
+ * group, etc. etc. kill() permissions semantics are tricky!
+ */
+int sys_kill(int pid, int sig)
+{
+    struct task_struct **p = NR_TASKS + task;
+    int err, retval = 0;
+
+    if (!pid) while (--p > &FIRST_TASK) {
+        if (*p && (*p)->pgrp == current->pid)
+            if ((err = send_sig(sig, *p, 1)))
+                retval = err;
+    } else if (pid > 0) while (--p > &FIRST_TASK) {
+        if (*p && (*p)->pid == pid)
+            if ((err = send_sig(sig, *p, 0)))
+                retval = err;
+    } else if (pid == -1) while (--p > &FIRST_TASK) {
+        if ((err = send_sig(sig, *p, 0)))
+            retval = err;
+    } else while (--p > &FIRST_TASK)
+        if (*p && (*p)->pgrp == -pid)
+            if ((err = send_sig(sig, *p, 0)))
+                retval = err;
+    return retval;
+}
