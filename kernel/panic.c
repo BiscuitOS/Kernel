@@ -1,3 +1,8 @@
+/*
+ * linux/kernel/panic.c
+ *
+ * (C) 1991 Linus Torvalds
+ */
 
 /*
  * This function is used through-out the kernel (include mm and fs)
@@ -8,9 +13,7 @@
 #include <linux/kernel.h>
 #include <linux/sched.h>
 
-void sys_sync(void)
-{
-}
+void sys_sync(void);  /* it's really int */
 
 void panic(const char *s)
 {

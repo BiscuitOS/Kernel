@@ -119,3 +119,8 @@ int sys_ulimit()
 {
     return -ENOSYS;
 }
+
+int sys_ftime()
+{
+    return -ENOSYS;
+}
