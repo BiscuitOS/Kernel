@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <const.h>
+#include <string.h>
 
 #define MAY_EXEC     1
 #define MAY_WRITE    2
@@ -565,5 +566,205 @@ int sys_unlink(const char *name)
     inode->i_ctime = CURRENT_TIME;
     iput(inode);
     iput(dir);
+    return 0;
+}
+
+int sys_mkdir(const char *pathname, int mode)
+{
+    const char *basename;
+    int namelen;
+    struct m_inode *dir, *inode;
+    struct buffer_head *bh, *dir_block;
+    struct dir_entry *de;
+
+    if (!suser())
+        return -EPERM;
+    if (!(dir = dir_namei(pathname, &namelen, &basename)))
+        return -ENOENT;
+    if (!namelen) {
+        iput(dir);
+        return -ENOENT;
+    }
+    if (!permission(dir, MAY_WRITE)) {
+        iput(dir);
+        return -EPERM;
+    }
+    bh = find_entry(&dir, basename, namelen, &de);
+    if (bh) {
+        brelse(bh);
+        iput(dir);
+        return -EEXIST;
+    }
+    inode = new_inode(dir->i_dev);
+    if (!inode) {
+        iput(dir);
+        return -ENOSPC;
+    }
+    inode->i_size = 32;
+    inode->i_dirt = 1;
+    inode->i_mtime = inode->i_atime = CURRENT_TIME;
+    if (!(inode->i_zone[0] = new_block(inode->i_dev))) {
+        iput(dir);
+        inode->i_nlinks--;
+        iput(inode);
+        return -ENOSPC;
+    }
+    inode->i_dirt = 1;
+    if (!(dir_block = bread(inode->i_dev, inode->i_zone[0]))) {
+        iput(dir);
+        free_block(inode->i_dev, inode->i_zone[0]);
+        inode->i_nlinks--;
+        iput(inode);
+        return -ERROR;
+    }
+    de = (struct dir_entry *)dir_block->b_data;
+    de->inode = inode->i_num;
+    strcpy(de->name, ".");
+    de++;
+    de->inode = dir->i_num;
+    strcpy(de->name, "..");
+    inode->i_nlinks = 2;
+    dir_block->b_dirt = 1;
+    brelse(dir_block);
+    inode->i_mode = I_DIRECTORY | (mode & 0777 & ~current->umask);
+    inode->i_dirt = 1;
+    bh = add_entry(dir, basename, namelen, &de);
+    if (!bh) {
+        iput(dir);
+        free_block(inode->i_dev, inode->i_zone[0]);
+        inode->i_nlinks = 0;
+        iput(inode);
+        return -ENOSPC;
+    }
+    de->inode = inode->i_num;
+    bh->b_dirt = 1;
+    dir->i_nlinks++;
+    dir->i_dirt = 1;
+    iput(dir);
+    iput(inode);
+    brelse(bh);
+    return 0;
+}
+
+/*
+ * routine to check that the specified directory is empty (for rmdir)
+ */
+static int empty_dir(struct m_inode *inode)
+{
+    int nr, block;
+    int len;
+    struct buffer_head *bh;
+    struct dir_entry *de;
+
+    len = inode->i_size / sizeof(struct dir_entry);
+    if (len < 2 || !inode->i_zone[0] ||
+        !(bh = bread(inode->i_dev, inode->i_zone[0]))) {
+        printk("waring - bad directory on dev %04x\n", inode->i_dev);
+        return 0;
+    }
+    de = (struct dir_entry *)bh->b_data;
+    if (de[0].inode != inode->i_num || !de[1].inode ||
+        strcmp(".", de[0].name) || strcmp("..", de[1].name)) {
+        printk("warning - bad directory on dev %04x\n", inode->i_dev);
+        return 0;
+    }
+    nr = 2;
+    de += 2;
+    while (nr < len) {
+        if ((void *)de >= (void *)(bh->b_data + BLOCK_SIZE)) {
+            brelse(bh);
+            block = bmap(inode, nr / DIR_ENTRIES_PER_BLOCK);
+            if (!block) {
+                nr += DIR_ENTRIES_PER_BLOCK;
+                continue;
+            }
+            if (!(bh = bread(inode->i_dev, block)))
+                return 0;
+            de = (struct dir_entry *)bh->b_data;
+        }
+        if (de->inode) {
+            brelse(bh);
+            return 0;
+        }
+        de++;
+        nr++;
+    }
+    brelse(bh);
+    return 1;
+}
+
+int sys_rmdir(const char *name)
+{
+    const char *basename;
+    int namelen;
+    struct m_inode *dir, *inode;
+    struct buffer_head *bh;
+    struct dir_entry *de;
+
+    if (!suser())
+        return -EPERM;
+    if (!(dir = dir_namei(name, &namelen, &basename)))
+        return -ENOENT;
+    if (!namelen) {
+        iput(dir);
+        return -ENOENT;
+    }
+    if (!permission(dir, MAY_WRITE)) {
+        iput(dir);
+        return -EPERM;
+    }
+    bh = find_entry(&dir, basename, namelen, &de);
+    if (!bh) {
+        iput(dir);
+        return -ENOENT;
+    }
+    if (!(inode = iget(dir->i_dev, de->inode))) {
+        iput(dir);
+        brelse(bh);
+        return -EPERM;
+    }
+    if ((dir->i_mode & S_ISVTX) && current->euid &&
+         inode->i_uid != current->euid) {
+        iput(dir);
+        iput(inode);
+        brelse(bh);
+        return -EPERM;
+    }
+    if (inode->i_dev != dir->i_dev || inode->i_count > 1) {
+        iput(dir);
+        iput(inode);
+        brelse(bh);
+        return -EPERM;
+    }
+    if (inode == dir) {  /* we may not delete ".", but "../dir" is ok */
+        iput(inode);
+        iput(dir);
+        brelse(bh);
+        return -EPERM;
+    }
+    if (!S_ISDIR(inode->i_mode)) {
+        iput(inode);
+        iput(dir);
+        brelse(bh);
+        return -ENOTDIR;
+    }
+    if (!empty_dir(inode)) {
+        iput(inode);
+        iput(dir);
+        brelse(bh);
+        return -ENOTEMPTY;
+    }
+    if (inode->i_nlinks != 2)
+        printk("empty directory has nlink != 2 (%d)", inode->i_nlinks);
+    de->inode = 0;
+    bh->b_dirt = 1;
+    brelse(bh);
+    inode->i_nlinks = 0;
+    inode->i_dirt = 1;
+    dir->i_nlinks--;
+    dir->i_ctime = dir->i_mtime = CURRENT_TIME;
+    dir->i_dirt = 1;
+    iput(dir);
+    iput(inode);
     return 0;
 }
