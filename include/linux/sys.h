@@ -49,6 +49,9 @@ extern int sys_getgid();
 extern int sys_signal();
 extern int sys_geteuid();
 extern int sys_getegid();
+extern int sys_acct();
+extern int sys_phys();
+extern int sys_lock();
 extern int sys_setreuid();
 extern int sys_setregid();
 
@@ -104,6 +107,9 @@ sys_getgid, /* Get the numerical group id */
 sys_signal, /* signal handling */
 sys_geteuid, /* get current task euid */
 sys_getegid, /* get current task egid */
+sys_acct, /* enable/disable process accounting */
+sys_phys, /* --- */
+sys_lock, /* --- */
 sys_setreuid, /* set real and/or effective user or group ID */
 sys_setregid, /* Set the numerical group id */
 };
