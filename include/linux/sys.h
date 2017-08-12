@@ -41,6 +41,7 @@ extern int sys_mkdir();
 extern int sys_rmdir();
 extern int sys_dup();
 extern int sys_pipe();
+extern int sys_times();
 extern int sys_setreuid();
 
 fn_ptr sys_call_table[] = {
@@ -87,5 +88,6 @@ sys_mkdir, /* Create a directory */
 sys_rmdir, /* Remove a directory */
 sys_dup, /* duplicate an open file descriptor */
 sys_pipe, /* create an interprocess channel */
+sys_times, /* file access and modification times structure */
 sys_setreuid, /* set real and/or effective user or group ID */
 };

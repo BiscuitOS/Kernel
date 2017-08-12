@@ -7,6 +7,8 @@
 #include <linux/sched.h>
 #include <linux/kernel.h>
 
+#include <sys/times.h>
+
 #include <asm/segment.h>
 
 #include <errno.h>
@@ -68,6 +70,18 @@ int sys_stime(long *tptr)
         return -EPERM;
     startup_time = get_fs_long((unsigned long *)tptr) - jiffies / HZ;
     return 0;
+}
+
+int sys_times(struct tms *tbuf)
+{
+    if (tbuf) {
+        verify_area(tbuf, sizeof(*tbuf));
+        put_fs_long(current->utime, (unsigned long *)&tbuf->tms_utime);
+        put_fs_long(current->stime, (unsigned long *)&tbuf->tms_stime);
+        put_fs_long(current->cutime, (unsigned long *)&tbuf->tms_cutime);
+        put_fs_long(current->cstime, (unsigned long *)&tbuf->tms_cstime);
+    }
+    return jiffies;
 }
 
 int sys_ptrace()
