@@ -65,6 +65,7 @@ extern int sys_dup2();
 extern int sys_getppid();
 extern int sys_getpgrp();
 extern int sys_setsid();
+extern int sys_sigaction();
 extern int sys_setreuid();
 extern int sys_setregid();
 
@@ -136,6 +137,7 @@ sys_dup2, /* duplicate a file descriptor */
 sys_getppid, /* get current father pid */
 sys_getpgrp, /* get pgrp of current task */
 sys_setsid, /* creates a session and sets the process group ID */
+sys_sigaction, /* examine and change a signal action */
 sys_setreuid, /* set real and/or effective user or group ID */
 sys_setregid, /* Set the numerical group id */
 };
