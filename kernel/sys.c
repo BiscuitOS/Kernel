@@ -167,6 +167,11 @@ int sys_umask(int mask)
     return old;
 }
 
+int sys_getpgrp(void)
+{
+    return current->pgrp;
+}
+
 int sys_ptrace()
 {
     return -ENOSYS;
