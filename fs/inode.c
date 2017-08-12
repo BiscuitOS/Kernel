@@ -317,3 +317,19 @@ int create_block(struct m_inode *inode, int block)
 {
     return _bmap(inode, block, 1);
 }
+
+struct m_inode *get_pipe_inode(void)
+{
+    struct m_inode *inode;
+
+    if (!(inode = get_empty_inode()))
+        return NULL;
+    if (!(inode->i_size = get_free_page())) {
+        inode->i_count = 0;
+        return NULL;
+    }
+    inode->i_count = 2;    /* sum of readers/writers */
+    PIPE_HEAD(*inode) = PIPE_TAIL(*inode) = 0;
+    inode->i_pipe = 1;
+    return inode;
+}
