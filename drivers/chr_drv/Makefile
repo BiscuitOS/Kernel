@@ -5,6 +5,7 @@ OBJS += serial.o
 OBJS += console.o
 OBJS += rs_io.o
 OBJS += keyboard.o
+OBJS += tty_ioctl.o
 
 all: $(OBJS) chr_drv.o
 

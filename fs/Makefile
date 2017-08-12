@@ -16,6 +16,7 @@ OBJS += namei.o
 OBJS += exec.o
 OBJS += stat.o
 OBJS += fcntl.o
+OBJS += ioctl.o
 
 all: $(OBJS) fs.o ECHO
 

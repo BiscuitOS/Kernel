@@ -1,8 +1,47 @@
 #ifndef _TERMIOS_H_
 #define _TERMIOS_H_
 
-#define NCCS 17
+/* 0x54 is just a magic number to make these relatively uniqe ('T') */
 
+#define TCGETS		0x5401
+#define TCSETS		0x5402
+#define TCSETSW		0x5403
+#define TCSETSF		0x5404
+#define TCGETA		0x5405
+#define TCSETA		0x5406
+#define TCSETAW		0x5407
+#define TCSETAF		0x5408
+#define TCSBRK		0x5409
+#define TCXONC		0x540A
+#define TCFLSH		0x540B
+#define TIOCEXCL	0x540C
+#define TIOCNXCL	0x540D
+#define TIOCSCTTY	0x540E
+#define TIOCGPGRP	0x540F
+#define TIOCSPGRP	0x5410
+#define TIOCOUTQ	0x5411
+#define TIOCSTI		0x5412
+#define TIOCGWINSZ	0x5413
+#define TIOCSWINSZ	0x5414
+#define TIOCMGET	0x5415
+#define TIOCMBIS	0x5416
+#define TIOCMBIC	0x5417
+#define TIOCMSET	0x5418
+#define TIOCGSOFTCAR	0x5419
+#define TIOCSSOFTCAR	0x541A
+#define TIOCINQ		0x541B
+
+#define NCC 8
+struct termio {
+    unsigned short c_iflag;  /* input mode flags */
+    unsigned short c_oflag;  /* output mode flags */
+    unsigned short c_cflag;  /* control mode flags */
+    unsigned short c_lflag;  /* local mode flags */
+    unsigned char c_line;    /* line discipline */
+    unsigned char c_cc[NCC]; /* control characters */
+};
+
+#define NCCS 17
 struct termios {
 	unsigned long c_iflag;
 	unsigned long c_oflag;
