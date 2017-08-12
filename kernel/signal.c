@@ -105,3 +105,11 @@ int sys_sgetmask()
 {
     return current->blocked;
 }
+
+int sys_ssetmask(int newmask)
+{
+    int old = current->blocked;
+
+    current->blocked = newmask & ~(1 << (SIGKILL - 1));
+    return old;
+}
