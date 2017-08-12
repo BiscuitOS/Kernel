@@ -392,3 +392,8 @@ int sys_nice(long increment)
         current->priority -= increment;
     return 0;
 }
+
+int sys_getgid(void)
+{
+    return current->gid;
+}

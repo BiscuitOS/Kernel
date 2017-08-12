@@ -92,6 +92,32 @@ int sys_brk(unsigned long end_data_seg)
     return current->brk;
 }
 
+int sys_setregid(int rgid, int egid)
+{
+    if (rgid > 0) {
+        if ((current->gid == rgid) ||
+             suser())
+            current->gid = rgid;
+        else
+            return -EPERM;
+    }
+    if (egid > 0) {
+        if ((current->gid == egid) ||
+            (current->egid == egid) ||
+            (current->sgid == egid) ||
+             suser())
+            current->egid = egid;
+        else
+            return -EPERM;
+    }
+    return 0;
+}
+
+int sys_setgid(int gid)
+{
+    return sys_setregid(gid, gid);
+}
+
 int sys_ptrace()
 {
     return -ENOSYS;
