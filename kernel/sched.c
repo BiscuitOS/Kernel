@@ -407,3 +407,8 @@ int sys_getegid(void)
 {
     return current->egid;
 }
+
+int sys_getppid(void)
+{
+    return current->father;
+}
