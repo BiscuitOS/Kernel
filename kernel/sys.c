@@ -159,6 +159,14 @@ int sys_uname(struct utsname *name)
     return 0;
 }
 
+int sys_umask(int mask)
+{
+    int old = current->umask;
+
+    current->umask = mask & 0777;
+    return old;
+}
+
 int sys_ptrace()
 {
     return -ENOSYS;

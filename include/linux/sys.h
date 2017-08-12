@@ -58,6 +58,7 @@ extern int sys_mpx();
 extern int sys_setpgid();
 extern int sys_ulimit();
 extern int sys_uname();
+extern int sys_umask();
 extern int sys_setreuid();
 extern int sys_setregid();
 
@@ -122,6 +123,7 @@ sys_mpx, /* -- */
 sys_setpgid, /* simplify pid/ns interaction */
 sys_ulimit, /* -- */
 sys_uname, /* get name and information about current kernel */
+sys_umask, /* get current task umask */
 sys_setreuid, /* set real and/or effective user or group ID */
 sys_setregid, /* Set the numerical group id */
 };
