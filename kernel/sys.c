@@ -118,6 +118,31 @@ int sys_setgid(int gid)
     return sys_setregid(gid, gid);
 }
 
+/*
+ * This need some heave checking ...
+ * I just haven't get the stomach for it. I also don't fully
+ * understand sessions/pgrp etc. Let somebody who does explain it.
+ */
+int sys_setpgid(int pid, int pgid)
+{
+    int i;
+
+    if (!pid)
+        pid = current->pid;
+    if (!pgid)
+        pgid = current->pid;
+    for (i = 0; i < NR_TASKS; i++)
+        if (task[i] && task[i]->pid == pid) {
+            if (task[i]->leader)
+                return -EPERM;
+            if (task[i]->session != current->session)
+                return -EPERM;
+            task[i]->pgrp = pgid;
+            return 0;
+        }
+    return -ESRCH;
+}
+
 int sys_ptrace()
 {
     return -ENOSYS;
