@@ -53,6 +53,7 @@ extern int sys_acct();
 extern int sys_phys();
 extern int sys_lock();
 extern int sys_ioctl();
+extern int sys_fcntl();
 extern int sys_setreuid();
 extern int sys_setregid();
 
@@ -112,6 +113,7 @@ sys_acct, /* enable/disable process accounting */
 sys_phys, /* --- */
 sys_lock, /* --- */
 sys_ioctl, /* control device */
+sys_fcntl, /* manipulate file descriptor */
 sys_setreuid, /* set real and/or effective user or group ID */
 sys_setregid, /* Set the numerical group id */
 };

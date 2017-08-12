@@ -14,4 +14,18 @@
 #define O_NONBLOCK       04000    /* not fcntl */
 #define O_NDELAY         O_NONBLOCK
 
+/*
+ * Defines for fcntl-commands. Note that currently
+ * locking isn't supported, and other things aren't really
+ * tested.
+ */
+#define F_DUPFD          0  /* dup */
+#define F_GETFD          1  /* get f_flags */
+#define F_SETFD          2  /* set f_flags */
+#define F_GETFL          3  /* more flags (cloexec) */
+#define F_SETFL          4
+#define F_GETLK          5  /* not implemented */
+#define F_SETLK          6
+#define F_SETLKW         7
+
 #endif
