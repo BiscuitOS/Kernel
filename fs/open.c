@@ -188,3 +188,18 @@ int sys_access(const char *filename, int mode)
         return 0;
     return -EACCES;
 }
+
+int sys_chroot(const char *filename)
+{
+    struct m_inode *inode;
+
+    if (!(inode = namei(filename)))
+        return -ENOENT;
+    if (!S_ISDIR(inode->i_mode)) {
+        iput(inode);
+        return -ENOTDIR;
+    }
+    iput(current->root);
+    current->root = inode;
+    return 0;
+}
