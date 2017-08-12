@@ -8,6 +8,7 @@
 #include <linux/kernel.h>
 
 #include <sys/times.h>
+#include <sys/utsname.h>
 
 #include <asm/segment.h>
 
@@ -141,6 +142,21 @@ int sys_setpgid(int pid, int pgid)
             return 0;
         }
     return -ESRCH;
+}
+
+int sys_uname(struct utsname *name)
+{
+    static struct utsname thisname = {
+        "linux .0", "nodename", "relese", "version", "machine"
+    };
+    int i;
+
+    if (!name)
+        return -ERROR;
+    verify_area(name, sizeof(*name));
+    for (i = 0; i < sizeof(*name); i++)
+        put_fs_byte(((char *)&thisname)[i], i + (char *)name);
+    return 0;
 }
 
 int sys_ptrace()
