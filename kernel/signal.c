@@ -100,3 +100,8 @@ int sys_sigaction(int signum, const struct sigaction *action,
         current->sigaction[signum - 1].sa_mask |= (1 << (signum - 1));
     return 0;
 }
+
+int sys_sgetmask()
+{
+    return current->blocked;
+}
