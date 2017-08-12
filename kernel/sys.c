@@ -167,6 +167,16 @@ int sys_umask(int mask)
     return old;
 }
 
+int sys_setsid(void)
+{
+    if (current->leader && !suser())
+        return -EPERM;
+    current->leader = 1;
+    current->session = current->pgrp = current->pid;
+    current->tty = -1;
+    return current->pgrp;
+}
+
 int sys_getpgrp(void)
 {
     return current->pgrp;
