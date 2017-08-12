@@ -39,6 +39,7 @@ extern int sys_kill();
 extern int sys_rename();
 extern int sys_mkdir();
 extern int sys_rmdir();
+extern int sys_dup();
 extern int sys_setreuid();
 
 fn_ptr sys_call_table[] = {
@@ -83,5 +84,6 @@ sys_kill, /* send a signal to a process  */
 sys_rename, /* Renames a specified file */
 sys_mkdir, /* Create a directory */
 sys_rmdir, /* Remove a directory */
+sys_dup, /* duplicate an open file descriptor */
 sys_setreuid, /* set real and/or effective user or group ID */
 };
