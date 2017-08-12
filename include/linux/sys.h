@@ -47,6 +47,8 @@ extern int sys_brk();
 extern int sys_setgid();
 extern int sys_getgid();
 extern int sys_signal();
+extern int sys_geteuid();
+extern int sys_getegid();
 extern int sys_setreuid();
 extern int sys_setregid();
 
@@ -100,6 +102,8 @@ sys_brk, /* allocates memory right behind application image in memory */
 sys_setgid, /* Set the numerical group id */
 sys_getgid, /* Get the numerical group id */
 sys_signal, /* signal handling */
+sys_geteuid, /* get current task euid */
+sys_getegid, /* get current task egid */
 sys_setreuid, /* set real and/or effective user or group ID */
 sys_setregid, /* Set the numerical group id */
 };

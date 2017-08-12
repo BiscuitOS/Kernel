@@ -397,3 +397,13 @@ int sys_getgid(void)
 {
     return current->gid;
 }
+
+int sys_geteuid(void)
+{
+    return current->euid;
+}
+
+int sys_getegid(void)
+{
+    return current->egid;
+}
