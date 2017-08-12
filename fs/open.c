@@ -9,6 +9,7 @@
 #include <linux/kernel.h>
 
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <asm/segment.h>
 
@@ -202,4 +203,9 @@ int sys_chroot(const char *filename)
     iput(current->root);
     current->root = inode;
     return 0;
+}
+
+int sys_ustat(int dev, struct ustat *ubuf)
+{
+    return -ENOSYS;
 }

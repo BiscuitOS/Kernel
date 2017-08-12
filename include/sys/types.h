@@ -26,4 +26,11 @@ typedef unsigned char  nlink_t;
 typedef int daddr_t;
 typedef long off_t;
 
+struct ustat {
+    daddr_t f_tfree;
+    ino_t f_tinode;
+    char f_fname[6];
+    char f_fpack[6];
+};
+
 #endif

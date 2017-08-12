@@ -10,6 +10,8 @@
 #include <errno.h>
 #include <fcntl.h>
 
+extern int sys_close(int fd);
+
 static int dupfd(unsigned int fd, unsigned int arg)
 {
     if (fd >= NR_OPEN || !current->filp[fd])
@@ -63,4 +65,10 @@ int sys_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg)
     default:
         return -1;
     }
+}
+
+int sys_dup2(unsigned int oldfd, unsigned int newfd)
+{
+    sys_close(newfd);
+    return dupfd(oldfd, newfd);
 }
