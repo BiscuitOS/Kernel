@@ -43,6 +43,7 @@ extern int sys_dup();
 extern int sys_pipe();
 extern int sys_times();
 extern int sys_prof();
+extern int sys_brk();
 extern int sys_setreuid();
 
 fn_ptr sys_call_table[] = {
@@ -91,5 +92,6 @@ sys_dup, /* duplicate an open file descriptor */
 sys_pipe, /* create an interprocess channel */
 sys_times, /* file access and modification times structure */
 sys_prof, /* profiling library */
+sys_brk, /* allocates memory right behind application image in memory */
 sys_setreuid, /* set real and/or effective user or group ID */
 };

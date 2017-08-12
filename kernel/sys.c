@@ -84,6 +84,14 @@ int sys_times(struct tms *tbuf)
     return jiffies;
 }
 
+int sys_brk(unsigned long end_data_seg)
+{
+    if (end_data_seg >= current->end_code &&
+        end_data_seg <  current->start_stack - 16384)
+        current->brk = end_data_seg;
+    return current->brk;
+}
+
 int sys_ptrace()
 {
     return -ENOSYS;
