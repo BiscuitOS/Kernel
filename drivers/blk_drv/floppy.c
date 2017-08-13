@@ -492,3 +492,12 @@ repeat:
     floppy_off(nr);
     return 0;
 }
+
+void unexpected_floppy_interrupt(void)
+{
+    output_byte(FD_SENSEI);
+    if (result() != 2 || (ST0 & 0xE0) == 0x60)
+        reset = 1;
+    else
+        recalibrate = 1;
+}

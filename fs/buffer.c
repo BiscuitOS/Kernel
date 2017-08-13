@@ -27,7 +27,7 @@ __asm__("cld\n\t" \
 	: : "c" (BLOCK_SIZE/4), "S" (from), "D" (to) \
 	)
 
-static int NR_BUFFERS;
+int NR_BUFFERS = 0;
 static struct task_struct *buffer_wait;
 static struct buffer_head *free_list;
 

@@ -126,7 +126,7 @@ export SUBDIR IMAGE_PACKAGE
 
 # To do compile
 all: CHECK_START version $(SUBDIR) Image config
-	$(Q)figlet "BiscuitOS"
+	@figlet "BiscuitOS"
 
 CHECK_START:
 
@@ -136,18 +136,18 @@ $(SUBDIR): ECHO
 ECHO:
 
 config:
-	$(Q)if [ ! -f $(srctree)/.config ]; then \
-		cp $(srctree)/arch/x86/configs/BiscuitOS_defconfig \
+	@if [ ! -f $(srctree)/.config ]; then \
+		@cp $(srctree)/arch/x86/configs/BiscuitOS_defconfig \
 			$(srctree)/.config; \
-		fi
+	fi
 
 Image:
 	$(Q)make -s -C $(srctree)/tools/build
 
 start:
-	$(Q)figlet "BiscuitOS"
+	@figlet "BiscuitOS"
 	$(Q)make -s -C $(srctree)/tools/build start
-	$(Q)figlet "BiscuitOS"
+	@figlet "BiscuitOS"
 
 debug:
 	$(Q)make -s -C $(srctree)/tools/build debug

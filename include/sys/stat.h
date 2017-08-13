@@ -48,4 +48,6 @@ struct stat {
 #define S_IWOTH  00002
 #define S_IXOTH  00001
 
+extern int fstat(int fildes, struct stat *stat_buf);
+
 #endif

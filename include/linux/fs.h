@@ -28,8 +28,10 @@
 #define NR_OPEN    20
 #define NR_SUPER   8
 #define NR_INODE   32
-
+#define NR_FILE    64
 #define NR_HASH    307
+#define NR_BUFFERS nr_buffers
+
 #define BLOCK_SIZE 1024
 #define KB_SHIFT       10
 #define MB_SHIFT       (KB_SHIFT << 1)
@@ -45,7 +47,6 @@
 #define Z_MAP_SLOTS   8
 #define SUPER_MAGIC   0x137F
 
-#define NR_FILE         64
 #define BLOCK_SIZE_BITS 10
 
 #define PIPE_HEAD(inode) ((inode).i_zone[0])
@@ -192,4 +193,5 @@ extern struct m_inode *get_pipe_inode(void);
 extern struct file file_table[NR_FILE];
 extern struct super_block super_block[NR_SUPER];
 extern struct m_inode inode_table[NR_INODE];
+extern int nr_buffers;
 #endif

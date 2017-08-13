@@ -158,11 +158,64 @@ sys_execve:
 
 .align 2
 hd_interrupt:
-	ret
+	pushl %eax
+	pushl %ecx
+	pushl %edx
+	push  %ds
+	push  %es
+	push  %fs
+	movl  $0x10, %eax
+	mov   %ax, %ds
+	mov   %ax, %es
+	movl  $0x17, %eax
+	mov   %ax, %fs
+	movb  $0x20, %al
+	outb  %al, $0xA0     # EOI to interrupt controller #1
+	jmp   1f             # give port chance to breathe
+1:	jmp   1f
+1:	xorl  %edx, %edx
+	xchgl do_hd, %edx
+	testl %edx, %edx
+	jne 1f
+	movl $unexpected_hd_interrupt, %edx
+1:	outb %al, $0x20
+	call *%edx           # "interrupting" way of handing intr.
+	pop %fs
+	pop %es
+	pop %ds
+	popl %edx
+	popl %ecx
+	popl %eax
+	iret
 
 .align 2
 floppy_interrupt:
-	ret
+	pushl %eax
+	pushl %ecx
+	pushl %edx
+	push  %ds
+	push  %es
+	push  %fs
+	movl $0x10, %eax
+	mov  %ax, %ds
+	mov  %ax, %es
+	movl $0x17, %eax
+	mov  %ax, %fs
+	movb $0x20, %al
+	outb %al, $0x20         # EOI to interrupt controller #1
+	xorl %eax, %eax
+	xchgl do_floppy, %eax
+	testl %eax, %eax
+	jne 1f
+	movl $unexpected_floppy_interrupt, %eax
+1:	call *%eax              # "interrupting" way of handing intr.
+	pop %fs
+	pop %es
+	pop %ds
+	popl %edx
+	popl %ecx
+	popl %eax
+	iret
 
 .align 2
 sys_fork:

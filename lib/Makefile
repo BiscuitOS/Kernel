@@ -4,6 +4,14 @@ OBJS := string.o
 OBJS += ctype.o
 OBJS += errno.o
 OBJS += malloc.o
+OBJS += open.o
+OBJS += dup.o
+OBJS += close.o
+OBJS += _exit.o
+OBJS += execve.o
+OBJS += wait.o
+OBJS += setsid.o
+OBJS += write.o
 
 all: $(OBJS) lib.o ECHO
 
