@@ -159,7 +159,7 @@ void sched_init(void)
 
 static struct timer_list {
 	long jiffies;
-	void (*fn) ();
+	void (*fn) (void);
 	struct timer_list *next;
 } timer_list[TIME_REQUESTS], *next_timer = NULL;
 
@@ -268,7 +268,7 @@ void floppy_off(unsigned int nr)
  * 'math_state_restore()' saves the current math information in the
  * old math state array, and gets the new ones from the current task.
  */
-void math_state_restore()
+void math_state_restore(void)
 {
 	if (last_task_used_math == current)
 		return;

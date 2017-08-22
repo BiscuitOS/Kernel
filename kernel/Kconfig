@@ -1,0 +1,12 @@
+#
+# Kernel core configure
+#
+
+menu "Kernel core"
+
+config BISCUITOS_KERNEL_SUPPORT
+	bool "support biscuitos kernel"
+	help
+	 This is used to support kernel of biscuitos.
+
+endmenu

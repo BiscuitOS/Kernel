@@ -74,7 +74,7 @@ static long buffer_memory_end;
 static long main_memory_start;
 
 extern void init(void);
-extern int vsprintf();
+extern int vsprintf(char *buf, const char *fmt, va_list args);
 extern void mem_init(long, long);
 extern void blk_dev_init(void);
 extern void chr_dev_init(void);
@@ -174,9 +174,6 @@ int main(void)
  * can run). For task0 'pause()' just means we go check if some other
  * task can run, and if not we return here.
  */
-#ifdef CONFIG_TESTCODE
-    TestCode();
-#endif
     return 0;
 }
 

@@ -1,6 +1,1 @@
-OBJS := main.o
-
-all: $(OBJS)
-
-clean:
-	$(Q)rm *.o
+obj-y += main.o

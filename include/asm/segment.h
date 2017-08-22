@@ -34,7 +34,7 @@ static inline unsigned long get_fs_long(const unsigned long *addr)
  * [ noting wrong here, Linus ]
  */
 
-static inline unsigned long get_fs()
+static inline unsigned long get_fs(void)
 {
     unsigned short _v;
 
@@ -42,7 +42,7 @@ static inline unsigned long get_fs()
     return _v;
 }
 
-static inline unsigned long get_ds()
+static inline unsigned long get_ds(void)
 {
     unsigned short _v;
 

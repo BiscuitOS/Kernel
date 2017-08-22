@@ -96,7 +96,7 @@ struct bucket_desc *free_bucket_desc = (struct bucket_desc *)0;
 /*
  * This routine initializes a bucket description page.
  */
-static inline void init_bucket_desc()
+static inline void init_bucket_desc(void)
 {
 	struct bucket_desc *bdesc, *first;
 	int i;

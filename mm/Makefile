@@ -1,15 +1,5 @@
-LDFLAGS += -r
+obj-y += memory.o
+obj-y += page.o
 
-OBJS := memory.o
-OBJS += page.o
-
-all: $(OBJS) mm.o ECHO
-
-mm.o: $(OBJS)
-	$(Q)$(LD) $(LDFLAGS) -o mm.o $^
-	$(Q)sync
-
-ECHO:
-
-clean:
-	$(Q)rm *.o
+$(obj)/%.o: $(obj)/%.s FORCE
+	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<

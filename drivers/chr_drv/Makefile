@@ -1,21 +1,12 @@
-LDFLAGS += -r
+obj-y += tty_io.o
+obj-y += serial.o
+obj-y += console.o
+obj-y += rs_io.o
+obj-y += keyboard.o
+obj-y += tty_ioctl.o
 
-OBJS := tty_io.o
-OBJS += serial.o
-OBJS += console.o
-OBJS += rs_io.o
-OBJS += keyboard.o
-OBJS += tty_ioctl.o
+$(obj)/%.o: $(obj)/%.s FORCE
+	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<
 
-all: $(OBJS) chr_drv.o
-
-chr_drv.o: $(OBJS)
-	$(Q)$(LD) $(LDFLAGS) -o chr_drv.o $^
-	$(Q)sync
-
-keyboard.s: kb.S ../../include/linux/config.h
-	$(Q)$(CPP) $(CPPFLAGS) kb.S -o keyboard.s
-
-clean:
-	$(Q)rm *.o
-	$(Q)rm keyboard.s
+$(obj)/keyboard.s: $(obj)/kb.S $(srctree)/include/linux/config.h FORCE
+	$(Q)$(CPP) $(CPPFLAGS) $(obj)/kb.S -o $(obj)/keyboard.s

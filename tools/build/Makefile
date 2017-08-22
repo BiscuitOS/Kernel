@@ -87,7 +87,7 @@ ifeq ($(DEBUG_TOOLS), qemu)
 Image: ECHO bootsect setup system
 	$(Q)cp -f system system.tmp
 	$(Q)$(STRIP) system.tmp
-	$(OBJCOPY) -O binary -R .note -R .comment system.tmp kernel
+	$(Q)$(OBJCOPY) -O binary -R .note -R .comment system.tmp kernel
 	$(Q)dd if=bootsect bs=$(SECTOR_SIZE) count=1 of=Image \
 				conv=notrunc > /dev/null 2>&1
 	$(Q)dd if=setup bs=$(SECTOR_SIZE) seek=1 count=4 \
@@ -153,16 +153,17 @@ endif # End DEBUG
 # -------------------------
 # Link all objects
 # -------------------------
+LOCAL_LDFLAGS := -m elf_i386 --traditional-format -Ttext 0
 
 bootsect: ECHO
-	$(Q)$(LD) $(LDFLAGS) -o $@ $(srctree)/arch/$(ARCH)/boot/bootsect.o
+	$(Q)$(LD) $(LOCAL_LDFLAGS) -o $@ $(srctree)/arch/$(ARCH)/boot/bootsect.o
 ifneq ($(DEBUG),)
 		$(Q)cp $@ .debug_bootsect
 endif
 	$(Q)$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary $@
 
 setup: ECHO
-	$(Q)$(LD) $(LDFLAGS) -o $@ $(srctree)/arch/$(ARCH)/boot/setup.o
+	$(Q)$(LD) $(LOCAL_LDFLAGS) -o $@ $(srctree)/arch/$(ARCH)/boot/setup.o
 ifneq ($(DEBUG),)
 		$(Q)cp $@ .debug_setup
 endif
@@ -170,9 +171,9 @@ endif
 
 
 system: ECHO
-	$(LD) $(LDFLAGS) -e startup_32 -o $@ $(srctree)/arch/$(ARCH)/boot/head.o \
-	                           $(srctree)/init/main.o \
-							   $(IMAGE_PACKAGE)
+	$(Q)mv $(srctree)/biscuitos $(srctree)/tools/build/ 
+	$(Q)$(LD) $(LOCAL_LDFLAGS) -e startup_32 -o $@ biscuitos
+	$(Q)rm $(srctree)/tools/build/biscuitos 
 	$(Q)$(NM) $@ | grep -v '\(compiled\)\|\(\.o$$\)\|\( [aU] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)'| sort > System.map
 
 ECHO:

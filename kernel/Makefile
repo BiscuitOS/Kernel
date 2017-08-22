@@ -1,23 +1,17 @@
-LDFLAGS += -r
+obj-y += sched.o
+obj-y += vsprintf.o
+obj-y += printk.o
+obj-y += panic.o
+obj-y += asm.o
+obj-y += traps.o
+obj-y += system_call.o
+obj-y += signal.o
+obj-y += mktime.o
+obj-y += fork.o
+obj-y += exit.o
+obj-y += sys.o
+obj-y += math/
 
-OBJS := sched.o
-OBJS += vsprintf.o
-OBJS += printk.o
-OBJS += panic.o
-OBJS += asm.o
-OBJS += traps.o
-OBJS += system_call.o
-OBJS += signal.o
-OBJS += mktime.o
-OBJS += fork.o
-OBJS += exit.o
-OBJS += sys.o
+$(obj)/%.o: $(obj)/%.s FORCE
+	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<
 
-all: $(OBJS) KERNEL
-
-KERNEL: $(OBJS)
-	$(Q)$(LD) $(LDFLAGS) -o kernel.o $^
-	$(Q)sync
-
-clean:
-	$(Q)rm *.o

@@ -1,0 +1,15 @@
+#
+# Block device drivers
+#
+
+config LL_BLOCK
+	bool "Support block ll_device"
+	default y
+	help
+	  Support LL_BLOCK
+
+config FLOPPY
+	bool "Support floppy"
+	help
+	  Support load data from floppy
+ 

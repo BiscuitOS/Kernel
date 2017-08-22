@@ -21,7 +21,7 @@
 #define NULL ((void *) 0)
 #endif
 
-typedef int (*fn_ptr)();
+typedef int (*fn_ptr)(void);
 
 struct i387_struct {
 	long cwd;

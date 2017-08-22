@@ -1,0 +1,15 @@
+#
+# Character device 
+#
+
+config TTY
+	bool "Support TTY device"
+	default y
+	help
+	  Support tty device driver.
+
+config CONSOLE
+	bool "Support Console device"
+	default y
+	help
+	  Support console device driver.

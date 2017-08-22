@@ -1,0 +1,12 @@
+#
+# Memory configure
+# 
+
+menu "Memory settings"
+
+config MMU
+	bool "MMU suport"
+	help
+	  Support paging and segmenting on MMU.
+
+endmenu

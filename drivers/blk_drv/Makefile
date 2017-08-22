@@ -1,15 +1,4 @@
-LDFLAGS += -r
-
-OBJS := ll_rw_blk.o
-OBJS += hd.o
-OBJS += floppy.o
-OBJS += ramdisk.o
-
-all: $(OBJS) blk_drv.o
-
-blk_drv.o: $(OBJS)
-	$(Q)$(LD) $(LDFLAGS) -o blk_drv.o $^
-	$(Q)sync
-
-clean:
-	$(Q)rm *.o
+obj-y += ll_rw_blk.o
+obj-y += hd.o
+obj-y += floppy.o
+obj-y += ramdisk.o

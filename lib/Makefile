@@ -1,25 +1,12 @@
-LDFLAGS += -r
-
-OBJS := string.o
-OBJS += ctype.o
-OBJS += errno.o
-OBJS += malloc.o
-OBJS += open.o
-OBJS += dup.o
-OBJS += close.o
-OBJS += _exit.o
-OBJS += execve.o
-OBJS += wait.o
-OBJS += setsid.o
-OBJS += write.o
-
-all: $(OBJS) lib.o ECHO
-
-lib.o: $(OBJS)
-	$(Q)$(LD) $(LDFLAGS) -o lib.o $^
-	$(Q)sync
-
-ECHO:
-
-clean:
-	$(Q)rm *.o
+lib-y += string.o
+lib-y += ctype.o
+lib-y += errno.o
+lib-y += malloc.o
+lib-y += open.o
+lib-y += dup.o
+lib-y += close.o
+lib-y += _exit.o
+lib-y += execve.o
+lib-y += wait.o
+lib-y += setsid.o
+lib-y += write.o

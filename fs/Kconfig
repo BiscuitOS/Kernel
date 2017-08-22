@@ -1,0 +1,17 @@
+#
+# File system configure
+#
+
+menu "File systems"
+
+config MINIFS
+	bool "Minix fs support"
+	help
+	  MINIX was written from scratch by Andrew S. Tanenbaum in the 1980s, as a Unix-like 
+	  operating system whose source code could be used freely in education. The MINIX file 
+	  system was designed for use with MINIX; it copies the basic structure of the Unix 
+	  File System but avoids any complex features in the interest of keeping the source 
+	  code clean, clear and simple, to meet the overall goal of MINIX to be a useful 
+	  teaching aid
+
+endmenu # "File systems"

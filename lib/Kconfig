@@ -1,0 +1,12 @@
+#
+# Kernel library
+#
+
+menu "library configure"
+
+config MATH
+	bool "Support Math processor"
+	help
+	  Support math corprocessor
+
+endmenu # "library configure"

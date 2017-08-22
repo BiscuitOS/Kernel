@@ -101,7 +101,7 @@ int sys_sigaction(int signum, const struct sigaction *action,
     return 0;
 }
 
-int sys_sgetmask()
+int sys_sgetmask(void)
 {
     return current->blocked;
 }
