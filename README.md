@@ -25,7 +25,7 @@ BiscuitOS
   | Item                    | contents                      | 
   | ----------------------- | ----------------------------- |
   | OS Name                 | BiscuitOS                     |
-  | Release Version         | V0.0.2                        |
+  | Release Version         | V0.0.3                        |
   | Target Platform         | I386(X86 family)              |
   | Emulator                | Qemu                          |
   | Memory limit            | 16 M                          |
@@ -35,6 +35,7 @@ BiscuitOS
   | Paging                  | Support                       |
   | Segmenting              | Support                       |
   | Bit                     | 32-bit                        |
+  | Kbuild                  | Full support                  |
 
 -------------------------------------------------
 

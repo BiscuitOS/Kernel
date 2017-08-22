@@ -18,7 +18,6 @@ BiscuitOS.img
 setup
 bootsect
 system
-include/version.h
 
 !.gitignore
 !.config
