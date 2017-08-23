@@ -27,17 +27,11 @@
 	.equ SYSSEG, 0x1000	# system loaded at 0x10000 (65536).
 	.equ SETUPSEG, 0x9020	# this is the current segment
 
-	.global _start, begtext, begdata, begbss, endtext, enddata, endbss
-	.text
-	begtext:
-	.data
-	begdata:
-	.bss
-	begbss:
-	.text
+	.global st_start
+	.section ".st_text", "x"
 
-	ljmp $SETUPSEG, $_start
-_start:
+	ljmp $SETUPSEG, $st_start
+st_start:
 
 # Get current cursor position and save it on 0x90000
 	mov $INITSEG, %ax
@@ -199,10 +193,4 @@ gdt_48:
 	.word	0x800			# gdt limit=2048, 256 GDT entries
 	.word   512+gdt, 0x9		# gdt base = 0X9xxxx,
 	# 512+gdt is the real gdt after setup is moved to 0x9020 * 0x10
-
-.text
-endtext:
-.data
-enddata:
-.bss
-endbss:
+	.section ".st_text", "x"

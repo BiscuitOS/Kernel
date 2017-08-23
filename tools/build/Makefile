@@ -84,14 +84,12 @@ ifneq ($(DEBUG),)
 # Create floppy or disk image
 # ---------------------------
 ifeq ($(DEBUG_TOOLS), qemu)
-Image: ECHO bootsect setup system
+Image: ECHO bootloader system
 	$(Q)cp -f system system.tmp
 	$(Q)$(STRIP) system.tmp
 	$(Q)$(OBJCOPY) -O binary -R .note -R .comment system.tmp kernel
-	$(Q)dd if=bootsect bs=$(SECTOR_SIZE) count=1 of=Image \
+	$(Q)dd if=bootloader bs=$(SECTOR_SIZE) count=5 of=Image \
 				conv=notrunc > /dev/null 2>&1
-	$(Q)dd if=setup bs=$(SECTOR_SIZE) seek=1 count=4 \
-	                of=Image conv=notrunc > /dev/null 2>&1
 	$(Q)dd if=kernel bs=$(SECTOR_SIZE) seek=5 count=2888 \
 				of=Image conv=notrunc > /dev/null 2>&1
 	$(Q)rm system.tmp
@@ -155,20 +153,14 @@ endif # End DEBUG
 # -------------------------
 LOCAL_LDFLAGS := -m elf_i386 --traditional-format -Ttext 0
 
-bootsect: ECHO
-	$(Q)$(LD) $(LOCAL_LDFLAGS) -o $@ $(srctree)/arch/$(ARCH)/boot/bootsect.o
+bootloader: ECHO
+	$(Q)$(LD) $(LOCAL_LDFLAGS) -T$(srctree)/arch/$(ARCH)/boot/setup.ld -o $@ \
+		$(srctree)/arch/$(ARCH)/boot/bootsect.o \
+		$(srctree)/arch/$(ARCH)/boot/setup.o
 ifneq ($(DEBUG),)
-		$(Q)cp $@ .debug_bootsect
+		$(Q)cp $@ debug_bootloader
 endif
-	$(Q)$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary $@
-
-setup: ECHO
-	$(Q)$(LD) $(LOCAL_LDFLAGS) -o $@ $(srctree)/arch/$(ARCH)/boot/setup.o
-ifneq ($(DEBUG),)
-		$(Q)cp $@ .debug_setup
-endif
-	$(Q)$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary $@
-
+#	$(Q)$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary $@
 
 system: ECHO
 	$(Q)mv $(srctree)/biscuitos $(srctree)/tools/build/ 

@@ -14,14 +14,8 @@
 # version of linux
 	.equ SYSSIZE, 0x3000
 
-	.global _start, begtext, begdata, begbss, endtxt, enddata, endbss
-	.text
-	begtext:
-	.data
-	begdata:
-	.bss
-	begbss:
-	.text
+	.global _start
+	.section ".bs_text", "x"
 
 	# BiscuitOS support boot from floppy and hard disk
     # Boot from first hard disk
@@ -279,11 +273,3 @@ msg1:
 root_dev:
 	.word ROOT_DEV
 	.word 0xAA55
-
-	.text
-	endtext:
-	.data
-	enddata:
-	.bss
-	endbss:
-

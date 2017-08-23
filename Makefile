@@ -373,7 +373,7 @@ biscuitos-all   := $(biscuitos-objs) $(biscuitos-libs)
 
 # Do modpost on a prelinked vmlinux. The finally linked vmlinux has
 # relevant sections renamed as per the linker script.
-quiet_cmd_biscuitos = LD $@
+quiet_cmd_biscuitos = LD      BiscuitOS
       cmd_biscuitos = $(CC) $(KBUILD_CFLAGS) -o $@     \
       -Wl,--start-group $(biscuitos-libs) $(biscuitos-objs) -Wl,--end-group
 
