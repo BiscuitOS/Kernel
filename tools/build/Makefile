@@ -152,15 +152,17 @@ endif # End DEBUG
 # Link all objects
 # -------------------------
 LOCAL_LDFLAGS := -m elf_i386 --traditional-format -Ttext 0
+OBJCPFLAGS := --change-section-address .bs_text=0x00
+OBJCPFLAGS += --change-section-address .st_text=0x200
 
 bootloader: ECHO
-	$(Q)$(LD) $(LOCAL_LDFLAGS) -T$(srctree)/arch/$(ARCH)/boot/setup.ld -o $@ \
-		$(srctree)/arch/$(ARCH)/boot/bootsect.o \
+	$(Q)$(LD) -T$(srctree)/arch/$(ARCH)/boot/setup.ld \
+		-o $@ $(srctree)/arch/$(ARCH)/boot/bootsect.o \
 		$(srctree)/arch/$(ARCH)/boot/setup.o
 ifneq ($(DEBUG),)
-		$(Q)cp $@ debug_bootloader
+		$(Q)cp $@ .debug_bootloader
 endif
-#	$(Q)$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary $@
+	$(Q)$(OBJCOPY) $(OBJCPFLAGS) -R .pdr -R .comment -R.note -S -O binary $@
 
 system: ECHO
 	$(Q)mv $(srctree)/biscuitos $(srctree)/tools/build/ 
@@ -172,7 +174,7 @@ ECHO:
 
 .PHONY: clean
 clean:
-	$(Q)rm -rf bootsect setup system System.map Image
+	$(Q)rm -rf bootloader system System.map Image
 ifneq ($(DEBUG),)
-		$(Q)rm -rf .debug_bootsect .debug_setup
+		$(Q)rm -rf .debug_bootloader
 endif

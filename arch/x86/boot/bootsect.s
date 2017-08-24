@@ -14,9 +14,9 @@
 # version of linux
 	.equ SYSSIZE, 0x3000
 
-	.global _start
-	.section ".bs_text", "x"
-
+	.global bootsect_start
+	.section ".bs_text", "ax"
+bootsect_start:
 	# BiscuitOS support boot from floppy and hard disk
     # Boot from first hard disk
 	# .equ DEVICE_NR, 0x80
@@ -53,9 +53,9 @@
 	.equ ROOT_DEV, 0x301
 
 	# Normalize the start address
-	ljmp $BOOTSEG, $_start
+	ljmp $BOOTSEG, $start2
 
-_start:
+start2:
 	mov $BOOTSEG, %ax
 	mov %ax, %ds
 	mov $INITSEG, %ax

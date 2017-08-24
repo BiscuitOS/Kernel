@@ -28,7 +28,7 @@
 	.equ SETUPSEG, 0x9020	# this is the current segment
 
 	.global st_start
-	.section ".st_text", "x"
+	.section ".st_text", "ax"
 
 	ljmp $SETUPSEG, $st_start
 st_start:
@@ -193,4 +193,3 @@ gdt_48:
 	.word	0x800			# gdt limit=2048, 256 GDT entries
 	.word   512+gdt, 0x9		# gdt base = 0X9xxxx,
 	# 512+gdt is the real gdt after setup is moved to 0x9020 * 0x10
-	.section ".st_text", "x"

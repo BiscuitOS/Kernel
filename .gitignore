@@ -25,3 +25,5 @@ system
 # output
 keyboard.s
 drivers/chr_drv/keyboard.s
+tools/build/debug_bootloader
+tools/build/bootloader

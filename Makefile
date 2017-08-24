@@ -370,11 +370,12 @@ biscuitos-dirs  := $(objs-y) $(libs-y)
 biscuitos-objs  := $(patsubst %,%/built-in.o, $(objs-y))
 biscuitos-libs  := $(patsubst %,%/lib.a, $(libs-y))
 biscuitos-all   := $(biscuitos-objs) $(biscuitos-libs)
+biscuitos-lds   := arch/$(SRCARCH)/kernel/biscuitos.lds
 
 # Do modpost on a prelinked vmlinux. The finally linked vmlinux has
 # relevant sections renamed as per the linker script.
-quiet_cmd_biscuitos = LD      BiscuitOS
-      cmd_biscuitos = $(CC) $(KBUILD_CFLAGS) -o $@     \
+quiet_cmd_biscuitos = LDS     BiscuitOS
+      cmd_biscuitos = $(CC) $(KBUILD_CFLAGS) -o $@  \
       -Wl,--start-group $(biscuitos-libs) $(biscuitos-objs) -Wl,--end-group
 
 
