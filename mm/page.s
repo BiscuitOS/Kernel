@@ -8,7 +8,6 @@
  * page.s contains the low-level page-exception code.
  * the real work is done in mm.c
  */
-
 .global page_fault
 
 page_fault:

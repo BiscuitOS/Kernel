@@ -219,7 +219,7 @@ KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(S
 
 # Specify architecture
 ifeq ($(ARCH),x86)
-  KBUILD_AFLAGS_KERNEL += --32
+  KBUILD_AFLAGS_KERNEL += --32 
   KBUILD_CFLAGS += -m32 -fno-stack-protector -fgnu89-inline -fomit-frame-pointer -fno-builtin
   LDFLAGS += -m elf_i386 --traditional-format
   CPPFLAGS += -I$(srctree)/include -nostdinc
@@ -227,7 +227,7 @@ endif
 
 ifneq ($(DEBUG),)
   KBUILD_CFLAGS += -g -Wall -Wunused
-  KBUILD_AFLAGS_KERNEL += -ggdb -am
+  KBUILD_AFLAGS_KERNEL += -ggdb # -am
 endif
 
 export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
@@ -361,52 +361,58 @@ endif # $(dot-config)
 # command line.
 # This allow a user to issue only 'make' to build a kernel including modules
 # Defaults to vmlinux, but the arch makefile usually adds further targets
-all: biscuitos bootloader
+all: vmlinux 
 
-objs-y          := init mm fs kernel drivers arch
-libs-y          := lib
+objs-y          := init/ mm/ fs/ kernel/ drivers/ arch/
+libs-y          := lib/
 
-biscuitos-dirs  := $(objs-y) $(libs-y)
-biscuitos-objs  := $(patsubst %,%/built-in.o, $(objs-y))
-biscuitos-libs  := $(patsubst %,%/lib.a, $(libs-y))
-biscuitos-all   := $(biscuitos-objs) $(biscuitos-libs)
-biscuitos-lds   := arch/$(SRCARCH)/kernel/biscuitos.lds
+vmlinux-dirs	:= $(patsubst %/,%,$(objs-y) $(libs-y))
+vmlinux-objs	:= $(patsubst %/,%/built-in.o,$(objs-y))
+vmlinux-libs	:= $(patsubst %/,%/lib.a,$(libs-y))
+vmlinux-all	:= $(vmlinux-libs) $(vmlinux-objs)
+vmlinux-lds	:= arch/$(SRCARCH)/kernel/vmlinux.lds
 
 # Do modpost on a prelinked vmlinux. The finally linked vmlinux has
 # relevant sections renamed as per the linker script.
-quiet_cmd_biscuitos = LDS     BiscuitOS
-      cmd_biscuitos = $(CC) $(KBUILD_CFLAGS) -o $@  \
-      -Wl,--start-group $(biscuitos-libs) $(biscuitos-objs) -Wl,--end-group
 
+quiet_cmd_vmlinux = LDS     vmlinux
+      cmd_vmlinux = $(LD) $(LDFLAGS) -o $@ \
+      -T $(vmlinux-lds)                    \
+      --start-group $(vmlinux-libs) $(vmlinux-objs) --end-group
 
-biscuitos: $(biscuitos-all)
-	$(call if_changed,biscuitos)
+vmlinux: $(vmlinux-all)
+	$(call if_changed,vmlinux)
 
-bootloader: biscuitos
-	$(Q)$(MAKE) -C $(srctree)/arch/$(ARCH)/boot/
-	$(Q)$(MAKE) -C $(srctree)/tools/build/
 
 # The actual objects are generated when descending, 
 # make sure no implicit rule kicks in
-$(sort $(biscuitos-all)): $(biscuitos-dirs) ;
+$(sort $(vmlinux-all)): $(vmlinux-dirs) ;
 
 # Handle descending into subdirectories listed in $(vmlinux-dirs)
 # Preset locale variables to speed up the build process. Limit locale
 # tweaks to this spot to avoid wrong language settings when running
 # make menuconfig etc.
 # Error messages still appears in the original language
-PHONY += $(biscuitos-dirs)
-$(biscuitos-dirs): scripts_basic
+PHONY += $(vmlinux-dirs)
+$(vmlinux-dirs): scripts_basic
 	$(Q)$(MAKE) $(build)=$@
 
 # ====================================
 # 
 # Running biscuitos
-start:
-	$(Q)$(MAKE) -C $(srctree)/tools/build start
+quiet_cmd_running_linux = RUN     vmlinux
+      cmd_running_linux = $(MAKE) -C $(srctree)/tools/build start
 
-debug:
-	$(Q)$(MAKE) -C $(srctree)/tools/build debug
+quiet_cmd_debug_linux = DEBUG      vmlinux
+      cmd_debug_linux = $(MAKE) -C $(srctree)/tools/build debug
+
+PHONY += start
+start: vmlinux 
+	$(call if_changed,running_linux)
+
+PHONY += debug
+debug: vmlinux
+	$(call if_changed,debug_linux)
 
 ###
 # Cleaning is done on three levels.

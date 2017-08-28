@@ -1,26 +1,38 @@
-# ----------------------------------------------------------
-# Bootsect.s
-# Maintainer: Buddy <buddy.zhang@aliyun.com>
-#
-# Copyright (C) 2017 BiscuitOS
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as
-# published by the Free Software Foundation.
 	.code16
+# rewrite with AT&T syntax by falcon <wuzhangjin@gmail.com> at 081012
+# modify for biscuitos by buddy <buddy.zhang@aliyun.com> at 170303
 #
 # SYS_SIZE is the number of clicks (16 bytes) to be loaded.
 # 0x3000 is 0x30000 bytes = 196KB, more than enough for current
 # version of linux
 	.equ SYSSIZE, 0x3000
 
+#
+#	bootsect.s		(C) 1991 Linus Torvalds
+#
+# bootsect.s is loaded at 0x7c00 by the bios-startup routines, and moves
+# iself out of the way to address 0x90000, and jump there.
+#
+# It then load's 'setup' directly after itself (0x90200), and the system
+# at 0x10000, using BIOS interrupts.
+#
+# NOTE! currently system is at most 8*65536 bytes long. This should be no
+# problem, even in the future. I want to keep it simple. This 512 kB
+# kernel size should by enough, especially as this doesn't contain the 
+# buffer cache as in minix
+#
+# The loader has been make as simple as possible, and continuos
+# read errors will result in a unbreakable loop. Reboot by hand. It
+# loads pretty fast by getting whole sectors at a time whenever possible.
+
 	.global bootsect_start
 	.section ".bs_text", "ax"
+
 bootsect_start:
 	# BiscuitOS support boot from floppy and hard disk
-    # Boot from first hard disk
+	# Boot from first hard disk
 	# .equ DEVICE_NR, 0x80
-    # Boot from first floppy
+	# Boot from first floppy
 	.equ DEVICE_NR, 0x00
 
 	.equ SETUPLEN, 4        # nr of setup-sectors
@@ -86,7 +98,6 @@ load_setup:
 	.equ     AX, 0x200+SETUPLEN
 	mov     $AX, %ax   # service 2, nr of sectors
 	int $0x13          # read it
-	mov %ax, %ax
 	jnc ok_load_setup  # ok -continue
 	mov $0x0000, %dx
 	mov $DEVICE_NR, %dl
@@ -102,6 +113,8 @@ ok_load_setup:
 	mov $0x0800, %ax
 	int $0x13
 	mov $0x00, %ch
+	mov %ax, %ax
+	mov %ax, %ax
 	#seg cs
 	mov %cx, %cs:sectors+0
 	mov $INITSEG, %ax
