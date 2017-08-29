@@ -13,10 +13,6 @@ PATCHLEVEL = 0
 SUBLEVEL = 3
 NAME = Jon Snow
 
-# To debug kernel with qemu or other tools
-DEBUG := 1
-export DEBUG
-
 # Do not:
 # o  use make's built-in rules and variables
 #    (this increases performance and avoids hard-to-debug behaviour);
@@ -217,19 +213,6 @@ KBUILD_AFLAGS   := -D__ASSEMBLY__
 KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
 KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
 
-# Specify architecture
-ifeq ($(ARCH),x86)
-  KBUILD_AFLAGS_KERNEL += --32 
-  KBUILD_CFLAGS += -m32 -fno-stack-protector -fgnu89-inline -fomit-frame-pointer -fno-builtin
-  LDFLAGS += -m elf_i386 --traditional-format
-  CPPFLAGS += -I$(srctree)/include -nostdinc
-endif
-
-ifneq ($(DEBUG),)
-  KBUILD_CFLAGS += -g -Wall -Wunused
-  KBUILD_AFLAGS_KERNEL += -ggdb # -am
-endif
-
 export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
 export CPP AR NM STRIP OBJCOPY OBJDUMP
 export MAKE AWK GENKSYMS INSTALLKERNEL PERL UTS_MACHINE
@@ -351,6 +334,22 @@ else
 include/config/auto.conf: ;
 endif # $(dot-config)
 
+# ==========================================
+# Specify compile flags
+
+ifdef CONFIG_DEBUG_LINUX
+  KBUILD_CFLAGS += -g -Wall -Wunused
+  KBUILD_AFLAGS_KERNEL += -ggdb  -am
+endif
+
+ifdef CONFIG_X86
+  KBUILD_AFLAGS_KERNEL += --32
+  KBUILD_CFLAGS += -m32 -fno-stack-protector -fgnu89-inline -fomit-frame-pointer -fno-builtin
+  LDFLAGS += -m elf_i386 --traditional-format
+  CPPFLAGS += -I$(srctree)/include -nostdinc
+endif
+
+
 # ================================================================
 # Target compile
 #
@@ -388,6 +387,9 @@ quiet_cmd_vmlinux_cpy = COPY    vmlinux
 
 vmlinux: $(vmlinux-all)
 	$(call if_changed,vmlinux)
+ifdef CONFIG_DEBUG_LINUX
+	$(Q)cp vmlinux .debug.vmlinux
+endif
 	$(call if_changed,vmlinux_cpy)
 
 
@@ -455,6 +457,7 @@ clean: $(clean-dirs)
 		\( -name '*.[oa]' -o -name '.*.cmd' \
 		-o -name '.*.d' -o -name '.*.tmp' -o -name '*.mod.c' \
 		-o -name modules.builtin -o -name '.tmp_*.o.*' \
+		-o -name .debug.vmlinux \
 		-o -name '*.gcno' \) -type f -print | xargs rm -f
 
 # mrproper - Delete all generated files, including .config
@@ -511,7 +514,6 @@ help:
 	@echo  ''
 	@echo  'Other generic targets:'
 	@echo  '  all		  - Build all targets marked with [*]'
-	@echo  '* myapp	  	  - Build the application'
 	@echo  '  dir/            - Build all files in dir and below'
 	@echo  '  dir/file.[oisS] - Build specified target only'
 	@echo  '  dir/file.lst    - Build specified mixed source/assembly target only'
