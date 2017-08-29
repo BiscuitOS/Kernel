@@ -11,9 +11,7 @@
 # -----------------------------------
 # Debug tools
 # -----------------------------------
-DEBUG_TOOLS := qemu
 
-ifeq ($(DEBUG_TOOLS), qemu)
-  include $(srctree)/tools/debug/qemu/Makefile.header
+ifdef CONFIG_QEMU
+  include $(srctree)/tools/debug/qemu/Makefile
 endif
-

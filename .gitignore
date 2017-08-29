@@ -1,6 +1,5 @@
 # Ignore image file
-*.img
-
+vmlinux
 
 # Ignore indicate file
 *.o
@@ -11,19 +10,14 @@
 *.patch
 *.
 *.a
+*.cmd
 
 # Execte file
-Image
-BiscuitOS.img
-setup
-bootsect
-system
 
 !.gitignore
-!.config
 
 # output
 keyboard.s
 drivers/chr_drv/keyboard.s
-tools/build/debug_bootloader
-tools/build/bootloader
+
+include/config/

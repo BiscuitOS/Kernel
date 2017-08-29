@@ -1,0 +1,31 @@
+#
+# Debug tools configuration
+# 
+
+menu "Debug tools configuration"
+
+config DEBUG_LINUX
+	bool "Debug system routine"
+	help
+	  DEBUG_LINUX is top option to online or offline debug system.
+	  More debug tools will be support and make you easy to debug
+	  system. When you select this option, gdb, kgdb and more debug
+	  tools will be utilized.
+
+if DEBUG_LINUX
+
+config GDB
+	bool "GDB to debug c and assembly source code"
+	depends on DEBUG_LINUX
+	help
+	  * Start your program, specifying anything that might affect its behavior.
+	  * Make your program stop on specified conditions.
+	  * Examine what has happened, when your program has stopped.
+	  * Change things in your program, so you can experiment with correcting 
+	    the effects of one bug and go on to learn about another. 
+endif
+	
+source "tools/debug/qemu/Kconfig"
+
+endmenu
+

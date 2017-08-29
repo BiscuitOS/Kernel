@@ -1,4 +1,7 @@
 deps_config := \
+	tools/debug/qemu/Kconfig \
+	tools/debug/Kconfig \
+	tools/Kconfig \
 	lib/Kconfig \
 	drivers/chr_drv/Kconfig \
 	drivers/blk_drv/Kconfig \

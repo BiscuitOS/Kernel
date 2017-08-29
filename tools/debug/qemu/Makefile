@@ -1,8 +1,7 @@
 # ----------------------------------------------------------------------
 # Qemu option
-# Maintainer: Buddy <buddy.zhang@aliyun.com>
 #
-# Copyright (C) 2017 BiscuitOS
+# Copyright (C) 2017 Buddy <buddy.zhang@aliyun.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -16,27 +15,20 @@ QEMU_FLAGS :=
 # -----------------------------------
 # Platform
 # -----------------------------------
-ifeq ($(ARCH), x86)
-QEMU := qemu-system-x86_64
+ifdef CONFIG_X86
+  QEMU := qemu-system-x86_64
 else
-QEMU := qemu
+  QEMU := qemu
 endif
-
-# -----------------------------------
-# Boot from
-# -----------------------------------
-BOOTLOADER := Floppy
-#BOOTLOADER := Disk
-
-# -----------------------------------
-# Image File
-# -----------------------------------
-IMAGE_FILE := BiscuitOS.img
 
 # -----------------------------------
 # Memory size
 # -----------------------------------
-MEMORY_SIZE := 16M
+ifneq ($(CONFIG_QEMU_MEMORY_SIZE),)
+  MEMORY_SIZE := $(CONFIG_QEMU_MEMORY_SIZE)M
+else
+  MEMORY_SIZE := 16M
+endif
 QEMU_FLAGS  += -m $(MEMORY_SIZE)
 
 # -----------------------------------
@@ -52,21 +44,12 @@ QEMU_FLAGS  += -m $(MEMORY_SIZE)
 # q: Etherboot from network adapter 4
 # Hard disk boot is the default
 # -----------------------------------
-ifeq ($(BOOTLOADER), Floppy)
+ifdef CONFIG_QEMU_BOOT_FLOPPY
   BOOT_DEVICE := a
 else
   BOOT_DEVICE := c
 endif
 QEMU_FLAGS += -boot order=$(BOOT_DEVICE)
-
-# -----------------------------------
-# Virtual device
-# -----------------------------------
-ifeq ($(BOOTLOADER), Floppy)
-  VIRTUAL_DEVICE := /dev/loop0
-else
-  VIRTUAL_DEVICE :=
-endif
 
 # -----------------------------------
 # Block device options
@@ -80,17 +63,17 @@ endif
 # -hdc : hard disk 2 image
 # -hdd : hard disk 3 image
 # -----------------------------------
-ifeq ($(BOOTLOADER), Floppy)
-  BLOCK_DEVICE := -fda Image
+ifdef CONFIG_QEMU_BOOT_FLOPPY
+  BLOCK_DEVICE := -fda vmlinux
 else
-  BLOCK_DEVICE := -fda Image
+  BLOCK_DEVICE := -fda vmlinux
 endif
 QEMU_FLAGS += $(BLOCK_DEVICE)
 
 # -----------------------------------
 # Rootfs
 # -----------------------------------
-ROOTFS := -hda BiscuitOS.img
+# ROOTFS := -hda BiscuitOS.img
 
 # QEMU_FLAGS += $(ROOTFS)
 
@@ -106,18 +89,22 @@ QEMU_FLAGS += $(CONS)
 # Specify time
 # RTC := -rtc base=2017-10-16T16:01:21
 # Local time
-RTC := -rtc base=localtime
+ifdef CONFIG_QEMU_RTC
+  RTC := -rtc base=localtime
+else
 # UTL time (default)
-# RTC := -rtc base=utc
+  RTC := -rtc base=utc
+endif
 QEMU_FLAGS += $(RTC)
 
 
 # ----------------------------------
 # Serial Settings
 # ----------------------------------
-SERIAL := -serial pty
+ifdef CONFIG_QEMU_SERIAL_PTY
+  SERIAL := -serial pty
+endif
 
 QEMU_FLAGS += $(SERIAL)
 # Export Argument
 export QEMU_FLAGS QEMU
-

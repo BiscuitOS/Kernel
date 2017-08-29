@@ -1,0 +1,8 @@
+#
+# Tools configuration
+#
+
+menu "Tools configuration"
+
+source "tools/debug/Kconfig"
+endmenu

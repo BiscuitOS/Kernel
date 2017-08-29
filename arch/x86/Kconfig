@@ -12,3 +12,5 @@ source "mm/Kconfig"
 source "drivers/Kconfig"
 
 source "lib/Kconfig"
+
+source "tools/Kconfig"

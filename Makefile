@@ -327,11 +327,9 @@ config: scripts_basic outputmakefile FORCE
 
 else
 
-
 ifeq ($(dot-config),1)
 # Read in config
 -include include/config/auto.conf
-
 
 # Read in dependencies to all Kconfig* files, make sure to run
 # oldconfig if changes are detected.
@@ -380,8 +378,17 @@ quiet_cmd_vmlinux = LDS     vmlinux
       -T $(vmlinux-lds)                    \
       --start-group $(vmlinux-libs) $(vmlinux-objs) --end-group
 
+_vmlinux_OBJCPFLAGS := --change-section-address .bs_text=0x00
+_vmlinux_OBJCPFLAGS += --change-section-address .st_text=0x200
+_vmlinux_OBJCPFLAGS += --change-section-address .text=0xA00
+
+quiet_cmd_vmlinux_cpy = COPY    vmlinux
+      cmd_vmlinux_cpy = $(OBJCOPY) $(_vmlinux_OBJCPFLAGS) \
+                        -R .pdr -R .comment -R.note -S -O binary $@
+
 vmlinux: $(vmlinux-all)
 	$(call if_changed,vmlinux)
+	$(call if_changed,vmlinux_cpy)
 
 
 # The actual objects are generated when descending, 
@@ -400,11 +407,13 @@ $(vmlinux-dirs): scripts_basic
 # ====================================
 # 
 # Running biscuitos
+-include tools/debug/Makefile
+
 quiet_cmd_running_linux = RUN     vmlinux
-      cmd_running_linux = $(MAKE) -C $(srctree)/tools/build start
+      cmd_running_linux = $(QEMU) $(QEMU_FLAGS)
 
 quiet_cmd_debug_linux = DEBUG      vmlinux
-      cmd_debug_linux = $(MAKE) -C $(srctree)/tools/build debug
+      cmd_debug_linux = $(QEMU) $(QEMU_FLAGS) -s -S
 
 PHONY += start
 start: vmlinux 
@@ -423,7 +432,7 @@ debug: vmlinux
 
 # Directories & files removed with 'make clean'
 CLEAN_DIRS  += 
-CLEAN_FILES += biscuitos
+CLEAN_FILES += vmlinux
 
 # Directories & files removed with 'make mrproper'
 MRPROPER_DIRS  += include/config include/generated
@@ -439,7 +448,7 @@ PHONY += $(clean-dirs) clean archclean
 $(clean-dirs):
 	$(Q)$(MAKE) $(clean)=$(patsubst _clean_%,%,$@)
 
-clean: $(clean-dirs) biscuitos_clean
+clean: $(clean-dirs)
 	$(call cmd,rmdirs)
 	$(call cmd,rmfiles)
 	@find . $(RCS_FIND_IGNORE) \
@@ -447,11 +456,6 @@ clean: $(clean-dirs) biscuitos_clean
 		-o -name '.*.d' -o -name '.*.tmp' -o -name '*.mod.c' \
 		-o -name modules.builtin -o -name '.tmp_*.o.*' \
 		-o -name '*.gcno' \) -type f -print | xargs rm -f
-
-biscuitos_clean:
-ifneq ($(DEBUG),)
-	$(Q)$(MAKE) -C $(srctree)/tools/build/ clean
-endif
 
 # mrproper - Delete all generated files, including .config
 #
