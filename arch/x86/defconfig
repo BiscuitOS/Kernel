@@ -1,0 +1,56 @@
+#
+# Automatically generated make config: don't edit
+# BiscuitOS/x86  Kernel Configuration
+#
+CONFIG_X86=y
+
+#
+# General setup
+#
+CONFIG_CROSS_COMPILE=""
+CONFIG_LOCALVERSION=""
+
+#
+# File systems
+#
+# CONFIG_MINIFS is not set
+
+#
+# Memory settings
+#
+# CONFIG_MMU is not set
+
+#
+# Device drivers
+#
+CONFIG_BLOCK=y
+CONFIG_LL_BLOCK=y
+# CONFIG_FLOPPY is not set
+CONFIG_CHAR=y
+CONFIG_TTY=y
+CONFIG_CONSOLE=y
+
+#
+# library configure
+#
+# CONFIG_MATH is not set
+
+#
+# Tools configuration
+#
+
+#
+# Debug tools configuration
+#
+CONFIG_DEBUG_LINUX=y
+CONFIG_GDB=y
+
+#
+# Qemu configuration
+#
+CONFIG_QEMU=y
+CONFIG_QEMU_BOOT_FLOPPY=y
+# CONFIG_QEMU_BOOT_HARDDISK is not set
+CONFIG_QEMU_MEMORY_SIZE=16
+CONFIG_QEMU_RTC=y
+CONFIG_QEMU_SERIAL_PTY=y

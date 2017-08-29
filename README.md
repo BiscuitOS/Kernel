@@ -58,6 +58,7 @@ BiscuitOS
 	
 	  ```
 	  sudo apt-get install lib32z1 lib32z1-dev
+	  sudo apt-get install libncurses5-dev
 	  ```
 
   2. Download source code
@@ -72,7 +73,7 @@ BiscuitOS
   
 	  ```
       make clean  
-      make 
+      make defconfig 
       make start
       ```
 
