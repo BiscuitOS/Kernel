@@ -338,17 +338,16 @@ endif # $(dot-config)
 # Specify compile flags
 
 ifdef CONFIG_DEBUG_LINUX
-  KBUILD_CFLAGS += -g -Wall -Wunused
+  KBUILD_CFLAGS += $(call cc-option,-g -Wall -Wunused)
   KBUILD_AFLAGS_KERNEL += -ggdb  -am
 endif
 
 ifdef CONFIG_X86
   KBUILD_AFLAGS_KERNEL += --32
-  KBUILD_CFLAGS += -m32 -fno-stack-protector -fgnu89-inline -fomit-frame-pointer -fno-builtin
+  KBUILD_CFLAGS += $(call cc-option,-m32 -fno-stack-protector -fgnu89-inline -fomit-frame-pointer -fno-builtin)
   LDFLAGS += -m elf_i386 --traditional-format
   CPPFLAGS += -I$(srctree)/include -nostdinc
 endif
-
 
 # ================================================================
 # Target compile
@@ -377,21 +376,20 @@ quiet_cmd_vmlinux = LDS     vmlinux
       -T $(vmlinux-lds)                    \
       --start-group $(vmlinux-libs) $(vmlinux-objs) --end-group
 
-_vmlinux_OBJCPFLAGS := --change-section-address .bs_text=0x00
-_vmlinux_OBJCPFLAGS += --change-section-address .st_text=0x200
-_vmlinux_OBJCPFLAGS += --change-section-address .text=0xA00
+vmlinux: bootloader $(vmlinux-all)
+	$(Q)$(call if_changed,vmlinux)
 
-quiet_cmd_vmlinux_cpy = COPY    vmlinux
-      cmd_vmlinux_cpy = $(OBJCOPY) $(_vmlinux_OBJCPFLAGS) \
-                        -R .pdr -R .comment -R.note -S -O binary $@
+ifdef CONFIG_BOOTLOADER
+## To build bootloader for linux
+quiet_cmd_bootloader = DC    uboot
+      cmd_bootloader = $(Q)$(MAKE) -C arch/$(SRCARCH)/boot bootloader
 
-vmlinux: $(vmlinux-all)
-	$(call if_changed,vmlinux)
-ifdef CONFIG_DEBUG_LINUX
-	$(Q)cp vmlinux .debug.vmlinux
+PHONY += bootloader
+bootloader: FORCE
+	$(call cmd_bootloader)
+else
+bootloader: ;
 endif
-	$(call if_changed,vmlinux_cpy)
-
 
 # The actual objects are generated when descending, 
 # make sure no implicit rule kicks in
@@ -417,12 +415,21 @@ quiet_cmd_running_linux = RUN     vmlinux
 quiet_cmd_debug_linux = DEBUG      vmlinux
       cmd_debug_linux = $(QEMU) $(QEMU_FLAGS) -s -S
 
+quiet_cmd_mkimage = MK    BiscuitOS
+      cmd_mkimage = $(Q)$(MAKE) -C \
+	            $(srctree)/arch/$(SRCARCH)/kernel vmlinux
+PHONY += mkimage
+mkimage:
+	$(call if_changed,mkimage)
+
 PHONY += start
-start: vmlinux 
+start: vmlinux
+	$(call cmd_mkimage)
 	$(call if_changed,running_linux)
 
 PHONY += debug
 debug: vmlinux
+	$(call cmd_mkimage)
 	$(call if_changed,debug_linux)
 
 ###
@@ -450,7 +457,7 @@ PHONY += $(clean-dirs) clean archclean
 $(clean-dirs):
 	$(Q)$(MAKE) $(clean)=$(patsubst _clean_%,%,$@)
 
-clean: $(clean-dirs)
+clean: $(clean-dirs) clean-bootloader
 	$(call cmd,rmdirs)
 	$(call cmd,rmfiles)
 	@find . $(RCS_FIND_IGNORE) \
@@ -459,6 +466,9 @@ clean: $(clean-dirs)
 		-o -name modules.builtin -o -name '.tmp_*.o.*' \
 		-o -name .debug.vmlinux \
 		-o -name '*.gcno' \) -type f -print | xargs rm -f
+
+clean-bootloader:
+	$(Q)$(MAKE) -C $(srctree)/arch/$(SRCARCH)/boot clean
 
 # mrproper - Delete all generated files, including .config
 #

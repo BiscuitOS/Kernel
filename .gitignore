@@ -1,5 +1,6 @@
 # Ignore image file
 vmlinux
+BiscuitOS
 
 # Ignore indicate file
 *.o

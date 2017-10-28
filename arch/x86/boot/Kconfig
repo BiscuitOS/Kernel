@@ -1,0 +1,20 @@
+#
+# Bootloader configure for x86
+#
+menu "Bootloader configure"
+
+config BOOTLOADER
+	bool "support bootloader"
+	default y
+	help
+	  Support bootloader on source code
+
+if BOOTLOADER
+
+config DEBUG_BOOTLOADER
+	bool "debug bootloade utilize gdb"
+	help
+	  Debug bootloader with gdb
+endif
+
+endmenu # "General setup"

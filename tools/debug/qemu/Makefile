@@ -13,6 +13,11 @@
 QEMU_FLAGS :=
 
 # -----------------------------------
+# IMAGE Path
+# -----------------------------------
+IMAGE_NAME := $(srctree)/arch/$(SRCARCH)/kernel/BiscuitOS
+
+# -----------------------------------
 # Platform
 # -----------------------------------
 ifdef CONFIG_X86
@@ -64,9 +69,9 @@ QEMU_FLAGS += -boot order=$(BOOT_DEVICE)
 # -hdd : hard disk 3 image
 # -----------------------------------
 ifdef CONFIG_QEMU_BOOT_FLOPPY
-  BLOCK_DEVICE := -fda vmlinux
+  BLOCK_DEVICE := -fda $(IMAGE_NAME)
 else
-  BLOCK_DEVICE := -fda vmlinux
+  BLOCK_DEVICE := -fda $(IMAGE_NAME)
 endif
 QEMU_FLAGS += $(BLOCK_DEVICE)
 

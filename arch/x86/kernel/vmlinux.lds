@@ -9,12 +9,6 @@ ENTRY(startup_32)
 
 SECTIONS
 {
-	/* Linux0.11 bootloader*/
-	. = 0;
-	.bs_text 	: { *(.bs_text) }
-	. = 0x0200;
-	.st_text	: { *(.st_text) }
-	
 	/* System segment */
 	. = 0x0A00;
 	.text		: { *(.text) }

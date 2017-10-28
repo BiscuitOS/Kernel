@@ -1,8 +1,19 @@
 #
-# Tools configuration
+# Kernel hacking configure
 #
 
-menu "Tools configuration"
+menu "kernel hacking"
+
+config DEBUG_KERNEL
+	bool "Debug/Running kernel"
+	help
+	  Utilize mainstream debug tools to debug kernel or
+	  Running kernel with emulater tools.
+
+if DEBUG_KERNEL
 
 source "tools/debug/Kconfig"
+
+endif
+
 endmenu
