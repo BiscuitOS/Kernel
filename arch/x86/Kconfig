@@ -4,14 +4,4 @@ config X86
 
 source "arch/x86/boot/Kconfig"
 
-source "init/Kconfig"
-
-source "fs/Kconfig"
-
-source "mm/Kconfig"
-
-source "drivers/Kconfig"
-
-source "lib/Kconfig"
-
 source "tools/Kconfig"

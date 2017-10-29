@@ -280,6 +280,8 @@ ifneq ($(filter config %config,$(MAKECMDGOALS)),)
         endif
 endif
 
+# Include arch-specify Makefile without any prerequirest.
+include $(srctree)/arch/$(SRCARCH)/Makefile
 ifeq ($(mixed-targets),1)
 # ===========================================================================
 # We're called with mixed targets (*config and build targets).
@@ -297,7 +299,6 @@ ifeq ($(config-targets),1)
 # Read arch specific Makefile to set KBUILD_DEFCONFIG as needed.
 # KBUILD_DEFCONFIG may point out an alternative default configuration
 # used for 'make defconfig'
-#include $(srctree)/arch/$(SRCARCH)/Makefile
 export KBUILD_DEFCONFIG KBUILD_KCONFIG
 
 config: scripts_basic outputmakefile FORCE
@@ -334,21 +335,6 @@ else
 include/config/auto.conf: ;
 endif # $(dot-config)
 
-# ==========================================
-# Specify compile flags
-
-ifdef CONFIG_DEBUG_LINUX
-  KBUILD_CFLAGS += $(call cc-option,-g -Wall -Wunused)
-  KBUILD_AFLAGS_KERNEL += -ggdb  -am
-endif
-
-ifdef CONFIG_X86
-  KBUILD_AFLAGS_KERNEL += --32
-  KBUILD_CFLAGS += $(call cc-option,-m32 -fno-stack-protector -fgnu89-inline -fomit-frame-pointer -fno-builtin)
-  LDFLAGS += -m elf_i386 --traditional-format
-  CPPFLAGS += -I$(srctree)/include -nostdinc
-endif
-
 # ================================================================
 # Target compile
 #
@@ -359,7 +345,7 @@ endif
 # Defaults to vmlinux, but the arch makefile usually adds further targets
 all: vmlinux 
 
-objs-y          := init/ mm/ fs/ kernel/ drivers/ arch/
+objs-y          := init/ mm/ fs/ kernel/ drivers/ arch/ 
 libs-y          := lib/
 
 vmlinux-dirs	:= $(patsubst %/,%,$(objs-y) $(libs-y))
@@ -371,13 +357,18 @@ vmlinux-lds	:= arch/$(SRCARCH)/kernel/vmlinux.lds
 # Do modpost on a prelinked vmlinux. The finally linked vmlinux has
 # relevant sections renamed as per the linker script.
 
-quiet_cmd_vmlinux = LDS     vmlinux
+quiet_cmd_vmlinux = LD      vmlinux
       cmd_vmlinux = $(LD) $(LDFLAGS) -o $@ \
       -T $(vmlinux-lds)                    \
       --start-group $(vmlinux-libs) $(vmlinux-objs) --end-group
 
+quiet_cmd_map = NM      System.map
+      cmd_map = $(NM) $@ | grep -v \
+                    '\(compiled\)\|\(\.o$$\)\|\( [aU] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)'| sort > System.map
+
 vmlinux: bootloader $(vmlinux-all)
 	$(Q)$(call if_changed,vmlinux)
+	$(Q)$(call if_changed,map)
 
 ifdef CONFIG_BOOTLOADER
 ## To build bootloader for linux
@@ -404,33 +395,10 @@ PHONY += $(vmlinux-dirs)
 $(vmlinux-dirs): scripts_basic
 	$(Q)$(MAKE) $(build)=$@
 
-# ====================================
-# 
-# Running biscuitos
--include tools/debug/Makefile
-
-quiet_cmd_running_linux = RUN     vmlinux
-      cmd_running_linux = $(QEMU) $(QEMU_FLAGS)
-
-quiet_cmd_debug_linux = DEBUG      vmlinux
-      cmd_debug_linux = $(QEMU) $(QEMU_FLAGS) -s -S
-
-quiet_cmd_mkimage = MK    BiscuitOS
-      cmd_mkimage = $(Q)$(MAKE) -C \
-	            $(srctree)/arch/$(SRCARCH)/kernel vmlinux
-PHONY += mkimage
-mkimage:
-	$(call if_changed,mkimage)
-
-PHONY += start
-start: vmlinux
-	$(call cmd_mkimage)
-	$(call if_changed,running_linux)
-
-PHONY += debug
-debug: vmlinux
-	$(call cmd_mkimage)
-	$(call if_changed,debug_linux)
+ifdef CONFIG_DEBUG_KERNEL
+# Running or Debugging BiscuitOS
+  include tools/Makefile
+endif
 
 ###
 # Cleaning is done on three levels.
@@ -441,7 +409,7 @@ debug: vmlinux
 
 # Directories & files removed with 'make clean'
 CLEAN_DIRS  += 
-CLEAN_FILES += vmlinux
+CLEAN_FILES += vmlinux System.map $(srctree)/arch/$(SRCARCH)/kernel/vmlinux.bin
 
 # Directories & files removed with 'make mrproper'
 MRPROPER_DIRS  += include/config include/generated
@@ -450,7 +418,7 @@ MRPROPER_FILES += .config .config.old tags TAGS cscope* GPATH GTAGS GRTAGS GSYMS
 # clean - Delete most, but leave enough to build external modules
 #
 clean: rm-dirs  := $(CLEAN_DIRS)
-clean: rm-files := $(CLEAN_FILES)
+clean: rm-files := $(CLEAN_FILES) arch/$(SRCARCH)/kernel/BiscuitOS
 clean-dirs      := $(addprefix _clean_, $(biscuitos-dirs))
 
 PHONY += $(clean-dirs) clean archclean

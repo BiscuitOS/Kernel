@@ -107,7 +107,7 @@ listnewconfig oldnoconfig: $(obj)/conf
 	$< --$@ $(Kconfig)
 
 savedefconfig: $(obj)/conf
-	$< --$@=defconfig $(Kconfig)
+	$(Q)$< --$@=$(srctree)/arch/$(SRCARCH)/configs/defconfig $(Kconfig)
 
 defconfig: $(obj)/conf
 ifeq ($(KBUILD_DEFCONFIG),)

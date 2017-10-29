@@ -1,6 +1,9 @@
 # Ignore image file
 vmlinux
 BiscuitOS
+bootloader
+bootsect
+setup
 
 # Ignore indicate file
 *.o

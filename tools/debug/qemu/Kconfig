@@ -10,6 +10,8 @@ config QEMU
 	  Utilize qemu to emulate different hardware platform.
 	  Support x86(Intel i386)
 
+if QEMU
+
 config QEMU_BOOT_FLOPPY
 	bool "Boot from floppy"
 	depends on QEMU
@@ -39,5 +41,7 @@ config QEMU_SERIAL_PTY
 	depends on QEMU
 	help
 	  Support pty serial.
+
+endif
 
 endmenu

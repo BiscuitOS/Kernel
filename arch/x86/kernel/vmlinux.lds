@@ -9,8 +9,7 @@ ENTRY(startup_32)
 
 SECTIONS
 {
-	/* System segment */
-	. = 0x0A00;
+	. = 0x00;
 	.text		: { *(.text) }
 	.data		: { *(.data) }
 	.bss		: { *(.bss) }

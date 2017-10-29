@@ -174,6 +174,9 @@ root_defined:
 # after that (everything loaded), we jump to
 # the setup-routine loaded directly after
 # the bootblock:
+	mov %ax, %ax
+	mov %bx, %bx
+	mov %bx, %bx
 	ljmp $SETUPSEG, $0
 
 # This routine loads the system at address 0x10000, making sure

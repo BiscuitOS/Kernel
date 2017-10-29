@@ -56,11 +56,13 @@ _start:
 # Get video-card data:
 
 	mov $0x0f, %ah
+	mov %ax, %ax
+	mov %ax, %ax
 	int $0x10
 	mov %bx, %ds:4
 	mov %ax, %ds:6
 	mov %ax, %ax
-	mov %bx, %bx
+	mov %ax, %ax
 
 # Get hd0 data
 

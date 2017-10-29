@@ -1,1 +1,1 @@
-obj-y += x86/
+obj-$(CONFIG_X86) += x86/boot/

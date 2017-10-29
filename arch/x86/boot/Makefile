@@ -3,6 +3,12 @@ obj-y += head.o
 
 local_LDFLAGS += -Ttext 0
 
+-include include/config/auto.conf
+
+ifdef CONFIG_DEBUG_BOOTLOADER
+  KBUILD_AFLAGS_KERNEL += $(call arg-check,-ggdb -am)
+endif
+
 ####
 # Build bootloader
 bootloader: bootsect setup ECHO
@@ -12,7 +18,6 @@ bootloader: bootsect setup ECHO
 	       conv=notrunc > /dev/null 2>&1
 	$(Q)dd if=setup bs=512 seek=1 count=4 \
 	       of=$@ conv=notrunc > /dev/null 2>&1
-	$(warning "  DC    uboot")
 
 bootsect: bootsect.o
 	$(Q)$(LD) $(LDFLAGS) $(local_LDFLAGS) -o $@ $<
