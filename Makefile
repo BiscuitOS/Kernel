@@ -345,7 +345,7 @@ endif # $(dot-config)
 # Defaults to vmlinux, but the arch makefile usually adds further targets
 all: vmlinux 
 
-objs-y          := init/ mm/ fs/ kernel/ drivers/ arch/ 
+objs-y          := arch/ mm/ fs/ kernel/ drivers/ init/
 libs-y          := lib/
 
 vmlinux-dirs	:= $(patsubst %/,%,$(objs-y) $(libs-y))
@@ -359,7 +359,7 @@ vmlinux-lds	:= arch/$(SRCARCH)/kernel/vmlinux.lds
 
 quiet_cmd_vmlinux = LD      vmlinux
       cmd_vmlinux = $(LD) $(LDFLAGS) -o $@ \
-      -T $(vmlinux-lds)                    \
+      -T $(vmlinux-lds) -Ttext 0            \
       --start-group $(vmlinux-libs) $(vmlinux-objs) --end-group
 
 quiet_cmd_map = NM      System.map

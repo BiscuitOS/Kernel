@@ -109,6 +109,7 @@ struct task_struct {
 					{                              \
 					{0, 0}, \
  /* ldt */          {0x9f, 0xc0fa00},              \
+ 	            {0x9f, 0xc0f200},              \
 					},                             \
  /* tss */          {0, PAGE_SIZE + (long)&init_task, 0x10, 0, 0, \
 					0, 0, (long)&pg_dir,           \
