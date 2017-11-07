@@ -11,10 +11,10 @@
  * the fpu must be properly saved/resored. This hasn't been tested.
  */
 
-.globl divide_error,debug,nmi,int3,overflow,bounds,invalid_op
-.globl double_fault,coprocessor_segment_overrun
-.globl invalid_TSS,segment_not_present,stack_segment
-.globl general_protection,coprocessor_error,irq13,reserved
+.globl divide_error, debug, nmi, int3, overflow, bounds, invalid_op
+.globl double_fault, coprocessor_segment_overrun
+.globl invalid_TSS, segment_not_present, stack_segment
+.globl general_protection, coprocessor_error, irq13, reserved
 
 divide_error:
 	pushl $do_divide_error

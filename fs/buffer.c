@@ -56,23 +56,27 @@ void brelse(struct buffer_head *bh)
 	wake_up(&buffer_wait);
 }
 
+/*
+ * bread() reads a specified block and returns the buffer that contains
+ * it. It return NULL if the block was unreadable.
+ */
 struct buffer_head *bread(int dev, int block)
 {
-	struct buffer_head *bh = getblk(dev, block);
+    struct buffer_head *bh;
 
-	if (!bh)
-		panic("Can't get a valid buffer.");
+    if (!(bh = getblk(dev, block)))
+        panic("Can't get a valid buffer.");
 
-	if (bh->b_uptodate)
-		return bh;
+    if (bh->b_uptodate)
+        return bh;
 
-	ll_rw_block(READ, bh);
-	wait_on_buffer(bh);
-	if (bh->b_uptodate)
-		return bh;
+    ll_rw_block(READ, bh);
+    wait_on_buffer(bh);
+    if (bh->b_uptodate)
+        return bh;
 
-	brelse(bh);
-	return NULL;
+    brelse(bh);
+    return NULL;
 }
 
 /* In BiscuitOS, buffer_end is at 4MB currently */
@@ -364,4 +368,31 @@ int sys_sync(void)
             ll_rw_block(WRITE,bh);
     }
     return 0;
+}
+
+/*
+ * bread_page reads four buffers into memory at the descired address. It's
+ * a function of its own, as there is some speed to be got by reading them
+ * all at the same time, not waiting for me one to be read, and then another
+ * etc.
+ */
+void bread_page(unsigned long address, int dev, int b[4])
+{
+    struct buffer_head *bh[4];
+    int i;
+
+    for (i = 0; i < 4; i++)
+        if (b[i]) {
+            if ((bh[i] = getblk(dev, b[i])))
+                if (!bh[i]->b_uptodate)
+                    ll_rw_block(READ, bh[i]);
+        } else
+            bh[i] = NULL;
+    for (i = 0; i < 4; i++, address += BLOCK_SIZE)
+    if (bh[i]) {
+        wait_on_buffer(bh[i]);
+        if (bh[i]->b_uptodate)
+            COPYBLK((unsigned long)bh[i]->b_data, address);
+        brelse(bh[i]);
+    }
 }

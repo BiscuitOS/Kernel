@@ -189,6 +189,7 @@ extern int open_namei(const char *pathname, int flag, int mode,
                struct m_inode **res_inode);
 extern struct m_inode *namei(const char *pathname);
 extern struct m_inode *get_pipe_inode(void);
+extern void bread_page(unsigned long address, int dev, int b[4]);
 
 extern struct file file_table[NR_FILE];
 extern struct super_block super_block[NR_SUPER];

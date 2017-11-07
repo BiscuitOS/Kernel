@@ -1,4 +1,5 @@
 obj-y += ll_rw_blk.o
-obj-y += hd.o
-obj-y += floppy.o
-obj-y += ramdisk.o
+obj-y += disk_null.o
+obj-$(CONFIG_HARDDISK)    += hd.o
+obj-$(CONFIG_FLOPPY)      += floppy.o
+obj-$(CONFIG_RAMDISK)     += ramdisk.o

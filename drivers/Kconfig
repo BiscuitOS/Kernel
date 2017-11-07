@@ -1,27 +1,7 @@
-#
-# Device drivers
-#
+menu "Device Driver"
 
-menu "Device drivers"
-
-config BLOCK
-	bool "Support block device"
-	default y
-	help
-	  Support block device driver.
-
-if BLOCK
-source "drivers/blk_drv/Kconfig"
-endif
-
-config CHAR
-	bool "Support character device"
-	default y
-	help
-	  Support character device driver.
-
-if CHAR
 source "drivers/chr_drv/Kconfig"
-endif
 
-endmenu # "Device drivers"
+source "drivers/blk_drv/Kconfig"
+
+endmenu

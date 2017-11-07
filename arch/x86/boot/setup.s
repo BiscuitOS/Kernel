@@ -8,6 +8,8 @@
 # it under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 	.code16
+# rewrite with AT&T syntax by falcon <wuzhangjin@gmail.com> at 081012
+#
 #	setup.s		(C) 1991 Linus Torvalds
 #
 # setup.s is responsible for getting the system data from the BIOS,
@@ -36,113 +38,134 @@
 	begbss:
 	.text
 
-	ljmp $SETUPSEG, $_start
+	ljmp $SETUPSEG, $_start	
 _start:
 
-# Get current cursor position and save it on 0x90000
-	mov $INITSEG, %ax
-	mov %ax, %ds
-	mov $0x03, %ah
-	xor %bh, %bh
-	int $0x10
-	mov %dx, %ds:0
+# ok, the read went well so we get current cursor position and save it for
+# posterity.
 
-# Get Memory size
+	mov	$INITSEG, %ax	# this is done in bootsect already, but...
+	mov	%ax, %ds
+	mov	$0x03, %ah	# read cursor pos
+	xor	%bh, %bh
+	int	$0x10		# save it in known place, con_init fetches
+	mov	%dx, %ds:0	# it from 0x90000.
+# Get memory size (extended mem, kB)
 
-	mov $0x88, %ah
-	int $0x15
-	mov %ax, %ds:2
+	mov	$0x88, %ah 
+	int	$0x15
+	mov	%ax, %ds:2
 
 # Get video-card data:
 
-	mov $0x0f, %ah
-	mov %ax, %ax
-	mov %ax, %ax
-	int $0x10
-	mov %bx, %ds:4
-	mov %ax, %ds:6
-	mov %ax, %ax
-	mov %ax, %ax
+	mov	$0x0f, %ah
+	int	$0x10
+	mov	%bx, %ds:4	# bh = display page
+	mov	%ax, %ds:6	# al = video mode, ah = window width
+
+# check for EGA/VGA and some config parameters
+
+	mov	$0x12, %ah
+	mov	$0x10, %bl
+	int	$0x10
+	mov	%ax, %ds:8
+	mov	%bx, %ds:10
+	mov	%cx, %ds:12
 
 # Get hd0 data
 
-	mov $0x0000, %ax
-	mov %ax, %ds
-	lds %ds:4*0x41, %si
-	mov $INITSEG, %ax
-	mov %ax, %es
-	mov $0x0080, %di
-	mov $0x10, %cx
+	mov	$0x0000, %ax
+	mov	%ax, %ds
+	lds	%ds:4*0x41, %si
+	mov	$INITSEG, %ax
+	mov	%ax, %es
+	mov	$0x0080, %di
+	mov	$0x10, %cx
 	rep
 	movsb
 
 # Get hd1 data
 
-	mov $0x0000, %ax
-	mov %ax, %ds
-	lds %ds:4*0x46, %si
-	mov $INITSEG, %ax
-	mov %ax, %es
-	mov $0x0090, %di
-	mov $0x10, %cx
+	mov	$0x0000, %ax
+	mov	%ax, %ds
+	lds	%ds:4*0x46, %si
+	mov	$INITSEG, %ax
+	mov	%ax, %es
+	mov	$0x0090, %di
+	mov	$0x10, %cx
 	rep
 	movsb
 
-# Check that there IS a hd1 :)
+# Check that there IS a hd1 :-)
 
-	mov $0x01500, %ax
-	mov $0x81, %dl
-	int $0x13
-	jc no_disk1
-	cmp $3, %ah
-	je is_disk1
+	mov	$0x01500, %ax
+	mov	$0x81, %dl
+	int	$0x13
+	jc	no_disk1
+	cmp	$3, %ah
+	je	is_disk1
 no_disk1:
-	mov $INITSEG, %ax
-	mov %ax, %es
-	mov $0x0090, %di
-	mov $0x10, %cx
-	mov $0x00, %ax
+	mov	$INITSEG, %ax
+	mov	%ax, %es
+	mov	$0x0090, %di
+	mov	$0x10, %cx
+	mov	$0x00, %ax
 	rep
 	stosb
 is_disk1:
 
 # now we want to move to protected mode ...
 
-	cli	     # Forbidden interrupt
+	cli			# no interrupts allowed ! 
 
-# first mov system to rightful place.
-	mov $0x0000, %ax
-	cld      # clear direction
+# first we move the system to it's rightful place
+
+	mov	$0x0000, %ax
+	cld			# 'direction'=0, movs moves forward
 do_move:
-	mov %ax, %es         # Destination segment
-	add $0x1000, %ax
-	cmp $0x9000, %ax
-	jz end_move
-	mov %ax, %ds         # Source segment
-	sub %di, %di
-	sub %si, %si
-	mov $0x8000, %cx
+	mov	%ax, %es	# destination segment
+	add	$0x1000, %ax
+	cmp	$0x9000, %ax
+	jz	end_move
+	mov	%ax, %ds	# source segment
+	sub	%di, %di
+	sub	%si, %si
+	mov 	$0x8000, %cx
 	rep
 	movsw
-	jmp do_move
+	jmp	do_move
 
-# Then load the segment desciptors
+# then we load the segment descriptors
+
 end_move:
-	mov $SETUPSEG, %ax
-	mov %ax, %ds
-	lidt idt_48         # load IDT
-	lgdt gdt_48         # load GDT
+	mov	$SETUPSEG, %ax	# right, forgot this at first. didn't work :-)
+	mov	%ax, %ds
+	lidt	idt_48		# load idt with 0,0
+	lgdt	gdt_48		# load gdt with whatever appropriate
 
+# that was painless, now we enable A20
 
-# Enable A20
+	#call	empty_8042	# 8042 is the keyboard controller
+	#mov	$0xD1, %al	# command write
+	#out	%al, $0x64
+	#call	empty_8042
+	#mov	$0xDF, %al	# A20 on
+	#out	%al, $0x60
+	#call	empty_8042
+	inb     $0x92, %al	# open A20 line(Fast Gate A20).
+	orb     $0b00000010, %al
+	outb    %al, $0x92
 
-	inb $0x92, %al    # Open A20 line(Fast Gate A20)
-	orb $0b00000010, %al
-	outb %al, $0x92
-
-# Reprogram interrupt
+# well, that went ok, I hope. Now we have to reprogram the interrupts :-(
+# we put them right after the intel-reserved hardware interrupts, at
+# int 0x20-0x2F. There they won't mess up anything. Sadly IBM really
+# messed this up with the original PC, and they haven't been able to
+# rectify it afterwards. Thus the bios puts interrupts at 0x08-0x0f,
+# which is used for the internal hardware interrupts as well. We just
+# have to reprogram the 8259's, and it isn't fun.
 
 	mov	$0x11, %al		# initialization sequence(ICW1)
+					# ICW4 needed(1),CASCADE mode,Level-triggered
 	out	%al, $0x20		# send it to 8259A-1
 	.word	0x00eb,0x00eb		# jmp $+2, jmp $+2
 	out	%al, $0xA0		# and to 8259A-2
@@ -169,16 +192,34 @@ end_move:
 	.word	0x00eb,0x00eb
 	out	%al, $0xA1
 
-# Simple jmp to 0x00000
+# well, that certainly wasn't fun :-(. Hopefully it works, and we don't
+# need no steenking BIOS anyway (except for the initial loading :-).
+# The BIOS-routine wants lots of unnecessary data, and it's less
+# "interesting" anyway. This is how REAL programmers do it.
+#
+# Well, now's the time to actually move into protected mode. To make
+# things as simple as possible, we do no register set-up or anything,
+# we let the gnu-compiled 32-bit programs do that. We just jump to
+# absolute address 0x00000, in 32-bit protected mode.
+	#mov	$0x0001, %ax	# protected mode (PE) bit
+	#lmsw	%ax		# This is it!
+	mov	%cr0, %eax	# get machine status(cr0|MSW)	
+	bts	$0, %eax	# turn on the PE-bit 
+	mov	%eax, %cr0	# protection enabled
+				
+				# segment-descriptor        (INDEX:TI:RPL)
+	.equ	sel_cs0, 0x0008 # select for code segment 0 (  001:0 :00) 
+	ljmp	$sel_cs0, $0	# jmp offset 0 of code segment 0 in gdt
 
-	mov %cr0, %eax    # Get machine status
-	bts $0, %eax      # Turn on the PE-bit
-	mov %eax, %cr0    # Protection enable
-
-	# Segment-desciptor  (INDEX:IT:RPL)
-	.equ sel_cs0, 0x0008 # Select for code segment 0 (001:0:00)
-	ljmp $sel_cs0, $0    # jmp offset 0 of code segment 0 in GDT
-
+# This routine checks that the keyboard command queue is empty
+# No timeout is used - if this hangs there is something wrong with
+# the machine, and we probably couldn't proceed anyway.
+empty_8042:
+	.word	0x00eb,0x00eb
+	in	$0x64, %al	# 8042 status port
+	test	$2, %al		# is input buffer full?
+	jnz	empty_8042	# yes - loop
+	ret
 
 gdt:
 	.word	0,0,0,0		# dummy
@@ -199,9 +240,9 @@ idt_48:
 
 gdt_48:
 	.word	0x800			# gdt limit=2048, 256 GDT entries
-	.word   512+gdt, 0x9		# gdt base = 0X9xxxx,
+	.word   512+gdt, 0x9		# gdt base = 0X9xxxx, 
 	# 512+gdt is the real gdt after setup is moved to 0x9020 * 0x10
-
+	
 .text
 endtext:
 .data

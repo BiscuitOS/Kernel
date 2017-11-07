@@ -6,6 +6,7 @@ menu "Qemu configuration"
 
 config QEMU
 	bool "Support qemu to emulate different CPU"
+	default y
 	help
 	  Utilize qemu to emulate different hardware platform.
 	  Support x86(Intel i386)

@@ -1,22 +1,72 @@
+/*
+ * linux/kernel/system_call.s
+ *
+ * (C) 1991 Linus Torvalds
+ */
 
-EIP       = 0x1C
-CS        = 0x20
-OLDSS     = 0x2C
+/*
+ * system_call.s contains the system-call low-level handing routines.
+ * This also contains the timer-interrupt handler, as some of the code is
+ * the same. The hd- and floppy-interrupts are also here.
+ *
+ * NOTE: this code handles signal-recognition, which happens every time
+ * after a timer-interrupt and after each system call. Ordinary interrupts
+ * don't handle signal-recognition, as that would clutter them up totally
+ * unnecessarilly.
+ *
+ * Stack layout in 'ret_from_system_call':
+ *
+ *       0(%esp) - %eax
+ *       4(%esp) - %ebx
+ *       8(%esp) - %ecx
+ *       C(%esp) - %edx
+ *      10(%esp) - %fs
+ *      14(%esp) - %es
+ *      18(%esp) - %ds
+ *      1C(%esp) - %eip
+ *      20(%esp) - %cs
+ *      24(%esp) - %eflags
+ *      28(%esp) - %oldesp
+ *      2C(%esp) - %oldss
+ */
 
-signal    = 12
-blocked   = (33 * 16)
+SIG_CHLD	= 17
 
-state   = 0
-counter = 4
-signal  = 12
-blocked = (33 * 16)
+EAX               = 0x00
+EBX               = 0x04
+ECX               = 0x08
+EDX               = 0x0C
+FS                = 0x10
+ES                = 0x14
+DS                = 0x18
+EIP               = 0x1C
+CS                = 0x20
+EFLAGS            = 0x24
+OLDESP            = 0x28
+OLDSS             = 0x2C
+
+state      = 0       # these are offsets into the task-struct.   
+counter    = 4
+priority   = 8
+signal     = 12
+sigaction  = 16      # Must be 16 (=len of sigaction)
+blocked    = (33 * 16)
+
+# offsets within sigaction
+sa_handler = 0
+sa_mask    = 4
+sa_flags   = 8
+sa_restorer = 12
 
 nr_system_calls = 72
 
-.globl coprocessor_error, parallel_interrupt
-.globl device_not_available, timer_interrupt, system_call
-.globl hd_interrupt, floppy_interrupt
-.globl sys_fork, sys_execve
+/*
+ * Ok, I get parallel printer interrupts while using the floppy for some
+ * strange reason. Urgel. Now I just ignore them.
+ */
+.globl system_call, sys_fork, timer_interrupt, sys_execve 
+.globl hd_interrupt, floppy_interrupt, parallel_interrupt
+.globl device_not_available, coprocessor_error
 
 .align 2
 bad_sys_call:
@@ -48,7 +98,6 @@ system_call:
         jne reschedule
         cmpl $0,counter(%eax)           # counter
         je reschedule
-.align 2
 ret_from_sys_call:
 	movl current, %eax
 	cmpl task, %eax
@@ -57,8 +106,8 @@ ret_from_sys_call:
 	jne 3f
 	cmpw $0x17, OLDSS(%esp)
 	jne 3f
-	mov signal(%eax), %ebx
-	mov blocked(%eax), %ecx
+	movl signal(%eax), %ebx
+	movl blocked(%eax), %ecx
 	notl %ecx
 	andl %ebx, %ecx
 	bsfl %ecx, %ecx
@@ -96,31 +145,6 @@ coprocessor_error:
 	jmp math_error
 
 .align 2
-timer_interrupt:
-	push %ds              # save ds, es and put kernel data space
-	push %es              # into them. %fs is used by _system_call
-	push %fs
-	pushl %edx            # we save %eax, %ecx, %edx as gcc doesn't
-	pushl %ecx            # save those across function calls. %ebx
-	pushl %ebx            # is saved as we use that in ret_sys_call
-	pushl %eax
-	movl $0x10, %eax
-	mov %ax, %ds
-	mov %ax, %es
-	movl $0x17, %eax
-	mov %ax, %fs
-	incl jiffies
-	movb $0x20, %al       # EOI to interrupt controller #1
-	outb %al, $0x20
-	movl CS(%esp), %eax
-	andl $3, %eax
-	pushl %eax
-	call do_timer
-	addl $4, %esp
-	jmp ret_from_sys_call
-	ret
-
-.align 2
 device_not_available:
 	push %ds
 	push %es
@@ -149,14 +173,51 @@ device_not_available:
 	ret
 
 .align 2
+timer_interrupt:
+	push %ds              # save ds, es and put kernel data space
+	push %es              # into them. %fs is used by _system_call
+	push %fs
+	pushl %edx            # we save %eax, %ecx, %edx as gcc doesn't
+	pushl %ecx            # save those across function calls. %ebx
+	pushl %ebx            # is saved as we use that in ret_sys_call
+	pushl %eax
+	movl $0x10, %eax
+	mov %ax, %ds
+	mov %ax, %es
+	movl $0x17, %eax
+	mov %ax, %fs
+	incl jiffies
+	movb $0x20, %al       # EOI to interrupt controller #1
+	outb %al, $0x20
+	movl CS(%esp), %eax
+	andl $3, %eax
+	pushl %eax
+	call do_timer
+	addl $4, %esp
+	jmp ret_from_sys_call
+
+.align 2
 sys_execve:
 	lea EIP(%esp), %eax
-	push %eax
+	pushl %eax
 	call do_execve
 	addl $4, %esp
 	ret
 
 .align 2
+sys_fork:
+	call find_empty_process
+	testl %eax, %eax
+	js 1f
+	push %gs
+	pushl %esi
+	pushl %edi
+	pushl %ebp
+	pushl %eax
+	call copy_process
+	addl $20, %esp
+1:  ret
+
 hd_interrupt:
 	pushl %eax
 	pushl %ecx
@@ -188,7 +249,6 @@ hd_interrupt:
 	popl %eax
 	iret
 
-.align 2
 floppy_interrupt:
 	pushl %eax
 	pushl %ecx
@@ -216,20 +276,6 @@ floppy_interrupt:
 	popl %ecx
 	popl %eax
 	iret
-
-.align 2
-sys_fork:
-	call find_empty_process
-	testl %eax, %eax
-	js 1f
-	push %gs
-	pushl %esi
-	pushl %edi
-	pushl %ebp
-	pushl %eax
-	call copy_process
-	addl $20, %esp
-1:  ret
 
 parallel_interrupt:
 	pushl %eax

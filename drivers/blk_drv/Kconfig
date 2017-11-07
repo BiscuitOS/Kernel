@@ -1,15 +1,27 @@
 #
 # Block device drivers
 #
+menu "Block Device Drivers"
 
-config LL_BLOCK
-	bool "Support block ll_device"
-	default y
+config RAMDISK
+	bool "Ramdisk"
 	help
-	  Support LL_BLOCK
+	  Virtual hard-disk on RAM.
 
 config FLOPPY
-	bool "Support floppy"
+	bool "Floppy"
 	help
-	  Support load data from floppy
+	  Floppy disk.
+
+config HARDDISK
+	bool "Hard-disk"
+	help
+	  Hard disk
+
+config CONFIG_HD_TYPE
+	bool "Support multi disk type"
+	help
+	  Disk type.
+
+endmenu
  

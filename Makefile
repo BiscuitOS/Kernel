@@ -348,6 +348,10 @@ all: vmlinux
 objs-y          := arch/ mm/ fs/ kernel/ drivers/ init/
 libs-y          := lib/
 
+ifdef CONFIG_TESTCASE
+  objs-y        += tools/testcase/
+endif
+
 vmlinux-dirs	:= $(patsubst %/,%,$(objs-y) $(libs-y))
 vmlinux-objs	:= $(patsubst %/,%/built-in.o,$(objs-y))
 vmlinux-libs	:= $(patsubst %/,%/lib.a,$(libs-y))

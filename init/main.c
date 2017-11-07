@@ -19,6 +19,10 @@
 #include <asm/io.h>
 #include <asm/system.h>
 
+#ifdef CONFIG_TESTCASE
+#include <test/testcase.h>
+#endif
+
 /*
  * we need this inline - forking for kernel space will result
  * in NO COPY ON WRITE (!!!), until an execve is executed. This
@@ -90,7 +94,6 @@ static void time_init(void)
 {
     struct tm time;
 
-    printk("Initialize system Time.\n");
     do {
         time.tm_sec = CMOS_READ(0);
         time.tm_min = CMOS_READ(2);
@@ -106,10 +109,7 @@ static void time_init(void)
     BCD_TO_BIN(time.tm_mday);
     BCD_TO_BIN(time.tm_mon);
     BCD_TO_BIN(time.tm_year);
-    printk("Boot system time: 20%d-%d-%d: %d-%d-%d\n",
-	       time.tm_year, time.tm_mon, time.tm_mday,
-	       time.tm_hour, time.tm_min, time.tm_sec);
-	       time.tm_mon--;
+    time.tm_mon--;
     startup_time = kernel_mktime(&time);
 }
 
@@ -134,14 +134,6 @@ static void memory_detect(void)
 	main_memory_start = buffer_memory_end;
 }
 
-static void info_init(void)
-{
-	printk("Compressing kernel.....\n");
-	printk("Booting BisuitOS on physical CPU 0x0\n");
-	printk("Machine:Intel i386\n");
-	printk("Kernel command line: %s\n", command_line);
-}
-
 int main(void)
 {
     /*
@@ -156,13 +148,19 @@ int main(void)
     blk_dev_init();
     chr_dev_init();
     tty_init();
-    info_init();
     time_init();
     sched_init();
     buffer_init(buffer_memory_end);
+#ifdef CONFIG_HARDDISK
     hd_init();
+#endif
+#ifdef CONFIG_FLOPPY
     floppy_init();
+#endif
     sti();
+#ifdef CONFIG_TESTCASE
+    testcase_init();
+#endif
     move_to_user_mode();
     if (!fork()) {   /* we count on this going ok */
         init();

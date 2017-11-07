@@ -23,13 +23,14 @@
 	__asm__("cld ; rep ; movsl" ::"S" (from), "D" (to), "c" (1024))
 
 static long HIGH_MEMORY = 0;
+extern void do_exit(int error_code);
 
 static unsigned char mem_map[PAGING_PAGES] = { 0, };
 
 static inline void oom(void)
 {
 	printk("out of memory\n\r");
-	//do_exit(SIGSEGV);
+	do_exit(SIGSEGV);
 }
 
 /*
@@ -37,16 +38,16 @@ static inline void oom(void)
  */
 void mem_init(long start_mem, long end_mem)
 {
-	int i;
+    int i;
 
-	HIGH_MEMORY = end_mem;
-	for (i = 0; i < PAGING_PAGES; i++)
-		mem_map[i] = USED;
-	i = MAP_NR(start_mem);
-	end_mem -= start_mem;
-	end_mem >>= 12;
-	while (end_mem-- > 0)
-		mem_map[i++] = 0;
+    HIGH_MEMORY = end_mem;
+    for (i = 0; i < PAGING_PAGES; i++)
+        mem_map[i] = USED;
+    i = MAP_NR(start_mem);
+    end_mem -= start_mem;
+    end_mem >>= 12;
+    while (end_mem-- > 0)
+        mem_map[i++] = 0;
 }
 
 /*
@@ -323,6 +324,7 @@ static int share_page(unsigned long address)
 
 void do_no_page(unsigned long error_code, unsigned long address)
 {
+	int nr[4];
 	unsigned long tmp;
 	unsigned long page;
 	int block, i;
@@ -340,9 +342,8 @@ void do_no_page(unsigned long error_code, unsigned long address)
 	/* remeber that 1 block is used for header */
 	block = 1 + tmp / BLOCK_SIZE;
 	for (i = 0; i < 4; block++, i++)
-		//nr[i] = bmap(current->executable, block);
-		;
-	//bread_page(page, current->executable->i_dev, nr);
+		nr[i] = bmap(current->executable, block);
+	bread_page(page, current->executable->i_dev, nr);
 	i = tmp + 4096 - current->end_data;
 	tmp = page + 4096;
 	while (i-- > 0) {

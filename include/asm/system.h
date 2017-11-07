@@ -2,20 +2,20 @@
 #define _ASM_SYSTEM_H_
 
 #define move_to_user_mode() \
-	__asm__("movl %%esp, %%eax\n\t"   \
-			"pushl $0x17\n\t"   \
-			"pushl %%eax\n\t"   \
-			"pushfl\n\t"        \
-			"pushl $0x0f\n\t"   \
-			"pushl $1f\n\t"     \
-			"iret\n"            \
-			"1:\t"              \
-			"movl $0x17, %%eax\n\t"  \
-			"movw %%ax, %%ds\n\t"    \
-			"movw %%ax, %%es\n\t"    \
-			"movw %%ax, %%fs\n\t"    \
-			"movw %%ax, %%gs\n\t"    \
-			:::"ax")
+        __asm__("movl %%esp, %%eax\n\t"   \
+                "pushl $0x17\n\t"   \
+                "pushl %%eax\n\t"   \
+                "pushfl\n\t"        \
+                "pushl $0x0f\n\t"   \
+                "pushl $1f\n\t"     \
+                "iret\n"            \
+                "1:\t"              \
+                "movl $0x17, %%eax\n\t"  \
+                "movw %%ax, %%ds\n\t"    \
+                "movw %%ax, %%es\n\t"    \
+                "movw %%ax, %%fs\n\t"    \
+                "movw %%ax, %%gs\n\t"    \
+                :::"ax")
 
 #define sti()  __asm__("sti"::)
 #define cli()  __asm__("cli"::)
@@ -27,15 +27,15 @@
 #define iret() __asm__("iret"::)
 
 #define _set_gate(gate_addr, type, dpl, addr)  \
-	__asm__ ("movw %%dx, %%ax\n\t"             \
-			 "movw %0, %%dx\n\t"               \
-			 "movl %%eax, %1\n\t"              \
-			 "movl %%edx, %2"              \
-			 :                                 \
-			 : "i" ((short) (0x8000 + (dpl << 13) + (type << 8))), \
-			 "o" (*((char *) (gate_addr))),    \
-			 "o" (*(4+(char *) (gate_addr))),  \
-			 "d" ((char *) (addr)), "a" (0x00080000))
+        __asm__ ("movw %%dx, %%ax\n\t"             \
+                 "movw %0, %%dx\n\t"               \
+                 "movl %%eax, %1\n\t"              \
+                 "movl %%edx, %2"              \
+                 :                                 \
+                 : "i" ((short) (0x8000 + (dpl << 13) + (type << 8))), \
+                 "o" (*((char *) (gate_addr))),    \
+                 "o" (*(4+(char *) (gate_addr))),  \
+                 "d" ((char *) (addr)), "a" (0x00080000))
 
 #define set_trap_gate(n, addr)  \
 	_set_gate(&idt[n], 15, 0, addr)

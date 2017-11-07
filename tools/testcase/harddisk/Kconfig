@@ -1,0 +1,23 @@
+#
+# Testcase for Hard-disk
+#
+menu "Hard disk"
+
+comment "Debug Hard-disk on Kernel space"
+
+config TESTCASE_HARDDISK
+	default n
+        bool "Test Hard-disk function"
+        help
+          Test full function for hard-disk.
+
+if TESTCASE_HARDDISK
+
+config TESTCASE_HARDDISK_INT
+	bool "Test interrupt for hard-disk"
+	help
+	  Test interrupt function for hard-disk
+
+endif # End of TESTCASE_HARDDISK
+
+endmenu

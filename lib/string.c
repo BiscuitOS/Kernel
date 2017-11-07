@@ -1,3 +1,8 @@
+/*
+ *  linux/lib/string.c
+ *
+ *  (C) 1991  Linus Torvalds
+ */
 
 #ifndef __GNUC__
 #error I want GCC!

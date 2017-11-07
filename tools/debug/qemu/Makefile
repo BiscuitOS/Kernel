@@ -71,16 +71,16 @@ QEMU_FLAGS += -boot order=$(BOOT_DEVICE)
 ifdef CONFIG_QEMU_BOOT_FLOPPY
   BLOCK_DEVICE := -fda $(IMAGE_NAME)
 else
-  BLOCK_DEVICE := -fda $(IMAGE_NAME)
+  BLOCK_DEVICE := -fha $(IMAGE_NAME)
 endif
 QEMU_FLAGS += $(BLOCK_DEVICE)
 
 # -----------------------------------
 # Rootfs
 # -----------------------------------
-# ROOTFS := -hda BiscuitOS.img
+ROOTFS := -hda $(srctree)/hdc-0.11.img
 
-# QEMU_FLAGS += $(ROOTFS)
+QEMU_FLAGS += $(ROOTFS)
 
 # -----------------------------------
 # Display options
@@ -100,7 +100,7 @@ else
 # UTL time (default)
   RTC := -rtc base=utc
 endif
-QEMU_FLAGS += $(RTC)
+#QEMU_FLAGS += $(RTC)
 
 
 # ----------------------------------
@@ -110,6 +110,6 @@ ifdef CONFIG_QEMU_SERIAL_PTY
   SERIAL := -serial pty
 endif
 
-QEMU_FLAGS += $(SERIAL)
+#QEMU_FLAGS += $(SERIAL)
 # Export Argument
 export QEMU_FLAGS QEMU

@@ -48,4 +48,8 @@ static inline int IN_ORDER(struct request *s1, struct request *s2)
 extern struct blk_dev_struct blk_dev[];
 extern struct task_struct *wait_for_request;
 
+#ifdef CONFIG_HARDDISK
+extern void (*do_hd)(void);
+#endif
+
 #endif

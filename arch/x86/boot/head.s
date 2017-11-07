@@ -1,8 +1,7 @@
-/* ----------------------------------------------------------
+/* 
  * head.s
- * Maintainer: Buddy <buddy.zhang@aliyun.com>
  *
- * Copyright (C) 2017 BiscuitOS
+ * Copyright (C) 1991 Linus Torvalds
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -213,7 +212,7 @@ setup_paging:
 	movl $1024*5, %ecx      /* 5 pages - pg_dir+4 page tables */
 	xorl %eax, %eax
 	xorl %edi, %edi         /* pg_dir is at 0x00 */
-	cld
+	cld;rep;stosl
 	movl $pg0+7, pg_dir     /* set present bit/user r/w */
 	movl $pg1+7, pg_dir+4   /* ------------ " " -------------- */
 	movl $pg2+7, pg_dir+8   /* ------------ " " -------------- */

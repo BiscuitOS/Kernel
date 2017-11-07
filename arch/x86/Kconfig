@@ -4,4 +4,6 @@ config X86
 
 source "arch/x86/boot/Kconfig"
 
+source "drivers/Kconfig"
+
 source "tools/Kconfig"

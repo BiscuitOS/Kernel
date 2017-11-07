@@ -1,0 +1,23 @@
+#
+# Debug tools configuration
+# 
+
+menu "TestCase configuration"
+
+config TESTCASE
+	bool "Testcase for kernel function"
+	help
+	  Test basic kernel function on specify envirnoment
+
+if TESTCASE
+
+comment "only select one item"
+
+source "tools/testcase/interrupt/Kconfig"
+
+source "tools/testcase/harddisk/Kconfig"
+
+endif
+
+endmenu
+
