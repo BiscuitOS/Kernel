@@ -128,7 +128,7 @@ static int controller_ready(void)
 {
 	int retries = 100000;
 
-	while (--retries && (inb_p(HD_STATUS) & BUSY_STAT));
+	while (--retries && (inb_p(HD_STATUS) & 0x80));
 	return (retries);
 }
 
@@ -165,7 +165,7 @@ static void reset_controller(void)
 	outb(hd_info[0].ctl & 0x0f, HD_CMD);
 	if (drive_busy())
 		printk("HD-controller still busy\n\r");
-	if ((inb(HD_ERROR)) != HD_NO_ERR)
+	if ((i = inb(HD_ERROR)) != 1)
 		printk("HD-controller reset failed: %02x\n\r", i);
 }
 
@@ -379,7 +379,6 @@ int sys_setup(void *BIOS)
                    drive);
             panic("");
         }
-	printk("SUSTE\n");
         if (bh->b_data[510] != 0x55 || (unsigned char)
             bh->b_data[511] != 0xAA) {
             printk("Bad partition table on drive %d\n\r", drive);
@@ -392,7 +391,6 @@ int sys_setup(void *BIOS)
         }
         brelse(bh);
     }
-    printk("AAAAA\n");
     if (NR_HD)
         printk("Partition table%s ok.\n\r", (NR_HD > 1) ? "s" : "");
     rd_load();

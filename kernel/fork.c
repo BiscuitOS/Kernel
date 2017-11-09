@@ -25,7 +25,7 @@ void verify_area(void *addr, int size)
     while (size > 0) {
         size -= 4096;
         write_verify(start);
-        start += 4086;
+        start += 4096;
     }
 }
 

@@ -122,6 +122,8 @@ static unsigned long *create_tables(char *p, int argc, int envc)
     sp -= argc + 1;
     argv = sp;
     put_fs_long((unsigned long)envp, --sp);
+    put_fs_long((unsigned long)argv, --sp);
+    put_fs_long((unsigned long)argc, --sp);
     while (argc-- > 0) {
         put_fs_long((unsigned long)p, argv++);
         while (get_fs_byte(p++))
@@ -202,6 +204,7 @@ restart_interp:
         i >>= 3;
     if (!(i & 1) &&
         !((inode->i_mode & 0111) && suser())) {
+        retval = -ENOEXEC;
         goto exec_error2;
     }
     if (!(bh = bread(inode->i_dev, inode->i_zone[0]))) {
@@ -286,6 +289,7 @@ restart_interp:
           ex.a_text + ex.a_data + ex.a_bss > 0x3000000 ||
           inode->i_size < ex.a_text + ex.a_data + ex.a_syms + N_TXTOFF(ex)) {
         retval = -ENOEXEC;
+        goto exec_error2;
     }
     if (N_TXTOFF(ex) != BLOCK_SIZE) {
         printk("%s: N_TXTOFF != BLOCK_SIZE. See a.out.h", filename);

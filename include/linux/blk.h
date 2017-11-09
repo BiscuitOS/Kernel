@@ -12,6 +12,9 @@
  * long pauses in reading when heavy writing/syncing is going on)
  */
 #define NR_REQUEST  32
+
+
+#define NR_BLK_DEV   7
 /*
  * Ok, this is an expanded form so that we can use the same
  * request for paging requests when that is implemented. In

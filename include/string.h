@@ -1,6 +1,12 @@
 #ifndef _STRING_H_
 #define _STRING_H_
 
+#ifndef NULL
+#define NULL ((void *) 0)
+#endif
+
+extern char *___strtok;
+
 extern inline char *strcpy(char *dest, const char *src);
 extern inline char *strncpy(char *dest, const char *src, int count);
 extern inline char *strcat(char *dest, const char *src);

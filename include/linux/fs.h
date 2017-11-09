@@ -95,17 +95,17 @@ struct m_inode {
 	unsigned short i_zone[9];
 	/* These are in memory also */
 	struct task_struct *i_wait;
-	unsigned long i_atime;
-	unsigned long i_ctime;
-	unsigned long i_dev;
-	unsigned long i_num;
-	unsigned long i_count;
-	unsigned long i_lock;
-	unsigned long i_dirt;
-	unsigned long i_pipe;
-	unsigned long i_mount;
-	unsigned long i_seek;
-	unsigned long i_update;
+	unsigned long  i_atime;
+	unsigned long  i_ctime;
+	unsigned short i_dev;
+	unsigned short i_num;
+	unsigned short i_count;
+	unsigned char  i_lock;
+	unsigned char  i_dirt;
+	unsigned char  i_pipe;
+	unsigned char  i_mount;
+	unsigned char  i_seek;
+	unsigned char  i_update;
 };
 
 struct file {

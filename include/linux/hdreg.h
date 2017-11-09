@@ -45,7 +45,7 @@
 /* Bits for HD_ERROR */
 #define MARK_ERR       0x01	/* Bad address mark ? */
 #define TRK0_ERR       0x02	/* couldn't find track 0 */
-#define ABRT_ERR       0x40	/* ? */
+#define ABRT_ERR       0x04	/* ? */
 #define ID_ERR         0x10	/* ? */
 #define ECC_ERR        0x40	/* ? */
 #define BBD_ERR        0x80	/* ? */

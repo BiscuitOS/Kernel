@@ -156,7 +156,8 @@ int tty_ioctl(int dev, int cmd, int arg)
         else if (arg == 2) {
             flush(&tty->read_q);
             flush(&tty->write_q);
-        }
+        } else
+            return -EINVAL;
         return 0;
     case TIOCEXCL:
         return -EINVAL; /* not implemented */

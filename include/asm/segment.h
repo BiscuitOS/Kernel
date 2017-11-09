@@ -23,7 +23,7 @@ static inline unsigned long get_fs_long(const unsigned long *addr)
 {
     unsigned long _v;
 
-    __asm__("movl %%fs:%1, %0":"=r" (_v):"m" (*addr));
+    __asm__("movl %%fs:%1, %0":"=r" (_v):"m" (*addr)); \
     return _v;
 }
 

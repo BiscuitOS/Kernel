@@ -6,7 +6,7 @@
 
 #include <ctype.h>
 
-unsigned char _ctmp;
+char _ctmp;
 unsigned char _ctype[] = {
 	0x00,			/* EOF */
 	_C, _C, _C, _C, _C, _C, _C, _C,	/* 0-7 */

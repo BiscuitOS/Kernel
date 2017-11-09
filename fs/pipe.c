@@ -82,7 +82,7 @@ int sys_pipe(unsigned long *fildes)
     if (j < 2)
         return -1;
     j = 0;
-    for (i = 0; j < 2 && j < NR_OPEN; i++)
+    for (i = 0; j < 2 && i < NR_OPEN; i++)
         if (!current->filp[i]) {
             current->filp[fd[j] = i] = f[j];
             j++;

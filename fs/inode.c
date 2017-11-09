@@ -285,6 +285,8 @@ static int _bmap(struct m_inode *inode, int block, int create)
             inode->i_dirt = 1;
             inode->i_ctime = CURRENT_TIME;
         }
+    if (!inode->i_zone[8])
+        return 0;
     if (!(bh = bread(inode->i_dev, inode->i_zone[8])))
         return 0;
     i = ((unsigned short *)bh->b_data)[block >> 9];

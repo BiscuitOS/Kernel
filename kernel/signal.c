@@ -37,6 +37,7 @@ void do_signal(long signr, long eax, long ebx, long ecx, long edx,
     verify_area(esp, longs * 4);
     tmp_esp = esp;
     put_fs_long((long)sa->sa_restorer, tmp_esp++);
+    put_fs_long(signr, tmp_esp++);
     if (!(sa->sa_flags & SA_NOMASK))
         put_fs_long(current->blocked, tmp_esp++);
     put_fs_long(eax, tmp_esp++);

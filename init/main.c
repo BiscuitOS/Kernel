@@ -172,7 +172,8 @@ int main(void)
  * can run). For task0 'pause()' just means we go check if some other
  * task can run, and if not we return here.
  */
-    return 0;
+    for (;;)
+        pause();
 }
 
 static int printf(const char *fmt, ...)
@@ -222,6 +223,7 @@ void init(void)
             close(0);
             close(1);
             close(2);
+            setsid();
             (void) open("/dev/tty0", O_RDWR, 0);
             (void) dup(0);
             (void) dup(0);

@@ -114,7 +114,7 @@ static struct super_block *read_super(int dev)
     }
     for (i = 0; i < I_MAP_SLOTS; i++)
         s->s_imap[i] = NULL;
-    for (i = 0; i < I_MAP_SLOTS; i++)
+    for (i = 0; i < Z_MAP_SLOTS; i++)
         s->s_zmap[i] = NULL;
     block = 2;
     for (i = 0; i < s->s_imap_blocks; i++)
@@ -273,10 +273,12 @@ int sys_umount(char *dev_name)
         printk("Mounted inode has i_mount=0\n");
     for (inode = inode_table + 0; inode < inode_table + NR_INODE; inode++)
         if (inode->i_dev == dev && inode->i_count)
+            return -EBUSY;
     sb->s_imount->i_mount = 0;
     iput(sb->s_imount);
     sb->s_imount = NULL;
     iput(sb->s_isup);
+    sb->s_isup = NULL;
     put_super(dev);
     sync_dev(dev);
     return 0;

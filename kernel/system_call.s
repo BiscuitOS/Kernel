@@ -195,6 +195,7 @@ timer_interrupt:
 	call do_timer
 	addl $4, %esp
 	jmp ret_from_sys_call
+	ret
 
 .align 2
 sys_execve:

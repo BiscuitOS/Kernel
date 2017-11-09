@@ -93,8 +93,9 @@ struct termios {
 #define OCRNL    0000010
 #define ONOCR    0000020
 #define ONLRET   0000040
-#define OFDEL    0000100
-#define NLDLY    0000200
+#define OFILL    0000100
+#define OFDEL    0000200
+#define NLDLY    0000400
 #define NL0      0000000
 #define NL1      0000400
 #define CRDLY    0003000
@@ -162,7 +163,7 @@ struct termios {
 #define ECHO     0000010
 #define ECHOE    0000020
 #define ECHOK    0000040
-#define ECHOL    0000100
+#define ECHONL   0000100
 #define NOFLSH   0000200
 #define TOSTOP   0000400
 #define ECHOCTL  0001000

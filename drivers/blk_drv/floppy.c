@@ -51,13 +51,13 @@ static struct floppy_struct {
 	{
 	2400, 15, 2, 80, 0, 0x1B, 0x00, 0xDF},	/* 1.2 MB AT-diskettes */
 	{
-	720, 9, 2, 40, 0, 0x1B, 0x02, 0xDF},	/* 360kB in 720kB drive */
+	720, 9, 2, 40, 1, 0x2A, 0x02, 0xDF},	/* 360kB in 720kB drive */
 	{
-	1400, 9, 2, 80, 0, 0x2A, 0x02, 0xDF},	/* 3.5" 720KB diskette */
+	1440, 9, 2, 80, 0, 0x2A, 0x02, 0xDF},	/* 3.5" 720KB diskette */
 	{
 	720, 9, 2, 40, 1, 0x23, 0x01, 0xDF},	/* 360kB in 1.2MB drive */
 	{
-	1400, 9, 2, 80, 0, 0x23, 0x01, 0xDF},	/* 720kB in 1.2MB drive */
+	1440, 9, 2, 80, 0, 0x23, 0x01, 0xDF},	/* 720kB in 1.2MB drive */
 	{
 	2880, 18, 2, 80, 0, 0x1B, 0x00, 0xCF},	/* 1.44MB diskette */
 };
@@ -284,12 +284,9 @@ static void setup_DMA(void)
 	 * output command byte. I don't know why, but everything(minix,
 	 * sanches & canton) output this twice, first to 12 thenn to 11
 	 */
-	__asm__("outb %%al, $12\n\tjmp 1f\n1:jmp 1f\n1:\t"
-		"outb %%al, $11\n\tjmp 1f\n1:jmp 1f\n1:"::"a"((char)
-							      ((command ==
-								FD_READ) ?
-							       DMA_READ :
-							       DMA_WRITE)));
+	__asm__("outb %%al, $12\n\tjmp 1f\n1:\tjmp 1f\n1:\t"
+		"outb %%al, $11\n\tjmp 1f\n1:\tjmp 1f\n1:"::"a"((char)
+	    ((command =	FD_READ) ?  DMA_READ : DMA_WRITE)));
 	/* 8 low bits of addr */
 	immoutb_p(addr, 4);
 	addr >>= 8;
@@ -338,6 +335,7 @@ static inline void setup_rw_floppy(void)
 	output_byte(command);
 	output_byte(head << 2 | current_drive);
 	output_byte(track);
+	output_byte(head);
 	output_byte(sector);
 	output_byte(2);
 	output_byte(floppy->sect);

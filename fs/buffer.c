@@ -18,8 +18,6 @@ extern int end;
 extern void put_super(int);
 
 /* 640KB-1MB is used by BIOS and Vedio, it is hard coded, sorry */
-#define BIOS_USED_START	(640 << KB_SHIFT)
-#define BIOS_USED_END	(1 << MB_SHIFT)
 #define COPYBLK(from, to) \
 __asm__("cld\n\t" \
 	"rep\n\t" \
@@ -28,21 +26,21 @@ __asm__("cld\n\t" \
 	)
 
 int NR_BUFFERS = 0;
-static struct task_struct *buffer_wait;
+static struct task_struct *buffer_wait = NULL;
 static struct buffer_head *free_list;
 
-static struct buffer_head *start_buffer = (struct buffer_head *)&end;
-static struct buffer_head *hash_table[NR_HASH];
+struct buffer_head *start_buffer = (struct buffer_head *)&end;
+struct buffer_head *hash_table[NR_HASH];
 
 #define _hashfn(dev, block) (((unsigned)(dev^block))%NR_HASH)
 #define hash(dev, block) hash_table[_hashfn(dev, block)]
 
-static void wait_on_buffer(struct buffer_head *bh)
+static inline void wait_on_buffer(struct buffer_head *bh)
 {
-	irq_disable();
+	cli();
 	while (bh->b_lock)
-		sleep_on(&buffer_wait);
-	irq_enable();
+		sleep_on(&bh->b_wait);
+	sti();
 }
 
 void brelse(struct buffer_head *bh)
@@ -172,24 +170,6 @@ struct buffer_head *get_hash_table(int dev, int block)
     }
 }
 
-static inline void remove_from_queue(struct buffer_head *bh)
-{
-    /* remove from hash-queue */
-    if (bh->b_next)
-        bh->b_next->b_prev = bh->b_prev;
-    if (bh->b_prev)
-        bh->b_prev->b_next = bh->b_next;
-    if (hash(bh->b_dev, bh->b_blocknr) == bh)
-        hash(bh->b_dev, bh->b_blocknr) = bh->b_next;
-    /* remove from free list */
-    if (!(bh->b_prev_free) || !(bh->b_next_free))
-        panic("Free block list corrupted");
-    bh->b_prev_free->b_next_free = bh->b_next_free;
-    bh->b_next_free->b_prev_free = bh->b_prev_free;
-    if (free_list == bh)
-        free_list = bh->b_next_free;
-}
-
 static inline void insert_into_queues(struct buffer_head *bh)
 {
     /* Put at end of free list */
@@ -299,7 +279,7 @@ struct buffer_head *breada(int dev, int first, ...)
         tmp = getblk(dev, first);
         if (tmp) {
             if (!tmp->b_uptodate)
-                ll_rw_block(READ, bh);
+                ll_rw_block(READA, bh);
             tmp->b_count--;
         }
     }

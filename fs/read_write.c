@@ -70,6 +70,8 @@ int sys_lseek(unsigned int fd, off_t offset, int origin)
     case 2:
         if ((tmp = file->f_inode->i_size + offset) < 0)
             return -EINVAL;
+        file->f_pos = tmp;
+        break;
     default:
         return -EINVAL;
     }

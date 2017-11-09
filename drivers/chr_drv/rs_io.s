@@ -60,7 +60,7 @@ rep_int:
 	xorl %eax, %eax
 	inb %dx, %al
 	testb $1, %al
-	jne end
+	ja end
 	cmpb $6, %al          /* this should't happen, but ... */
 	jne end
 	movl 24(%esp), %ecx
@@ -134,13 +134,13 @@ write_char:
 	movb buf(%ecx, %ebx), %al
 	outb %al, %dx
 	incl %ebx
-	addl $size-1, %ebx
+	andl $size-1, %ebx
 	movl %ebx, tail(%ecx)
 	cmpl head(%ecx), %ebx
 	je write_buffer_empty
 	ret
 
-.align
+.align 2
 write_buffer_empty:
 	movl proc_list(%ecx), %ebx    # wake up sleeping process
 	testl %ebx, %ebx              # is there any?

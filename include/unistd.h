@@ -109,7 +109,7 @@ return -1; \
 }
 
 #define _syscall2(type, name, atype, a, btype, b) \
-type name(atype, a, btype, b) \
+type name(atype a, btype b) \
 { \
 long __res; \
 __asm__ volatile ("int $0x80" \
@@ -142,7 +142,7 @@ int access(const char *filename, mode_t mode);
 int acct(const char *filename);
 int alarm(int sec);
 int brk(void *end_data_segment);
-void *sbrk(const char *filename);
+void *sbrk(long filename);
 int chdir(const char *filename);
 int chmod(const char *filename, mode_t mode);
 int chroot(const char *filename, uid_t owner, gid_t group);

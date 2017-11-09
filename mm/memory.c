@@ -269,7 +269,7 @@ static int try_to_share(unsigned long address, struct task_struct *p)
 	/* is the page clean and present? */
 	if ((phys_addr & 0x41) != 0x01)
 		return 0;
-	phys_addr &= 0xfffff00;
+	phys_addr &= 0xfffff000;
 	if (phys_addr >= HIGH_MEMORY || phys_addr < LOW_MEM)
 		return 0;
 	to = *(unsigned long *) to_page;

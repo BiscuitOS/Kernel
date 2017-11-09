@@ -19,7 +19,6 @@
  * to load a nr of sectors into memory.
  */
 static struct request request_queue[NR_REQUEST];
-static int blk_dev_num;
 
 /*
  * blk_dev_struct is:
@@ -33,14 +32,15 @@ struct blk_dev_struct blk_dev[] = {
 	{NULL, NULL},		/* dev hd */
 	{NULL, NULL},		/* dev ttyx */
 	{NULL, NULL},		/* dev tty */
+	{NULL, NULL},		/* dev lp */
 };
 
 /*
  * used to wait on when there are no free request.
  */
-struct task_struct *wait_for_request;
+struct task_struct *wait_for_request = NULL;
 
-static void lock_buffer(struct buffer_head *bh)
+static inline void lock_buffer(struct buffer_head *bh)
 {
     cli();
     while (bh->b_lock)
@@ -49,7 +49,7 @@ static void lock_buffer(struct buffer_head *bh)
     sti();
 }
 
-static void unlock_buffer(struct buffer_head *bh)
+static inline void unlock_buffer(struct buffer_head *bh)
 {
 	if (!bh->b_lock)
 		printk("Tring to unlock an unlocked buffer.\n");
@@ -75,7 +75,7 @@ static void add_request(struct blk_dev_struct *dev, struct request *req)
     if (!(tmp = dev->current_request)) {
         dev->current_request = req;
         sti();
-        dev->request_fn();
+        (dev->request_fn)();
         return;
     }
     for (; tmp->next; tmp = tmp->next)
@@ -125,7 +125,7 @@ repeat:
         req = request_queue + ((NR_REQUEST * 2) / 3);
 
     /* find an empty request */
-    while (--req > request_queue) {
+    while (--req >= request_queue) {
         if (req->dev < 0)
             break;
     }
@@ -156,11 +156,11 @@ repeat:
 
 void ll_rw_block(int rw, struct buffer_head *bh)
 {
-    unsigned int major = MAJOR(bh->b_dev);
+    unsigned int major;
 
-    if (major >= blk_dev_num || !(blk_dev[major].request_fn)) {
-        printk("Trying to %s noexist block device.\n",
-                rw ? "WRITE" : "READ");
+    if ((major = MAJOR(bh->b_dev)) >= NR_BLK_DEV ||
+       !(blk_dev[major].request_fn)) {
+        printk("Trying to read nonexistent block-device.\n");
         return;
     }
 
@@ -175,6 +175,4 @@ void blk_dev_init(void)
         request_queue[i].dev = -1;
         request_queue[i].next = NULL;
     }
-
-    blk_dev_num = sizeof(blk_dev) / sizeof(blk_dev[0]);
 }

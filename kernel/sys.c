@@ -147,7 +147,7 @@ int sys_setpgid(int pid, int pgid)
 int sys_uname(struct utsname *name)
 {
     static struct utsname thisname = {
-        "linux .0", "nodename", "relese", "version", "machine"
+        "linux .0", "nodename", "release", "version", "machine"
     };
     int i;
 

@@ -104,7 +104,7 @@ struct tty_struct tty_table[] = {
 struct tty_queue *table_list[] = {
 	&tty_table[0].read_q, &tty_table[0].write_q,
 	&tty_table[1].read_q, &tty_table[1].write_q,
-	&tty_table[2].read_q, &tty_table[2].write_q,
+	&tty_table[2].read_q, &tty_table[2].write_q
 };
 
 void tty_init(void)
@@ -146,7 +146,7 @@ static void sleep_if_empty(struct tty_queue *queue)
 
 void copy_to_cooked(struct tty_struct *tty)
 {
-	unsigned char c;
+	signed char c;
 
 	while (!EMPTY(tty->read_q) && !FULL(tty->secondary)) {
 		GETCH(tty->read_q, c);
@@ -159,13 +159,13 @@ void copy_to_cooked(struct tty_struct *tty)
 		else if (c == 10 && I_NLCR(tty))
 			c = 13;
 		if (I_UCLC(tty))
-			c = tolower(c);
+			c = tolower((unsigned char)c);
 		if (L_CANON(tty)) {
 			if (c == KILL_CHAR(tty)) {
 				/* deal with killing the input line */
-				while (!EMPTY(tty->secondary) ||
+				while (!(EMPTY(tty->secondary) ||
 				       (c = LAST(tty->secondary)) == 10 ||
-				       c == EOF_CHAR(tty)) {
+				       c == EOF_CHAR(tty))) {
 					if (L_ECHO(tty)) {
 						if (c < 32)
 							PUTCH(127,

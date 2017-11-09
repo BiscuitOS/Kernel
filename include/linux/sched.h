@@ -147,7 +147,7 @@ struct task_struct {
  */
 #define switch_to(n) { \
 	struct { long a, b;} __tmp;   \
-	__asm__("cmp %%ecx, current\n\t" \
+	__asm__("cmpl %%ecx, current\n\t" \
 			"je 1f\n\t"    \
 			"movw %%dx, %1\n\t"   \
 			"xchgl %%ecx, current\n\t"   \
@@ -162,11 +162,14 @@ struct task_struct {
 
 static inline unsigned long _get_base(char *addr)
 {
-	unsigned long __base;
+    unsigned long __base;
 
-__asm__("movb %3, %%dh\n\t" "movb %2, %%dl\n\t" "shll $16, %%edx\n\t" "movw %1, %%dx":"=&d"(__base)
-:		"m"(*((addr) + 2)), "m"(*((addr) + 4)), "m"(*((addr) + 7)));
-	return __base;
+    __asm__("movb %3, %%dh\n\t" 
+            "movb %2, %%dl\n\t" 
+            "shll $16, %%edx\n\t" 
+            "movw %1, %%dx":"=&d"(__base)
+            : "m"(*((addr) + 2)), "m"(*((addr) + 4)), "m"(*((addr) + 7)));
+    return __base;
 }
 
 #define _set_base(addr, base)       \

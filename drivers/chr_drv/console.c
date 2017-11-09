@@ -41,12 +41,12 @@ static unsigned char video_type;	/* Type of display being used */
 static unsigned long video_size_row;	/* Bytes per row */
 static unsigned long video_num_columns;	/* Number of text colums */
 static unsigned long video_num_lines;	/* Number of test lines */
-static unsigned long video_page;	/* Initial video page */
+static unsigned char video_page;	/* Initial video page */
 static unsigned long video_mem_start;	/* Start of video RAM */
 static unsigned long video_mem_end;	/* End of video RAM */
-static unsigned long video_port_reg;	/* Video register select port */
-static unsigned long video_port_val;	/* Video register value port */
-static unsigned long video_erase_char;	/* Char+Attrib to erase with */
+static unsigned short video_port_reg;	/* Video register select port */
+static unsigned short video_port_val;	/* Video register value port */
+static unsigned short video_erase_char;	/* Char+Attrib to erase with */
 static unsigned long origin;	/* Used for EGA/VGA fast scroll */
 static unsigned long scr_end;	/* Used for EGA/VGA fast scroll */
 
@@ -232,11 +232,6 @@ static void scrdown(void)
 
 static void scrup(void)
 {
-    int i;
-
-    i = 1;
-    i += 1;
-    i += 2;
     if (video_type == VIDEO_TYPE_EGAC || video_type == VIDEO_TYPE_EGAM) {
         if (!top && bottom == video_num_lines) {
             origin += video_size_row;
@@ -330,7 +325,7 @@ static void delete_char(void)
 	int i;
 	unsigned short *p = (unsigned short *)pos;
 
-	if (x > video_num_columns)
+	if (x >= video_num_columns)
 		return;
 
 	i = x;

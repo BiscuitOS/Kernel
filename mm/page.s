@@ -8,7 +8,7 @@
  * page.s contains the low-level page-exception code.
  * the real work is done in mm.c
  */
-.global page_fault
+.globl page_fault
 
 page_fault:
 	xchgl %eax, (%esp)   # Get error code

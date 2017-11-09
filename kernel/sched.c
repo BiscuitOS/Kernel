@@ -111,8 +111,13 @@ void interruptible_sleep_on(struct task_struct **p)
 		panic("task[0] trying to sleep");
 	tmp = *p;
 	*p = current;
-	current->state = TASK_UNINTERRUPTIBLE;
+repeat: current->state = TASK_UNINTERRUPTIBLE;
 	schedule();
+        if (*p && *p != current) {
+            (**p).state = 0;
+            goto repeat;
+        }
+        *p = NULL;
 	if (tmp)
 		tmp->state = 0;
 }
@@ -376,7 +381,7 @@ int sys_alarm(long seconds)
     if (old)
         old = (old - jiffies) / HZ;
     current->alarm = (seconds > 0) ? (jiffies + HZ * seconds) : 0;
-    return 0;
+    return old;
 }
 
 int sys_pause(void)

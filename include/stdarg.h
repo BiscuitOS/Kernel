@@ -15,7 +15,7 @@ typedef char *va_list;
 	(AP = ((char *)&(LASTARG) + __va_rounded_size(LASTARG)))
 #else
 #define va_start(AP, LASTARG)                    \
-	(__builtin_saverags(),                       \
+	(__builtin_saveregs(),                       \
 	AP = ((char *)&(LASTARG) + __va_rounded_size(LASTARG)))
 #endif
 
