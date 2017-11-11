@@ -4,6 +4,7 @@ BiscuitOS
 bootloader
 bootsect
 setup
+vmlinux.bin
 
 # Ignore indicate file
 *.o
@@ -15,6 +16,7 @@ setup
 *.
 *.a
 *.cmd
+*.img
 
 # Execte file
 

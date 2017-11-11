@@ -20,7 +20,6 @@ choice
 
 config TESTCASE_IDTNULL
 	bool "Interrupt null"
-	default y
 	help
 	  Empty interrupt
 
