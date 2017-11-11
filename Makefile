@@ -310,7 +310,6 @@ config: scripts_basic outputmakefile FORCE
 	$(Q)$(MAKE) $(build)=scripts/kconfig $@
 
 else
-
 ifeq ($(dot-config),1)
 # Read in config
 -include include/config/auto.conf
@@ -328,7 +327,6 @@ $(KCONFIG_CONFIG) include/config/auto.conf.cmd: ;
 # we execute the config step to be sure to catch updated Kconfig files
 include/config/%.conf: $(KCONFIG_CONFIG) include/config/auto.conf.cmd
 	$(Q)$(MAKE) -f $(srctree)/Makefile silentoldconfig
-
 
 else
 # Dummy target needed, because used as prerequisite

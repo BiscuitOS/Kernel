@@ -17,13 +17,14 @@ vmlinux.bin
 *.a
 *.cmd
 *.img
+*.bin
 
 # Execte file
 
 !.gitignore
-
 # output
 keyboard.s
 drivers/chr_drv/keyboard.s
 
 include/config/
+!include/config/auto.conf
