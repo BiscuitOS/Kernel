@@ -335,6 +335,7 @@ else
 include/config/auto.conf: ;
 endif # $(dot-config)
 
+include include/config/auto.conf
 # ================================================================
 # Target compile
 #
