@@ -375,7 +375,6 @@ vmlinux: bootloader $(vmlinux-all)
 	$(Q)$(call if_changed,vmlinux)
 	$(Q)$(call if_changed,map)
 
-ifdef CONFIG_BOOTLOADER
 ## To build bootloader for linux
 quiet_cmd_bootloader = DC    uboot
       cmd_bootloader = $(Q)$(MAKE) -C arch/$(SRCARCH)/boot bootloader
@@ -383,9 +382,6 @@ quiet_cmd_bootloader = DC    uboot
 PHONY += bootloader
 bootloader: FORCE
 	$(call cmd_bootloader)
-else
-bootloader: ;
-endif
 
 # The actual objects are generated when descending, 
 # make sure no implicit rule kicks in
