@@ -26,5 +26,3 @@ vmlinux.bin
 keyboard.s
 drivers/chr_drv/keyboard.s
 
-include/config/
-!include/config/auto.conf
