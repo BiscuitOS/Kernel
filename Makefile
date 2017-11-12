@@ -359,6 +359,10 @@ vmlinux-lds	:= arch/$(SRCARCH)/kernel/vmlinux.lds
 # Do modpost on a prelinked vmlinux. The finally linked vmlinux has
 # relevant sections renamed as per the linker script.
 
+quiet_cmd_mkimage = MK    BiscuitOS
+      cmd_mkimage = $(Q)$(MAKE) -C \
+                    $(srctree)/arch/$(SRCARCH)/kernel vmlinux
+
 quiet_cmd_vmlinux = LD      vmlinux
       cmd_vmlinux = $(LD) $(LDFLAGS) -o $@ \
       -T $(vmlinux-lds) -Ttext 0            \
@@ -371,6 +375,7 @@ quiet_cmd_map = NM      System.map
 vmlinux: bootloader $(vmlinux-all)
 	$(Q)$(call if_changed,vmlinux)
 	$(Q)$(call if_changed,map)
+	$(Q)$(call cmd_mkimage)
 
 ifdef CONFIG_BOOTLOADER
 ## To build bootloader for linux
