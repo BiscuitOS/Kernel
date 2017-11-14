@@ -393,7 +393,9 @@ int sys_setup(void *BIOS)
     }
     if (NR_HD)
         printk("Partition table%s ok.\n\r", (NR_HD > 1) ? "s" : "");
+#ifdef CONFIG_RAMDISK
     rd_load();
+#endif
     mount_root();
     return 0;
 }
