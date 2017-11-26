@@ -64,7 +64,7 @@ void schedule(void)
 	 * Check alarm, wake up any interruptible tasks that have
 	 * got a signal.
 	 */
-	for (p = &LAST_TASK; p > &FIRST_TASK; --p) {
+	for (p = &LAST_TASK; p > &FIRST_TASK; --p) 
 		if (*p) {
 			if ((*p)->alarm && (*p)->alarm < jiffies) {
 				(*p)->signal |= (1 << (SIGALRM - 1));
@@ -97,7 +97,6 @@ void schedule(void)
 					    (*p)->priority;
 		}
 		switch_to(next);
-	}
 }
 
 void interruptible_sleep_on(struct task_struct **p)
