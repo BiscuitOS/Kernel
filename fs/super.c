@@ -107,8 +107,8 @@ static struct super_block *read_super(int dev)
     *((struct d_super_block *)s) =
               *((struct d_super_block *)bh->b_data);
     brelse(bh);
-    if (s->s_magic != SUPER_MAGIC) {
-        printk("Undefined SUPER_MAGIC %#x\n", s->s_magic);
+    if (s->s_magic != SUPER_MINIX_MAGIC && 
+        s->s_magic != SUPER_MINIX_MAGIC_V1) {
         s->s_dev = 0;
         free_super(s);
         return NULL;

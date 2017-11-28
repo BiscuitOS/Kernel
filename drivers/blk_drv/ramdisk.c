@@ -38,7 +38,8 @@ void rd_load(void)
     }
     *((struct d_super_block *) &s) = *((struct d_super_block *)bh->b_data);
     brelse(bh);
-    if (s.s_magic != SUPER_MAGIC)
+    if (s.s_magic != SUPER_MINIX_MAGIC && 
+        s.s_magic != SUPER_MINIX_MAGIC_V1)
         /* No ram disk image present, assume normal floppy boot */
         return;
     nblocks = s.s_nzones << s.s_log_zone_size;

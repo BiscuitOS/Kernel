@@ -45,7 +45,13 @@
 
 #define I_MAP_SLOTS   8
 #define Z_MAP_SLOTS   8
-#define SUPER_MAGIC   0x137F
+/* 
+ * Magic for MINIX 
+ *  Legacy minix: 0x137f
+ *  MINIX V1:     0x138f
+ */
+#define SUPER_MINIX_MAGIC      0x137F
+#define SUPER_MINIX_MAGIC_V1   0x138f
 
 #define BLOCK_SIZE_BITS 10
 
