@@ -17,6 +17,8 @@ source "tools/testcase/interrupt/Kconfig"
 
 source "tools/testcase/harddisk/Kconfig"
 
+source "tools/testcase/assembly/Kconfig"
+
 endif
 
 endmenu

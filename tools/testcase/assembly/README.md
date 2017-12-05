@@ -269,6 +269,74 @@ inline assembly for X86 in Linux
     The most important effect of using matching restraints is that they lead to 
     the efficient use of available registers.
 
+    Some other constraints used are:
+    
+    1) `m`: A memory operand is allowed, with any kind of address that the 
+       machine supports in general.
+
+    2) `o`: A memory operand is allowed, but only if the address is offsettable.
+       ie, adding a small offset to the address gives a valid address.
+
+    3) `V`: A memory operand that is not offsetable. In other words, anything
+       that would fit the `m` constraint but not the `o` constraint.
+
+    4) `i`: An immediate integer operand (one with constant value) is 
+       allowed. This includes symbolic constants whose values will be known
+       only at assembly time.
+
+    5) `n`: An immediate integer operand with a known numeric value is
+       allowed. Many system cannot support assembly-time constants
+       for operands less than a word wide. Constraints for these operands
+       should use `n` rather that `i`.
+
+    6) `g`: Any register, memory or immediate integer operand is allowed,
+       except for registers that are not general registers.
+
+    Following constraints are X86 specific.
+
+    1) `r`: Register operand constraint, look table given above.
+
+    2) `q`: Register a, b, c or d.
+
+    3) `I`: Constant in range 0 to 31 (for 32-bit shifts).
+
+    4) `J`: Constant in range 0 to 63 (for 64-bit shifts).
+
+    5) `K`: 0xff
+
+    6) `L`: 0xffff
+
+    7) `M`: 0, 1, 2, 3 (shift for lea instruction).
+
+    8) `N`: Constant in range 0 to 255 (for out instruction).
+
+    9) `f`: Floating point register.
+
+    a) `t`: First (top of stack) floating point register.
+
+    b) `u`: Second floating point register
+
+    c) `A`: Specifies the `a` or `d` registers. This is primarily useful
+       for 64-bit integer values intended to be returned with `d` register
+       holding the more significant bits and the `a` register holding
+       the least significant bits.
+
+  * Constranint Modifiers
+
+    While using constraints, for more precise control over the effects
+    of constraints, GCC provides us with constraint modifiers. Mostly
+    used constraint modifiers are:
+
+    1) `=`: Means that this operands is write-only for this instruction.
+       the previous value is discarded and replaced by output data.
+
+    2) `&`: Means that this operand is an earlyclobber operand, 
+       which is modified before the instruction is finished using the 
+       input operands. Therefore, this operand may not lie in a register
+       that is used as an input operand or as part of any memory address.
+       An input operand can be tied to an earlyclobber operand if its
+       only use as an input occurs before the early result is written.
+
 #### Example of common inline assembly usage
 
   The following example illustrate usage through different operand constraints.
@@ -523,22 +591,7 @@ inline assembly for X86 in Linux
     Communication from Mysore University, India. He can reached at
     `rbharata@in.ibm.com`.
     
+  * Resource
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    GCC-inline-Assembly-HOWTO:
+    `http://www.ibiblio.org/gferg/ldp/GCC-Inline-Assembly-HOWTO.html`
