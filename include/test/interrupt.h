@@ -1,7 +1,6 @@
-#ifndef _TESTCASE_H_
-#define _TESTCASE_H_
+#ifndef _TEST_INTERRUPT_H
+#define _TEST_INTERRUPT_H
 
-extern void testcase_init(void);
 #ifdef CONFIG_TESTCASE_IDT
 extern int interrupt_main(void);
 extern int get_interrupt_status(void);
@@ -103,5 +102,4 @@ extern void trigger_interrupt128(void);
 #endif
 
 #endif // end of CONFIG_TESTCASE_IDT
-
 #endif

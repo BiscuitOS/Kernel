@@ -96,7 +96,7 @@ void free_page(unsigned long addr)
 
 /*
  * Well, here is one of the most complicated function in mm. It
- * copies a range of linerar address by copying only the pages.;-
+ * copies a range of linerar address by copying only the pages.:-
  * Let's hope this is bug-free, 'cause this one I don't want to debug :-)
  *
  * Note! We don't copy just any chunks of memory - addresses have to
@@ -113,43 +113,43 @@ void free_page(unsigned long addr)
  */
 int copy_page_tables(unsigned long from, unsigned long to, long size)
 {
-	unsigned long *from_page_table;
-	unsigned long *to_page_table;
-	unsigned long this_page;
-	unsigned long *from_dir, *to_dir;
-	unsigned long nr;
+    unsigned long *from_page_table;
+    unsigned long *to_page_table;
+    unsigned long this_page;
+    unsigned long *from_dir, *to_dir;
+    unsigned long nr;
 
-	if ((from & 0x3fffff) || (to & 0x3fffff))
-		panic("copy_page_tables called with wrong alignment");
-	from_dir = (unsigned long *) ((from >> 20) & 0xFFC);  /* _pf_dir = 0 */
-	to_dir = (unsigned long *) ((to >> 20) & 0xFFC);
-	size = ((unsigned) (size + 0x3fffff)) >> 22;
-	for ( ; size-- > 0; from_dir++, to_dir++) {
-		if (1 & *to_dir)
-			panic("copy_page_tables: already exist");
-		if (!(1 & *from_dir))
-			continue;
-		from_page_table = (unsigned long *) (0xfffff000 & *from_dir);
-		if (!(to_page_table = (unsigned long *) get_free_page()))
-			return -1; /* Out of memory, see freeing */
-		*to_dir = ((unsigned long) to_page_table) | 7;
-		nr = (from == 0) ? 0xA0 : 1024;
-		for ( ; nr-- > 0; from_page_table++, to_page_table++) {
-			this_page = *from_page_table;
-			if (!(1 & this_page))
-				continue;
-			this_page &= ~2;
-			*to_page_table = this_page;
-			if (this_page > LOW_MEM) {
-				*from_page_table = this_page;
-				this_page -= LOW_MEM;
-				this_page >>= 12;
-				mem_map[this_page]++;
-			}
-		}
-	}
-	invalidate();
-	return 0;
+    if ((from & 0x3fffff) || (to & 0x3fffff))
+        panic("copy_page_tables called with wrong alignment");
+    from_dir = (unsigned long *) ((from >> 20) & 0xFFC);  /* _pg_dir = 0 */
+    to_dir = (unsigned long *) ((to >> 20) & 0xFFC);
+    size = ((unsigned) (size + 0x3fffff)) >> 22;
+    for ( ; size-- > 0; from_dir++, to_dir++) {
+        if (1 & *to_dir)
+            panic("copy_page_tables: already exist");
+        if (!(1 & *from_dir))
+            continue;
+        from_page_table = (unsigned long *) (0xfffff000 & *from_dir);
+        if (!(to_page_table = (unsigned long *) get_free_page()))
+            return -1; /* Out of memory, see freeing */
+        *to_dir = ((unsigned long) to_page_table) | 7;
+        nr = (from == 0) ? 0xA0 : 1024;
+        for ( ; nr-- > 0; from_page_table++, to_page_table++) {
+            this_page = *from_page_table;
+            if (!(1 & this_page))
+                continue;
+            this_page &= ~2;
+            *to_page_table = this_page;
+            if (this_page > LOW_MEM) {
+                *from_page_table = this_page;
+                this_page -= LOW_MEM;
+                this_page >>= 12;
+                mem_map[this_page]++;
+            }
+        }
+    }
+    invalidate();
+    return 0;
 }
 
 /*

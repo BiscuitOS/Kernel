@@ -1,0 +1,12 @@
+#
+# Common scheduler
+#
+
+menu "Task scheduler"
+
+config TESTCASE_SCHED
+	bool "Test Task scheduler"
+	help
+	  Basic task scheduler
+
+endmenu

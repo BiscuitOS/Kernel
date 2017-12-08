@@ -48,27 +48,27 @@ repeat:
 
 int copy_mem(int nr, struct task_struct *p)
 {
-	unsigned long old_data_base, new_data_base, data_limit;
-	unsigned long old_code_base, new_code_base, code_limit;
+    unsigned long old_data_base, new_data_base, data_limit;
+    unsigned long old_code_base, new_code_base, code_limit;
 
-	code_limit = get_limit(0x0f);
-	data_limit = get_limit(0x17);
-	old_code_base = get_base(current->ldt[1]);
-	old_data_base = get_base(current->ldt[2]);
-	if (old_data_base != old_code_base)
-		panic("We don't support separate I&D");
-	if (data_limit < code_limit)
-		panic("Bad data_limit");
-	new_data_base = new_code_base = nr * 0x4000000;
-	p->start_code = new_code_base;
-	set_base(p->ldt[1], new_code_base);
-	set_base(p->ldt[2], new_data_base);
-	if (copy_page_tables(old_data_base, new_data_base, data_limit)) {
-		printk("free_page_tables: from copy_mem\n");
-		free_page_tables(new_data_base, data_limit);
-		return -ENOMEM;
-	}
-	return 0;
+    code_limit = get_limit(0x0f);
+    data_limit = get_limit(0x17);
+    old_code_base = get_base(current->ldt[1]);
+    old_data_base = get_base(current->ldt[2]);
+    if (old_data_base != old_code_base)
+        panic("We don't support separate I&D");
+    if (data_limit < code_limit)
+        panic("Bad data_limit");
+    new_data_base = new_code_base = nr * 0x4000000;
+    p->start_code = new_code_base;
+    set_base(p->ldt[1], new_code_base);
+    set_base(p->ldt[2], new_data_base);
+    if (copy_page_tables(old_data_base, new_data_base, data_limit)) {
+        printk("free_page_tables: from copy_mem\n");
+        free_page_tables(new_data_base, data_limit);
+        return -ENOMEM;
+    }
+    return 0;
 }
 
 /*

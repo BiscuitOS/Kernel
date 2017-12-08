@@ -173,17 +173,17 @@ static inline unsigned long _get_base(char *addr)
 }
 
 #define _set_base(addr, base)       \
-	__asm__("push %%edx\n\t"        \
-			"movw %%dx, %0\n\t"     \
-			"rorl $16, %%edx\n\t"   \
-			"movb %%dl, %1\n\t"     \
-			"movb %%dh, %2\n\t"     \
-			"pop %%edx"             \
-			:: "m" (*((addr) + 2)), \
-			"m" (*((addr) + 4)),    \
-			"m" (*((addr) + 7)),    \
-			"d" (base)              \
-			)
+        __asm__("push %%edx\n\t"        \
+                "movw %%dx, %0\n\t"     \
+                "rorl $16, %%edx\n\t"   \
+                "movb %%dl, %1\n\t"     \
+                "movb %%dh, %2\n\t"     \
+                "pop %%edx"             \
+                :: "m" (*((addr) + 2)), \
+                "m" (*((addr) + 4)),    \
+                "m" (*((addr) + 7)),    \
+                "d" (base)              \
+)
 
 #define _set_limit(addr, limit)     \
 	__asm__("push %%edx\n\t"        \

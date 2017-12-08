@@ -20,7 +20,7 @@
 #include <asm/system.h>
 
 #ifdef CONFIG_TESTCASE
-#include <test/testcase.h>
+#include <test/debug.h>
 #endif
 
 /*

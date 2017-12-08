@@ -19,6 +19,10 @@ source "tools/testcase/harddisk/Kconfig"
 
 source "tools/testcase/assembly/Kconfig"
 
+source "tools/testcase/scheduler/Kconfig"
+
+source "tools/testcase/mmu/Kconfig"
+
 endif
 
 endmenu

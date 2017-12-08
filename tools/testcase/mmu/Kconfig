@@ -1,0 +1,12 @@
+#
+# Memeory Manager Unit
+#
+
+menu "MMU(Memory Manager Unit)"
+
+config TESTCASE_MMU
+	bool "Test MMU(Memory Manager Unit)"
+	help
+	  Test Memory Manager Unit(MMU).
+
+endmenu
