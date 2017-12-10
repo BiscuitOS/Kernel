@@ -13,6 +13,20 @@
 #include <test/mm.h>
 #endif
 
-extern void testcase_init(void);
+#ifdef CONFIG_DEBUG_KERNEL_LATER
+extern void debug_on_kernel_later(void);
+#endif
+
+#ifdef CONFIG_DEBUG_KERNEL_EARLY
+extern void debug_on_kernel_early(void);
+#endif
+
+#ifdef CONFIG_DEBUG_USERLAND_EARLY
+extern void debug_on_userland_early(void);
+#endif
+
+#ifdef CONFIG_DEBUG_USERLAND_SHELL
+extern void debug_on_shell_stage(void);
+#endif
 
 #endif

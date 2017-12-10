@@ -9,4 +9,13 @@ config TESTCASE_SCHED
 	help
 	  Basic task scheduler
 
+if TESTCASE_SCHED
+
+config TESTCASE_GDT
+	bool "Test Global Descriptor Table(GDT)"
+	help
+	  Debug Global Descriptor Table.
+
+endif
+
 endmenu

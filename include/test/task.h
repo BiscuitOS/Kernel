@@ -3,4 +3,8 @@
 
 extern int test_task_scheduler(void);
 
+#ifdef CONFIG_TESTCASE_GDT
+extern void debug_gdt_common(void);
+#endif
+
 #endif

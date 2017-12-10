@@ -140,6 +140,9 @@ int main(void)
      * Interrupts are still disabled. Do necessary setups, then
      * enable them.
      */
+#ifdef CONFIG_DEBUG_KERNEL_EARLY
+    debug_on_kernel_early();
+#endif
     ROOT_DEV = ORIG_ROOT_DEV;
     drive_info = DRIVE_INFO;
     memory_detect();
@@ -158,11 +161,14 @@ int main(void)
     floppy_init();
 #endif
     sti();
-#ifdef CONFIG_TESTCASE
-    testcase_init();
+#ifdef CONFIG_DEBUG_KERNEL_LATER
+    debug_on_kernel_later();
 #endif
     move_to_user_mode();
     if (!fork()) {   /* we count on this going ok */
+#ifdef CONFIG_DEBUG_USERLAND_EARLY
+        debug_on_userland_early();
+#endif
         init();
     }
 /*
