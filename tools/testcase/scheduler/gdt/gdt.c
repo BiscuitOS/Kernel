@@ -14,18 +14,23 @@
 #include <test/debug.h>
 
 /*
- * Get base address and limit from GDTR
- *  The LGDT and SGDT instruction load and store the GDTR register,
- *  respectively. On power up or reset of the processor, the base
- *  address is set to the default value of 0 and the limit is set
- *  to 0xffffh. A new base address must be loaded into the GDTR as
- *  part of the processor initialization process for protected-mode
- *  operation.
+ * Parse GDTR
+ *   The GDTR register holds the base address (32 bits in protected mode)
+ *   and the 16-bit table limit for the GDT. The base address specifies
+ *   the linear address of byte 0 of the GDT. The table limit specifies
+ *   the number of bytes in the table.
+ * 
+ *   The LGDT and SGDT instruction load and store the GDTR register,
+ *   respectively. On power up or reset of the processor, the base
+ *   address is set to the default value of 0 and the limit is set
+ *   to 0xffffh. A new base address must be loaded into the GDTR as
+ *   part of the processor initialization process for protected-mode
+ *   operation.
  *
- *  @limit: the limit for GDT
- *  @base:  the base address of GDT
+ *   @limit: the limit for GDT
+ *   @base:  the base address of GDT
  *  
- *  @return: the linar address of GDT.
+ *   @return: the linar address of GDT.
  */
 int parse_gdtr(unsigned short *limit, unsigned long *base)
 {
@@ -75,6 +80,72 @@ int parse_gdtr(unsigned short *limit, unsigned long *base)
 }
 
 /*
+ * Parse LDTR
+ *   The LDTR register holds the 16-bit segment selector, base address (32
+ *   bits in protected mode), segment limit, and descriptor attributes 
+ *   for the LDT. The base address specifies the linear address of byte
+ *   0 of the LDT segment. The segment limit specifies the number of
+ *   bytes in the segment.
+ *
+ *   The LLDT and SLDT instructions load and store the segment selector
+ *   part of the LDTR register, respectively. The segment that contains
+ *   the LDT must have a segment a segment descriptor in the GDT. When
+ *   the LLDT instruction loads a segment in the LDTR. the base address,
+ *   limit, and descriptor attributes from the LDT descriptor are auto-
+ *   matically loaded in the LDTR.
+ *
+ *             Automatically loadded                        Attributes
+ * 15--------0 --------------------------------------------------------
+ * | Seg Sel | | 32-bit Linear Base Address | Segment Limit |         |
+ * ----------- -------------------------------------------------------- 
+ */
+int *parse_ldtr(unsigned short *limit, unsigned long *base)
+{
+    unsigned short selector;
+    struct seg_desc *desc;
+
+    /*
+     * SLDT -- Store Local Descriptor Table Register
+     *   Stores the segment selector from the local descriptor table
+     *   register (LDTR) in the destination operand. The destination
+     *   operand can be a general-purpose register or a memory location.
+     *   The segment selector store stored with this instruction points
+     *   to the segment descriptor (located in the GDT) for the current
+     *   LDT. This instruction can only be executed in protected mode.
+     */
+    __asm__ ("sldt %0"
+             : "=m" (selector));
+
+    /* get segment descriptor from GDT */
+    desc = segment_descriptors(selector);
+    /* get limit and base */
+    *limit = desc->limit;
+    *base  = desc->base;
+
+    /*
+     * When a task switch occurs, the LDTR is automatically loaded with
+     * the segment selector and descriptor for the LDT for the new task.
+     * The contents of the LDTR are not automatically saved prior to 
+     * writing the new LDT information into the register.
+     */
+    __asm__ ("pushl %%eax\n\t"
+             "sldt %%eax\n\t"
+             "lldt %%ax\n\t"
+             "popl %%eax"
+             ::);
+
+    /*
+     * On power up or reset of the processor, the segment selector and base
+     * address are set to the default value of 0 and the limit is set to
+     * 0xFFFFH.
+     */
+
+    /* Release resource */
+    free_page((unsigned long)desc);
+    return 0;
+}
+
+/*
  * Analysic a specify segment descriptors
  *   A segment descriptor is a data structure in a GDT or LDT that
  *   provides the processor with size and location of a segment,
@@ -99,6 +170,7 @@ struct seg_desc *segment_descriptors(unsigned long selector)
     unsigned long base;
     unsigned char *seg;
     struct gdt_node *gdt;
+    struct gdt_node *ldt;
     struct seg_desc *desc;
 
     /*
@@ -110,13 +182,17 @@ struct seg_desc *segment_descriptors(unsigned long selector)
     if (!((selector >> 0x2) & 0x1)) {
         /* get base address for GDT on memory */
         parse_gdtr(&limit, &base);
-        /* set base address of GDT or LDT */
+        /* set base address of GDT */
         gdt = (struct gdt_node *)(unsigned long)base;
-        /* get a specify segment descriptors on GDT or LDT */
+        /* get a specify segment descriptors on */
         seg = (unsigned char *)(unsigned long)&gdt[selector >> 0x3];
     } else {
         /* get base address for LDT on memory */
-        ;
+        parse_ldtr(&limit, &base);
+        /* set base address of LDT */
+        ldt = (struct gdt_node *)(unsigned long)base;
+        /* get a specify segment descriptor on LDT */
+        seg = (unsigned char *)(unsigned long)&ldt[selector >> 0x3];
     }
     /* allocate memory for struct seg_desc */
     desc = (struct seg_desc *)get_free_page();    
