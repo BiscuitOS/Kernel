@@ -1,188 +1,77 @@
 BiscuitOS
---------------------------------------------
-
-> Hello everybody:
->
-> I'm doing an OS for X86.
-> This has been brewing since March, I'd like any feedback on things
-> people like/dislike in Linux. as my OS resembles it somewhat.
->
-> A tiny operate system has work on i386. I'll add more features like 
-> virtual file-system, virtual memory and general device driver.
->
-> BTW, it's only a toy (just a hobby), I only want to know machanism of linux,
-> and won't be big and professional like Linux.
->
->                          Buddy (buddy.zhang@aliyun.com)  ^_^
-> 
-
 ----------------------------------------------
 
-### Basic information
+![TOP_PIC](https://github.com/EmulateSpace/PictureSet/blob/master/github/mainmenu.jpg)
 
-  OS information:
+BiscuitOS is a Unix-like computer operating system that is composed entirely
+of free software, most of which is under the GNU General Public License 
+and packaged by a group of individuals participating in the BiscuitOS Project.
+As one of the earliest operating systems based on the Linux kernel 0.11, 
+it was decided that BiscuitOS was to be developed openly and freely 
+distributed in the spirit of the GNU Project. 
 
-  | Item                    | contents                      | 
-  | ----------------------- | ----------------------------- |
-  | OS Name                 | BiscuitOS                     |
-  | Release Version         | V0.0.3                        |
-  | Target Platform         | I386(X86 family)              |
-  | Emulator                | Qemu                          |
-  | Memory limit            | 16 M                          |
-  | Disk                    | Floppy                        |
-  | Rootfs                  | none                          |
-  | Host Machine            | Ubuntu16.04                   |
-  | Paging                  | Support                       |
-  | Segmenting              | Support                       |
-  | Bit                     | 32-bit                        |
-  | Kbuild                  | Full support                  |
+While all BiscuitOS releases are derived from the GNU Operating System 
+and use the GNU userland and the GNU C library (glibc), other kernels 
+aside from the Linux kernel are also available, such as those based on 
+BSD kernels and the GNU Hurd microkernel.
 
--------------------------------------------------
+## To Start
 
-### Usage
+  Before you start this tour, you need install core toolchain on
+  your host PC (such as Ubuntu16.04), so please install these tools
+  on start.
 
-  This OS running on X86 machine, if you don't have X86 machine, you 
-  can use X86 emulator to run OS. This OS have ran on `qemu`, `qemu` is 
-  an useful X86 emulator to emulate environment of X86. Please follow 
-  specific steps to make it work.
+  ```
+    sudo apt-get install qemu gcc make gdb git
+    sudo apt-get install indent
 
-  1. Install essential tools
-
-	  ```
-	  sudo apt-get install qemu
-	  sudo apt-get install figlet gcc make gdb git
-	  sudo apt-get install cflow graphviz gawk indent
-	  ```
-
-	 If you use 64 bit system, please install 32 bit library.
-	
-	  ```
-	  sudo apt-get install lib32z1 lib32z1-dev
-	  sudo apt-get install libncurses5-dev
-	  ```
-
-  2. Download source code
-
-     Download souce code from github, please connect network first.
-	
-	  ```
-	  git clone https://github.com/BuddyZhang1/BiscuitOS.git
-	  ```
-
-  3. Compile BiscuitOS
+    On 64bit machine:
+    sudo apt-get install lib32z1 lib32z1-dev
+    sudo apt-get install libncurses5-dev
+  ```
   
-	  ```
-      make clean  
-      make defconfig 
-      make start
-      ```
+  First of all, You need get source code of kernel for BiscuitOS from github, 
+  follow these steps to get newest and stable branch. The BiscuitOS
+  project will help you easy to build a kernel iamge for BiscuitOS.
 
-  4. Debug BiscuitOS
+  ```
+    git clone https://github.com/BiscuitOS/Kernel.git
+  ```
 
-     If you want to debug BiscuitOS, please open debug macro on top Makefile.
-	
-	  ```
-	  vi */BiscuitOS/Makefile
-	  --- DEBUG := 
-	  +++ DEBUG := 1
-	  ```
-	
-	 Then, recompile source code.
-	
-	  ```
-	  make clean
-	  make
-	  ```
-	
-	 Now, we can start to debug OS.
-	 On Host:
-      
-	  ```
-      make debug
-      ```
-     On Target:
+  The next step, we need to build Kernel with common Kbuild syntax.
+  The Kbuild will help you easy to built  kernel. So utilise this command 
+  on your terminal.
 
-	    You can utilize `gdb` to single debug and so on. follow these steps:
-	    
-		```
-	    gdb tools/build/system
-	    (gdb)target remote :1234
-	    (gdb)b main
-	    (gdb)c
-	    (gdb)n
-	    or 
-	    (gdb)s
-	    ```
-	  
-	  You can also utilize `objdump` to get more useful information, such as:
-	    
-		```
-	    objdump -x -s -S -dh tools/build/system
-	    ```
+  ```
+    cd */Kernel
+    make defconfig
+    make
+  ```
 
-	  If you want to debug `bootsect.s` and `setup.s`, you should follow
-	  these steps:
-        
-		```
-        gdb tools/build/.debug_bootsect
-	    or 
-        gdb tools/build/.debug_setup
-        (gdb)target remote :1234
-        (gdb)b *0x7C00
-        (gdb)c
-        (gdb)d
-	    (gdb)(delete break?)y
-	    (gdb)ni
-	    or 
-	    (gdb)si
-        ```
-	  
-	  You can also uitlize `objdump` to get more useful information,like:
-	    
-		```
-	    objdump -x -s -S -dh tools/build/.debug_bootsect
-	    ```
+  If you finish above step, we will get the kernel image, but it doesn't
+  work, as you know, a full system need kernel and rootfs. so you should
+  get a running system. Don't worry, you can get it from BiscuitOS project.
 
-  5. Draw calling graph
+  ```
+    git clone https://github.com/BiscuitOS/BiscuitOS.git
+  ```
 
-     BiscuitOS supports automatic draw calling graph of function. If you want
-	 to utilize this tools, you should follow these steps:
-	 ```
-       cd */BiscuitOS/
-	   make draw FUN=xxx
-	 ```
-	 Basic command `make draw` that draws a new calling graph, you should
-	 input function name (like `make draw FUN=printk`).
+  The project will help to compiler a BiscuitOS distro named 
+  `BiscuitOS-0.11.img`, and copy it on `*/Kernel/`, then running new system:
 
-	 And, The `firefox` browser will display the calling graph. 
-
-	 Note! This tools base on `firefox` browser, so you should install 
-	 `firefox` on your PC. 
-
-	 
---------------------------------------------------
-
-### Documention
-
-  I have collected more useful documentions, you can access my github to 
-  get it. The github link:
+  ```
+    cp -rf */BiscuitOS/output/BiscuitOS-0.11.img */Kernel/
+    make start
+  ```
   
-  ```
-    https://github.com/BuddyZhang1/Book-Segment
-  ```
+  Because Kernel project is written on Kbuild syntax, so U can use Kbuild 
+  syntax to add/delete or configure your owner kernel. 
 
----------------------------------------------------
-
-### Contact
-
-  If you have any new source code or problem, you can send email to me.
-  This is my frequently used email:
-  
   ```
-    buddy.zhang@aliyun.com
+    make menuconfig
+    or 
+    make xconfig
   ```
-----------------------------------------------------
-
 ### Other
 
   > Software is like sex. It's better when it's free
