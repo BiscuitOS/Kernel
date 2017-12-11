@@ -11,23 +11,7 @@
 #include <linux/sched.h>
 #include <linux/mm.h>
 
-#include <linux/head.h>
 #include <test/debug.h>
-
-struct gdt_node 
-{
-    unsigned long a;
-    unsigned long b;
-};
-
-struct seg_desc
-{
-    unsigned long limit; /* optional alignment */
-    unsigned long base;
-    unsigned char type;
-    unsigned char dpl;
-    unsigned char flag;
-};
 
 /*
  * Get base address and limit from GDTR
@@ -43,7 +27,7 @@ struct seg_desc
  *  
  *  @return: the linar address of GDT.
  */
-static int parse_gdtr(unsigned short *limit, unsigned long *base)
+int parse_gdtr(unsigned short *limit, unsigned long *base)
 {
     /*
      * GDTR: Global Descriptor Table Register
@@ -98,11 +82,11 @@ static int parse_gdtr(unsigned short *limit, unsigned long *base)
  *   are typically created by compilers, links, loaders, or the operating
  *   system or executive, but not application programs. 
  *
- * @index: The index on GDT
+ * @selector: The selector of specify segment
  *
  * @return: struction of segment descriptor or NULL.
  */
-static struct seg_desc *segment_descriptors(int index)
+struct seg_desc *segment_descriptors(unsigned long selector)
 {
     /*
      * 31--------24---------20------------15------------------7-----------0
@@ -120,15 +104,20 @@ static struct seg_desc *segment_descriptors(int index)
     /*
      * The first segment descriptor on GDT is NULL.
      */
-    if (index == 0)
+    if (!(selector >> 0x3))
         return NULL;
 
-    /* get base address for GDT on memory */
-    parse_gdtr(&limit, &base);
-    /* set base address of GDT */
-    gdt = (struct gdt_node *)(unsigned long)base;
-    /* get a specify segment descriptors on GDT */
-    seg = (unsigned char *)(unsigned long)&gdt[index];
+    if (!((selector >> 0x2) & 0x1)) {
+        /* get base address for GDT on memory */
+        parse_gdtr(&limit, &base);
+        /* set base address of GDT or LDT */
+        gdt = (struct gdt_node *)(unsigned long)base;
+        /* get a specify segment descriptors on GDT or LDT */
+        seg = (unsigned char *)(unsigned long)&gdt[selector >> 0x3];
+    } else {
+        /* get base address for LDT on memory */
+        ;
+    }
     /* allocate memory for struct seg_desc */
     desc = (struct seg_desc *)get_free_page();    
 
@@ -321,7 +310,7 @@ static struct seg_desc *segment_descriptors(int index)
  *          1 is a system segment
  *          2 is first segment descriptor on GDT
  */
-static int segment_type(struct seg_desc *desc)
+int segment_descriptor_type(struct seg_desc *desc)
 {
 
     if (!desc) {
@@ -523,9 +512,40 @@ static int segment_type(struct seg_desc *desc)
 }
 
 /*
+ * DPL (Descriptor privilege level)
+ */
+int segment_descriptor_dpl(unsigned long selector)
+{
+    struct seg_desc *desc;
+    unsigned long dpl;
+
+    desc = segment_descriptors(selector);
+    if (!desc)
+        return -1;
+
+    dpl = desc->dpl;
+   
+    free_page((unsigned long)desc);
+    return dpl;
+}
+
+/*
+ * CPL
+ */
+int segment_descriptor_cpl(void)
+{
+    unsigned long cs;
+
+    __asm__ ("movl %%cs, %0"
+             : "=r" (cs));
+
+    return segment_descriptor_dpl(cs);
+}
+
+/*
  * Stack segment
  */
-static int parse_stack_segment(void)
+int parse_stack_segment_descriptor(void)
 {
     unsigned long ss;
     struct seg_desc *desc;
@@ -535,8 +555,8 @@ static int parse_stack_segment(void)
     __asm__ ("movl %%ss, %0"
              : "=r" (ss));
 
-    /* get stack segment descritpor from GDT */
-    desc = segment_descriptors(ss >> 0x3);
+    /* get stack segment descritpor from GDT or LDT */
+    desc = segment_descriptors(ss);
     /*   
      * Stack type
      *   Stack segments are data segment which must be read/write segments.
@@ -549,7 +569,7 @@ static int parse_stack_segment(void)
      *   segment is intended to remain static, the stack segment may be 
      *   either an expand-up or expand-down type.
      */
-    segment_type(desc);
+    segment_descriptor_type(desc);
 
     /* release resource */
     if (desc)
@@ -558,9 +578,9 @@ static int parse_stack_segment(void)
 }
 
 /*
- * Code segment
+ * Code segment descriptor
  */
-static int parse_code_segment(void)
+int parse_code_segment_descriptor(void)
 {
     unsigned long cs;
     struct seg_desc *desc;
@@ -571,10 +591,10 @@ static int parse_code_segment(void)
              : "=r" (cs));
 
     /* get code segment descriptor from GDT */
-    desc = segment_descriptors(cs >> 0x3);
+    desc = segment_descriptors(cs);
 
     /* parse code segment type */
-    segment_type(desc);
+    segment_descriptor_type(desc);
 
     /* release resource */
     if (desc)
@@ -585,8 +605,5 @@ static int parse_code_segment(void)
 /* debug gdt common enter */
 void debug_gdt_common(void)
 {
-    /* parse stack segment */
-    parse_stack_segment();
-    /* parse code segment */
-    parse_code_segment();
+    /* add test item here */
 }

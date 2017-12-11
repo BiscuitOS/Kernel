@@ -16,6 +16,18 @@ config TESTCASE_GDT
 	help
 	  Debug Global Descriptor Table.
 
+config TESTCASE_SEGMENT
+	bool "Test Segment (CS, SS, DS, FS, GS, ES)"
+	select TESTCASE_GDT
+	help
+	  Debug Segment such as CS, SS, DS, FS, GS and ES.
+
+config TESTCASE_GATE
+	bool "Test System descriptors"
+	select TESTCASE_GDT
+	help
+	  Debug system descritpor on GDT or LDT
+
 endif
 
 endmenu

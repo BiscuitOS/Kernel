@@ -21,6 +21,13 @@ int test_task_scheduler(void)
     debug_gdt_common();
 #endif
 
+#ifdef CONFIG_TESTCASE_SEGMENT
+    debug_segment_common();
+#endif
+
+#ifdef CONFIG_TESTCASE_GATE
+    debug_system_descriptor_common();
+#endif
     return 0;
 }
 
