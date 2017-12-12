@@ -5,7 +5,7 @@
 #include <test/task.h>
 #endif
 
-#ifdef CONFIG_TESTCASE_IDT
+#ifdef CONFIG_TESTCASE_INTERRUPT
 #include <test/interrupt.h>
 #endif
 

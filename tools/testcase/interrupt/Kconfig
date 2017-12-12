@@ -5,14 +5,14 @@ menu "Interrupt Descriptor Table"
 
 comment "Debug IDT on Kernel space"
 
-config TESTCASE_IDT
+config TESTCASE_INTERRUPT
 	default n
         bool "Test Interrupt Descriptor Table"
         help
           Utilize software interrupt 'int x' or specify case
           to test interrupt function.
 
-if TESTCASE_IDT
+if TESTCASE_INTERRUPT
 
 choice
 	prompt "Choose one specify interrupt"
@@ -140,6 +140,6 @@ config TESTCASE_IDT128
 
 endchoice  # Only choice one
 
-endif # End of TESTCASE_IDT
+endif # End of TESTCASE_INTERRUPT
 
 endmenu

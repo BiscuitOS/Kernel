@@ -20,22 +20,36 @@ struct seg_desc
 };
 
 extern void debug_gdt_common(void);
-extern int parse_gdtr(unsigned short *limit, unsigned long *base);
-extern struct seg_desc *segment_descriptors(unsigned long selector);
+extern struct seg_desc *segment_descriptors(unsigned short selector);
 extern int segment_descriptor_type(struct seg_desc *desc);
-extern int parse_stack_segment_descriptor(void);
-extern int parse_code_segment_descriptor(void);
-extern int segment_descriptor_dpl(unsigned long selector);
+extern int segment_descriptor_dpl(unsigned short selector);
 extern int segment_descriptor_cpl(void);
+extern int segment_descriptor_rpl(unsigned short selector);
 #endif
 
 #ifdef CONFIG_TESTCASE_SEGMENT
 extern void debug_segment_common(void);
-extern void parse_segment_selector(unsigned long selector);
 #endif
 
 #ifdef CONFIG_TESTCASE_GATE
 extern void debug_system_descriptor_common(void);
+#endif
+
+#ifdef CONFIG_TESTCASE_IDT
+struct desc_node
+{
+    unsigned long a;
+    unsigned long b;
+};
+
+struct gate_desc
+{
+    unsigned long offset;
+    unsigned short sel;
+    unsigned char dpl;
+    unsigned char flag;
+};
+extern void debug_idt_segment_desc_common(void);
 #endif
 
 #endif

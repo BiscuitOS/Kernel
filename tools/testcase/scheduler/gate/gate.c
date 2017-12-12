@@ -82,7 +82,7 @@
  * @return: 0 is correct.
  *          1 is data or code segment descriptor
  */
-int system_gate_type(struct seg_desc *desc)
+static int system_gate_type(struct seg_desc *desc)
 {
     if (desc->flag & 0x01)
         return 1;
@@ -150,9 +150,9 @@ int system_gate_type(struct seg_desc *desc)
  * | Base 15:00                         | Segment limit 15:00            |
  * ----------------------------------------------------------------------- 
  */
-void parse_TSS_segment(void)
+static void parse_TSS_segment(void)
 {
-    unsigned long i;
+    unsigned short tr;
     struct seg_desc *desc;
     struct tss_struct *ts;
 
@@ -167,26 +167,11 @@ void parse_TSS_segment(void)
      * associated whith a task, each TSS should have only one TSS descriptor
      * that points to it.
      */
-    for (i = 0; i < 20; i++) {
-        desc = segment_descriptors(i << 3);
+    __asm__ ("str %0"
+             : "=m" (tr));
 
-        /* ignore NULL segment descriptor */
-        if (!desc)
-            continue;
-        /* ignore data/code segment */
-        if (desc->flag & 0x1)
-            continue;
+    desc = segment_descriptors(tr);
 
-        /* get a busy or inactive TSS */
-        if ((desc->type & 0x9) || (desc->type & 0xa))
-            break;
-
-        /* no find */
-        free_page((unsigned long)desc);
-        desc = NULL;
-    }
-    if (!desc)
-        return;
     system_gate_type(desc);
 
     /*
@@ -236,5 +221,10 @@ void parse_TSS_segment(void)
 /* common debug system descriptor entry */
 void debug_system_descriptor_common(void)
 {
-    parse_TSS_segment();
+    /* add test item */
+
+    /* ignore warning for un-unsed */
+    if (0) {
+        parse_TSS_segment();
+    }
 }

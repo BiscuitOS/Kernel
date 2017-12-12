@@ -39,7 +39,7 @@ void debug_on_shell_stage(void)
     printk("BiscuitOS auto-TestCase.\n");
     /* function entry */
 
-#ifdef CONFIG_TESTCASE_IDT
+#ifdef CONFIG_TESTCASE_INTERRUPT
     /* Interrupt test */
     interrupt_main();
 #endif

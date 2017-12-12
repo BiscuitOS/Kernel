@@ -22,7 +22,7 @@
  *   |  Index                        | TI | RPL |
  *   --------------------------------------------     
  */
-void parse_segment_selector(unsigned long selector)
+static void parse_segment_selector(unsigned long selector)
 {
     /*
      * The first entry of the GDT is not used by the processor. A segment
@@ -70,7 +70,7 @@ void parse_segment_selector(unsigned long selector)
      *   privilege level (DPL) of the descriptor the segment selector points
      *   to.
      */
-    printk("RPL: %#x\n", selector % 0x03);
+    printk("RPL: %#x\n", segment_descriptor_rpl(selector));
     printk("DPL: %#x\n", segment_descriptor_dpl(selector));
     printk("CPL: %#x\n", segment_descriptor_cpl());
 
@@ -83,15 +83,15 @@ void parse_segment_selector(unsigned long selector)
 }
 
 /*
- * Code segment (CS)
+ * Code segment selector (CS)
  */
-static void parse_code_segment(void)
+static void parse_CS(void)
 {
-    unsigned long cs;
+    unsigned short cs;
 
     printk("Parse Code Segment or CS\n");
     /* Get Code segment selector */
-    __asm__ ("movl %%cs, %0"
+    __asm__ ("mov %%cs, %0"
              : "=r" (cs));
 
     /* parse code selector */
@@ -102,5 +102,9 @@ static void parse_code_segment(void)
 void debug_segment_common(void)
 {
     /* parse code segment and CS */
-    parse_code_segment();
+
+    /* ignore warning for un-used */
+    if (0) {
+        parse_CS();
+    }
 }

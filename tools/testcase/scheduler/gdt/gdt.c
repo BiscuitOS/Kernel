@@ -32,7 +32,7 @@
  *  
  *   @return: the linar address of GDT.
  */
-int parse_gdtr(unsigned short *limit, unsigned long *base)
+static int parse_gdtr(unsigned short *limit, unsigned long *base)
 {
     /*
      * GDTR: Global Descriptor Table Register
@@ -99,7 +99,7 @@ int parse_gdtr(unsigned short *limit, unsigned long *base)
  * | Seg Sel | | 32-bit Linear Base Address | Segment Limit |         |
  * ----------- -------------------------------------------------------- 
  */
-int *parse_ldtr(unsigned short *limit, unsigned long *base)
+static int parse_ldtr(unsigned short *limit, unsigned long *base)
 {
     unsigned short selector;
     struct seg_desc *desc;
@@ -146,6 +146,112 @@ int *parse_ldtr(unsigned short *limit, unsigned long *base)
 }
 
 /*
+ * Parse IDTR
+ *   The IDTR register holds the base address (32 bits in protected mode).
+ *   and 16-bit table limit for the IDT. The base address specifies the 
+ *   linear address of byte 0 of the IDT. The table limit specifies the 
+ *   number of bytes in the table.
+ *
+ *   The LIDT and SIDT instructions load and store the IDTR register, 
+ *   resoectively. On power up or reset of the processor, the base address
+ *   is set to the default value of 0 and the limit is set to 0xFFFFH. The
+ *   base address and limit in the register can then be changed as part
+ *   of the processor initialization processor.
+ *
+ *   47------------------------------16-15-------------------------0
+ *   | 32-bit Linear Base Address      | 16-Bit Table limit        |
+ *   ---------------------------------------------------------------
+ */
+static int parse_idtr(unsigned short *limit, unsigned long *base)
+{
+    unsigned char idtr[6];
+
+    /*
+     * SIDT -- Store Interrupt Descriptor Table Register
+     *   Store tht content the interrupt descriptor table register (IDTR)
+     *   in the destination operand. The desctination operand specifies
+     *   a 6-byte memory location.
+     */
+    __asm__ ("sidt %0"
+             : "=m" (idtr));
+
+    /*
+     * IF instruction is SIDT
+     *   THEN
+     *     DEST[0:15]  <- IDTR(limit)
+     *     DEST[16:47] <- IDTR(Base)
+     * FI
+     */
+    *limit = idtr[0] | (idtr[1] << 8);
+    *base  = idtr[2] | (idtr[3] << 8) | (idtr[4] << 16) | (idtr[5] << 24);
+
+    return 0;
+}
+
+/*
+ * Parse TR
+ *   The task register holds the 16-bit segment selector, base address (32
+ *   bits in protected mode), segment limit, and descriptor attributes for
+ *   the TSS of the current task. The selector references the TSS descriptor
+ *   in the GDT. The base address specifies the linear address of byte 0 of
+ *   the TSS. The segment limit sepcifies the number of bytes in the TSS.
+ *
+ *   The LTR and STR instruction load and store the segment selector part
+ *   of the task register, respetively. When the LTR instruction loads a
+ *   selector in the task register, the base address, limit and descriptor
+ *   attributes from the TSS descriptor are automatically loaded into the 
+ *   task register. On power up or reset of the processor, the base address
+ *   is set to the default value of 0 and the limit is set to 0xFFFFH.
+ *
+ *   Task Register                                             Attributes
+ *   15-----------0 ------------------------------------------------------
+ *   | Seg. Sel   | | 32-bit Linear Base Address | Segment Limit | |     |
+ *   -------------- ------------------------------------------------------
+ *
+ *   @limit: The limit of TSS
+ *   @Base:  The base address of TSS
+ *
+ *   @return: 0 is success
+ *           -1 is fault segment
+ */
+static int parse_tr(unsigned short *limit, unsigned long *base)
+{
+    unsigned short tr;
+    struct seg_desc *desc;
+
+    /*
+     * STR -- Store Task Register
+     *   Store the segment selector from the task register (TR) in the 
+     *   descriptor operand. The destination operand can be a general-
+     *   purpose register or a memory location. The segment selector 
+     *   stored with this instruction points to the task state segment (TSS)
+     *   for the current running task.
+     *
+     *   When the destination operand is a 32-bit register, the 16-bit 
+     *   segment selector is copied into the lower 16 bits of the register
+     *   and the upper 16 bits of the register are cleared. When the 
+     *   destination operand is a memory location, the segment selector
+     *   is written to memory as a 16-bit quantity, regardless of operand
+     *   size.
+     * 
+     *   DEST <-- TR(Segment Selector)
+     */
+    __asm__ ("str %0"
+             : "=m" (tr));
+
+    desc = segment_descriptors(tr);
+    if (!desc)
+        return -1;
+
+    *limit = desc->limit;
+    *base  = desc->base;
+
+    /* release resource */
+    free_page((unsigned long)desc);
+    return 0;
+}
+
+/*
  * Analysic a specify segment descriptors
  *   A segment descriptor is a data structure in a GDT or LDT that
  *   provides the processor with size and location of a segment,
@@ -157,7 +263,7 @@ int *parse_ldtr(unsigned short *limit, unsigned long *base)
  *
  * @return: struction of segment descriptor or NULL.
  */
-struct seg_desc *segment_descriptors(unsigned long selector)
+struct seg_desc *segment_descriptors(unsigned short selector)
 {
     /*
      * 31--------24---------20------------15------------------7-----------0
@@ -373,6 +479,104 @@ struct seg_desc *segment_descriptors(unsigned long selector)
 }
 
 /*
+ * System descriptor type
+ *   Table shows the encoding of the type field for system-segment descriptor
+ *   and gate descriptors. Note that system descriptors in IA-32 mode are
+ *   16 bytes instead of 8 bytes.
+ *
+ * ------------------------------------------------------------------------
+ * |     Type field        |           Description                        |    
+ * ------------------------------------------------------------------------
+ * | Dec | 11 | 10 | 9 | 8 |             32-bit Mode                      |
+ * ------------------------------------------------------------------------
+ * |  0  | 0  |  0 | 0 | 0 | Reserved                                     |    
+ * ------------------------------------------------------------------------
+ * |  1  | 0  |  0 | 0 | 1 | 16-bit TSS (Available)                       |    
+ * ------------------------------------------------------------------------
+ * |  2  | 0  |  0 | 1 | 0 | LDT                                          |    
+ * ------------------------------------------------------------------------
+ * |  3  | 0  |  0 | 1 | 1 | 16-bit TSS (Busy)                            |    
+ * ------------------------------------------------------------------------
+ * |  4  | 0  |  1 | 0 | 0 | 16-bit Call Gate                             |    
+ * ------------------------------------------------------------------------
+ * |  5  | 0  |  1 | 0 | 1 | Task Gate                                    |    
+ * ------------------------------------------------------------------------
+ * |  6  | 0  |  1 | 1 | 0 | 16-bit Interrupt Gate                        |    
+ * ------------------------------------------------------------------------
+ * |  7  | 0  |  1 | 1 | 1 | 16-bit Trap Gate                             |    
+ * ------------------------------------------------------------------------
+ * |  8  | 1  |  0 | 0 | 0 | Reserved                                     |    
+ * ------------------------------------------------------------------------
+ * |  9  | 1  |  0 | 0 | 1 | 32-bit TSS Avaiable                          |    
+ * ------------------------------------------------------------------------
+ * | 10  | 1  |  0 | 1 | 0 | Reserved                                     |    
+ * ------------------------------------------------------------------------
+ * | 11  | 1  |  0 | 1 | 1 | 32-bit TSS (Busy)                            |    
+ * ------------------------------------------------------------------------
+ * | 12  | 1  |  1 | 0 | 0 | 32-bit Call Gate                             |    
+ * ------------------------------------------------------------------------
+ * | 13  | 1  |  1 | 0 | 1 | Reserved                                     |    
+ * ------------------------------------------------------------------------
+ * | 14  | 1  |  1 | 1 | 0 | 32-bit Interrupt Gate                        |    
+ * ------------------------------------------------------------------------
+ * | 15  | 1  |  1 | 1 | 1 | 32-bit Trap Gate                             |
+ * ------------------------------------------------------------------------    
+ *
+ * @desc: segment descriptor
+ *
+ * @return: 0 is correct.
+ *          1 is data or code segment descriptor
+ */
+static int system_gate_type(struct seg_desc *desc)
+{
+    if (desc->flag & 0x01)
+        return 1;
+
+    switch (desc->type) {
+    case 1:
+        printk("16-bit TSS (Available)\n");
+        break;
+    case 2:
+        printk("LDT\n");
+        break;
+    case 3:
+        printk("16-bit TSS (Busy)\n");
+        break;
+    case 4:
+        printk("16-bit Call Gate\n");
+        break;
+    case 5:
+        printk("Task Gate\n");
+        break;
+    case 6:
+        printk("16-bit Interrupt Gate\n");
+        break;
+    case 7:
+        printk("16-bit Trap Gate\n");
+        break;
+    case 9:
+        printk("32-bit TSS (Available)\n");
+        break;
+    case 11:
+        printk("32-bit TSS (Busy)\n");
+        break;
+    case 12:
+        printk("32-bit Call Gate\n");
+        break;
+    case 14:
+        printk("32-bit Interrupt Gate\n");
+        break;
+    case 15:
+        printk("32-bit Trap Gate\n");
+        break;
+    default:
+        /* Reserved */
+        break;
+    }
+    return 0; 
+}
+
+/*
  * Segment Descriptor Type
  *   When the S(descriptor type) flag in a segment descriptor is set,
  *   the descriptor is for either a code or data segment. The highest order
@@ -395,7 +599,8 @@ int segment_descriptor_type(struct seg_desc *desc)
     }
 
     if (!(desc->flag & 0x1)) {
-        printk("The segment descriptor point to a system segment.\n");
+        /* system segment */
+        system_gate_type(desc);
         return 1;
     } else
         printk("The segment descriptor point to a data/code segment.\n");
@@ -590,7 +795,7 @@ int segment_descriptor_type(struct seg_desc *desc)
 /*
  * DPL (Descriptor privilege level)
  */
-int segment_descriptor_dpl(unsigned long selector)
+int segment_descriptor_dpl(unsigned short selector)
 {
     struct seg_desc *desc;
     unsigned long dpl;
@@ -619,9 +824,17 @@ int segment_descriptor_cpl(void)
 }
 
 /*
+ * RPL
+ */
+int segment_descriptor_rpl(unsigned short selector)
+{
+    return selector & 0x3;
+}
+
+/*
  * Stack segment
  */
-int parse_stack_segment_descriptor(void)
+static int parse_stack_segment_descriptor(void)
 {
     unsigned long ss;
     struct seg_desc *desc;
@@ -656,7 +869,7 @@ int parse_stack_segment_descriptor(void)
 /*
  * Code segment descriptor
  */
-int parse_code_segment_descriptor(void)
+static int parse_code_segment_descriptor(void)
 {
     unsigned long cs;
     struct seg_desc *desc;
@@ -682,4 +895,15 @@ int parse_code_segment_descriptor(void)
 void debug_gdt_common(void)
 {
     /* add test item here */
+    
+    /* ignore warning for un-used */
+    if (0) {
+        unsigned short limit;
+        unsigned long base;
+
+        parse_idtr(&limit, &base);
+        parse_tr(&limit, &base);
+        parse_stack_segment_descriptor();
+        parse_code_segment_descriptor();
+    }
 }
