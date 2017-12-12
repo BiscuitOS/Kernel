@@ -48,6 +48,7 @@ struct gate_desc
     unsigned short sel;
     unsigned char dpl;
     unsigned char flag;
+    unsigned char type;
 };
 extern void debug_idt_segment_desc_common(void);
 #endif
