@@ -1,0 +1,1 @@
+obj-$(CONFIG_TESTCASE_8253)  += 8253.o

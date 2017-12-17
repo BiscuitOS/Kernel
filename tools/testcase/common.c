@@ -53,5 +53,10 @@ void debug_on_shell_stage(void)
     /* Memory Mamager Unit test */
     test_mmu();
 #endif
+
+#ifdef CONFIG_TESTCASE_TIMER
+    /* Timer test*/
+    test_common_timer();
+#endif
 }
 

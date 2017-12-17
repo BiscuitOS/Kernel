@@ -47,6 +47,8 @@ source "tools/testcase/scheduler/Kconfig"
 
 source "tools/testcase/mmu/Kconfig"
 
+source "tools/testcase/timer/Kconfig"
+
 endif
 
 endmenu
