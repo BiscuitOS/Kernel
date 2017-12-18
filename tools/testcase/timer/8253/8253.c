@@ -34,6 +34,14 @@ enum
     INTEL8253_COUNTER1,
     INTEL8253_COUNTER2
 };
+
+enum
+{
+    DATA_LATCH, 
+    DATA_MSB,   /* Read/Load MSB only */
+    DATA_LSB,   /* Read/Load LSB only */
+    DATA_ALL    /* Read/Load LSB first, then MSB */
+};
 /*
  * The complete function definition of the 8253 is programmed by
  * the system software. A set of control words must be sent out
@@ -162,7 +170,21 @@ static void intel8253_counter_BCD(unsigned char *ctl, int BCD)
 }
 
 /*
- * Setting READ/LOAD
+ * READ/LOAD
+ *   LSB --- Least significant byte
+ *   MSB --- Most significant byte.
+ *   
+ *     RL1   RL2   
+ *   --------------------------------------------------------
+ *   |  0  |  0  | Counter Latching operation               |
+ *   --------------------------------------------------------
+ *   |  0  |  1  | Read/Load most significant byte only     |
+ *   --------------------------------------------------------
+ *   |  1  |  0  | Read/Load least significant byte only    |
+ *   --------------------------------------------------------
+ *   |  1  |  1  | Read/Load least significant byte first,  |
+ *   |     |     | then most significant byte.              |
+ *   --------------------------------------------------------
  */
 static void intel8253_counter_RL(unsigned char *ctl, int rl)
 {
@@ -203,12 +225,54 @@ static unsigned char intel8253_read(unsigned int nr)
 }
 
 /*
- * Write to Counter
+ * WRITE PROCEDURE
+ *   The systems software must program each counter of the 8253 with the
+ *   mode and quantity desired. The programmer must write out ot the 8253
+ *   a MODE control word and the programmed number of count register 
+ *   bytes (1 or 2) prior to actually using the selected counter.
+ *
+ *   The actual order of the programming is quite flexible. Writing out
+ *   of the MODE countrol word can be in any sequence of counter 
+ *   selection, eg, counter0 does't have to be first or counter2 has a 
+ *   separate address so that its loading is completely sequence 
+ *   independent. (SC0, SC1).
+ *
+ *   The loading of the Count Register with the actual count value, however,
+ *   must be done in exactly word (RL0, RL1). This loading of the counter's
+ *   count register is still sequence independent like the MODE control
+ *   word loading, but when a selected count register is to be loaded it 
+ *   must be loaded with the number of bytes programmed in the MODE control
+ *   word (RL0, RL1). The one or two bytes to be loaded in the count 
+ *   counter do not have to follow the associated MODE control word. They
+ *   can be programmed at any time following the MODE control word loading
+ *   as long as the correct number of bytes is loaded in order.
+ *  
+ *   All counters are down counters. Thus, the value loaded into the count
+ *   register will actually be decremented. Loading all zeros into a count
+ *   register will result in the maximum count (2^16 for Binary or 10^4 for
+ *   BCD). In MODE 0 the new count will not restart until the load has been
+ *   completed. It will accept one of two bytes depending on how the MODE
+ *   control words (RL0, RL1) are programmed. Then proceed with the restart
+ *   operation.
  */
-static int intel8253_write(unsigned int nr, unsigned char data)
+/* Only write MSB of data to counter Register */
+static int intel8253_write_MSB(unsigned int nr, unsigned char data)
 {
     return 0;
 }
+
+/* Only write LSB of data to counter Register  */
+static int intel8253_write_LSB(unsigned int nr, unsigned char data)
+{
+    return 0;
+}
+
+/* Write LSB first and then MSB of data to counter Register */
+static int intel8253_write(unsigned int nr, unsigned short data)
+{
+    return 0;
+}
+
 
 void debug_8253_common(void)
 {
