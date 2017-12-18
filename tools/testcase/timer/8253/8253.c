@@ -12,11 +12,11 @@
 
 #include <test/debug.h>
 
-#define INTEL8253_BASE      0x40
-#define CNT1_REG            0x40
-#define CNT2_REG            0x41
-#define CNT3_REG            0x42
-#define CTR_REG             0x43
+#define INTEL8253_BASE           0x40
+#define PORT_COUNTER0            0x40
+#define PORT_COUNTER1            0x41
+#define PORT_COUNTER2            0x42
+#define PORT_CTRL                0x43
 
 enum 
 {
@@ -41,6 +41,12 @@ enum
     DATA_MSB,   /* Read/Load MSB only */
     DATA_LSB,   /* Read/Load LSB only */
     DATA_ALL    /* Read/Load LSB first, then MSB */
+};
+
+enum
+{
+    F_16BIT,
+    F_BCD
 };
 /*
  * The complete function definition of the 8253 is programmed by
@@ -119,7 +125,7 @@ enum
  *
  *    BCD
  *    ----------------------------------------------------------------
- *    | 0 | Binary Counter 160Bits                                   |
+ *    | 0 | Binary Counter 16Bits                                    |
  *    ----------------------------------------------------------------
  *    | 1 | Binary Coded Decimal (BCD) Counter                       |
  *    ----------------------------------------------------------------
@@ -213,15 +219,45 @@ static void intel8253_write_ctr(unsigned int nr, unsigned int mode,
     /* Setting Counter RL */
     intel8253_counter_RL(&ctr, rl);
     /* Output */
-    outb_p(ctr, CTR_REG);
+    outb_p(ctr, PORT_CTRL);
 }
 
 /*
- * Read from Counter
+ * READ OPERATIONS
+ *   In most counter applications it becomes neccssary to read the value
+ *   of the count in progress and make a computation decision based on 
+ *   this quantity. Event counters are probably the most common application
+ *   that uses this functions. The 8253 contains logic that will allow
+ *   the programmer to easily read the contents of any of the three 
+ *   counters without disturbing the actual count in progress.
+ *
+ *   There are two methods that the programmer can use to read the value
+ *   of the counters. The first method involves the use of simple I/O
+ *   read operations of the selected counter. By controlling the A0, A1
+ *   inputs to the 8253 the programmer can select the counter to be read
+ *   (remember that no read operation of the mode register is allowed A0,
+ *   A1 -- 11). The only requirement with this method is that in order to 
+ *   assure a stable count reading the actual operation of the selected 
+ *   counter must be inhibited either by controlling the Gate input or by
+ *   external logic that inhibits the clock input. The contents of the 
+ *   counter selected will be available as follow:
+ *
+ *   First I/O Read contains the least significant byte (LSB)
+ * 
+ *   Second I/O Read contains the most significant byte (MSB)
+ *
+ *   Due to the internal logic of the 8253 it is absolutely necessary
+ *   to complete the entire reading procedure. If two bytes are programmed
+ *   to be read, then two bytes must be read before any loading WR command 
+ *   can be sent to the same counter.
  */
-static unsigned char intel8253_read(unsigned int nr)
+static unsigned short intel8253_read(unsigned int nr)
 {
-    return 0;
+    unsigned short value;
+
+    value = inb_p(INTEL8253_BASE + nr);
+    value |= inb_p(INTEL8253_BASE + nr) << 8;
+    return value;
 }
 
 /*
@@ -258,31 +294,48 @@ static unsigned char intel8253_read(unsigned int nr)
 /* Only write MSB of data to counter Register */
 static int intel8253_write_MSB(unsigned int nr, unsigned char data)
 {
+    outb_p(data, INTEL8253_BASE + nr);
     return 0;
 }
 
 /* Only write LSB of data to counter Register  */
 static int intel8253_write_LSB(unsigned int nr, unsigned char data)
 {
+    outb(data, INTEL8253_BASE + nr);
     return 0;
 }
 
 /* Write LSB first and then MSB of data to counter Register */
 static int intel8253_write(unsigned int nr, unsigned short data)
 {
+    outb_p(data & 0xFF, INTEL8253_BASE + nr);
+    outb_p((data >> 8) & 0xFF, INTEL8253_BASE + nr);
     return 0;
 }
 
-
+/* common entry on 8253 */
 void debug_8253_common(void)
 {
     /* Add item */
 
     /* Ignor warning */
     if (0) {
-        intel8253_write_ctr(INTEL8253_COUNTER1, MODE1_ONE_SHOT, 
-                            1, 1);
-        intel8253_write(1, 1);
-        intel8253_read(1);
+        unsigned short value;
+
+        /* Counter1, LSB/MSB, ONE_SHOT, 16Bit */
+        intel8253_write_ctr(INTEL8253_COUNTER2, MODE0_INTERRUPT, 
+                            DATA_ALL, F_16BIT);
+        /* Write LSB data */
+        intel8253_write_LSB(INTEL8253_COUNTER2, 0x20);
+        /* Write MSB data */
+        intel8253_write_MSB(INTEL8253_COUNTER2, 0x11);
+        /* Read from Counter 1 */
+        value = intel8253_read(PORT_COUNTER2);
+        printk("Value1 %#x\n", value);
+
+        /* Re-Write new value */
+        intel8253_write(INTEL8253_COUNTER2, 0x1102);
+        value = intel8253_read(PORT_COUNTER2);
+        printk("Value2 %#x\n", value);
     }
 }
