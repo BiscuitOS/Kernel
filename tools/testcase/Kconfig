@@ -49,6 +49,8 @@ source "tools/testcase/mmu/Kconfig"
 
 source "tools/testcase/timer/Kconfig"
 
+source "tools/testcase/ioports/Kconfig"
+
 endif
 
 endmenu

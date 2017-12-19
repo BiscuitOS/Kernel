@@ -310,37 +310,37 @@ void do_floppy_timer(void)
 
 void do_timer(long cpl)
 {
-	extern int beepcount;
-	extern void sysbeepstop(void);
+    extern int beepcount;
+    extern void sysbeepstop(void);
 
-	if (beepcount)
-		if (!--beepcount)
-			sysbeepstop();
+    if (beepcount)
+        if (!--beepcount)
+            sysbeepstop();
 
-	if (cpl)
-		current->utime++;
-	else
-		current->stime++;
+    if (cpl)
+        current->utime++;
+    else
+        current->stime++;
 
-	if (next_timer) {
-		next_timer->jiffies--;
-		while (next_timer && next_timer->jiffies <= 0) {
-			void (*fn)(void);
+    if (next_timer) {
+        next_timer->jiffies--;
+        while (next_timer && next_timer->jiffies <= 0) {
+            void (*fn)(void);
 
-			fn = next_timer->fn;
-			next_timer->fn = NULL;
-			next_timer = next_timer->next;
-			(fn)();
-		}
-	}
-	if (current_DOR & 0xf0)
-		do_floppy_timer();
-	if ((--current->counter) > 0)
-		return;
-	current->counter = 0;
-	if (!cpl)
-		return;
-	schedule();
+            fn = next_timer->fn;
+            next_timer->fn = NULL;
+            next_timer = next_timer->next;
+            (fn)();
+        }
+    }
+    if (current_DOR & 0xf0)
+        do_floppy_timer();
+    if ((--current->counter) > 0)
+        return;
+    current->counter = 0;
+    if (!cpl)
+        return;
+    schedule();
 }
 
 void show_task(int nr, struct task_struct *p)

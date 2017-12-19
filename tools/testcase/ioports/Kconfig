@@ -1,0 +1,26 @@
+#
+# XT, AT and PS/2 I/O port addresses
+#
+
+menu "XT, AT and PS/2 I/O port addresses"
+
+config TESTCASE_IOPORT
+	bool "Test Intel, XT, AT and PS/2 IO port"
+	help
+	  XT, AT and PS/2 I/O port addresses
+
+if TESTCASE_IOPORT
+
+config TESTCASE_PORT_DMA
+	bool "(0x00) first Direct Memory Access controller 8273"
+	help
+	  DMA 1 (first Direct Memory Access controller 8273)
+
+config TESTCASE_PORT_CMOS
+	bool "(0x70) CMOST RAM/RTC (Real Time Clock)"
+	help
+	  (0x70) CMOST RAM/RTC (Real Time Clock)
+
+endif
+
+endmenu

@@ -58,5 +58,10 @@ void debug_on_shell_stage(void)
     /* Timer test*/
     test_common_timer();
 #endif
+
+#ifdef CONFIG_TESTCASE_IOPORT
+    /* ioports test */
+    test_common_ioports();
+#endif
 }
 
