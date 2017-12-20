@@ -105,3 +105,85 @@
   counter can be read `on the fly` without having to inhibit the clock
   input.
 
+### Debug on BiscuitOS
+
+  BiscuitOS support online debug 8253 on `qemu`, developer should open
+  Kernel-macro when configure kernel. Shortly, follow these step to
+  enable Intel 8253 on system.
+
+  1. Enale specifical Kernel-macro
+
+     Invoke `make menuconfig` on top on source tree, and enable
+     specifical item as follow figures.
+
+     ```
+       make menuconfig
+     ```
+
+     First, select `Kernel hacking`
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/CMOS/CMOS0.png)
+
+     Then, set `Debug/Running kernel` as `Y` and select `TestCase
+     configuration`
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/CMOS/CMOS1.png)
+
+     Next, set `Testcase for kernel function` as `Y` and select
+     `Timer and CMOS clock`
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/CMOS/CMOS2.png)
+
+     Finally, set `Test Timer and CMOS clock` and `Intel 8253 Timer` as `Y`.
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/CMOS/8253_1.png)
+
+  2. Enable debug demo code
+
+     The main code for CMOS RTC on `*/tools/testcase/timer/8253/8253.c`,
+     Developer can add test code on `debug_8253_common`, such as:
+
+     ```
+       /* common entry on 8253 */
+       void debug_8253_common(void)
+       {
+           /* Add item */
+
+           /* Ignor warning */
+           if (1) {
+               unsigned short value;
+
+               /* Counter1, LSB/MSB, ONE_SHOT, 16Bit */
+               intel8253_write_ctr(INTEL8253_COUNTER2, MODE0_INTERRUPT,
+                                   DATA_ALL, F_16BIT);
+               /* Write LSB data */
+               intel8253_write_LSB(INTEL8253_COUNTER2, 0x20);
+               /* Write MSB data */
+               intel8253_write_MSB(INTEL8253_COUNTER2, 0x11);
+               /* Read from Counter 1 */
+               value = intel8253_read(PORT_COUNTER2);
+               printk("Value1 %#x\n", value);
+
+               /* Re-Write new value */
+               intel8253_write(INTEL8253_COUNTER2, 0x1102);
+               value = intel8253_read(PORT_COUNTER2);
+               printk("Value2 %#x\n", value);
+           }
+       }
+
+     ```
+
+  3. Running test code
+
+     If you configure correctly, you can run CMOS RTC demo code on qemu,
+     such as:
+
+     ```
+       make
+       make start
+     ```
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/CMOS/8253_2.png)
+
+
+
