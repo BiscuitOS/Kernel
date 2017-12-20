@@ -16,10 +16,10 @@ config TESTCASE_PORT_DMA
 	help
 	  DMA 1 (first Direct Memory Access controller 8273)
 
-config TESTCASE_PORT_CMOS
-	bool "(0x70) CMOST RAM/RTC (Real Time Clock)"
+config TESTCASE_PORT_0X70
+	bool "(0x70) CMOST RAM"
 	help
-	  (0x70) CMOST RAM/RTC (Real Time Clock)
+	  (0x70) CMOST RAM
 
 endif
 

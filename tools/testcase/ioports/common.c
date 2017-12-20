@@ -16,6 +16,9 @@ int test_common_ioports(void)
 {
     printk("Test common ioports.\n");
 
+#ifdef CONFIG_TESTCASE_PORT_0X70
+    debug_cmos_ram_common();
+#endif
     return 0;
 }
 
