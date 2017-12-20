@@ -79,6 +79,79 @@ CMOS (Complementary metal oxide semiconductor)
                Xs e.g. bit 5-3 would be shown as 00xx x000
   ```
 
+### Debug on BiscuitOS
+
+  BiscuitOS support online debug CMOS on `qemu`, developer should open 
+  Kernel-macro when configure kernel. Shortly, follow these step to
+  enable CMOS RTC on system.
+
+  1. Enale specifical Kernel-macro
+
+     Invoke `make menuconfig` on top on source tree, and enable 
+     specifical item as follow figures.
+
+     ```
+       make menuconfig
+     ```
+
+     First, select `Kernel hacking`
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/CMOS/CMOS0.png)
+
+     Then, set `Debug/Running kernel` as `Y` and select `TestCase 
+     configuration`
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/CMOS/CMOS1.png)
+
+     Next, set `Testcase for kernel function` as `Y` and select 
+     `Timer and CMOS clock`
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/CMOS/CMOS2.png)
+
+     Finally, set `Test Timer and CMOS clock` and `CMOS Clock` as `Y`.
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/CMOS/CMOS3.png)
+
+  2. Enable debug demo code
+
+     The main code for CMOS RTC on `*/tools/testcase/timer/cmos/cmos.c`, 
+     Developer can add test code on `debug_cmos_clk_common`, such as:
+
+     ```
+       void debug_cmos_clk_common(void)
+       {
+           /* Add item */
+
+           /* Ignore warning, default usage for CMOS RAM (RTC) */
+           if (1) {
+               unsigned char value;
+
+               /* Obtain current seconds from RTC */
+               value = cmos_RTC_seconds();
+               printk("CMOS RTC Seconds %d\n", BCD_TO_BIN(value));
+               /* Obtain seconds for Alarm */
+               value = cmos_Alarm_seconds();
+               printk("CMOS Alarm Seconds %d\n", BCD_TO_BIN(value));
+               /* Obtain current minutes from RTC */
+               value = cmos_RTC_minutes();
+               ......
+          }
+      }
+     ```   
+
+  3. Running test code
+
+     If you configure correctly, you can run CMOS RTC demo code on qemu,
+     such as:
+
+     ```
+       make
+       make start
+     ```
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/CMOS/CMOS4.png)
+
+
 ### link
 
   ```
