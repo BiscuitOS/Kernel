@@ -277,7 +277,46 @@ enum
  *    2       keyboard enabled (turn off to enable boot of rackmount)
  *    1       mach coprocessor installed
  *    0       floppy drive installed (turned off for rackmount boot) 
+ *
+ *   ----- R14 -----------------------------------------------
+ *   CMOS 15h --- IBM - BASE MEMORY IN KB (low byte)
+ *   
+ *   ----- R16 -----------------------------------------------
+ *   CMOS 16h --- IBM - BASE MEMORY IN KB (high byte)
+ *   Note:
+ *     The value in 15h-16h should be the same as in 0:413h and that
+ *     returned by INT 12h. A PC having 640K (280h) of conventional
+ *     memory will return 80h in byte 15h and 02h in byte 16h.
+ *   
+ *   ----- R17 -----------------------------------------------
+ *   CMOS 17h --- IBM - EXTEND MEMORY IN KB (low byte) 
+ *
+ *   ----- R18 -----------------------------------------------
+ *   CMOS 18h --- IBM - EXTEND MEMORY IN KB (high byte)
+ *   Notes:
+ *     Some systems will only accommodate 15 MB extended (16 MB total)
+ *     Format is the same as in 15h-16h
+ *
+ *   ----- R19 -----------------------------------------------
+ *   CMOS 19h --- IBM - FIRST EXTENDED HARD DISK DRIVE TYPE
+ *   Note:
+ *     Not in original AT specification but now nearly universally used
+ *     except for PS/2.
+ *   Table C020
+ *   Values for extended hard disk drive type:
+ *     00h-0Fh   unused (would not require extension. Note: this has the
+ *               effect of making type 0Fh (15d) unavailable).
+ *     10h-FFh   First Extended Hard Drive Type 16d-255d
+ *   Note:
+ *     For most manufacturers that last drive type (typically either 47d
+ *     or 49d) is "user defined" and parameters are stored elsewhere in
+ *     the CMOS.
+ *
+ *   ----- R19 -----------------------------------------------
+ *   CMOS 1Ah --- SECOND EXTENDED HARD DISK DRIVE TYPE
+ *   SeeAlso: CMOS 19h "IBM", #C020
  */ 
+
 
 /*
  * Obtain Current Seconds (RTC)
@@ -656,7 +695,7 @@ static int diagnose_cmos_ram_checksum(void)
  *  @return: 1 equirment configure is incorrect
  *           0 equirment configure is correct
  */
-static int diagnose_configure_info(vvoid)
+static int diagnose_configure_info(void)
 {
     unsigned char value;
 
@@ -1012,6 +1051,87 @@ static int detect_monitor_type(void)
     return (obtain_equirment_byte() >> 0x4) & 0x3;
 }
 
+/*
+ * Detect Base Memory size
+ *   CMOS 15h --- IBM - BASE MEMORY IN KB (low byte)
+ *   
+ *   CMOS 16h --- IBM - BASE MEMORY IN KB (high byte)
+ *   Note:
+ *     The value in 15h-16h should be the same as in 0:413h and that
+ *     returned by INT 12h. A PC having 640K (280h) of conventional
+ *     memory will return 80h in byte 15h and 02h in byte 16h.
+ */
+static unsigned short detect_base_memory(void)
+{
+    unsigned short value;
+
+    /* obtain LSB */
+    outb_p(0x80 | 0x15, CMOS_CTR);
+    value = inb_p(CMOS_DTA);
+    /* obtain MSB */
+    outb_p(0x80 | 0x16, CMOS_CTR);
+    value |= inb_p(CMOS_DTA) << 8;
+
+    return value;
+}
+
+/*
+ * Detect Extend Memory size
+ *   CMOS 17h --- IBM - EXTEND MEMORY IN KB (low byte) 
+ *
+ *   CMOS 18h --- IBM - EXTEND MEMORY IN KB (high byte)
+ *   Notes:
+ *     Some systems will only accommodate 15 MB extended (16 MB total)
+ *     Format is the same as in 15h-16h
+ */
+static unsigned short detect_extend_memory(void)
+{
+    unsigned short value;
+
+    /* obtain LSB */
+    outb_p(0x80 | 0x17, CMOS_CTR);
+    value = inb_p(CMOS_DTA);
+    /* obtain MSB */
+    outb_p(0x80 | 0x18, CMOS_CTR);
+    value = inb_p(CMOS_DTA) << 8;
+
+    return value;
+}
+
+/*
+ * Obtain First Extern Hard Disk Type
+ *   CMOS 19h --- IBM - FIRST EXTENDED HARD DISK DRIVE TYPE
+ *   Note:
+ *     Not in original AT specification but now nearly universally used
+ *     except for PS/2.
+ *   Table C020
+ *   Values for extended hard disk drive type:
+ *     00h-0Fh   unused (would not require extension. Note: this has the
+ *               effect of making type 0Fh (15d) unavailable).
+ *     10h-FFh   First Extended Hard Drive Type 16d-255d
+ *   Note:
+ *     For most manufacturers that last drive type (typically either 47d
+ *     or 49d) is "user defined" and parameters are stored elsewhere in
+ *     the CMOS.
+ */
+static int obtain_first_extern_HD_type(void)
+{
+    outb_p(0x80 | 0x19, CMOS_CTR);
+    return inb_p(CMOS_DTA);
+}
+
+/*
+ * Obtain Second Extend Hard Disk Type
+ *   CMOS 1Ah --- SECOND EXTENDED HARD DISK DRIVE TYPE
+ *   SeeAlso: CMOS 19h "IBM", #C020
+ *            obtain_first_extern_HD_type()
+ */
+static int obtain_second_extern_HD_type(void)
+{
+    outb_p(0x80 | 0x1A, CMOS_CTR);
+    return inb_p(CMOS_DTA);
+}
+
 /* Common CMOS RAM entry */
 void debug_cmos_ram_common(void)
 {
@@ -1149,5 +1269,13 @@ void debug_cmos_ram_common(void)
             printk("Floppy driver has installed\n");
         else
             printk("Floppy driver doesn't install\n");
+        /* Detect base memory */
+        printk("Base Memory %#x\n", detect_base_memory());
+        /* Detect Extend Memory */
+        printk("Extend Memory %#x\n", detect_extend_memory());
+        /* Obtain 1st Extend Hard Disk type */
+        printk("1st Extend HD type %#x\n", obtain_first_extern_HD_type());
+        /* Obtain 2nd Extend Hard Disk type */
+        printk("2nd Extend HD type %#x\n", obtain_second_extern_HD_type());
     }
 }
