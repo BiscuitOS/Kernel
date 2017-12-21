@@ -176,9 +176,108 @@ enum
  *           =1 time is invalid, =0 ok (POST validity check)
  *     1     installed adaptors do not match configuration
  *     0     time-out while reading adapter ID
- *     
+ *
+ *   ----- R0F -----------------------------------------------
+ *   CMOS 0Fh --- IBM - RESET CODE (IBM PS/2 "Shutdown Status Byte") 
+ *   (Table C006)
+ *   Values for Rest Code / Shutdown Status Byte:
+ *   00h - 03h    Perform power-on reset
+ *         01h    Reset after memory size check in real/virtual mode
+ *                (or: chip set initialization for real mode reentry)
+ *         02h    Reset after succssful memory test in real/virtual mode
+ *         03h    Reset after failed memory test in real/virtual mode
+ *   04h          INT 19h reboot
+ *   05h          flush keyboard (issue EOI) and jump via 40h:0067h
+ *   06h          reset (after failed test in virtual mode)
+ *                (or: jump via 40h:0067h without EOI)
+ *   07h          reset (after failed test in virtual mode)
+ *   08h          used by POSI during protected-mode RAM test 
+ *                (Return to POST)
+ *   09h          used for INT 15/87h (bclock move) support
+ *   0Ah          resume execution by jump via 40h:0067h
+ *   0Bh          resume execution via IRET via 40h:0067h
+ *   0Ch          resume execution via RETF via 40h:0067h
+ *   0Dh - FFh    perform power-on reset
+ *  
+ * The second group of values extends from address 10h to 2Dh. The word at
+ * 2Eh - 2Fh is a byte-wise summation of the values in these bytes. Most
+ * BIOSes will generate a CMOS Checksum error if this value is invalid 
+ * however many programs ignore checksum and report the apparent value.
+ * The current version of MSD reports my XT as having 20+ MB of extended
+ * memory.
+ *
+ * Where a definition apperas universal, no identification is made. Where
+ * the definition is though to be specific to a manufacturer/mode (AMI,
+ * AMSTRAD, IBM AT, IBM PS/2) the identification is enclosed in parens.
+ * The AMSTAD definitions appear to relate to 8088/8086 (PC and PC/XT
+ * class) machines only. AT class machines appear to adhere to IBM PC/AT
+ * fornat. 
+ *
+ *   ----- R10 -----------------------------------------------
+ *   CMOS 10h --- IBM - FLOPPY DRIVE TYPE
+ *   Note:
+ *     a PC having a 5 1/4 1.2 Mb A.
+ *     a 1.44 Mb B.
+ *     drive will have a value of 24h in byte 10h. 
+ *     With a single 1.44 drive: 40h.
+ *   Bitfields for floppy drivers A/B types:
+ *   Bit(s)  Description    (Table C007)
+ *    7 - 4  first floppy disk drive type (see #C008)
+ *    3 - 0  second floppy disk drive type (see #C008)
+ *   
+ *   (Table C008)
+ *   Values for floppy drive type:
+ *    00h    no drive
+ *    01h    360KB   5.25 Drive
+ *    02h    1.2MB   5.25 Drive - note: not listed in PS/2 technical manual
+ *    03h    720KB   3.5  Drive
+ *    04h    1.44MB  3.5  Drive
+ *    05h    2.88MB  3.5  Drive
+ *   06h-0fh unused
+ *   SeeAlso: #C007
+ *
+ *   ----- R11 -----------------------------------------------
+ *   Reserved / AMI Extended CMOS setup (AMI Hi-Flex BIOS)
+ *
+ *   ----- R12 -----------------------------------------------
+ *   CMOS 12h --- IBM - HARD DISK DATA
+ *   Notes:
+ *     A PC with a single type 2 (20Mb ST-225) hard disk will have 20h in
+ *     byte 12h. some PCs utilizing external disk controller ROMs will 
+ *     use type 0 to disable ROM BIOS (e.g. Zenith 248 with Plus HardCard).
+ *
+ *   Bitfields for IBM hard disk data:
+ *   Bit(s)   Description      (Table C014)
+ *    7-4     First Hard Disk Drive
+ *            00          No Drive
+ *            01 - 0EH    Hard Drive Type 1-14
+ *            0Fh         Hard Disk Type  16-255
+ *                        (actual Hard Drive Type is in CMOS RAM 19H)
+ *    3-0     Second Hard Disk Drive Type
+ *            (same as first except extrnede type will be found in 1Ah)
+ *
+ *   ----- R12 -----------------------------------------------
+ *   CMOS 12h --- IBM PS/2 - SECOND FIXED DISK DRIVE TYPE (00-FFh)
+ *
+ *   ----- R14 -----------------------------------------------
+ *   CMOS 14h --- IBM - EQUIPMENT BYTE
+ *   Bitfields for IBM equipment byte:
+ *   Bit(s)   Description    (Table C019)
+ *    7-6     number of floppy drivers (system must have at least one)
+ *            00b    1 Drive
+ *            01b    2 Drive
+ *            10b    3 Drive
+ *            11b    4 Drive
+ *    5-4     monitor type
+ *            00b    Not CGA or MDA (observed for EGA & VGA)
+ *            01b    40x25 CGA
+ *            10b    80x25 CGA
+ *            11b    MDA (Monochrome)
+ *    3       display enabled (turned off to enable boot of rackmount)
+ *    2       keyboard enabled (turn off to enable boot of rackmount)
+ *    1       mach coprocessor installed
+ *    0       floppy drive installed (turned off for rackmount boot) 
  */ 
-
 
 /*
  * Obtain Current Seconds (RTC)
@@ -524,12 +623,12 @@ static void cmos_diagnostic_status_update(unsigned char value)
 }
 
 /*
- * Check RTC lost power
+ * Diagnose RTC whether lost power
  *
  *   @return: 1 - RTC lost power
  *            0 - RTC state stable
  */
-static int cmos_RTC_power_status(void)
+static int diagnose_RTC_power_status(void)
 {
     unsigned char value;
 
@@ -537,12 +636,387 @@ static int cmos_RTC_power_status(void)
     return (value >> 7) ? 1 : 0;
 }
 
+/*
+ * Diagnose CMOS RAM checksum
+ * 
+ *   @return: 1 - config record checksum is bad.
+ *            0 - config record checksum is ok
+ */
+static int diagnose_cmos_ram_checksum(void)
+{
+    unsigned char status;
+
+    status = cmos_diagnostic_status();
+    return (status >> 6) & 0x1 ? 1 : 0;
+}
+
+/*
+ * Diagnose whether configuration information at POST is invalid.
+ *
+ *  @return: 1 equirment configure is incorrect
+ *           0 equirment configure is correct
+ */
+static int diagnose_configure_info(vvoid)
+{
+    unsigned char value;
+
+    value = cmos_diagnostic_status();
+    return (value >> 5) & 0x1 ? 1 : 0;
+}
+
+/*
+ * Diagnose Whether CMOS RAM memory size matches configure
+ *
+ *   @return: 1 - memory size doesn't match configure
+ *            0 - memory size match configure
+ */
+static int diagnose_cmos_memory_size(void)
+{
+    unsigned char value;
+
+    value = cmos_diagnostic_status();
+    return (value >> 4) & 0x01 ? 1 : 0;
+}
+
+/*
+ * Diagnose whether Disk0 has initialized
+ *
+ *  @return: 1 - Disk 0 doesn't initialize.
+ *           0 - Disk 0 has initialized.
+ */
+static int diagnose_disk0_init_statue(void)
+{
+    unsigned char value;
+
+    value = cmos_diagnostic_status();
+    return (value >> 3) & 0x1 ? 1 : 0;
+}
+
+/*
+ * Diagnose whether CMOS RAM time is valid?
+ *
+ *   @return: 1 - CMOS RAM time invalid
+ *            0 - CMOS RAM time valid
+ */
+static int diagnose_cmos_time_status(void)
+{
+    unsigned char value;
+
+    value = cmos_diagnostic_status();
+    return (value >> 2) & 0x1 ? 1 : 0;
+}
+
+/*
+ * Diagnose whether EISA match configure
+ *
+ *   @return: 1 - EISA doesn't match configure
+ *            0 - EISA match configure 
+ */
+static int diagnose_EISA_status(void)
+{
+    unsigned char value;
+
+    value = cmos_diagnostic_status();
+    return (value >> 1) & 0x1 ? 1 : 0;
+}
+
+/*
+ * Diagnose whether timeout when reading EISA ID
+ *
+ *   @return: 1 - Reading EISA ID timeout
+ *            0 - Reading EISA ID doesn't timeout
+ */
+static int diagnose_obtain_EISA_timeout(void)
+{
+    unsigned char value;
+
+    value = cmos_diagnostic_status();
+    return value & 0x1 ? 1 : 0;
+}
+
+/*
+ * Obtain Shutdown Status
+ *   CMOS 0Fh --- IBM - RESET CODE (IBM PS/2 "Shutdown Status Byte") 
+ *   (Table C006)
+ *   Values for Rest Code / Shutdown Status Byte:
+ *   00h - 03h    Perform power-on reset
+ *         01h    Reset after memory size check in real/virtual mode
+ *                (or: chip set initialization for real mode reentry)
+ *         02h    Reset after succssful memory test in real/virtual mode
+ *         03h    Reset after failed memory test in real/virtual mode
+ *   04h          INT 19h reboot
+ *   05h          flush keyboard (issue EOI) and jump via 40h:0067h
+ *   06h          reset (after failed test in virtual mode)
+ *                (or: jump via 40h:0067h without EOI)
+ *   07h          reset (after failed test in virtual mode)
+ *   08h          used by POSI during protected-mode RAM test 
+ *                (Return to POST)
+ *   09h          used for INT 15/87h (bclock move) support
+ *   0Ah          resume execution by jump via 40h:0067h
+ *   0Bh          resume execution via IRET via 40h:0067h
+ *   0Ch          resume execution via RETF via 40h:0067h
+ *   0Dh - FFh    perform power-on reset
+ */
+static int obtain_shutdown_status(void)
+{
+    unsigned char status;
+
+    outb_p(0x80 | 0xF, CMOS_CTR);
+    status = inb_p(CMOS_DTA);
+
+    printk("Shutdown CODE[%#x]\n", status);
+    switch (status) {
+    case 0x1:
+        printk("Reset after memory size check in real/virtual mode\n");
+        break;
+    case 0x2:
+        printk("Reset after succssful memory test in real/virtual mode\n");
+        break;
+    case 0x3:
+        printk("Reset after failed memory test in real/virtual mode\n");
+        break;
+    case 0x4:
+        printk("INT 19h reboot\n");
+        break;
+    case 0x5:
+        printk("flush keyboard (issue EOI) and jump via 40h:0067h\n");
+        break;
+    case 0x6:
+        printk("reset (after failed test in virtual mode)\n");
+        printk("(or: jump via 40h:0067h without EOI)\n");
+        break;
+    case 0x7:
+        printk("reset (after failed test in virtual mode)\n");
+        break;
+    case 0x8:
+        printk("used by POSI during protected-mode RAM test\n");
+        break;
+    case 0x9:
+        printk("used for INT 15/87h (bclock move) support\n");
+        break;
+    case 0xA:
+        printk("resume execution by jump via 40h:0067h\n");
+        break;
+    case 0xB:
+        printk("resume execution via IRET via 40h:0067h\n");
+        break;
+    case 0xC:
+        printk("resume execution via RETF via 40h:0067h\n");
+        break;
+    default:
+        printk("perform power-on reset\n");
+        break;
+    }
+    return status;
+}
+
+/*
+ * Obtain floppy information
+ *   CMOS 10h --- IBM - FLOPPY DRIVE TYPE
+ *   Note:
+ *     a PC having a 5 1/4 1.2 Mb A.
+ *     a 1.44 Mb B.
+ *     drive will have a value of 24h in byte 10h. 
+ *     With a single 1.44 drive: 40h.
+ *   Bitfields for floppy drivers A/B types:
+ *   Bit(s)  Description    (Table C007)
+ *    7 - 4  first floppy disk drive type (see #C008)
+ *    3 - 0  second floppy disk drive type (see #C008)
+ *   
+ *   (Table C008)
+ *   Values for floppy drive type:
+ *    00h    no drive
+ *    01h    360KB   5.25 Drive
+ *    02h    1.2MB   5.25 Drive - note: not listed in PS/2 technical manual
+ *    03h    720KB   3.5  Drive
+ *    04h    1.44MB  3.5  Drive
+ *    05h    2.88MB  3.5  Drive
+ *   06h-0fh unused
+ *   SeeAlso: #C007
+ */
+static unsigned char obtain_floppy_info(void)
+{
+    unsigned char status;
+    int i;
+
+    outb_p(0x80 | 0x10, CMOS_CTR);
+    status = inb_p(CMOS_DTA);
+
+    for (i = 0; i < 2; i++) {
+        /* Parse floppy information */
+        switch ((status >> (i * 4)) & 0xF) {
+        case 0x00:
+            printk("Floppy %d doesn't exist.\n", i);
+            break;
+        case 0x01:
+            printk("Floppy %d 5.25 - 360KB\n", i);
+            break;
+        case 0x02:
+            printk("Floppy %d 5.25 - 1.2MB\n", i);
+            break;
+        case 0x03:
+            printk("Floppy %d 3.5 - 720KB\n", i);
+            break;
+        case 0x04:
+            printk("Floppy %d 3.5 - 1.44KB\n", i);
+            break;
+        case 0x05:
+            printk("Floppy %d 3.5 - 2.88KB\n", i);
+            break;
+        default:
+            printk("Undefind for floppy %d\n", i);
+            break;
+        }
+    }
+    return status;
+}
+
+/*
+ * Obtain Hard-Disk Type
+ *   CMOS 12h --- IBM - HARD DISK DATA
+ *   Notes:
+ *     A PC with a single type 2 (20Mb ST-225) hard disk will have 20h in
+ *     byte 12h. some PCs utilizing external disk controller ROMs will 
+ *     use type 0 to disable ROM BIOS (e.g. Zenith 248 with Plus HardCard).
+ *
+ *   Bitfields for IBM hard disk data:
+ *   Bit(s)   Description      (Table C014)
+ *    7-4     First Hard Disk Drive
+ *            00          No Drive
+ *            01 - 0EH    Hard Drive Type 1-14
+ *            0Fh         Hard Disk Type  16-255
+ *                        (actual Hard Drive Type is in CMOS RAM 19H)
+ *    3-0     Second Hard Disk Drive Type
+ *            (same as first except extrnede type will be found in 1Ah)
+ */
+static void obtain_HardDisk_type(void)
+{
+    unsigned char value;
+
+    outb_p(0x80 | 0x12, CMOS_CTR);
+    value = inb_p(CMOS_DTA);
+    if (value & 0xF)
+        printk("Hard Disk 1 Type %d\n", value & 0xF);
+    else
+        printk("Hard Disk 1 doesn't exist\n");
+    if ((value >> 4) & 0xF)
+        printk("Hard Disk 0 Type %d\n", (value >> 4) & 0xf);
+    else
+        printk("Hard Disk 0 doesn't exist.\n");
+}
+
+/*
+ * Obtain equirment type
+ *   CMOS 14h --- IBM - EQUIPMENT BYTE
+ *   Bitfields for IBM equipment byte:
+ *   Bit(s)   Description    (Table C019)
+ *    7-6     number of floppy drivers (system must have at least one)
+ *            00b    1 Drive
+ *            01b    2 Drive
+ *            10b    3 Drive
+ *            11b    4 Drive
+ *    5-4     monitor type
+ *            00b    Not CGA or MDA (observed for EGA & VGA)
+ *            01b    40x25 CGA
+ *            10b    80x25 CGA
+ *            11b    MDA (Monochrome)
+ *    3       display enabled (turned off to enable boot of rackmount)
+ *    2       keyboard enabled (turn off to enable boot of rackmount)
+ *    1       mach coprocessor installed
+ *    0       floppy drive installed (turned off for rackmount boot)
+ */
+static unsigned char obtain_equirment_byte(void)
+{
+    outb_p(0x80 | 0x14, CMOS_CTR);
+    return inb_p(CMOS_DTA);
+}
+
+/*
+ * Obtain floppy number
+ *
+ *   @return: The number of floppy on system.
+ */
+static int obtain_floppy_number(void)
+{
+    return ((obtain_equirment_byte() >> 6) & 0x3) + 1;
+}
+
+/*
+ * Detect Display power status
+ *
+ *  @return: 1 is enable
+ *           0 is disable
+ */
+static int detect_display_enable(void)
+{
+    return ((obtain_equirment_byte() >> 3) & 0x1);
+}
+
+/*
+ * Detect Keyboard enable
+ *
+ *   @return: 0 enable
+ *            1 disable
+ */
+static int detect_keyboard_enable(void)
+{
+    return ((obtain_equirment_byte() >> 2) & 0x1);
+}
+
+/*
+ * Detect Math corprocessor
+ *
+ *   @return: 1 -- installed
+ *            0 -- not installed
+ */
+static int detect_math_corprocessor(void)
+{
+    return ((obtain_equirment_byte() >> 1) & 0x1);
+}
+
+/*
+ * Detect floppy driver
+ *
+ *   @return: 1 -- installed
+ *            0 -- not installed
+ */
+static int detect_floppy_driver(void)
+{
+    return (obtain_equirment_byte() & 0x1);
+}
+
+/*
+ * Detect monitor type
+ *
+ *   @return: 00b    Not CGA or MDA (observed for EGA & VGA)
+ *            01b    40x25 CGA
+ *            10b    80x25 CGA
+ *            11b    MDA (Monochrome)
+ */
+static int detect_monitor_type(void)
+{
+    switch ((obtain_equirment_byte() >> 0x4) & 0x3) {
+    case 0x00:
+        printk("Not CGA or MDA (observed for EGA & VGA)\n");
+        break;
+    case 0x01:
+        printk("40x25 CGA\n");
+        break;
+    case 0x02:
+        printk("80x25 CGA\n");
+        break;
+    case 0x03:
+        printk("MDA (Monochrome)\n");
+        break;
+    }
+    return (obtain_equirment_byte() >> 0x4) & 0x3;
+}
+
 /* Common CMOS RAM entry */
 void debug_cmos_ram_common(void)
 {
     /* Add item */
 
-    printk("Hello World\n");
     /* Ignore warning, default usage for CMOS RAM (RTC) */
     if (1) {
         unsigned char value;
@@ -605,9 +1079,75 @@ void debug_cmos_ram_common(void)
         printk("CMOS Diagnostic Status %#x\n", value);
         cmos_diagnostic_status_update(value);
         /* Obtain RTC clock power status */
-        if (cmos_RTC_power_status())
+        if (diagnose_RTC_power_status())
             printk("CMOS RTC power lose.\n");
         else
             printk("CMOS RTC power stable.\n");
+        /* Check CMOS RAM configure */
+        if (diagnose_cmos_ram_checksum())
+            printk("CMOS RAM config record is bad.\n");
+        else
+            printk("CMOS RAM config record is ok.\n");
+        /* Check equirment configure info incorrect? */
+        if (diagnose_configure_info())
+            printk("CMOS configure info incorrect!\n");
+        else
+            printk("CMOS configure info correct!\n");
+        /* Check whether CMOS RAM size matchs configure */
+        if (diagnose_cmos_memory_size())
+            printk("CMOS RAM memory size doesn't match configure.\n");
+        else
+            printk("CMOS RAM memory size match configure.\n");
+        /* Check whether Disk0 has initialzed? */
+        if (diagnose_disk0_init_statue())
+            printk("Disk0 doesn't initialize.\n");
+        else
+            printk("Disk0 has initialized.\n");
+        /* Check whether CMOS RAM time is valid */
+        if (diagnose_cmos_time_status())
+            printk("CMOS RAM time invalid.\n");
+        else
+            printk("CMOS RAM time valid.\n");
+        /* Check whether EISA match configure */
+        if (diagnose_EISA_status())
+            printk("EISA doesn't match configure.\n");
+        else
+            printk("EISA match configure.\n");
+        /* Diagnose whether timeout when reading EISA ID */
+        if (diagnose_obtain_EISA_timeout())
+            printk("Timeout when reading EISA ID\n");
+        else
+            printk("Correctly obtaining EISA ID\n");
+        /* Obtain Shutdown status */
+        obtain_shutdown_status();
+        /* Obtain Floppy information */
+        obtain_floppy_info();
+        /* Obtain Hard-Disk type */
+        obtain_HardDisk_type();
+        /* obtain the number of floppy */
+        value = obtain_floppy_number();
+        printk("The system has %d floppy(s)\n", value);
+        /* Detect Monitor Type */
+        detect_monitor_type();
+        /* Detect Display power status */
+        if (detect_display_enable())
+            printk("Display Enable\n");
+        else
+            printk("Display Disable\n");
+        /* Detect Keyboard */
+        if (detect_keyboard_enable())
+            printk("Keyboard Disable\n");
+        else
+            printk("Keyboard enable\n");
+        /* Detect Math Corprocessor */
+        if (detect_math_corprocessor())
+            printk("Math corprocessor has installed\n");
+        else
+            printk("Math corprocessor doesn't install\n");
+        /* Detect floppy driver install? */
+        if (detect_floppy_driver()) 
+            printk("Floppy driver has installed\n");
+        else
+            printk("Floppy driver doesn't install\n");
     }
 }
