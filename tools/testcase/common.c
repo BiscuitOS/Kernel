@@ -63,5 +63,10 @@ void debug_on_shell_stage(void)
     /* ioports test */
     test_common_ioports();
 #endif
+
+#ifdef CONFIG_TESTCASE_SYSCALL
+    /* System Call */
+    common_system_call_entry();
+#endif
 }
 

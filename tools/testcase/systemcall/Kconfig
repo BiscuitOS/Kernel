@@ -1,0 +1,21 @@
+#
+# Common System Call
+#
+
+menu "System CAll"
+
+config TESTCASE_SYSCALL
+	bool "System CAll"
+	help
+	  System Call
+
+if TESTCASE_SYSCALL
+
+config TESTCASE_SYSCALL_OPEN
+	bool "SYSTEM CALL: open"
+	help
+	  System call routine for open
+
+endif
+
+endmenu

@@ -21,6 +21,10 @@
 #include <test/ioports.h>
 #endif
 
+#ifdef CONFIG_TESTCASE_SYSCALL
+#include <test/syscall.h>
+#endif
+
 #ifdef CONFIG_DEBUG_KERNEL_LATER
 extern void debug_on_kernel_later(void);
 #endif

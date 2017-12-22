@@ -51,6 +51,8 @@ source "tools/testcase/timer/Kconfig"
 
 source "tools/testcase/ioports/Kconfig"
 
+source "tools/testcase/systemcall/Kconfig"
+
 endif
 
 endmenu
