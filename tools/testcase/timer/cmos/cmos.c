@@ -151,6 +151,9 @@ enum
  *     7     Valid RAM - 1 indicates batery power good,
  *                       0 if dead or disconnected.
  *     6-0   unused
+ *
+ *   ----- R32 -----------------------------------------------
+ *   CMOS - 32h --- IBM - CENTURY BYTE (BCD value for the century)
  */ 
 
 /*
@@ -462,6 +465,16 @@ static int cmos_ram_power_status(void)
     return (status & 0x80) ? 1 : 0;
 }
 
+/*
+ * Obtain Century
+ *   CMOS - 32h --- IBM - CENTURY BYTE (BCD value for the century)
+ */
+static unsigned char obtain_century(void)
+{
+    outb_p(0x80 | 0x32, CMOS_CTR);
+    return inb_p(CMOS_DTA);
+}
+
 void debug_cmos_clk_common(void)
 {
     /* Add item */
@@ -523,5 +536,7 @@ void debug_cmos_clk_common(void)
             printk("CMOS RAM Power On.\n");
         else
             printk("CMOS RAM Dead or Disconnect.\n");
+        /* Obtain Century */
+        printk("Century %d\n", obtain_century());
     }
 }

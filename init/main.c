@@ -44,10 +44,6 @@ inline _syscall0(int, sync)
 
 static char printbuf[1024];
 
-#ifdef CONFIG_TESTCODE
-extern void TestCode(void);
-#endif
-
 /*
  * This is set up by the setup-routine at boot-time
  */

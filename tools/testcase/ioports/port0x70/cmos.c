@@ -312,9 +312,46 @@ enum
  *     or 49d) is "user defined" and parameters are stored elsewhere in
  *     the CMOS.
  *
- *   ----- R19 -----------------------------------------------
+ *   ----- R1A -----------------------------------------------
  *   CMOS 1Ah --- SECOND EXTENDED HARD DISK DRIVE TYPE
  *   SeeAlso: CMOS 19h "IBM", #C020
+ *
+ *   ----- R2E -----------------------------------------------
+ *   CMOS - 2Eh --- IBM - Standard CMOS Checksum, MSB
+ *
+ *   ----- R2E -----------------------------------------------
+ *   CMOS - 2Fh --- IBM - Standard CMOS Checksum, LSB
+ *
+ *   2Eh and 2Fh are as defined by the original IBM PC/AT specification
+ *   and represent a byte-wise additive sum of the values in locations
+ *   10h-2Dh only 00h-0Fh and 30h-33h are not included. This definition
+ *   is used by most clone manufacturers including AMI, Compaq, NEC, and
+ *   Zenith. The IBM PS/2 line does not follow this standard with the 
+ *   range 19h-31h being undefined. On the original HP Vectra, this 
+ *   checksum only covers locations 10h to 20h, with a separate checksum
+ *   for bytes 29h-2Ch (see offset 28h)
+ *
+ *   ----- R30 -----------------------------------------------
+ *   CMOS - 30h --- IBM - EXTENDED MEMORY IN KB (LSB)
+ *   SeeAlso: CMOS 17h "IBM", CMOS 31h
+ *
+ *   ----- R30 -----------------------------------------------
+ *   CMOS - 31h --- IBM - EXTENDED MEMORY IN KB (MSB)
+ *   (This appears to mirror the value in bytes 17h-18h)
+ *   SeeAlso: CMOS 18h "IBM", CMOS 30h
+ *
+ *   ----- R32 -----------------------------------------------
+ *   CMOS - 32h --- IBM - CENTURY BYTE (BCD value for the century)
+ * 
+ *   ----- R33 -----------------------------------------------
+ *   CMOS - 33h --- IBM - INFORMATION FLAG
+ *   Bitfields for IBM information flag:
+ *   Bit(s)   Description    (Table C034)
+ *    7       128K ??? believe this indicates the presence of the special
+ *            128k memory expansion board for the AT to boost the 
+ *            "stock" 512k to 640k - all machines surveyed have this bit
+ *            set.
+ *    6-0     ???
  */ 
 
 
@@ -1132,13 +1169,93 @@ static int obtain_second_extern_HD_type(void)
     return inb_p(CMOS_DTA);
 }
 
+/*
+ * Obtain CMOS Checksum
+ *   CMOS - 2Eh --- IBM - Standard CMOS Checksum, MSB
+ *   CMOS - 2Fh --- IBM - Standard CMOS Checksum, LSB
+ *
+ *   2Eh and 2Fh are as defined by the original IBM PC/AT specification
+ *   and represent a byte-wise additive sum of the values in locations
+ *   10h-2Dh only 00h-0Fh and 30h-33h are not included. This definition
+ *   is used by most clone manufacturers including AMI, Compaq, NEC, and
+ *   Zenith. The IBM PS/2 line does not follow this standard with the 
+ *   range 19h-31h being undefined. On the original HP Vectra, this 
+ *   checksum only covers locations 10h to 20h, with a separate checksum
+ *   for bytes 29h-2Ch (see offset 28h)
+ */
+static unsigned short obtain_cmos_checksum(void)
+{
+    unsigned short sum;
+
+    /* Obtain LSB for Checksum */
+    outb_p(0x80 | 0x2F, CMOS_CTR);
+    sum = inb_p(CMOS_DTA) << 8;
+
+    /* Obtain MSB for Checksum */
+    outb_p(0x80 | 0x2E, CMOS_CTR);
+    sum |= inb_p(CMOS_DTA) & 0xFF;
+
+    return sum;
+}
+
+/*
+ * Obtain Extened Memory 2 in Byte
+ *   CMOS - 30h --- IBM - EXTENDED MEMORY IN KB (LSB)
+ *   SeeAlso: CMOS 17h "IBM", CMOS 31h
+ *
+ *   CMOS - 31h --- IBM - EXTENDED MEMORY IN KB (MSB)
+ *   (This appears to mirror the value in bytes 17h-18h)
+ *   SeeAlso: CMOS 18h "IBM", CMOS 30h
+ */
+static unsigned short obtain_extened_memory2(void)
+{
+    unsigned short size;
+
+    /* Obtain LSB for Extended Memory */
+    outb_p(0x80 | 0x30, CMOS_CTR);
+    size = inb_p(CMOS_DTA);
+
+    /* Obtain MSB for Extended Memory */
+    outb_p(0x80 | 0x31, CMOS_CTR);
+    size |= inb_p(CMOS_DTA) << 8;
+
+    return size;
+}
+
+/*
+ * Obtain Century
+ *   CMOS - 32h --- IBM - CENTURY BYTE (BCD value for the century)
+ */
+static unsigned char obtain_century(void)
+{
+    outb_p(0x80 | 0x32, CMOS_CTR);
+    return inb_p(CMOS_DTA);
+}
+
+/*
+ * Obtain IBM Information Flag
+ *   CMOS - 33h --- IBM - INFORMATION FLAG
+ *   Bitfields for IBM information flag:
+ *   Bit(s)   Description    (Table C034)
+ *    7       128K ??? believe this indicates the presence of the special
+ *            128k memory expansion board for the AT to boost the 
+ *            "stock" 512k to 640k - all machines surveyed have this bit
+ *            set.
+ *    6-0     ???
+ */
+static unsigned char obtain_IBM_info_flag(void)
+{
+    outb_p(0x80 | 0x33, CMOS_CTR);
+    return inb_p(CMOS_DTA);
+}
+
 /* Common CMOS RAM entry */
 void debug_cmos_ram_common(void)
 {
     /* Add item */
 
     /* Ignore warning, default usage for CMOS RAM (RTC) */
-    if (1) {
+    if (0) {
         unsigned char value;
 
         /* Obtain current seconds from RTC */
@@ -1277,5 +1394,13 @@ void debug_cmos_ram_common(void)
         printk("1st Extend HD type %#x\n", obtain_first_extern_HD_type());
         /* Obtain 2nd Extend Hard Disk type */
         printk("2nd Extend HD type %#x\n", obtain_second_extern_HD_type());
+        /* Obtain CMOS checksum */
+        printk("CMOS Checksum %#x\n", obtain_cmos_checksum());
+        /* Obtain EXtended Memory 2 */
+        printk("Extened  Memory2: %#x\n", obtain_extened_memory2());
+        /* Obtain Century */
+        printk("Century %d\n", obtain_century());
+        /* IBM Information Flag */
+        printk("IBM Info Flag %#x\n", obtain_IBM_info_flag());
     }
 }
