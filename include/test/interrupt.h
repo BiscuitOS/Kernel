@@ -101,5 +101,9 @@ extern void trigger_interrupt46(void);
 extern void trigger_interrupt128(void);
 #endif
 
+#ifdef CONFIG_TESTCASE_STACK_SWITCH
+extern void common_stack_switch(void);
+#endif
+
 #endif // end of CONFIG_TESTCASE_INTERRUPT
 #endif

@@ -14,5 +14,4 @@
  */
 void trigger_interrupt_null(void)
 {
-    printk("Test interrupt null\n");
 }

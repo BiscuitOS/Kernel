@@ -7,11 +7,10 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#include <test/testcase.h>
-
 #include <linux/kernel.h>
 #include <asm/system.h>
 
+#include <test/debug.h>
 /*
  * get current interrupt status.
  * @return: 0 is Interrupt disable
@@ -147,6 +146,11 @@ int interrupt_main(void)
     /* trigger interrupt 128 */
 #ifdef CONFIG_TESTCASE_IDT128
     trigger_interrupt128();
+#endif
+
+    /* Stack swtich */
+#ifdef CONFIG_TESTCASE_STACK_SWITCH
+    common_stack_switch();
 #endif
 
     return 0;

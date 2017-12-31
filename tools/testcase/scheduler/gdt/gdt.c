@@ -355,7 +355,7 @@ struct seg_desc *segment_descriptors(unsigned short selector)
      *   is different for code, data, and system descriptors.
      */
     desc->type = seg[5] & 0xF;
-     
+
     /*
      * S (descriptor) flag
      *   Specify whether the segment descriptor is for a system segment(S
@@ -364,7 +364,7 @@ struct seg_desc *segment_descriptors(unsigned short selector)
      *   desc->flag:0
      */
     desc->flag |= (seg[5] >> 4) & 0x1;
-    
+
     /*
      * DPL (Descriptor privilege level) field
      *   Specifies the privilege level of the segment. The privilege level
@@ -897,7 +897,7 @@ void debug_gdt_common(void)
     /* add test item here */
     
     /* ignore warning for un-used */
-    if (0) {
+    if (1) {
         unsigned short limit;
         unsigned long base;
 

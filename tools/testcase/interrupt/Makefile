@@ -23,3 +23,4 @@ obj-$(CONFIG_TESTCASE_IDT39)        += idt_39.o
 obj-$(CONFIG_TESTCASE_IDT45)        += idt_45.o
 obj-$(CONFIG_TESTCASE_IDT46)        += idt_46.o
 obj-$(CONFIG_TESTCASE_IDT128)       += idt_128.o
+obj-$(CONFIG_TESTCASE_STACK_SWITCH) += stack/

@@ -3,8 +3,6 @@
 #
 menu "Interrupt Descriptor Table"
 
-comment "Debug IDT on Kernel space"
-
 config TESTCASE_INTERRUPT
 	default n
         bool "Test Interrupt Descriptor Table"
@@ -139,6 +137,11 @@ config TESTCASE_IDT128
 	  Trigger interrupt 128: system call
 
 endchoice  # Only choice one
+
+config TESTCASE_STACK_SWITCH
+	bool "Swtiching Stack when triggering Interrupt"
+	help
+	  Switching stack when triggering interrupt
 
 endif # End of TESTCASE_INTERRUPT
 
