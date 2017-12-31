@@ -16,6 +16,11 @@ config TESTCASE_SYSCALL_OPEN
 	help
 	  System call routine for open
 
+config TESTCASE_SYSCALL_ROUTINE
+	bool "System CAll common routine"
+	help
+	  The routine of system call on IDT, GDT and LDT.
+
 endif
 
 endmenu
