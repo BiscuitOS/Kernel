@@ -101,3 +101,74 @@ Segment Descriptor Tables (GDT or LDT)
   The linear address of the base of the GDT is contained in the GDT
   register (GDTR). the linear address of the LDT is contained in the 
   LDT register(LDTR).
+
+### Debug on BiscuitOS
+
+  BiscuitOS support online debug GDT/LDT on `qemu`, developer should open
+  Kernel-macro when configure kernel. Shortly, follow these step to
+  enable Stack on system.
+
+  1. Enale specifical Kernel-macro
+
+     Invoke `make menuconfig` on top of source tree, and enable
+     specifical item as follow figures.
+
+     ```
+       make menuconfig
+     ```
+
+     First, select `Kernel hacking`
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/BiscuitOS_common_Kbuild.png)
+
+     Then, set `Debug/Running kernel` as `Y` and select `TestCase
+     configuration`
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/kernel_hacking.png)
+
+     Next, set `Testcase for kernel function` as `Y` and select
+     `Task scheduler`
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/TestCase.png)
+
+     Finally, set `Test Task scheduler` and `GDT,LDT,GDTR,LDTR,IDTR,TR,
+     Segment Descriptor` as `Y`.
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/task/TASK_GDT.png)
+
+  2. Enable debug demo code
+
+     The main code for GDT/LDT on `*/tools/testcase/scheduler/gdt/gdt.c`,
+     Developer can add test code on `debug_gdt_common`, such as:
+
+     ```
+       /* debug gdt common enter */
+       void debug_gdt_common(void)
+       {
+           /* add test item here */
+
+           /* ignore warning for un-used */
+           if (1) {
+               unsigned short limit;
+               unsigned long base;
+
+               parse_idtr(&limit, &base);
+               parse_tr(&limit, &base);
+               parse_stack_segment_descriptor();
+               parse_code_segment_descriptor();
+           }
+       }
+
+     ```
+
+  3. Running test code
+
+     If you configure correctly, you can run GDT/LDT demo code on qemu,
+     such as:
+
+     ```
+       make
+       make start
+     ```
+
+     ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/task/TASK_GDT_running.png)

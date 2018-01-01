@@ -39,7 +39,7 @@ Stack
 
   1. Enale specifical Kernel-macro
 
-     Invoke `make menuconfig` on top on source tree, and enable
+     Invoke `make menuconfig` on top of source tree, and enable
      specifical item as follow figures.
 
      ```
