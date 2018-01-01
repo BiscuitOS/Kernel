@@ -138,11 +138,6 @@ config TESTCASE_IDT128
 
 endchoice  # Only choice one
 
-config TESTCASE_STACK_SWITCH
-	bool "Swtiching Stack when triggering Interrupt"
-	help
-	  Switching stack when triggering interrupt
-
 endif # End of TESTCASE_INTERRUPT
 
 endmenu

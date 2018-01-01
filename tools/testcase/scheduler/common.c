@@ -32,6 +32,10 @@ int test_task_scheduler(void)
 #ifdef CONFIG_TESTCASE_IDT
     debug_idt_segment_desc_common();
 #endif
+
+#ifdef CONFIG_TESTCASE_STACK
+    debug_stack_common();
+#endif
     return 0;
 }
 

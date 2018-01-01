@@ -53,4 +53,8 @@ struct gate_desc
 extern void debug_idt_segment_desc_common(void);
 #endif
 
+#ifdef CONFIG_TESTCASE_STACK
+extern void debug_stack_common(void);
+#endif
+
 #endif
