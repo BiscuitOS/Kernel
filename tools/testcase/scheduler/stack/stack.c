@@ -794,6 +794,54 @@ static void save_procedure_state(void)
     printk("Obtain Current Task EFLAGS: %#x\n", eflags);
 }
 
+/*
+ * Calls to Other Privilege Levels
+ *   The IA-32 architecture's protection machanism recognizes four 
+ *   privikege levels, numbered from 0 to 3, where a greater number mean
+ *   less privilege. The reason to use privilege levels is to improve the
+ *   reliablity of operating systems.
+ * 
+ *   The highest privilege level 0 is used for segments that contain the 
+ *   most critical code modules in the system, usually the kernel of an
+ *   operating system. The outer rings are used for segments that contain
+ *   code modules for less critical software.
+ *
+ *   Code modules in lower privilege segments can only access modules
+ *   operating at higher privilege segments by means of a tightly controlled
+ *   and protected interface called a gate. Attempts to access higher 
+ *   privilege segments without going through a protection gate and without
+ *   having sufficient access right causes a general-protection exception
+ *   (#GP) to be generated.
+ *
+ *   If an operating system or executive uses this multilevel protection 
+ *   mechanism, a call to a procedure that is in a more privileged protection
+ *   level than the calling procedure is handled in a similar manner as a
+ *   far call. The differences are as follow:
+ *
+ *   1) The segment selector provided in the CALL instruction references a
+ *      special data structure called a call gate descriptor. Among other
+ *      things, the call gate descriptor provides the following:
+ *      
+ *      -- Access right information
+ *
+ *      -- The segment selector for the code segment of the called procedure
+ *
+ *      -- An offset into the code segment (that is, the instruction pointer
+ *         for the called procedure)
+ *
+ *   2) The processor switches to a new stack to execute the called procedure
+ *      Each privilege level has its own stack. The segment selector and
+ *      stack pointer for the privilege level 3 stack are stored in the SS
+ *      and ESP registers, respectively, and are automatically saved when
+ *      a call to a more privileged level occurs. The segment selectors and
+ *      stack pointers for the privilege level 2, 1, and 0 stacks are stored
+ *      in a system segment called the task state segment (TSS)
+ *
+ *   The use of a call gate and the TSS during a stack switch are transparent
+ *   to the calling procedure, except when a general-protection exception is 
+ *   raised.    
+ */
+
 void debug_stack_common(void)
 {
 
