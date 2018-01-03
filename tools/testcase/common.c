@@ -36,9 +36,6 @@ void debug_on_userland_early(void)
 void debug_on_shell_stage(void)
 #endif
 {
-    printk("BiscuitOS auto-TestCase.\n");
-    /* function entry */
-
 #ifdef CONFIG_TESTCASE_INTERRUPT
     /* Interrupt test */
     interrupt_main();
@@ -70,3 +67,12 @@ void debug_on_shell_stage(void)
 #endif
 }
 
+#ifdef CONFIG_DEBUG_KERNEL_USER
+/* Debug Userland on kernel */
+void debug_on_kernel_user(void)
+{
+#ifdef CONFIG_TESTCASE_MULT_PRIVILEGE
+    test_aaa();
+#endif
+}
+#endif

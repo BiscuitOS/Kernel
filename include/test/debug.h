@@ -41,4 +41,8 @@ extern void debug_on_userland_early(void);
 extern void debug_on_shell_stage(void);
 #endif
 
+#ifdef CONFIG_DEBUG_KERNEL_USER
+extern void debug_on_kernel_user(void);
+#endif
+
 #endif

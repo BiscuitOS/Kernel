@@ -35,10 +35,17 @@ config TESTCASE_IDT
 
 config TESTCASE_STACK
 	bool "Stack: SS, ESP, EBP, Near call, Far call and Switching Stack"
+	select TESTCASE_MULT_PRIVILEGE
 	help
 	  The Stack is a contiguous array of memory locations. It is 
 	  contained in a segment and identified by the segment selector
 	  in the SS register.
+
+config TESTCASE_MULT_PRIVILEGE
+	depends on DEBUG_USERLAND_EARLY 
+	bool "Stack switch on different privilege level"
+	help
+	 Stack switch on different privilege level
 
 endif
 

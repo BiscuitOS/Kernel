@@ -160,6 +160,9 @@ int main(void)
 #ifdef CONFIG_DEBUG_KERNEL_LATER
     debug_on_kernel_later();
 #endif
+#ifdef CONFIG_DEBUG_KERNEL_USER
+    debug_on_kernel_user();
+#endif
     move_to_user_mode();
     if (!fork()) {   /* we count on this going ok */
 #ifdef CONFIG_DEBUG_USERLAND_EARLY

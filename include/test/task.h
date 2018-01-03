@@ -57,4 +57,8 @@ extern void debug_idt_segment_desc_common(void);
 extern void debug_stack_common(void);
 #endif
 
+#ifdef CONFIG_TESTCASE_MULT_PRIVILEGE
+extern void test_aaa(void);
+#endif
+
 #endif

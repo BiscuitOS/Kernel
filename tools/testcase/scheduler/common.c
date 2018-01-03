@@ -15,8 +15,6 @@
 /* common task interface */
 int test_task_scheduler(void)
 {
-    printk("Test common task scheduler.\n");
-
 #ifdef CONFIG_TESTCASE_GDT
     debug_gdt_common();
 #endif

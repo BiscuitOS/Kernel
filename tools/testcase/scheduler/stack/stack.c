@@ -9,6 +9,8 @@
  */
 #include <linux/kernel.h>
 #include <linux/mm.h>
+#include <linux/head.h>
+#include <asm/system.h>
 
 #include <test/debug.h>
 
@@ -786,18 +788,17 @@ static void save_procedure_state(void)
              "movl %%esp, %%ebp\n\r"
              "pushfl\n\r"
              "movl (%%esp), %%eax\n\r"
-             "movl %%eax, %0\n\r"
              "popfl\n\r"
              "movl %%ebp, %%esp\n\r"
              "popl %%ebp"
-             : "=m" (eflags));
+             : "=a" (eflags));
     printk("Obtain Current Task EFLAGS: %#x\n", eflags);
 }
 
 /*
  * Calls to Other Privilege Levels
  *   The IA-32 architecture's protection machanism recognizes four 
- *   privikege levels, numbered from 0 to 3, where a greater number mean
+ *   privilege levels, numbered from 0 to 3, where a greater number mean
  *   less privilege. The reason to use privilege levels is to improve the
  *   reliablity of operating systems.
  * 
@@ -842,10 +843,374 @@ static void save_procedure_state(void)
  *   raised.    
  */
 
+/*
+ * CALL Operation Between Privilege Levels
+ *   When making a call to more privileged protection level, the processor
+ *   does the following:
+ *
+ *   1) Performs an access right check (privilege check)
+ *
+ *   2) Temporarily saves (internally) the current contents of the SS,ESP
+ *      CS, and EIP register.
+ *
+ *   3) Loads the segment selector and stack pointer for the new stack (that
+ *      is, the stack for the privilege level being called) from the TSS
+ *      into the SS and ESP register and switches to the new stack.
+ *
+ *   4) Pushes the temporarily saved SS and ESP values for the calling 
+ *      procedure's stack onto the new stack.
+ *
+ *   5) Copies the parameters from the calling procedure's stack to the new
+ *      stack. A value in the call gate descriptor determines how many
+ *      parameters to copy to the new stack.
+ *
+ *   6) Pushes the temporarily saved CS and EIP values for the calling
+ *      procedure to the new stack.
+ *
+ *   7) Loads the segment selector for the new code segment and the new
+ *      instruction pointer from the call gate into the CS and EIP registers,
+ *      resoectively.
+ *
+ *   8) Begins execution of the called procedure at the new privilege level.
+ */
+static void emulate_user_call_kernel(void)
+{
+}
+
+/*
+ * RET Operation Between Privilege Levels
+ *   When executing a return from the privileged procedure, the processor
+ *   performs these actions:
+ *
+ *   1) Performs a privilege check.
+ *
+ *   2) Restores the CS and EIP registers to their values prior to the call.
+ *
+ *   3) If the RET instrcution has an optional n argument, increments the 
+ *      stack pointer by the number of the bytes specified with the n operand
+ *      to release parameters from the stack. If the call gate descriptor
+ *      specifies that one or more parameters be copied from one stack to the
+ *      other, a RET n instruction must be used to release the parameters
+ *      from both stacks. Here, the n operand specifies the number of bytes
+ *      occupied on each stack by the parameters. On a return, the processor
+ *      increments ESP by n for each stack to step over (effectively remove)
+ *      these parameters from the stacks.
+ *
+ *   4) Restores the SS and ESP register to their values prior to the call,
+ *      which causes a switch back to the stack of the calling procedure.
+ *
+ *   5) If the RET instrcution has an optional n argument, increaments the 
+ *      stack pointer by the number of bytes specified with the n operand to
+ *      release parameters from the stack.
+ *
+ *   6) Resumes execution of the calling procedure.
+ */
+static void emulate_kernel_return_userland(void)
+{
+}
+
+/*
+ * Call Operation for Interrupt or Exception Handling Procedure
+ *   A call to an interrupt or exception handler procedure is similar to a
+ *   procedure call to another protection. Here, the vector reference one
+ *   of two kinds of gates in the IDT: an interrupt gate or a trap gate.
+ *   Interrupt and trap gates are similar to call gates in that they provide
+ *   the following information:
+ * 
+ *   1) Access rights information
+ *
+ *   2) The segment selector for the code segment that contains the handler
+ *      procedure.
+ *
+ *   3) An offset into the code segment to the first instruction of the 
+ *      handler procedure.
+ *
+ *   The difference between an interrupt gate and a trap gate is as follows.
+ *   If an interrupt or exception handler is called through an interrupt 
+ *   gate, the processor clear the interrupt enable (IF) flag in the EFLAGS
+ *   register to prevent subsequent interrupts from interfering with the
+ *   execution of the handler. When a handler is called through a trap gate,
+ *   the state of the IF flag is not changed.
+ */
+
+/* Interrupt CALL and IRET Operation on same privilege level
+ *   If the code segment for the handler procedure has the same privilege
+ *   privilege level as the currently executing program or task, the handler
+ *   procedure uses the current stack. If the handler executes at a more
+ *   privileged level, the processor switches to the stack for the handler's
+ *   privilege level.
+ *
+ *   If no stack switch occures, the processor does the following when calling
+ *   an interrupt or exception handler:
+ *
+ *   1) Pushes the current contents of the EFLAGS, CS, and EIP registers (
+ *      in the order) on the stack.
+ *
+ *   2) Pushes an error code (if appropriate) on the stack.
+ *
+ *   3) Loads the segment selector for the new code segment and the new
+ *      instruction pointer (from the interrupt gate or trap gate) into
+ *      the SS and EIP registers, respectively.
+ *
+ *   4) Clear the IF flag in the EFLAGS register.
+ *
+ *   5) Begins exception of the handler procedure.
+ *
+ *   A return from an interrupt or exceeption handler is initiated with the
+ *   IRET instrcution. The IRET instruction is similar to the far RET 
+ *   instruction, exception that is also restores the contents of the EFLAGS
+ *   register for the interrupted procedure. When executing a return from
+ *   an interrupt or exception handler from the same privilege level as the
+ *   interrupt procedure, the processor performs these actions:
+ *
+ *   1) Restores the CS and EIP registers to their values prior to the 
+ *      interrupt or exception.
+ *
+ *   2) Restores the EFLAGS register.
+ *
+ *   3) Increments the stack pointer appropriately.
+ *
+ *   4) Resumes execution of the insterrupted procedure.
+ */
+static void same_privilege_interrupt_return(void)
+{
+    unsigned long eflags = 0;
+    unsigned long eip = 0;
+    unsigned long error_code = 0;
+    unsigned short cs = 0;
+
+    /* 
+     * Stack: layer 
+     * 
+     * |------------------------------------------------|
+     * |  EFLAG (Calling Procedure)                     |
+     * |------------------------------------------------|
+     * |  Code Segment (Calling Procedure)              |
+     * |------------------------------------------------|
+     * |  EIP (Calling Procedure)                       |
+     * |------------------------------------------------|
+     * |  ERROR CODE (Calling Procedure)                |
+     * |------------------------------------------------|
+     * |  Local Stack (Called Procedure)                |
+     * |------------------------------------------------|
+     * |  ESP (Current Procedure)                       |
+     * |------------------------------------------------|  
+     */
+    __asm__ volatile ("pushl %%ebp\n\r"
+            "movl %%esp, %%ebp\n\r"
+            "addl $0x1C, %%esp\n\r" /* system allocate 0x18 to local stack */
+            "popl %%eax\n\r"
+            "popl %%ebx\n\r"
+            "popl %%ecx\n\r"
+            "popl %%edx\n\r"
+            "movl %%ebp, %%esp\n\r"
+            "popl %%ebp"
+            : "=a" (error_code), "=b" (eip), 
+              "=c" (cs), "=d" (eflags));
+    printk("Interrupt:EFLAGS [%#x] CS [%#x] EIP [%#x] ERROR_CODE [%#x]\n",
+            eflags, cs, eip, error_code);
+    if (!((eflags >> 8) & 0x1))
+        printk("Interrupt Gate clear TF flag on EFLAGS\n");
+
+    /* return from interrupt: ESP points EIP for calling procedure */
+    __asm__ volatile ("addl $0x1C, %%esp\n\r"
+                      "iret"
+                      ::);
+}
+
+/*
+ * Call Operation for Interrupt or Exception Handling Procedure
+ *   A call to an interrupt or exception handler procedure is similar to a
+ *   procedure call to another protection. Here, the vector reference one
+ *   of two kinds of gates in the IDT: an interrupt gate or a trap gate.
+ *   Interrupt and trap gates are similar to call gates in that they provide
+ *   the following information:
+ * 
+ *   1) Access rights information
+ *
+ *   2) The segment selector for the code segment that contains the handler
+ *      procedure.
+ *
+ *   3) An offset into the code segment to the first instruction of the 
+ *      handler procedure.
+ *
+ *   The difference between an interrupt gate and a trap gate is as follows.
+ *   If an interrupt or exception handler is called through an interrupt 
+ *   gate, the processor clear the interrupt enable (IF) flag in the EFLAGS
+ *   register to prevent subsequent interrupts from interfering with the
+ *   execution of the handler. When a handler is called through a trap gate,
+ *   the state of the IF flag is not changed.
+ */
+static void establish_interrupt_gate(void)
+{
+    set_intr_gate(0x99, &same_privilege_interrupt_return);
+
+    /* trigger this interrupt */
+    __asm__ ("int $0x99");
+}
+
+/* Trap CALL and IRET Operation on same privilege level
+ *   If the code segment for the handler procedure has the same privilege
+ *   privilege level as the currently executing program or task, the handler
+ *   procedure uses the current stack. If the handler executes at a more
+ *   privileged level, the processor switches to the stack for the handler's
+ *   privilege level.
+ *
+ *   If no stack switch occures, the processor does the following when calling
+ *   an interrupt or exception handler:
+ *
+ *   1) Pushes the current contents of the EFLAGS, CS, and EIP registers (
+ *      in the order) on the stack.
+ *
+ *   2) Pushes an error code (if appropriate) on the stack.
+ *
+ *   3) Loads the segment selector for the new code segment and the new
+ *      instruction pointer (from the interrupt gate or trap gate) into
+ *      the SS and EIP registers, respectively.
+ *
+ *   4) Begins exception of the handler procedure.
+ *
+ *   A return from an interrupt or exceeption handler is initiated with the
+ *   IRET instrcution. The IRET instruction is similar to the far RET 
+ *   instruction, exception that is also restores the contents of the EFLAGS
+ *   register for the interrupted procedure. When executing a return from
+ *   an interrupt or exception handler from the same privilege level as the
+ *   interrupt procedure, the processor performs these actions:
+ *
+ *   1) Restores the CS and EIP registers to their values prior to the 
+ *      interrupt or exception.
+ *
+ *   2) Restores the EFLAGS register.
+ *
+ *   3) Increments the stack pointer appropriately.
+ *
+ *   4) Resumes execution of the insterrupted procedure.
+ */
+static void same_privilege_trap_return(void)
+{
+    unsigned long eflags;
+    unsigned long eip;
+    unsigned long error_code;
+    unsigned short cs;
+
+    /* Obtain information from Stack of calling procedure
+     * Stack: layer 
+     * 
+     * |------------------------------------------------|
+     * |  EFLAG (Calling Procedure)                     |
+     * |------------------------------------------------|
+     * |  Code Segment (Calling Procedure)              |
+     * |------------------------------------------------|
+     * |  EIP (Calling Procedure)                       |
+     * |------------------------------------------------|
+     * |  ERROR CODE (Calling Procedure)                |
+     * |------------------------------------------------|
+     * |  Local Stack (Called Procedure)                |
+     * |------------------------------------------------|
+     * |  ESP (Current Procedure)                       |
+     * |------------------------------------------------|  
+     */
+    __asm__ volatile ("pushl %%ebp\n\r"
+            "movl %%esp, %%ebp\n\r"
+            "addl $0x1C, %%esp\n\r" /* system allocate 0x18 to local stack */
+            "popl %%eax\n\r"
+            "popl %%ebx\n\r"
+            "popl %%ecx\n\r"
+            "popl %%edx\n\r"
+            "movl %%ebp, %%esp\n\r"
+            "popl %%ebp"
+            : "=a" (error_code), "=b" (eip),
+              "=c" (cs), "=d" (eflags));
+    printk("Trap: EFLAGS [%#x] CS [%#x] EIP [%#x] ERROR_CODE [%#x]\n",
+               eflags, cs, eip, error_code);
+    if ((eflags >> 8) & 0x1)
+        printk("Trap Gate doesn't clear TF flag on Eflags\n");
+
+    /* Return from trap: ESP points EIP for calling procedure */
+    __asm__ volatile ("addl $0x1C, %%esp\n\r"
+                      "iret"
+                      ::);
+}
+
+/*
+ * Call Operation for Interrupt or Exception Handling Procedure
+ *   A call to an interrupt or exception handler procedure is similar to a
+ *   procedure call to another protection. Here, the vector reference one
+ *   of two kinds of gates in the IDT: an interrupt gate or a trap gate.
+ *   Interrupt and trap gates are similar to call gates in that they provide
+ *   the following information:
+ * 
+ *   1) Access rights information
+ *
+ *   2) The segment selector for the code segment that contains the handler
+ *      procedure.
+ *
+ *   3) An offset into the code segment to the first instruction of the 
+ *      handler procedure.
+ *
+ *   The difference between an interrupt gate and a trap gate is as follows.
+ *   If an interrupt or exception handler is called through an interrupt 
+ *   gate, the processor clear the interrupt enable (IF) flag in the EFLAGS
+ *   register to prevent subsequent interrupts from interfering with the
+ *   execution of the handler. When a handler is called through a trap gate,
+ *   the state of the IF flag is not changed.
+ */
+static void establish_trap_gate(void)
+{
+    set_trap_gate(0x88, &same_privilege_trap_return);
+
+    /* trigger this trap */
+    __asm__("int $0x88");
+}
+
+/* Trap CALL and IRET Operation on same privilege level
+ *   If a stack switch does occur, the processor does the following:
+ *
+ *   1) Temporarily saves (internally) the current contents of the SS,
+ *      ESP, EFLAGS, CS and EIP registers.
+ *
+ *   2) Loads the segment selector and stack pointer for the new stack (that
+ *      is, the stack for the privilege level being called) from the TSS
+ *      into the SS and ESP registers and swithes to the new stack.
+ */
+void test_aaa(void)
+{
+    printk("AAAA\n");
+}
+
 void debug_stack_common(void)
 {
+#ifdef CONFIG_DEBUG_KERNEL_LATER
+    diagnose_stack_pointer();
+    stack_link_pointer();
+    stack_far_call();
+    stack_far_return();
+    stack_paramenter_pass();
+    save_procedure_state();
+    establish_trap_gate();
+    establish_interrupt_gate();
+    if (0) { /* #GP */
+        /* Establish a new stack */
+        establish_kernel_stack();
+    }
+#endif
 
-    if (1) {
+#ifdef CONFIG_DEBUG_USERLAND_EARLY
+    emulate_user_call_kernel();
+    emulate_kernel_return_userland();
+#endif
+
+    /* ignore warning */
+    if (0) {
+        diagnose_call();
+        stack_near_call();
+        stack_near_return();
+        parse_paramter_from_register();
+        parse_paramter_from_stack(1, 2, 3, 4);
+        parse_argument_list(argument);
+        parse_popa(0, 0, 0, 0, 0, 0, 0, 0);
+        emulate_user_call_kernel();
+        emulate_kernel_return_userland();
         diagnose_stack_pointer();
         stack_link_pointer();
         stack_near_call();
@@ -853,18 +1218,10 @@ void debug_stack_common(void)
         stack_far_return();
         stack_paramenter_pass();
         save_procedure_state();
-        if (0) { /* #GP */
-            /* Establish a new stack */
-            establish_kernel_stack();
-         }
-    }
-    /* ignore warning */
-    if (0) {
-        diagnose_call();
-        stack_near_return();
-        parse_paramter_from_register();
-        parse_paramter_from_stack(1, 2, 3, 4);
-        parse_argument_list(argument);
-        parse_popa(0, 0, 0, 0, 0, 0, 0, 0);
-    }
+        establish_kernel_stack();
+        establish_interrupt_gate();
+        establish_interrupt_gate();
+        establish_trap_gate();
+        test_aaa();
+    } 
 }
