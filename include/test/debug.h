@@ -5,7 +5,7 @@
 #include <test/task.h>
 #endif
 
-#ifdef CONFIG_TESTCASE_INTERRUPT
+#ifdef CONFIG_DEBUG_INTERRUPT
 #include <test/interrupt.h>
 #endif
 
@@ -41,8 +41,9 @@ extern void debug_on_userland_early(void);
 extern void debug_on_shell_stage(void);
 #endif
 
-#ifdef CONFIG_DEBUG_KERNEL_USER
-extern void debug_on_kernel_user(void);
+#if defined (CONFIG_DEBUG_USERLAND_EARLY) || \
+    defined (CONFIG_DEBUG_USERLAND_SHELL)
+extern void debug_kernel_on_userland_stage(void);
 #endif
 
 #endif

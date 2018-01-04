@@ -37,3 +37,13 @@ int test_task_scheduler(void)
     return 0;
 }
 
+#if defined (CONFIG_DEBUG_USERLAND_EARLY) || \
+    defined (CONFIG_DEBUG_USERLAND_SHELL)
+/* debug kernel on userland stage */
+void debug_scheduler_kernel_on_userland(void)
+{
+#ifdef CONFIG_TESTCASE_MULT_PRIVILEGE
+    debug_stack_kernel_on_userland();
+#endif
+}
+#endif

@@ -42,7 +42,7 @@ config TESTCASE_STACK
 	  in the SS register.
 
 config TESTCASE_MULT_PRIVILEGE
-	depends on DEBUG_USERLAND_EARLY 
+	depends on DEBUG_USERLAND_EARLY || DEBUG_USERLAND_SHELL
 	bool "Stack switch on different privilege level"
 	help
 	 Stack switch on different privilege level

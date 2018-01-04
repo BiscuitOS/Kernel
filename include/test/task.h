@@ -1,7 +1,12 @@
 #ifndef _TASK_H
 #define _TASK_H
 
+#ifdef CONFIG_TESTCASE_SCHED
 extern int test_task_scheduler(void);
+#if defined (CONFIG_DEBUG_USERLAND_EARLY) || \
+    defined (CONFIG_DEBUG_USERLAND_SHELL)
+extern void debug_scheduler_kernel_on_userland(void);
+#endif
 
 #ifdef CONFIG_TESTCASE_GDT
 struct gdt_node
@@ -58,7 +63,8 @@ extern void debug_stack_common(void);
 #endif
 
 #ifdef CONFIG_TESTCASE_MULT_PRIVILEGE
-extern void test_aaa(void);
+extern void debug_stack_kernel_on_userland(void);
 #endif
 
+#endif
 #endif

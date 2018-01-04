@@ -1,143 +1,42 @@
 #
-# Testcase for IDT
+# Debug interrupt machanism on X86 architecture
 #
-menu "Interrupt Descriptor Table"
+menu "Interrupt Machanism on X86 Architecture"
 
-config TESTCASE_INTERRUPT
-	default n
-        bool "Test Interrupt Descriptor Table"
+config DEBUG_INTERRUPT
+	depends on X86
+        bool "Debug Interrupt Machanism on X86 Architecture"
         help
-          Utilize software interrupt 'int x' or specify case
-          to test interrupt function.
+	  In system programming, an interrupt is a signal to the processor
+	  emitted by hardware or software indicating an event that needs
+	  immediate attention. An interrupt alerts the processor to a 
+	  high-priority condition requiring the interruption of the current
+	  code the processor is executing. The processor responds by 
+	  suspending its current activities, saving its state, and executing
+	  a function called an interrupt handler (or an interrupt service
+	  routine, ISR) to deal with the event.
 
-if TESTCASE_INTERRUPT
+if DEBUG_INTERRUPT
 
-choice
-	prompt "Choose one specify interrupt"
-	default TESTCASE_IDT0
+config DEBUG_IDT
+	bool "Interrupt Descriptors Table"
+	help 
+	  The Interrupt Descriptor Table (IDT) is a data structure used 
+	  by the x86 architecture to implement an interrupt vector table. 
+	  The IDT is used by the processor to determine the correct response
+	  to interrupts and exceptions.
 
-config TESTCASE_IDTNULL
-	bool "Interrupt null"
+config DEBUG_INT_USAGE
+	bool "Establish and Trigger an interrupt or exception"
 	help
-	  Empty interrupt
+	  The usage of establishing an interrupt or a exception that
+	  contains interrupt descriptor on IDT and interrupt- or
+	  exception-handler. And then trigger specific interrupt or
+	  exception.
 
-config TESTCASE_IDT0
-	bool "Interrupt 0: divide error"
-	help
-	  Trigger interrupt 0: divide error
 
-config TESTCASE_IDT1
-	bool "Interrupt 1: debug"
-	help
-	  Trigger interrupt 1: debug
+source tools/testcase/interrupt/interrupt0/Kconfig
 
-config TESTCASE_IDT2
-	bool "Interrupt 2: NMI"
-	help
-	  Trigger interrupt 2: NMI
-
-config TESTCASE_IDT3
-	bool "Interrupt 3: breakpoint"
-	help
-	  Trigger interrupt 3: Breakpoint
-
-config TESTCASE_IDT4
-	bool "Interrupt 4: overflow"
-	help
-	  Trigger interrupt 4: Overflow
-
-config TESTCASE_IDT5
-	bool "Interrupt 5: bound error"
-	help
-	  Trigger interrupt 5: Bound error
-
-config TESTCASE_IDT6
-	bool "Interrupt 6: invalid operand"
-	help
-	  Trigger interrupt 6: Invalid operand
-
-config TESTCASE_IDT7
-	bool "Interrupt 7: device not available"
-	help
-	  Trigger interrupt 7: device not avaiable
-
-config TESTCASE_IDT8
-	bool "Interrupt 8: double fault"
-	help
-	  Trigger interrupt 8: double fault
-
-config TESTCASE_IDT9
-	bool "Interrupt 9: oprocessor segment overrun"
-	help
-	  Trigger interrupt 9: Coprocessor segment overrun
-
-config TESTCASE_IDT10
-	bool "Interrupt 10: invalid TSS segment"
-	help
-	  Trigger interrupt 10: invalid TSS segment
-
-config TESTCASE_IDT11
-	bool "Interrupt 11: Segment not present"
-	help
-	  Trigger interrupt 11: Segment not present
-
-config TESTCASE_IDT12
-	bool "Interrupt 12: Stack segment"
-	help
-	  Trigger interrupt 12: Stack segment
-
-config TESTCASE_IDT13
-	bool "Interrupt 13: General protection"
-	help
-	  Trigger interrupt 13: General protection
-
-config TESTCASE_IDT14
-	bool "Interrupt 14: page fault"
-	help
-	  Trigger interrupt 14: page fault
-
-config TESTCASE_IDT15
-	bool "Interrupt 15: Intel reserved"
-	help
-	  Trigger interrupt 15: Intel reserved
-
-config TESTCASE_IDT16
-	bool "Interrupt 16: Coprocessor error"
-	help
-	  Trigger interrupt 16: Coprocessor error
-
-config TESTCASE_IDT17
-	bool "Interrupt 17: Intel Reserved"
-	help
-	  Trigger interrupt 17: Intel Reserved
-
-config TESTCASE_IDT32
-	bool "Interrupt 32: Timer interrupt"
-	help
-	  Trigger interrupt 32: Timer interrupt
-
-config TESTCASE_IDT39
-	bool "Interrupt 39: parallel interrupt"
-	help
-	  Trigger interrupt 39: parallel interrupt
-
-config TESTCASE_IDT45
-	bool "Interrupt 45: irq13"
-	help
-	  Trigger interrupt 45: irq13
-
-config TESTCASE_IDT46
-	bool "Interrupt 46: hard disk interrupt"
-	help
-	  Trigger interrupt 46: hard disk interrupt
-
-config TESTCASE_IDT128
-	bool "Interrupt 128: system call"
-	help
-	  Trigger interrupt 128: system call
-
-endchoice  # Only choice one
-
-endif # End of TESTCASE_INTERRUPT
+endif # End of DEBUG_INTERRUPT
 
 endmenu

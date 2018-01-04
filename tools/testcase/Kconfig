@@ -26,7 +26,6 @@ config DEBUG_KERNEL_LATER
 	  Debug function on kernel later stage. Before invoke init()
 
 config DEBUG_USERLAND_EARLY
-	select DEBUG_KERNEL_USER
         bool "Debug on userland early"
 	help
 	  Debug function on launch userland early.
@@ -38,15 +37,6 @@ config DEBUG_USERLAND_SHELL
 
 endchoice
 
-if DEBUG_USERLAND_EARLY
-
-config DEBUG_KERNEL_USER
-	default n
-	bool "Debug kernel trap on Userland"
-	help
-	  Debug kernel trap on Userland
-
-endif
 
 source "tools/testcase/interrupt/Kconfig"
 

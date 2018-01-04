@@ -188,7 +188,7 @@ void debug_idt_segment_desc_common(void)
     /* Add debug item */
 
     /* ignore warning */
-    if (0) {
+    if (1) {
         struct gate_desc *desc;
 
         desc = gate_descriptors(3);
