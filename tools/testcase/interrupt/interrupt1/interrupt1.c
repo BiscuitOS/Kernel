@@ -1,5 +1,5 @@
 /*
- * interrupt 1: debug
+ * interrupt 1: debug #DB
  *
  * (C) 2017.10 <buddy.zhang@aliyun.com>
  *
@@ -8,9 +8,10 @@
  * published by the Free Software Foundation.
  */
 #include <linux/kernel.h>
+#include <test/debug.h>
 
 /*
- * Test interrupt 1 - debug
+ * interrupt 1 - debug #DB
  * Single-Step Interrupt Single-stepping is a useful debugging tool to
  * observe the behavior of a program instruction by instruction. To start
  * single-stepping, the trap flag (TF) bit in the flags register should 
@@ -28,45 +29,7 @@
  * sets the trap flag.
  */
 
-/* trigger interrupt 1 by set eflags TF bit */
-//#define INT1_EFLAGS_TF       0x01
-
-/* trigger interrupt 1 by 'int 1' */
-#define INT1_SOFTINT      0x01
-
-/*
- * Trigger interrupt 1: set eflags TF bit
- * To start single-stepping, the trap flag (TF) bit in the flags register
- * should be set (i.e., TF = 1). When TF is set, the CPU automatically 
- * generates a type 1 interrupt after executing each instruction. 
- * Some exceptions do exist, but we do not worry about them here.
- */
-#ifdef INT1_EFLAGS_TF
-void trigger_interrupt1(void)
+void common_interrupt1(void)
 {
-    printk("Test interrupt 1: Set TF on Eflags.\n");
-
-    /* Set TF on EFLAGS will invoke interrupt1 (debug) */
-    __asm__ ("pushl %%eax\n\t"
-             "pushf\n\t"
-             "movl %%esp, %%eax\n\t"
-             "orl $0x0100, (%%eax)\n\t"   // set TF bit.
-             "popf\n\t"
-             "popl %%eax"
-             ::);
+    trigger_interrupt1();
 }
-#endif
-
-/*
- * trigger interrupt 1 by 'int 0x1'
- * The interrupt 1 will be general when invoke soft-interrupt 'int $0x1'
- * Note! whatever interrupt is enable or disable, 'int $0x1' must trigger
- * interrupt 1.
- */
-#ifdef INT1_SOFTINT
-void trigger_interrupt1(void)
-{
-    printk("Test interrupt 1: debug ['int $0x1']\n");
-    __asm__("int $0x1");
-}
-#endif

@@ -124,7 +124,7 @@ static void handler_trap_gate(void)
      */
     __asm__ volatile ("pushl %%ebp\n\r"
             "movl %%esp, %%ebp\n\r"
-            "addl $0x3C, %%esp\n\r"
+            "addl $0x1C, %%esp\n\r"
             "popl %%eax\n\r"
             "popl %%ebx\n\r"
             "popl %%ecx\n\r"
@@ -137,7 +137,7 @@ static void handler_trap_gate(void)
             eflags, eip, cs, error_code);
 
     /* Return from trap gate: ESP points EIP for calling procedure */
-    __asm__ volatile ("addl $0x3C, %%esp\n\r"
+    __asm__ volatile ("addl $0x1C, %%esp\n\r"
             "iret"
             ::);
 }
@@ -291,7 +291,7 @@ static void handler_interrupt_gate(void)
      */
     __asm__ volatile ("pushl %%ebp\n\r"
             "movl %%esp, %%ebp\n\r"
-            "addl $0x3C, %%esp\n\r"
+            "addl $0x1C, %%esp\n\r"
             "popl %%eax\n\r"
             "popl %%ebx\n\r"
             "popl %%ecx\n\r"
@@ -306,7 +306,7 @@ static void handler_interrupt_gate(void)
     /* Clear TF flag on eflags */
 
     /* Return from trap gate: ESP points EIP for calling procedure */
-    __asm__ volatile ("addl $0x3C, %%esp\n\r"
+    __asm__ volatile ("addl $0x1C, %%esp\n\r"
             "iret"
             ::);
 }

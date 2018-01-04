@@ -1,0 +1,27 @@
+#
+# Interrupt 1 - Debug Exception (#DB)
+#
+menu "Interrupt 1 - Debug Exception (#DB)"
+
+config DEBUG_INTERRUPT1
+        bool "Interrupt 1 - Debug Exception (#DB)"
+        help
+	  Indicates that one or more of several debug-exception conditions 
+	  has been detected. Whether the exception is a fault or a trap 
+	  depends on the condition.
+
+if DEBUG_INTERRUPT1
+
+config DEBUG_SOFT_INT1
+	bool "Trigger #DB by soft-interrupt 'int $0x01'"
+	help
+	  Trigger #DB by soft interrupt 'int $0x1'
+
+config DEBUG_EFLAGS_TF
+	bool "Trigger #DB by setting TF flag on EFLAGS"
+	help
+	  Trigger #DB by setting TF flag on EFLAGS register
+
+endif # End of DEBUG_INTERRUPT
+
+endmenu

@@ -37,6 +37,8 @@ config DEBUG_INT_USAGE
 
 source tools/testcase/interrupt/interrupt0/Kconfig
 
+source tools/testcase/interrupt/interrupt1/Kconfig
+
 endif # End of DEBUG_INTERRUPT
 
 endmenu

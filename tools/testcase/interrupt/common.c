@@ -19,5 +19,10 @@ int debug_interrupt_common(void)
 #ifdef CONFIG_DEBUG_INTERRUPT0
     common_interrupt0();
 #endif
+
+#ifdef CONFIG_DEBUG_INTERRUPT1
+    common_interrupt1();
+#endif
+
     return 0;
 }

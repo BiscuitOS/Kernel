@@ -29,19 +29,21 @@ extern void interrupt_useage_common(void);
 #ifdef CONFIG_DEBUG_INTERRUPT0
 extern void common_interrupt0(void);
 
-#ifdef CONFIG_DEBUG_DIVIDE_ZERO
+#if defined CONFIG_DEBUG_DIVIDE_ZERO || defined CONFIG_DEBUG_OVERFLOW_BIT || \
+    defined CONFIG_DEBUG_SOFT_INT0
 extern void trigger_interrupt0(void);
 #endif
 
-#ifdef CONFIG_DEBUG_OVERFLOW_BIT
-extern void trigger_interrupt0(void);
+#endif // INTERRUPT 0
+
+#ifdef CONFIG_DEBUG_INTERRUPT1
+extern void common_interrupt1(void);
+
+#if defined CONFIG_DEBUG_SOFT_INT1 || defined CONFIG_DEBUG_EFLAGS_TF
+extern void trigger_interrupt1(void);
 #endif
 
-#ifdef CONFIG_DEBUG_SOFT_INT0
-extern void trigger_interrupt0(void);
-#endif
-
-#endif
+#endif // INTERRUPT 1
 
 #endif // end of CONFIG_TESTCASE_INTERRUPT
 #endif
