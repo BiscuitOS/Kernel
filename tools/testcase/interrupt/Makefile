@@ -3,3 +3,5 @@ obj-$(CONFIG_DEBUG_INT_USAGE)       += interrupt.o
 obj-$(CONFIG_DEBUG_IDT)             += idt/
 obj-$(CONFIG_DEBUG_INTERRUPT0)      += interrupt0/
 obj-$(CONFIG_DEBUG_INTERRUPT1)      += interrupt1/
+obj-$(CONFIG_DEBUG_INTERRUPT2)      += interrupt2/
+obj-$(CONFIG_DEBUG_INTERRUPT3)      += interrupt3/

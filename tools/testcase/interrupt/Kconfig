@@ -39,6 +39,10 @@ source tools/testcase/interrupt/interrupt0/Kconfig
 
 source tools/testcase/interrupt/interrupt1/Kconfig
 
+source tools/testcase/interrupt/interrupt2/Kconfig
+
+source tools/testcase/interrupt/interrupt3/Kconfig
+
 endif # End of DEBUG_INTERRUPT
 
 endmenu

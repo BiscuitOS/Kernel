@@ -1,13 +1,14 @@
 /*
- * Interrupt 2: NMI interrupt
+ * interrupt 2: NMI Interrupt
  *
- * (C) 2017.10 <buddy.zhang@aliyun.com>
+ * (C) 2018.01 BiscuitOS <buddy.zhang@aliyun.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
 #include <linux/kernel.h>
+#include <test/debug.h>
 
 /*
  * Test Interrupt 2 - NMI
@@ -21,19 +22,7 @@
  * include reporting non-recoverable hardware errors, system debugging
  * and profiling, and handling of special cases like system resets.
  */
-
-/* trigger interrupt 2: soft-interrupt on enable interrupt */
-#define INT2_SOFTINT       0x01
-
-/* Trigger interrupt 2:
- * Invoke 'int $0x2' to trigger interrupt 2, interrupt 2 is NMI.
- * NMI(Uon Mask Interrupt) will not be mask when set IF bit on EFLAGS, so
- * NMI will be triggered whatever soft-interrupt or NMI signal.
- */
-#ifdef INT2_SOFTINT
-void trigger_interrupt2(void)
+void common_interrupt2(void)
 {
-    printk("test interrupt 2: invoke 'int $0x02'\n");
-    __asm__ ("int $0x2");
+    trigger_interrupt2();
 }
-#endif

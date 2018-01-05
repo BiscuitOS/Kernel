@@ -45,5 +45,24 @@ extern void trigger_interrupt1(void);
 
 #endif // INTERRUPT 1
 
+#ifdef CONFIG_DEBUG_INTERRUPT2
+extern void common_interrupt2(void);
+
+#ifdef CONFIG_DEBUG_SOFT_INT2
+extern void trigger_interrupt2(void);
+#endif
+
+#endif // INTERRUPT 2
+
+#ifdef CONFIG_DEBUG_INTERRUPT3
+extern void common_interrupt3(void);
+
+#if defined CONFIG_DEBUG_SOFT_INT3 || defined CONFIG_DEBUG_INT3_TF
+extern void trigger_interrupt3(void);
+#endif
+
+#endif // INTERRUPT 3
+
+
 #endif // end of CONFIG_TESTCASE_INTERRUPT
 #endif
