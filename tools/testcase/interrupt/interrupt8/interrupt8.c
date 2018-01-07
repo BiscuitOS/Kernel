@@ -1,13 +1,14 @@
 /*
  * interrupt 8: double fault
  *
- * (C) 2017.10 <buddy.zhang@aliyun.com>
+ * (C) 2017.10 BiscuitOS <buddy.zhang@aliyun.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
 #include <linux/kernel.h>
+#include <test/debug.h>
 
 /*
  * Test Interrupt 8 - double fault
@@ -28,19 +29,7 @@
  * these registers to process the exception. SPARC processors have four 
  * levels of such registers, i.e. they have a 4-window register system.
  */
-
-/* trigger interrupt 8: invoke 'int $0x8' */
-#define INT8_SOFTIDT        0x01
-
-/*
- * trigger interrupt 8: invoke 'int $0x8'
- * Note! This routine will trigger interrupt 8 whatever interrupt is
- * enable or disable. 
- */
-#ifdef INT8_SOFTIDT
-void trigger_interrupt8(void)
+void common_interrupt8(void)
 {
-    printk("Test interrupt 8: duble fault.\n");
-    __asm__ ("int $8");
+    trigger_interrupt8();
 }
-#endif

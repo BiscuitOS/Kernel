@@ -1,34 +1,36 @@
 #
-# Interrupt 3 - Breakpoint Exception (#BP)
+# Interrupt 4 - Overflow Exception (#OF)
 #
-menu "Interrupt 3 - Breakpoint Exception (#BP)"
+menu "Interrupt 4 - Overflow Exception (#OF)"
 
-config DEBUG_INTERRUPT3
-        bool "Interrupt 3 - Breakpoint Exception (#BP)"
+config DEBUG_INTERRUPT4
+        bool "Interrupt 4 - Overflow Exception (#OF)"
         help
-	  Indicates that a breakpoint instruction (INT 3, opcode CCH) was 
-	  executed, causing a breakpoint trap to be generated. Typically, 
-	  a debugger sets a breakpoint by replacing the first opcode byte 
-	  of an instruction with the opcode for the INT 3 instruction. (
-	  The INT 3 instruction is one byte long, which makes it easy to 
-	  replace an opcode in a code segment in RAM with the breakpoint 
-	  opcode). The operating system or a debugging tool can use a data 
-	  segment mapped to the same physical address space as the code 
-	  segment to place an INT 3 instruction in place where it is 
-	  desired to call the debugger.
+	  Indicates that an overflow trap occurred when an INTO 
+	  instruction was executed. The INTO instruction checks 
+	  the state of the OF flag in the EFLAGS register. If 
+	  the OF flag is set, an overflow trap is generated.
 
-if DEBUG_INTERRUPT3
+if DEBUG_INTERRUPT4
 
-config DEBUG_SOFT_INT3
-	bool "Trigger #BP by soft-interrupt 'int $0x03'"
+config DEBUG_SOFT_INT4
+	bool "Trigger #OF by soft-interrupt 'int $0x04'"
 	help
-	  Trigger #BP by soft interrupt 'int $0x3'
+	  Trigger #OF by soft interrupt 'int $0x4'
 
-config DEBUG_INT3_TF
-	bool "Tirgger #BP by setting TF flag on EFLAGS"
+config DEBUG_INT4_INTO
+	bool "Tirgger #OF by invoke INTO"
 	help
-	  Trigger #BP by setting TF flag. When TF on EFLAGS is set,
-	  the system will trigger interrupt 3.
+	  Some arithmetic instructions (such as the ADD and SUB) 
+	  perform both signed and unsigned signed arithmetic. These 
+	  instructions set the OF and CF flags in the EFLAGS register
+	  to indicate signed overflow and unsigned overflow, 
+	  respectively. When performing arithmetic on signed operands,
+ 	  the OF flag can be tested directly or the INTO instruction
+	  can be used. The benefit of using the INTO instruction is 
+	  that if the overflow exception is detected, an exception 
+	  handler can be called automatically to handler the overflow
+	  condition.
 
 endif # End of DEBUG_INTERRUPT
 

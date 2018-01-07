@@ -1,0 +1,12 @@
+obj-$(CONFIG_DEBUG_INTERRUPT11)      += interrupt11.o
+obj-$(CONFIG_DEBUG_SOFT_INT11)       += soft-interrupt.o
+obj-$(CONFIG_DEBUG_INT11_LLDT)       += lldt-interrupt.o
+obj-$(CONFIG_DEBUG_INT11_LTR)        += ltr-interrupt.o
+obj-$(CONFIG_DEBUG_INT11_MOV_DS)     += DS-mov.o
+obj-$(CONFIG_DEBUG_INT11_MOV_ES)     += ES-mov.o
+obj-$(CONFIG_DEBUG_INT11_MOV_FS)     += FS-mov.o
+obj-$(CONFIG_DEBUG_INT11_MOV_GS)     += GS-mov.o
+obj-$(CONFIG_DEBUG_INT11_POP_DS)     += DS-pop.o
+obj-$(CONFIG_DEBUG_INT11_POP_ES)     += ES-pop.o
+obj-$(CONFIG_DEBUG_INT11_POP_FS)     += FS-pop.o
+obj-$(CONFIG_DEBUG_INT11_POP_GS)     += GS-pop.o

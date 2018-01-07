@@ -1,0 +1,51 @@
+#
+# Interrupt 5 - BOUND Range Exceeded Exception (#BR)
+#
+menu "Interrupt 5 - BOUND Range Exceeded Exception (#BR)"
+
+config DEBUG_INTERRUPT5
+        bool "Interrupt 5 - BOUND Range Exceeded Exception (#BR)"
+        help
+	  Indicates that a BOUND-range-exceeded fault occurred when
+	  a BOUND instruction was executed. The BOUND instruction 
+	  checks that a signed array index is within the upper and 
+	  lower bounds of an array located in memory. If the array 
+	  index is not within the bounds of the array, a 
+	  BOUND-range-exceeded fault is generated.
+
+if DEBUG_INTERRUPT5
+
+config DEBUG_SOFT_INT5
+	bool "Trigger #BR by soft-interrupt 'int $0x05'"
+	help
+	  Trigger #BR by soft interrupt 'int $0x5'
+
+config DEBUG_INT5_BOUND
+	bool "Tirgger #BR by invoke index over BOUND"
+	help
+	  The BOUND instruction checks that a signed array index is 
+	  within the upper and lower bounds of an array located
+  	  in memory. If the array index is not within the bounds of 
+	  the array, a BOUND-range-exceeded fault is generated.
+
+config DEBUG_INT5_BNDCL
+	bool "Trigger #BR by inovke BNDCL: index lower bound"
+	help
+	  Compare the address in the second operand with the lower 
+	  bound in bnd. The second operand can be either a register 
+	  or memory operand. If the address is lower than the lower 
+	  bound in bnd.LD, it will set BNDSTATUS to 01H and signal 
+	  a #BR exception.
+
+config DEBUG_INT5_BNDCU
+	bool "Trigger #BR by invoke BNDCU: index higher bound"
+	help
+	  Compare the address in the second operand with the upper 
+	  bound in bnd. The second operand can be either a register 
+	  or a memory operand. If the address is higher than the upper 
+	  bound in bnd.UB, it will set BNDSTATUS to 01H and signal a 
+	  #BR exception.
+
+endif # End of DEBUG_INTERRUPT
+
+endmenu

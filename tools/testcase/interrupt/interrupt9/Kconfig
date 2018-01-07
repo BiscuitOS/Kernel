@@ -1,0 +1,23 @@
+#
+# Interrupt 9 - Coprocessor Segment Overrun
+#
+menu "Interrupt 9 - Coprocessor Segment Overrun"
+
+config DEBUG_INTERRUPT9
+        bool "Interrupt 9 - Coprocessor Segment Overrun"
+        help
+	  Indicates that an Intel386 CPU-based system with an 
+	  Intel 387 math coprocessor detected a page or segment
+	  violation while transferring the middle portion of an
+	  Intel 387 math coprocessor operand.
+
+if DEBUG_INTERRUPT9
+
+config DEBUG_SOFT_INT9
+	bool "Trigger INT9 by soft-interrupt 'int $0x09'"
+	help
+	  Trigger INT9 by soft interrupt 'int $0x9'
+
+endif # End of DEBUG_INTERRUPT
+
+endmenu
