@@ -1,23 +1,35 @@
 #
-# Interrupt 10 - Invalid TSS Exception (#TS)
+# Interrupt 12 - Stack Fault Exception (#SS)
 #
-menu "Interrupt 10 - Invalid TSS Exception (#TS)"
+menu "Interrupt 12 - Stack Fault Exception (#SS)"
 
-config DEBUG_INTERRUPT10
-        bool "Interrupt 10 - Invalid TSS Exception (#TS)"
+config DEBUG_INTERRUPT12
+        bool "Interrupt 12 - Stack Fault Exception (#SS)"
         help
-	  Indicates that there was an error related to a TSS. Such an
-	  error might be detected during a task switch or during the
-	  execution of instructions that use information from a TSS.
-	  Table show the conditions that cause an invaild TSS exception
-	  to be generated.
+	  Indicates that one of the following stack related conditions
+	  was detected:
+	  * A limit violation is detected during an operation that 
+	    refers to the SS register. Operations that can cause a
+	    limit violation include stack-oriented instructions such
+	    as POP, PUSH, CALL, RET, ENTER, and LEVE, as well as other
+	    memory references which implicitly or explicitly use the
+	    SS register (for example, `MOV AX, [BP+6]` or `MOV AX, 
+	    SS:[EAX+6]`). The `ENTER` instruction generates this 
+	    exception when there is not enough stack space for 
+	    allocating local variables.
+	  * A not-present stack segment is detected when attempting to
+	    load the SS register. This violation can occur during the
+	    exception of a stack switch, a CALL instruction to a 
+	    different privilegel level, a return to a different 
+	    privilege level, an LSS instruction, or a MOV or POP
+	    instruction to the SS register.
 
-if DEBUG_INTERRUPT10
+if DEBUG_INTERRUPT12
 
-config DEBUG_SOFT_INT10
-	bool "Trigger #TS by soft-interrupt 'int $0x0A'"
+config DEBUG_SOFT_INT12
+	bool "Trigger #SS by soft-interrupt 'int $0x0C'"
 	help
-	  Trigger #TS by soft interrupt 'int $0xA'
+	  Trigger #SS by soft interrupt 'int $0xC'
 
 endif # End of DEBUG_INTERRUPT
 

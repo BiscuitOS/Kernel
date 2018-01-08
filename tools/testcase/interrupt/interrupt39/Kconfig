@@ -1,0 +1,20 @@
+#
+# Interrupt 39 - Parallel Interrupt
+#
+menu "Interrupt 39 - Parallel Interrupt"
+
+config DEBUG_INTERRUPT39
+        bool "Interrupt 39 - Parallel Interrupt"
+        help
+	  Indicates that a parallel interrupt to be generated.
+
+if DEBUG_INTERRUPT39
+
+config DEBUG_SOFT_INT39
+	bool "Trigger Parallel Interrupt by soft-interrupt 'int $0x27'"
+	help
+	  Trigger Parallel Interrupt by soft interrupt 'int $0x27'
+
+endif # End of DEBUG_INTERRUPT
+
+endmenu

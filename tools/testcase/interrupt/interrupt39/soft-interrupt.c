@@ -1,5 +1,5 @@
 /*
- * Interrupt 12: Stack Fault Exception (#SS) by soft-interrupt
+ * Interrupt 39: Parallel Interrupt by soft-interrupt
  *
  * (C) 2018.01 BiscuitOS <buddy.zhang@aliyun.com>
  *
@@ -10,13 +10,13 @@
 #include <linux/kernel.h>
 
 /*
- * Trigger interrupt 12 (#SS): invoke 'int $0xC'
+ * Trigger interrupt 39: invoke 'int $0x27'
  *   Note! whatever interrupt is enable or disable, this routine
- *   will trigger interrupt 12.
+ *   will trigger interrupt 39.
  */
-void trigger_interrupt12(void)
+void trigger_interrupt39(void)
 {
-    printk("Trigger interrupt 12: Stack segment "
-                              "[invoke 'int $0xC']\n");
-    __asm__ ("int $0xC");
+    printk("Trigger interrupt 39: parallel interrupt "
+                             "[invoke 'int $0x27']\n");
+    __asm__ ("int $0x27");
 }

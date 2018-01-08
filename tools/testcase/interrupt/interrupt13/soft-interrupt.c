@@ -1,5 +1,5 @@
 /*
- * Interrupt 12: Stack Fault Exception (#SS) by soft-interrupt
+ * Interrupt 13: General Protection Exception (#GP) by soft-interrupt
  *
  * (C) 2018.01 BiscuitOS <buddy.zhang@aliyun.com>
  *
@@ -10,13 +10,13 @@
 #include <linux/kernel.h>
 
 /*
- * Trigger interrupt 12 (#SS): invoke 'int $0xC'
+ * Trigger interrupt 13: invoke 'int $0xD'
  *   Note! whatever interrupt is enable or disable, this routine
- *   will trigger interrupt 12.
+ *   will trigger interrupt 13.
  */
-void trigger_interrupt12(void)
+void trigger_interrupt13(void)
 {
-    printk("Trigger interrupt 12: Stack segment "
-                              "[invoke 'int $0xC']\n");
-    __asm__ ("int $0xC");
+    printk("Trigger interrupt 13: General protection "
+                              "[invoke 'int $0xD']\n");
+    __asm__ ("int $0xD");
 }

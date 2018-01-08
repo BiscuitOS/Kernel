@@ -1,0 +1,22 @@
+#
+# Interrupt 16 - X87 FPU Floating-Point Error (#MF)
+#
+menu "Interrupt 16 - X87 PFU Floating-Point Error (#MF)"
+
+config DEBUG_INTERRUPT16
+        bool "Interrupt 16 - X87 FPU Floating-Point Error (#MF)"
+        help
+	  Indicates that the X87 FPU has detected a floating-point
+	  error. The NE flag in the reigster CR0 must be set for an
+	  interrupt 16 (floating-point error exception) to be generated.
+
+if DEBUG_INTERRUPT16
+
+config DEBUG_SOFT_INT16
+	bool "Trigger #MF by soft-interrupt 'int $0x10'"
+	help
+	  Trigger #MF by soft interrupt 'int $0x10'
+
+endif # End of DEBUG_INTERRUPT
+
+endmenu

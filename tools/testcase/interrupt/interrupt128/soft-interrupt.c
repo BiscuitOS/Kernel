@@ -1,5 +1,5 @@
 /*
- * Interrupt 12: Stack Fault Exception (#SS) by soft-interrupt
+ * Interrupt 128: system call trigger by soft-interrupt
  *
  * (C) 2018.01 BiscuitOS <buddy.zhang@aliyun.com>
  *
@@ -10,13 +10,12 @@
 #include <linux/kernel.h>
 
 /*
- * Trigger interrupt 12 (#SS): invoke 'int $0xC'
+ * Trigger interrupt 128: invoke 'int $0x80'
  *   Note! whatever interrupt is enable or disable, this routine
- *   will trigger interrupt 12.
+ *   will trigger interrupt 128.
  */
-void trigger_interrupt12(void)
+void trigger_interrupt128(void)
 {
-    printk("Trigger interrupt 12: Stack segment "
-                              "[invoke 'int $0xC']\n");
-    __asm__ ("int $0xC");
+    printk("Trigger interrupt 128: system call [invoke 'int $0x80']\n");
+    __asm__ ("int $0x80");
 }

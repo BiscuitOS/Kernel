@@ -1,5 +1,5 @@
 /*
- * interrupt 10: Invalid TSS segment (#TS)
+ * interrupt 128: system call
  *
  * (C) 2017.10 BiscuitOS <buddy.zhang@aliyun.com>
  *
@@ -10,7 +10,7 @@
 #include <linux/kernel.h>
 #include <test/debug.h>
 
-void common_interrupt10(void)
+void common_interrupt128(void)
 {
-    trigger_interrupt10();
+    trigger_interrupt128();
 }

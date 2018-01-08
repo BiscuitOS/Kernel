@@ -1,69 +1,42 @@
-Interrupt 12 -- Stack Fault Exception (#SS)
+Interrupt 16 -- X87 FPU Floating-Point Error (#MF)
 ----------------------------------------------------
 
 ### Description
 
-  Indicates that one of the following stack related conditions was detected:
- 
-  * A limit violation is detected during an operation that refers to
-    the SS register. Operations that can cause a limit violation include
-    stack-oriented instructions such as POP, PUSH, CALL, RET, ENTER, and
-    LEVE, as well as other memory references which implicitly or explicitly
-    use the SS register (for example, `MOV AX, [BP+6]` or `MOV AX, SS:[EAX+6]`
-    ). The `ENTER` instruction generates this exception when there is not
-    enough stack space for allocating local variables.
-
-  * A not-present stack segment is detected when attempting to load the 
-    SS register. This violation can occur during the exception of a stack
-    switch, a CALL instruction to a different privilegel level, a return to
-    a different privilege level, an LSS instruction, or a MOV or POP 
-    instruction to the SS register.
-
-  Recovery from this fault is possible by either extending the limit of the
-  stack segment (in the case of a limit violation) or loading the missing
-  stack segment into memory (in the case of a not-present violation).
-
-  In the case of a canonical violation that was caused intentionally by
-  software, recovery is possible by loading the correct canonical value
-  into RSP. Otherwise, a canonical violation of the address in RSP likely 
-  reflects some register corruption in the software.
+  Indicates that the X87 FPU has detected a floating-point error. The NE
+  flag in the reigster CR0 must be set for an interrupt 16 (floating-
+  point error exception) to be generated.
 
 ### Exception Error Code
 
-  If the exception is caused by a not-present stack segment or by overflow
-  of the new stack during an inter-privilege level call, the error code
-  contains a segment selector for the segment that caused the exception.
-  Here, the exception handler can test the present flag in the segment
-  descriptor pointed to by the segment selector to determine the cause
-  of the exception. For a normal limit violation (on a stack segment already
-  in use) the error code is set to 0.
+  None. The X87 FPU provides its own error information.
 
 ### Saved Instruction Pointer
 
-  If saved contents of CS and EIP register generally point to the instruction
-  that generated the exception. However, when the exception result from 
-  attempting to load a not-present stack segment during a task swithc, the
-  CS and EIP register point to the first instruction of the new stack.
+  The saved contents of CS and EIP register point to the floating-point or
+  WAIT/FWAIT instruction that was about to be execute when the floating-
+  point-error exception was generated. This is not the faulting instruction
+  in which the error condition was detected. The address of the faulting
+  instruction is contained in the X87 FPU instruction pointer register.
 
 ### Program State Change
 
-  A program-state change does not generally accompany a stack-fault exception,
-  because the instruction that generated. Here, the instruction can be 
-  restarted after the exception handler has corrected the stack fault 
-  condition.
+  A program-state change generally accompanies an X87 FPU floating-point
+  exception because the handling of the exeception is delayed until the
+  next waiting X87 FPU floating-point or WAIT/FWAIT instruction following
+  the faulting instruction. The X87 FPU, howeverm saves sufficient information
+  about the error condition to allow recovery from the error and re-execution
+  of the faulting instruction if needed.
 
-  If a stack fault occurs during a task switch, it occurs after the commit-to-
-  new-stack. Here, the processor loads all the state information from the 
-  new TSS (without performing any additional limit, present, or type checks)
-  before it generates the exception. The stack fault handler should thus not
-  rely on being able to use the segment selectors found in the CS, SS, DS, FS
-  and GS register without causing another exception. The exception handler 
-  check all segment registers before trying to resume the new stack. 
-  Otherwise, general protection fault may result later under conditions that
-  are more difficult to diagnose.
+  In situtions where non-X87 FPU floating-point instructions depend on results
+  of an x87 FPU floating-point instruction, a WAIT or FWAIT instruction can
+  be inserted in front of a dependent instruction to force a pending X87 FPU
+  floating-point exception to be handler before the dependent instruction
+  is executed.
+
 ### File list
 
-  * interrupt12.c
+  * interrupt10.c
 
     Common entry for triggering interrupt 10 (#TS) to be invoked by top
     interface.

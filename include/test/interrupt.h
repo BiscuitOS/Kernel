@@ -141,5 +141,86 @@ extern void trigger_interrupt11(void);
 
 #endif // INTERRUPT 11
 
+#ifdef CONFIG_DEBUG_INTERRUPT12
+extern void common_interrupt12(void);
+
+#if defined CONFIG_DEBUG_SOFT_INT12
+extern void trigger_interrupt12(void);
+#endif
+
+#endif // INTERRUPT12
+
+#ifdef CONFIG_DEBUG_INTERRUPT13
+extern void common_interrupt13(void);
+
+#if defined CONFIG_DEBUG_SOFT_INT13
+extern void trigger_interrupt13(void);
+#endif
+
+#endif // INTERRUPT13
+
+#ifdef CONFIG_DEBUG_INTERRUPT14
+extern void common_interrupt14(void);
+
+#if defined CONFIG_DEBUG_SOFT_INT14
+extern void trigger_interrupt14(void);
+#endif
+
+#endif // INTERRUPT14
+
+#ifdef CONFIG_DEBUG_INTERRUPT16
+extern void common_interrupt16(void);
+
+#if defined CONFIG_DEBUG_SOFT_INT16
+extern void trigger_interrupt16(void);
+#endif
+
+#endif // INTERRUPT16
+
+#ifdef CONFIG_DEBUG_INTERRUPT32
+extern void common_interrupt32(void);
+
+#if defined CONFIG_DEBUG_SOFT_INT32
+extern void trigger_interrupt32(void);
+#endif
+
+#endif // INTERRUPT32
+
+#ifdef CONFIG_DEBUG_INTERRUPT39
+extern void common_interrupt39(void);
+
+#if defined CONFIG_DEBUG_SOFT_INT39
+extern void trigger_interrupt39(void);
+#endif
+
+#endif // INTERRUPT39
+
+#ifdef CONFIG_DEBUG_INTERRUPT45
+extern void common_interrupt45(void);
+
+#if defined CONFIG_DEBUG_SOFT_INT45
+extern void trigger_interrupt45(void);
+#endif
+
+#endif // INTERRUPT45
+
+#ifdef CONFIG_DEBUG_INTERRUPT46
+extern void common_interrupt46(void);
+
+#if defined CONFIG_DEBUG_SOFT_INT46
+extern void trigger_interrupt46(void);
+#endif
+
+#endif // INTERRUPT46
+
+#ifdef CONFIG_DEBUG_INTERRUPT128
+extern void common_interrupt128(void);
+
+#if defined CONFIG_DEBUG_SOFT_INT128
+extern void trigger_interrupt128();
+#endif
+
+#endif // INTERRUPT128
+
 #endif // end of CONFIG_TESTCASE_INTERRUPT
 #endif

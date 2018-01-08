@@ -64,5 +64,41 @@ int debug_interrupt_common(void)
     common_interrupt11();
 #endif
 
+#ifdef CONFIG_DEBUG_INTERRUPT12
+    common_interrupt12();
+#endif
+
+#ifdef CONFIG_DEBUG_INTERRUPT13
+    common_interrupt13();
+#endif
+
+#ifdef CONFIG_DEBUG_INTERRUPT14
+    common_interrupt14();
+#endif
+
+#ifdef CONFIG_DEBUG_INTERRUPT16
+    common_interrupt16();
+#endif
+
+#ifdef CONFIG_DEBUG_INTERRUPT32
+    common_interrupt32();
+#endif
+
+#ifdef CONFIG_DEBUG_INTERRUPT39
+    common_interrupt39();
+#endif
+
+#ifdef CONFIG_DEBUG_INTERRUPT45
+    common_interrupt45();
+#endif
+
+#ifdef CONFIG_DEBUG_INTERRUPT46
+    common_interrupt46();
+#endif
+
+#ifdef CONFIG_DEBUG_INTERRUPT128
+    common_interrupt128();
+#endif
+
     return 0;
 }

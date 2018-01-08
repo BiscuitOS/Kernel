@@ -1,0 +1,20 @@
+#
+# Interrupt 45 - irq13
+#
+menu "Interrupt 45 - irq13"
+
+config DEBUG_INTERRUPT45
+        bool "Interrupt 45 - irq13"
+        help
+	  Indicates that an irq13 to be generated.
+
+if DEBUG_INTERRUPT45
+
+config DEBUG_SOFT_INT45
+	bool "Trigger irq13 by soft-interrupt 'int $0x2D'"
+	help
+	  Trigger irq13 by soft interrupt 'int $0x2D'
+
+endif # End of DEBUG_INTERRUPT
+
+endmenu

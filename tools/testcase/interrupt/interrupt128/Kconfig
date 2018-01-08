@@ -1,0 +1,20 @@
+#
+# Interrupt 128 - System Call
+#
+menu "Interrupt 128 - System Call"
+
+config DEBUG_INTERRUPT128
+        bool "Interrupt 128 - System Call"
+        help
+	  Indicates that an system Call to be generated.
+
+if DEBUG_INTERRUPT128
+
+config DEBUG_SOFT_INT128
+	bool "Trigger System Call by soft-interrupt 'int $0x80'"
+	help
+	  Trigger System Call by soft interrupt 'int $0x80'
+
+endif # End of DEBUG_INTERRUPT
+
+endmenu

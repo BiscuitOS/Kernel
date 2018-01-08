@@ -19,7 +19,7 @@ config DEBUG_INTERRUPT
 if DEBUG_INTERRUPT
 
 config DEBUG_IDT
-	bool "Interrupt Descriptors Table"
+	bool "Interrupt Descriptors Table (IDT)"
 	help 
 	  The Interrupt Descriptor Table (IDT) is a data structure used 
 	  by the x86 architecture to implement an interrupt vector table. 
@@ -58,6 +58,24 @@ source tools/testcase/interrupt/interrupt9/Kconfig
 source tools/testcase/interrupt/interrupt10/Kconfig
 
 source tools/testcase/interrupt/interrupt11/Kconfig
+
+source tools/testcase/interrupt/interrupt12/Kconfig
+
+source tools/testcase/interrupt/interrupt13/Kconfig
+
+source tools/testcase/interrupt/interrupt14/Kconfig
+
+source tools/testcase/interrupt/interrupt16/Kconfig
+
+source tools/testcase/interrupt/interrupt32/Kconfig
+
+source tools/testcase/interrupt/interrupt39/Kconfig
+
+source tools/testcase/interrupt/interrupt45/Kconfig
+
+source tools/testcase/interrupt/interrupt46/Kconfig
+
+source tools/testcase/interrupt/interrupt128/Kconfig
 
 endif # End of DEBUG_INTERRUPT
 
