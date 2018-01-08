@@ -23,18 +23,27 @@ Interrupt 0 -- Divide Error Exception (#DE)
 
 ### File list
 
-  * interrupt9.c
+  * interrupt0.c
 
-    Common entry for triggering interrupt 9 to be invoked by top
+    Common entry for triggering interrupt 0 #DE to be invoked by top
     interface.
 
   * soft-interrupt.c
 
-    Describe how to trigger interrupt 9 through soft-interrupt routine.
+    Describe how to trigger interrupt 0 #DE through soft-interrupt routine.
+
+  * over_destination.c
+
+    Describe the situation that result overflow destination register 
+    when performing `add` instruction.
+    
+  * divi_zero.c
+
+    Describe the situation that performing divide and divied by zero.
 
   * README.md
 
-    Describe the basic information for interrupt 9.
+    Describe the basic information for interrupt 0 #DE.
 
 ### Usage on BiscuitOS
 
