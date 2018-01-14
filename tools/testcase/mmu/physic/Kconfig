@@ -1,0 +1,17 @@
+#
+# Physical Address Machanism on MMU
+#
+
+menu "Physic Address Machanism on MMU"
+
+config DEBUG_MMU_PHYSIC
+	bool "Debug Physic Address machanism on MMU"
+	help
+	  Debug Physic Address Machanism on MMU.
+
+if DEBUG_MMU_PHYSIC
+
+
+endif
+
+endmenu

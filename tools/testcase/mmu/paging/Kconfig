@@ -1,0 +1,17 @@
+#
+# Linear Address Machanism on MMU
+#
+
+menu "Linear Address Machanism on MMU"
+
+config DEBUG_MMU_LINEAR
+	bool "Debug Linear Address machanism on MMU"
+	help
+	  Debug Linear Address Machanism on MMU.
+
+if DEBUG_MMU_LINEAR
+
+
+endif
+
+endmenu

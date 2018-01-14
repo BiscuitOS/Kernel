@@ -1,0 +1,26 @@
+#
+# Two-Level Page-Table Machanism on MMU
+#
+
+menu "Two-Level Page-Table Machanism on MMU"
+
+config DEBUG_MMU_PGTABLE
+	bool "Debug Two-Level Page-Table machanism on MMU"
+	help
+	  Debug Two-Level Page-Table Machanism on MMU.
+
+if DEBUG_MMU_PGTABLE
+
+config DEBUG_PGDIR
+	bool "Page Dirent on Two-Level Page-Table"
+	help
+	  Debug Page Dirent on Two-Level Page-Table.
+
+config DEBUG_PGTABLE
+	bool "Page Table on Two-Level Page-Table"
+	help
+	  Debug Page Table on Two-Level Page-Table.
+
+endif
+
+endmenu

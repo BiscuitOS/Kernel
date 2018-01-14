@@ -2,11 +2,27 @@
 # Memeory Manager Unit
 #
 
-menu "MMU(Memory Manager Unit)"
+menu "MMU(Memory Manager Unit) on X86 Architecture"
 
-config TESTCASE_MMU
-	bool "Test MMU(Memory Manager Unit)"
+config DEBUG_MMU
+	bool "Debug MMU(Memory Manager Unit) machanism on X86 Architecture"
 	help
-	  Test Memory Manager Unit(MMU).
+	  Debug Memory Manager Unit(MMU).
+
+if DEBUG_MMU
+
+source tools/testcase/mmu/virtual/Kconfig
+
+source tools/testcase/mmu/linear/Kconfig
+
+source tools/testcase/mmu/physic/Kconfig
+
+source tools/testcase/mmu/logic/Kconfig
+
+source tools/testcase/mmu/pgtable/Kconfig
+
+source tools/testcase/mmu/segmentation/Kconfig
+
+endif
 
 endmenu

@@ -1,7 +1,7 @@
 #ifndef _TESTCASE_DEBUG_H_
 #define _TESTCASE_DEBUG_H_
 
-#ifdef CONFIG_TESTCASE_SCHED
+#ifdef CONFIG_DEBUG_SCHED
 #include <test/task.h>
 #endif
 
@@ -9,7 +9,7 @@
 #include <test/interrupt.h>
 #endif
 
-#ifdef CONFIG_TESTCASE_MMU
+#ifdef CONFIG_DEBUG_MMU
 #include <test/mm.h>
 #endif
 

@@ -1,0 +1,17 @@
+#
+# Virtual Address Machanism on MMU
+#
+
+menu "Virtual Address Machanism on MMU"
+
+config DEBUG_MMU_VIRTUAL
+	bool "Debug VIRTUAL Address machanism on MMU"
+	help
+	  Debug VIRTUAL Address Machanism on MMU.
+
+if DEBUG_MMU_VIRTUAL
+
+
+endif
+
+endmenu

@@ -13,9 +13,31 @@
 #include <test/mm.h>
 
 /* common memory entry */
-int test_mmu(void)
+int debug_mmu_common(void)
 {
-    printk("Testcase MMU(Memory Manager Unit.)\n");
+#ifdef CONFIG_DEBUG_MMU_LINEAR
+    debug_mmu_linear_common();
+#endif
+
+#ifdef CONFIG_DEBUG_MMU_PHYSIC
+    debug_mmu_physic_common();
+#endif
+
+#ifdef CONFIG_DEBUG_MMU_VIRTUAL
+    debug_mmu_virtual_common();
+#endif
+
+#ifdef CONFIG_DEBUG_MMU_PGTABLE
+    debug_mmu_pgtable_common();
+#endif
+
+#ifdef CONFIG_DEBUG_MMU_SEGMENTATION
+    debug_mmu_segmentation_common();
+#endif
+
+#ifdef CONFIG_DEBUG_MMU_LOGIC
+    debug_mmu_logical_common();
+#endif
 
     return 0;
 }
