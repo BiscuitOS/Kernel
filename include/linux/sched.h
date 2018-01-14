@@ -79,7 +79,7 @@ struct task_struct {
 	long utime, stime, cutime, cstime, start_time;
 	unsigned short used_math;
 	/* file system info */
-	int tty;   /* -f if no tty, so it must be signed */
+	int tty;   /* -1 if no tty, so it must be signed */
 	unsigned short umask;
 	struct m_inode *pwd;
 	struct m_inode *root;
@@ -106,18 +106,18 @@ struct task_struct {
  /* math */         0,                 \
  /* fs info */      -1, 0022, NULL, NULL, NULL, 0, \
  /* filp */         { NULL,},                      \
-					{                              \
-					{0, 0}, \
- /* ldt */          {0x9f, 0xc0fa00},              \
- 	            {0x9f, 0xc0f200},              \
-					},                             \
- /* tss */          {0, PAGE_SIZE + (long)&init_task, 0x10, 0, 0, \
-					0, 0, (long)&pg_dir,           \
-					0, 0, 0, 0, 0, 0, 0, 0, \
-					0, 0, 0x17, 0x17, 0x17, 0x17, 0x17, 0x17,     \
-					_LDT(0), 0x80000000,    \
-					{}                      \
-					}, \
+ /* LDT */        {                              \
+ /* LDT-0 NULL */     {0, 0},                    \
+ /* LDT-1 CODE */     {0x9f, 0xc0fa00},          \
+ /* LDT-2 DATA */     {0x9f, 0xc0f200},          \
+                  },                             \
+ /* tss */        { 0, PAGE_SIZE + (long)&init_task, 0x10, 0, 0, \
+                    0, 0, (long)&pg_dir,           \
+                    0, 0, 0, 0, 0, 0, 0, 0, \
+                    0, 0, 0x17, 0x17, 0x17, 0x17, 0x17, 0x17,     \
+                    _LDT(0), 0x80000000,    \
+                    {}                      \
+                  }, \
 }
 
 /*

@@ -13,26 +13,30 @@
 #include <test/task.h>
 
 /* common task interface */
-int test_task_scheduler(void)
+int debug_task_scheduler_common(void)
 {
-#ifdef CONFIG_TESTCASE_GDT
+#ifdef CONFIG_DEBUG_GDT
     debug_gdt_common();
 #endif
 
-#ifdef CONFIG_TESTCASE_SEGMENT
+#ifdef CONFIG_DEBUG_SEGMENT
     debug_segment_common();
 #endif
 
-#ifdef CONFIG_TESTCASE_GATE
+#ifdef CONFIG_DEBUG_GATE
     debug_system_descriptor_common();
 #endif
 
-#ifdef CONFIG_TESTCASE_IDT
+#ifdef CONFIG_DEBUG_IDT
     debug_idt_segment_desc_common();
 #endif
 
-#ifdef CONFIG_TESTCASE_STACK
+#ifdef CONFIG_DEBUG_STACK
     debug_stack_common();
+#endif
+
+#ifdef CONFIG_DEBUG_TASK
+    debug_task_common();
 #endif
     return 0;
 }
@@ -42,7 +46,7 @@ int test_task_scheduler(void)
 /* debug kernel on userland stage */
 void debug_scheduler_kernel_on_userland(void)
 {
-#ifdef CONFIG_TESTCASE_MULT_PRIVILEGE
+#ifdef CONFIG_DEBUG_MULT_PRIVILEGE
     debug_stack_kernel_on_userland();
 #endif
 }

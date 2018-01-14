@@ -4,36 +4,36 @@
 
 menu "Task scheduler"
 
-config TESTCASE_SCHED
-	bool "Test Task scheduler"
+config DEBUG_SCHED
+	bool "Debug Task scheduler machanism on X86 architecture"
 	help
-	  Basic task scheduler
+	  Debug Task scheduler machanism on X86 architecture.
 
-if TESTCASE_SCHED
+if DEBUG_SCHED
 
-config TESTCASE_GDT
+config DEBUG_GDT
 	bool "GDT,LDT,GDTR,LDTR,IDTR,TR,Segment Descriptor"
 	help
 	  Debug Global Descriptor Table.
 
-config TESTCASE_SEGMENT
+config DEBUG_SEGMENT
 	bool "Segment (CS, SS, DS, FS, GS, ES)"
 	select TESTCASE_GDT
 	help
 	  Debug Segment such as CS, SS, DS, FS, GS and ES.
 
-config TESTCASE_GATE
+config DEBUG_GATE
 	bool "System descriptors(TSS,Call Gate,Trap)"
 	select TESTCASE_GDT
 	help
 	  Debug system descritpor on GDT or LDT
 
-config TESTCASE_IDT
+config DEBUG_IDT
 	bool "Gate on IDT(Call Gate, Task Gate, Trap Gate)"
 	help
 	  Debug Call Gate, Task Gate, Trap Gate on IDT.
 
-config TESTCASE_STACK
+config DEBUG_STACK
 	bool "Stack: SS, ESP, EBP, Near call, Far call and Switching Stack"
 	select TESTCASE_MULT_PRIVILEGE
 	help
@@ -41,11 +41,13 @@ config TESTCASE_STACK
 	  contained in a segment and identified by the segment selector
 	  in the SS register.
 
-config TESTCASE_MULT_PRIVILEGE
+config DEBUG_MULT_PRIVILEGE
 	depends on DEBUG_USERLAND_EARLY || DEBUG_USERLAND_SHELL
 	bool "Stack switch on different privilege level"
 	help
 	 Stack switch on different privilege level
+
+source tools/testcase/scheduler/task/Kconfig
 
 endif
 

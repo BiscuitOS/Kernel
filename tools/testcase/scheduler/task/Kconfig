@@ -1,0 +1,21 @@
+#
+# Common task struct
+#
+
+menu "The machanism of task on x86 architecture"
+
+config DEBUG_TASK
+	bool "Debug task machanism on x86 architecture"
+	help
+	  Debug task machanism on x86 architecture.
+
+if DEBUG_TASK
+
+config DEBUG_TASK_STRUCT
+	bool "Debug usage and perform procedure for task_struct"
+	help
+	  Debug the usage and perform porcedure for task_struct.
+
+endif
+
+endmenu

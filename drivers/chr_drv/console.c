@@ -635,7 +635,7 @@ static void clear_line(char *buffer, int n)
 static void BicuitOS_version(char *buffer, int n)
 {
 	char *version[LOGO_LINES] = {
-		"BiscuitOS V0.0.2 buddy.zhang@aliyun.com",
+		"BiscuitOS V0.11.1 buddy.zhang@aliyun.com",
 		" ____  _                _ _    ___  ____  ",
 		"| __ )(_)___  ___ _   _(_) |_ / _ \\/ ___| ",
 		"|  _ \\| / __|/ __| | | | | __| | | \\___ \\ ",

@@ -19,6 +19,15 @@ void debug_on_kernel_later(void)
 #ifdef CONFIG_DEBUG_INTERRUPT
     debug_interrupt_common();
 #endif
+
+#ifdef CONFIG_DEBUG_SCHED
+    debug_task_scheduler_common();
+#endif
+
+#ifdef CONFIG_DEBUG_MMU
+    debug_mmu_common();
+#endif
+
 }
 #endif
 
