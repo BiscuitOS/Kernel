@@ -1,5 +1,5 @@
 /*
- * Logical Address Machanism on MMU
+ * Logical Address Mechanism on MMU
  *
  * (C) 2018.01 BiscuitOS <buddy.zhang@aliyun.com>
  *
