@@ -28,6 +28,7 @@ __asm__("cld\n\t" \
 int NR_BUFFERS = 0;
 static struct task_struct *buffer_wait = NULL;
 static struct buffer_head *free_list;
+struct buffer_head *free_list_head;
 
 struct buffer_head *start_buffer = (struct buffer_head *)&end;
 struct buffer_head *hash_table[NR_HASH];
@@ -109,6 +110,7 @@ void buffer_init(long buffer_end)
     free_list = start_buffer;
     free_list->b_prev_free = h;
     h->b_next_free = free_list;
+    free_list_head = free_list;
     for (i = 0; i < NR_HASH; i++)
         hash_table[i] = NULL;
 }
