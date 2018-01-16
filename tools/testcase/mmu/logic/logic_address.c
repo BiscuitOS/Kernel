@@ -113,10 +113,10 @@ static void logic_to_physic(void)
     struct logic_addr la;
     unsigned long virtual, linear, physic;
     unsigned long base, limit;
-    unsigned long cs, ds, cr3;
+    unsigned long cs, ds, cr3, cr4;
     unsigned char cpl, dpl;
     struct desc_struct *desc;
-    unsigned long *cr3_pgdir, *page_table, *page;
+    unsigned long PDE, PTE;
 
     /* Obtain specific segment selector */
     __asm__ ("movl %%cs, %0\n\r"
@@ -153,29 +153,77 @@ static void logic_to_physic(void)
     if (cpl > dpl)
         panic("Trigger #GP");
 
-    /* Obtain linear address */
+    /* Obtain linear address on flat-protect model */
     linear = base + la.offset;
     
-    /* Obtain physical address of pg-dir */
+    /* Obtain physical address of pgdir from CR3 register, the contents of
+     * 'cr3' is point to the physical of pg_dir, so refers it as a pointer. */
     __asm__ ("movl %%cr3, %0" : "=r" (cr3));
-    cr3_pgdir = (unsigned long *)cr3;
 
-    /* Obtain Page-Table */
-    page_table = (unsigned long *)cr3_pgdir[(linear >> 22) & 0x3FF];
-    page_table = (unsigned long)page_table & 0xFFFFF000;
-    /* Access right check */
+    /* A 4-KByte naturally aligned page directory is located at the 
+     * physical address specified in bits 31:12 of CR3. A page directory
+     * comprises 1024 32-bit entries (PDEs). A PDE is selected using
+     * the physical address defined as follow:
+     *
+     * -- Bits 39:32 are all 0
+     * -- Bits 31:12 are from CR3.
+     * -- Bits 11:2  are bits 31:22 of the linear address 
+     * -- Bits  1:0  are 0. 
+     *
+     * Becasue a PDE is identified using bits 31:22 of the linear address,
+     * it control access to a 4-Mbytes region of the linear-address space.
+     * Use of the PDE depends on CR4.PSE and PDE's PS flag (bit 7)*/
+    PDE =  ((unsigned char)(((cr3 >> 12) & 0xFFFFF) << 12) +
+           (((linear >> 22) & 0x3FF) << 2)) & 0xFFFFFFFC;
+    /* Another way to compute PDE:
+     * PDE = (unsigned long *)cr3[linear >> 22] */
 
-    /* Obtain page frame */
-    page = (unsigned long *)page_table[(linear >> 12) & 0x3FF];
-    /* Page 4Kb alignment */
-    page = (unsigned long)page & 0xFFFFF000;
-    /* Obtain specify physical address */
-    physic = (unsigned char *)page + (linear & 0xFFFF);
+    __asm__ ("movl %%cr4, %0" : "=r" (cr4));
+    if (((cr4 >> 4) & 0x1) && ((PDE >> 4) & 0x1)) {
+        /* If CR4.PSE = 1 and the PDE's PS flag is 1, the PDE maps a 4-MByte
+         * page. The final physical address is computed as follows:
+         * 
+         * -- Bits 39:32 are bits 20:13 of the PDE.
+         * -- Bits 31:22 are bits 31:22 of the PDE.
+         * -- Bits 21:0  are from the original linear address.
+         */
+        PTE = 0x0; /* No complete on BiscuitOS */
+    } else if (!((cr4 >> 4) & 0x1) && !((PDE >> 4) & 0x1)) {
+        /* If CR4.PSE = 0 or the PDE's PS flag is 0, a 4-KByte naturally
+         * aligned page table is located at the physical address specified
+         * in bits 31:12 of the PDE. A page table comprises 1024 32-bit
+         * entries (PTEs). A PTE is selected using the physical address
+         * defined as follows:
+         *
+         * -- Bits 39:32 are all 0
+         * -- Bits 31:12 are from the PDE. 
+         * -- Bits 11:2  are bits 21:12 of the linear address. 
+         * -- Bits  1:0  are 0.
+         */
+        PTE = (unsigned long)((unsigned char *)(
+              ((*(unsigned long *)PDE >> 12) & 0xFFFFF) << 12) +
+              (((linear >> 12) & 0x3FF) << 2)) & 0xFFFFFFFC;
+        /* Anther way to compute PTE:
+         * PTE = (unsigned long *)PDE[(linear >> 12) & 0x3FF] */
+    }
+    /* Because a PTE is identified using bits 31:12 of the linear address,
+     * every PTE maps a 4-KByte page. The final physical address is 
+     * computed as follows:
+     *
+     * -- Bits 39:32 are all 0
+     * -- Bits 31:12 are from the PTE.
+     * -- Bits 11:0  are from the original linear address. 
+     */
+    physic = (unsigned long)(unsigned char *)(
+             ((*(unsigned long *)PTE >> 12) & 0xFFFFF) << 12) +
+             (linear & 0xFFF);
 
     printk("Logical Address: %#x:%#x\n", la.sel, la.offset);
     printk("Virtual Address: %#x\n", virtual);
     printk("Linear  Address: %#x\n", linear);
     printk("Physic  Address: %#x\n", physic);
+    printk("Original:  %s\n", la.offset);
+    printk("Translate: %s\n", physic);
 }
 
 /* common linear address entry */

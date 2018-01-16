@@ -158,3 +158,86 @@ Paging Mechanism on X86 Architecture
     entry and bits 21:12 identify a second. The latter identifies the page
     frame. Bits 11:0 of the linear address are the page offset within the
     4-Kbyte page frame. (See Figure 4-2 for an illustration.) 
+
+  * With PAE paging, the first paging structure comprises only 4 = 2^2 entires.
+    Translation thus begins by using bit 31:30 from a 32-bit linear address
+    to identify the first paging-structure entry. Other paging structures
+    comprise 512 = 2^9 entries, so the process continues by using 9 bit at a
+    time. Bits 29:21 identify a second paging-struct entry and bits 20:12
+    identify a third. This last identifies the page frame. (See Figure 4-5
+    for all illustration.)
+
+  * With 4-level paging, each paging struct comprises 512 = 2^9 entires and 
+    translation uses 9 bits at a time from a 48-bit linear address. Bits 47:39
+    identify the first paging-structure entry, bits 38:30 identify a second,
+    bits 29:21 a third, and bits 20:12 identify a fourth. Again, the last
+    identifies the page frame. (See Figure 4-8 for a illustration.)
+
+  The translation process in each of the examples above completes by 
+  identifying a page frame. The page frame is part of the translation of the 
+  original linear address. In some cases, however, the paging structures may
+  by configured so that the translation process terminates before identifying
+  a page frame. This occurs if the process encounters a paging-structure
+  entry that is marked `not present` (because its P flag -- bit 0 -- is clear)
+  or in which a reserved bit is set. In this case, there is no translation 
+  for the linear address. an access to that address causes a page-fault
+  exception.
+
+  In the example above, a paging-structure entry maps a page with a 4-KByte
+  page frame when only 12 bits remain in the linear address. Entries
+  identified earlier always reference other paging structures. That may not
+  apply in other cases. The following items identify when an entry maps a
+  page and when it references another paging structure:
+
+  * If more than 12 bits remain in the linear address, bit 7 (PS - page size)
+    of the current paging-structure entry is consulted. If the bit is 0, the 
+    entry references another paging structure. If the bit is 1, the entry 
+    maps a page.
+
+  * If only 12 bit remain in the linear address, the current paging-structure
+    entry always maps a page (bit 7 is used for other purposes).
+
+  If a paging-structure entry maps a page when more than 12 bits remain in the
+  linear address, the entry identifies a page frame larger than 4 KBytes. For
+  example, 32-bit paging uses the upper 10 bits of a linear address to locate
+  the first paging-structure entry. 22 bits remain. If that entry maps a page,
+  the page frame is 2^22 Bytes = 4 MBytes. 32-bit paging supports 4-MByte
+  pages if CR4.PSE = 1. PAE paging and 4-level paging support 2-MByte pages
+  (regardless of the value of CR4.PSE). 4-level paging may support 1-GByte
+  pages.
+
+  Paging structures are given different names based on their uses in the 
+  translation process. Table 4-2 gives the names of the different paging
+  structures. It also provides, for each structure, the source of the
+  physical address used to locate it (CR3 or different paging-structure
+  entry). The bits in the linear address used to select an entry from the 
+  structure, and details of whether and how such an entry can map a page.
+
+  ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/mmu/PAGING_STURE_DIFF_MODE.png)
+
+### 32-BIT PAGING
+
+  A logical proceesor uses 32-bit paging if CR0.PG = 1 and CR4.PAE = 0. 32-bit
+  paging translates 32-bit linear addresses to 40-bit physical addresses.
+  Although 40 bits corresponds to 1 TByte, linear addresses are limited to 
+  32 bits. At most 4 GBytes of linear-address space may be accessed at any
+  given time.
+
+  32-bit paging uses a hierarchy of paging structures to produce a translation
+  for a linear address. CR3 is used to locate the first paging-struct, the
+  page direntory. Table 4-3 illustrates how CR3 is used with 32-bit paging.
+
+  32-bit paging may map linear addresses to either 4-KByte pages or 4-MByte
+  pages. Figure 4-2 illustrates the translation process when it uses a 4-Kbyte
+  page. Figure 4-3 covers the case of a 4-MByte page. The following items
+  describe the 32-bit paging process in more detail as well has how the page
+  size is determined.
+
+  * A 4-KByte naturally aligned page directory is located at the physical 
+    address specified in bits 31:12 of CR3 (See Table 4-3). A page directory
+    comprises 1024 32-bit entries (PDEs). A PDE is selected using the physical
+    address defined as follows:
+
+    -- Bits 39:32 are all 0.
+
+    -- Bits 31:12 are from CR3.
