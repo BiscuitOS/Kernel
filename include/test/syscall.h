@@ -1,12 +1,12 @@
 #ifndef _DEBUG_SYSCALL_H
 #define _DEBUG_SYSCALL_H
 
-#ifdef CONFIG_TESTCASE_SYSCALL
-extern int common_system_call_entry(void);
+#ifdef CONFIG_DEBUG_SYSCALL
+extern int debug_syscall_common(void);
 #endif
 
-#ifdef CONFIG_TESTCASE_SYSCALL_ROUTINE
-extern void common_system_call_rountine(void);
+#ifdef CONFIG_DEBUG_SYSCALL_ROUTINE
+extern void system_call_rountine(void);
 #endif
 
 #endif

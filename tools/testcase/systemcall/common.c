@@ -8,15 +8,12 @@
  * published by the Free Software Foundation.
  */
 #include <linux/kernel.h>
-
 #include <test/debug.h>
 
-int common_system_call_entry(void)
+int debug_syscall_common(void)
 {
-    printk("Common system call\n");
-
-#ifdef CONFIG_TESTCASE_SYSCALL_ROUTINE
-    common_system_call_rountine();
+#ifdef CONFIG_DEBUG_SYSCALL_ROUTINE
+    system_call_rountine();
 #endif
 
     return 0;

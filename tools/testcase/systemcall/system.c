@@ -212,7 +212,7 @@ static void trigger_system_call(void)
 }
 
 /* commom system call routine */
-void common_system_call_rountine(void)
+void system_call_rountine(void)
 {
 
     if (1) {

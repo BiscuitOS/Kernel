@@ -2,22 +2,17 @@
 # Common System Call
 #
 
-menu "System CAll"
+menu "System CAll Machanism"
 
-config TESTCASE_SYSCALL
-	bool "System CAll"
+config DEBUG_SYSCALL
+	bool "Debug System CAll Machanism on X86 Architecture"
 	help
-	  System Call
+	  Debug System Call Machanism on X86 Architecture.
 
-if TESTCASE_SYSCALL
+if DEBUG_SYSCALL
 
-config TESTCASE_SYSCALL_OPEN
-	bool "SYSTEM CALL: open"
-	help
-	  System call routine for open
-
-config TESTCASE_SYSCALL_ROUTINE
-	bool "System CAll common routine"
+config DEBUG_SYSCALL_ROUTINE
+	bool "System CAll common routine from IDT"
 	help
 	  The routine of system call on IDT, GDT and LDT.
 
