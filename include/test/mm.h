@@ -66,7 +66,16 @@ extern int debug_mmu_logical_common(void);
 extern void debug_logic_address_common(void);
 #endif
 
+#endif // CONFIG_DEBUG_MMU_LOGIC
+
+#ifdef CONFIG_DEBUG_MMU_PAGING
+extern int debug_mmu_paging_common(void);
+
+#ifdef CONFIG_DEBUG_PAGING_CR0
+extern int debug_paging_cr0_common(void);
 #endif
+
+#endif // CONFIG_DEBUG_MMU_PAGING
 
 #endif // CONFIG_DEBUG_MMU
 #endif

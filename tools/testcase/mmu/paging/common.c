@@ -1,5 +1,5 @@
 /*
- * Linear Address Machanism on MMU
+ * Paging mechanism on X86 Architecture.
  *
  * (C) 2017.12 BiscuitOS <buddy.zhang@aliyun.com>
  *
@@ -8,9 +8,13 @@
  * published by the Free Software Foundation.
  */
 #include <linux/kernel.h>
+#include <test/debug.h>
 
 /* common linear address entry */
-int debug_mmu_linear_common(void)
+int debug_mmu_paging_common(void)
 {
+#ifdef CONFIG_DEBUG_PAGING_CR0
+    debug_paging_cr0_common();
+#endif
     return 0;
 }

@@ -5,3 +5,4 @@ obj-$(CONFIG_DEBUG_MMU_VIRTUAL)        += virtual/
 obj-$(CONFIG_DEBUG_MMU_LOGIC)          += logic/
 obj-$(CONFIG_DEBUG_MMU_PGTABLE)        += pgtable/
 obj-$(CONFIG_DEBUG_MMU_SEGMENTATION)   += segmentation/
+obj-$(CONFIG_DEBUG_MMU_PAGING)         += paging/

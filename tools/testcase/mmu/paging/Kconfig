@@ -1,16 +1,20 @@
 #
-# Linear Address Machanism on MMU
+# Paging Mechanism on X86 Architecture
 #
 
-menu "Linear Address Machanism on MMU"
+menu "Paging Mechanism on X86 Architecture"
 
-config DEBUG_MMU_LINEAR
-	bool "Debug Linear Address machanism on MMU"
+config DEBUG_MMU_PAGING
+	bool "Debug Paging mechanism on X86 Architecture."
 	help
-	  Debug Linear Address Machanism on MMU.
+	  Debug Paging mechanism on X86 Architecture.
 
-if DEBUG_MMU_LINEAR
+if DEBUG_MMU_PAGING
 
+config DEBUG_PAGING_CR0
+	bool "Debug CR0 Control Register on Paging Mode"
+	help
+	  Debug Control Register CR0 on Paging Mode
 
 endif
 

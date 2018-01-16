@@ -13,7 +13,7 @@
 
 #include <test/debug.h>
 
-static int var;
+static char *var = "BiscuitOS";
 /*
  * Convent logic address to linear address
  */
@@ -38,13 +38,13 @@ static void logic_to_linear(void)
     if ((la.sel >> 2) & 0x1) {
         /* Segment descriptor locate in LDT */
         desc  = &current->ldt[la.sel >> 3];
-        base  = get_base(desc);
-        limit = get_limit(desc);
+        base  = get_base(*desc);
+        limit = get_limit(*desc);
     } else {
         /* Segment descriptor locate in GDT */
         desc  = &gdt[la.sel >> 3]; 
-        base  = get_base(desc);
-        limit = get_limit(desc);
+        base  = get_base(*desc);
+        limit = get_limit(*desc);
     }
 
     /* Examines the segment descriptor to check the access rights and

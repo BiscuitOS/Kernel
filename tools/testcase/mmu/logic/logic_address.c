@@ -13,7 +13,7 @@
 
 #include <test/debug.h>
 
-static int var;
+static char var[50] = "BiscuitOS";
 /*
  * Obtain vairable loagic address that from stack segment, 
  * code segment, data segment.
@@ -74,13 +74,13 @@ static void logic_to_linear(void)
     if ((ds >> 2) & 0x1) {
         /* Segment descriptor locate in LDT */
         desc = &current->ldt[ds >> 3];
-        base = get_base(desc);
-        limit = get_limit(desc);
+        base = get_base(*desc);
+        limit = get_limit(*desc);
     } else {
         /* Segment descriptor locate in GDT */
         desc = &gdt[ds >> 3];
-        base = get_base(desc);
-        limit = get_limit(desc);
+        base = get_base(*desc);
+        limit = get_limit(*desc);
     }
     /* Examines the segment descriptor to check the access rights and range
      * of the segment to insure that the segment is accessible and that
@@ -92,7 +92,7 @@ static void logic_to_linear(void)
     /* Obtain CPL from code selector */
     __asm__ ("movl %%cs, %0" : "=r" (cs));
     cpl = cs & 0x3;
-    dpl = desc->b >> 13;
+    dpl = desc->b >> 13 & 0x3;
     if (cpl > dpl) {
         panic("Trigger #GP\n");
     }
@@ -105,13 +105,87 @@ static void logic_to_linear(void)
     printk("Linear Address: %#8x\n", linear);
 }
 
+/*
+ * Logical address convent to physical address
+ */
+static void logic_to_physic(void)
+{
+    struct logic_addr la;
+    unsigned long virtual, linear, physic;
+    unsigned long base, limit;
+    unsigned long cs, ds, cr3;
+    unsigned char cpl, dpl;
+    struct desc_struct *desc;
+    unsigned long *cr3_pgdir, *page_table, *page;
+
+    /* Obtain specific segment selector */
+    __asm__ ("movl %%cs, %0\n\r"
+             "movl %%ds, %1"
+             : "=r" (cs), "=r" (ds));
+
+    /* Establish a logical address */
+    la.offset = (unsigned long)&var;
+    la.sel    = ds;
+
+    /* Obtain virtual address */
+    virtual = la.offset;
+
+    /* violation COW */
+    var[48] = 'A';
+
+    /* Uses the offset in the segment selector to locate the segment
+     * descriptor for the segment in the GDT or LDT and reads it into
+     * the processor. (This step is needed only when a new segment selector
+     * is loaded into a segment register.) */
+    if ((la.sel >> 2) & 0x1)
+        desc = &current->ldt[la.sel >> 3];
+    else
+        desc = &gdt[la.sel >> 3];
+    /* Examines the segment descriptor to check the access rights and range
+     * of the segment to insure that the segment is accessible and that
+     * offset is within the limit of the segment */
+    base  = get_base(*desc);
+    limit = get_limit(*desc) * 4096;
+    if (la.offset > limit)
+        panic("Out of segment\n");
+    cpl = cs & 0x3;
+    dpl = desc->b >> 13 & 0x3;
+    if (cpl > dpl)
+        panic("Trigger #GP");
+
+    /* Obtain linear address */
+    linear = base + la.offset;
+    
+    /* Obtain physical address of pg-dir */
+    __asm__ ("movl %%cr3, %0" : "=r" (cr3));
+    cr3_pgdir = (unsigned long *)cr3;
+
+    /* Obtain Page-Table */
+    page_table = (unsigned long *)cr3_pgdir[(linear >> 22) & 0x3FF];
+    page_table = (unsigned long)page_table & 0xFFFFF000;
+    /* Access right check */
+
+    /* Obtain page frame */
+    page = (unsigned long *)page_table[(linear >> 12) & 0x3FF];
+    /* Page 4Kb alignment */
+    page = (unsigned long)page & 0xFFFFF000;
+    /* Obtain specify physical address */
+    physic = (unsigned char *)page + (linear & 0xFFFF);
+
+    printk("Logical Address: %#x:%#x\n", la.sel, la.offset);
+    printk("Virtual Address: %#x\n", virtual);
+    printk("Linear  Address: %#x\n", linear);
+    printk("Physic  Address: %#x\n", physic);
+}
+
 /* common linear address entry */
 void debug_logic_address_common(void)
 {
     if (1) {
-        logic_to_linear();
+        logic_to_physic();
     } else {
         obtain_logic_address();
         logic_to_linear();
+        logic_to_physic();
     }
 }

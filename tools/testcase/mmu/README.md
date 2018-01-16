@@ -91,3 +91,12 @@ Protected-Mode Memory Management on X86 Architecture
     The segmentation mechanism on IA-32 architecture. More Segmentation refer
     `segmentation/README.md` 
   
+  * logic
+
+    The logical address mechanism on IA-32 architecture. More information refer
+    `logic/READMD.md`
+
+  * linear
+
+    The linear address mechanism on IA-32 architecture. More information refer
+    `linear/READMD.md`

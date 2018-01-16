@@ -39,5 +39,9 @@ int debug_mmu_common(void)
     debug_mmu_logical_common();
 #endif
 
+#ifdef CONFIG_DEBUG_MMU_PAGING
+    debug_mmu_paging_common();
+#endif
+
     return 0;
 }

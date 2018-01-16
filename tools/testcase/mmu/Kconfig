@@ -23,6 +23,8 @@ source tools/testcase/mmu/pgtable/Kconfig
 
 source tools/testcase/mmu/segmentation/Kconfig
 
+source tools/testcase/mmu/paging/Kconfig
+
 endif
 
 endmenu
