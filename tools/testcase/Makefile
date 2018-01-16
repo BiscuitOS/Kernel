@@ -5,4 +5,5 @@ obj-$(CONFIG_DEBUG_SCHED)         += scheduler/
 obj-$(CONFIG_DEBUG_MMU)           += mmu/
 obj-$(CONFIG_TESTCASE_TIMER)      += timer/
 obj-$(CONFIG_TESTCASE_IOPORT)     += ioports/
-obj-$(CONFIG_TESTCASE_SYSCALL)    += systemcall/
+obj-$(CONFIG_DEBUG_SYSCALL)       += systemcall/
+obj-$(CONFIG_DEBUG_VFS)           += vfs/

@@ -34,7 +34,7 @@
 
 #define BLOCK_SIZE 1024
 #define KB_SHIFT       10
-#define MB_SHIFT       (KB_SHIFT << 1)
+#define MB_SHIFT       20
 
 #define NAME_LEN  14
 #define ROOT_INO  1

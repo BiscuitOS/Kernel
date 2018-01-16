@@ -21,8 +21,12 @@
 #include <test/ioports.h>
 #endif
 
-#ifdef CONFIG_TESTCASE_SYSCALL
+#ifdef CONFIG_DEBUG_SYSCALL
 #include <test/syscall.h>
+#endif
+
+#ifdef CONFIG_DEBUG_VFS
+#include <test/vfs.h>
 #endif
 
 #ifdef CONFIG_DEBUG_KERNEL_LATER

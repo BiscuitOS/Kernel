@@ -60,9 +60,9 @@
 )
 
 #define set_tss_desc(n, addr) \
-        _set_tssldt_desc(((char *) (n)), ((int)(addr)), "0x89")
+    _set_tssldt_desc(((char *) (n)), ((int)(addr)), "0x89")
 
 #define set_ldt_desc(n, addr) \
-	_set_tssldt_desc(((char *) (n)), ((int)(addr)), "0x82")
+    _set_tssldt_desc(((char *) (n)), ((int)(addr)), "0x82")
 
 #endif

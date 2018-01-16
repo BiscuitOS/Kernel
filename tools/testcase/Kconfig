@@ -54,6 +54,8 @@ source "tools/testcase/ioports/Kconfig"
 
 source "tools/testcase/systemcall/Kconfig"
 
+source "tools/testcase/vfs/Kconfig"
+
 endif
 
 endmenu

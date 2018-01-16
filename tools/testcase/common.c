@@ -28,6 +28,14 @@ void debug_on_kernel_later(void)
     debug_mmu_common();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL
+    debug_syscall_common();
+#endif
+
+#ifdef CONFIG_DEBUG_VFS
+    debug_vfs_common();
+#endif
+
 }
 #endif
 

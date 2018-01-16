@@ -132,11 +132,11 @@ struct task_struct {
 #define ltr(n)   __asm__("ltr %%ax" :: "a" (_TSS(n)))
 #define lldt(n)  __asm__("lldt %%ax" :: "a" (_LDT(n)))
 #define str(n)   \
-				 __asm__("str %%ax\n\t"   \
-						 "subl %2, %%eax\n\t"    \
-						 "shrl $4, %%eax"        \
-						 :"=a" (n)   \
-						 :"a" (0), "i" (FIRST_TSS_ENTRY<<3))
+        __asm__("str %%ax\n\t"   \
+                "subl %2, %%eax\n\t"    \
+                "shrl $4, %%eax"        \
+                :"=a" (n)   \
+                :"a" (0), "i" (FIRST_TSS_ENTRY<<3))
 
 /*
  * switch_to(n) - should switch tasks to task nr n, first
