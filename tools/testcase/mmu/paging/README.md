@@ -237,7 +237,62 @@ Paging Mechanism on X86 Architecture
     address specified in bits 31:12 of CR3 (See Table 4-3). A page directory
     comprises 1024 32-bit entries (PDEs). A PDE is selected using the physical
     address defined as follows:
+    
+    ```
+      -- Bits 39:32 are all 0
+      -- Bits 31:12 are from CR3.
+      -- Bits 11:2  are bits 31:22 of the linear address.
+      -- Bits  1:0  are 0.
+    ```
+  
+  Because a PDE is identified using bits 31:22 of the linear address, it 
+  controls access to 4-Mbyte region of the linear-address space. Use of the 
+  PDE depends on CR4.PSE and PDE's PS flag (bit7):
 
-    -- Bits 39:32 are all 0.
+  * If CR4.PSE = 1 and the PDE's PS flag is 1, the PDE maps a 4-MByte page (
+    see Table 4-4). The final phyiscal address is computed as follow:
 
-    -- Bits 31:12 are from CR3.
+    ```
+      -- Bits 39:32 are bits 20:13 of the PDE
+      -- Bits 31:22 are bits 31:22 of the PDE
+      -- Bits 21:0  are from the original linear address.
+    ```
+
+  * If CR4.PSE = 0 or the PDE's PS flag is 0, a 4-KByte naturally aligned page
+    table is located at the physical address specified in bits 31:12 of the
+    PDE (see Table 4-5). A page table comprises 1024 32-bit entries (PTEs).
+    A PTE is selected using the physical address defined as follow:
+
+    ```
+      -- Bits 39:32 are all 0
+      -- Bits 31:12 are from the PDE
+      -- Bits 11:2  are bits 21:12 of the linear address.
+      -- Bits  1:0  are 0
+    ```
+  
+  * Because a PTE is identified using bits 31:12 of the linear address, every
+    PTE maps a 4-Kbyte page (see Table 4-b). The final physical address
+    is computed as follow:
+
+    ```
+      -- Bits 39:32 are all 0
+      -- Bits 31:12 are from the PTE
+      -- Bits 11:0  are from the original linear address.
+    ```
+   
+  If a paging-structure entry's P flag (bit 0) is 0 or if the entry sets any
+  reserved bit, the entry is used neither to reference another page-structure
+  entry nor to map a page. There is no translation for a linear address whose
+  translation would use such a paging-structure entry. A reference to such
+  a linear address causes a page-fault exception.
+
+
+  ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/mmu/Figure4-2-mmu.png) 
+
+  ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/mmu/CR3_REG_MMU.png)
+
+  ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/mmu/CR3_4-3.png)
+
+  ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/mmu/Table-4-5-mmu.png)
+
+  ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/mmu/Table4-6-mmu.png)
