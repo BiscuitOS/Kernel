@@ -111,12 +111,13 @@ static void logic_to_linear(void)
 static void logic_to_physic(void)
 {
     struct logic_addr la;
-    unsigned long virtual, linear, physic;
+    unsigned long virtual, linear, physic, physic2;
     unsigned long base, limit;
     unsigned long cs, ds, cr3, cr4;
     unsigned char cpl, dpl;
     struct desc_struct *desc;
-    unsigned long PDE, PTE;
+    unsigned long PDE, PTE, *PDE2, *PTE2;
+    unsigned char *page;
 
     /* Obtain specific segment selector */
     __asm__ ("movl %%cs, %0\n\r"
@@ -172,11 +173,23 @@ static void logic_to_physic(void)
      *
      * Becasue a PDE is identified using bits 31:22 of the linear address,
      * it control access to a 4-Mbytes region of the linear-address space.
-     * Use of the PDE depends on CR4.PSE and PDE's PS flag (bit 7)*/
+     * Use of the PDE depends on CR4.PSE and PDE's PS flag (bit 7)
+     *
+     * 31-------------12--------------2----0
+     * |  CR3[31:12]    | Linar[31:22] | 0 |
+     * -------------------------------------
+     **/
     PDE =  ((unsigned char)(((cr3 >> 12) & 0xFFFFF) << 12) +
            (((linear >> 22) & 0x3FF) << 2)) & 0xFFFFFFFC;
-    /* Another way to compute PDE:
-     * PDE = (unsigned long *)cr3[linear >> 22] */
+    /* Above figure, that CR3 is a unsigned long array and array base
+     * address[31:12] is CR3[31:12], other bits are zero. And Linear[31:22]
+     * is index of array, So procedure can find specific PTD from CR3 via
+     * index. Another way to obtain PDE address is:
+     *   P_CR3 = CR3 & 0xFFFFF000 
+     *   PDE   = P_CR3[linear >> 22];
+     */
+    PDE2  = (unsigned long *)(cr3 & 0xFFFFF000);     /* CR3 base address */
+    PDE2  = &PDE2[linear >> 22];  /* PDE on CR3 */
 
     __asm__ ("movl %%cr4, %0" : "=r" (cr4));
     if (((cr4 >> 4) & 0x1) && ((PDE >> 4) & 0x1)) {
@@ -199,12 +212,21 @@ static void logic_to_physic(void)
          * -- Bits 31:12 are from the PDE. 
          * -- Bits 11:2  are bits 21:12 of the linear address. 
          * -- Bits  1:0  are 0.
+         *
+         * 31-----------12---------------2----0
+         * |  PDE[31:12]  | Linear[21:12] | 0 |
+         * ------------------------------------
          */
         PTE = (unsigned long)((unsigned char *)(
               ((*(unsigned long *)PDE >> 12) & 0xFFFFF) << 12) +
               (((linear >> 12) & 0x3FF) << 2)) & 0xFFFFFFFC;
-        /* Anther way to compute PTE:
-         * PTE = (unsigned long *)PDE[(linear >> 12) & 0x3FF] */
+        /* Above Figure, PTE from a array that comprises PDE[31:12] and
+         * Linear[21:12]. The linear[21:12] offer offset on array and 
+         * PDE[31:12] is base address, so procedure can compute PTE as:
+         *   PDE2 = *PDE2 & 0xFFFFF000
+         *   PTE  = &PDE2[(linear >> 12) & 0x3FF] */
+        PTE2 = (unsigned long *)(*PDE2 & 0xFFFFF000); /* PTE base address */
+        PTE2 = &PTE2[(linear >> 12) & 0x3FF];
     }
     /* Because a PTE is identified using bits 31:12 of the linear address,
      * every PTE maps a 4-KByte page. The final physical address is 
@@ -213,27 +235,91 @@ static void logic_to_physic(void)
      * -- Bits 39:32 are all 0
      * -- Bits 31:12 are from the PTE.
      * -- Bits 11:0  are from the original linear address. 
+     *
+     * 31-----------12----------------
+     * |  PTE[31:12]  | Linear[11:0] |
+     * -------------------------------
      */
     physic = (unsigned long)(unsigned char *)(
              ((*(unsigned long *)PTE >> 12) & 0xFFFFF) << 12) +
              (linear & 0xFFF);
+    /* Above Figure, Physical address from a array, and array base address
+     * is PET[31:12] and index is Linear address[11:0], the length of member
+     * on array is 1 Byte. So, another way to obtain physica address is:
+     *    PageBase = *PTE2 & 0xFFFFF000
+     *    Physic   = PageBase + offset
+     **/
+    page = (unsigned char *)(*PTE2 & 0xFFFFF000);
+    physic2 = (unsigned long)&page[linear & 0xFFF]; 
 
     printk("Logical Address: %#x:%#x\n", la.sel, la.offset);
     printk("Virtual Address: %#x\n", virtual);
     printk("Linear  Address: %#x\n", linear);
     printk("Physic  Address: %#x\n", physic);
+    printk("Physic2 Address: %#x\n", physic2);
     printk("Original:  %s\n", la.offset);
     printk("Translate: %s\n", physic);
+    printk("Translate: %s\n", physic2);
+}
+
+/* Brief logic to physic */
+static void logic_2_phys_brief(void)
+{
+    unsigned long *virtual, *linear, *physic;
+    unsigned long cr3, ds, *PDE, *PTE, *base;
+    unsigned char *page;
+    struct desc_struct *desc;
+    struct logic_addr la;
+
+    /* Establish logical address */
+    la.offset = (unsigned long)&var;
+    __asm__ ("movl %%ds, %0" : "=r" (ds));
+    la.sel = ds;
+
+    /* Obtain virtual address */
+    virtual = (unsigned long *)la.offset;
+
+    /* Obtain linear address */
+    if ((la.sel >> 2) & 0x1)
+        desc = &current->ldt[la.sel >> 3];
+    else
+        desc = &gdt[la.sel >> 3];
+    linear = (unsigned long *)(la.offset + get_base(*desc));
+
+    /* Obtain base address of PDE */
+    __asm__ ("movl %%cr3, %0" : "=r" (cr3));
+    base = (unsigned long *)(cr3 & 0xFFFFF000);
+
+    /* Obtain PDE */
+    PDE = &base[(unsigned long)linear >> 22];
+    
+    /* Obtain PTE */
+    base = (unsigned long *)((unsigned long)*PDE & 0xFFFFF000);
+    PTE  = &base[((unsigned long)linear >> 12) & 0x3FF];
+
+    /* Obtain page */
+    page = (unsigned char *)((unsigned long)*PTE & 0xFFFFF000);
+
+    /* Obtain physical address */
+    physic = (unsigned long *)&page[(unsigned long)linear & 0xFFF];
+
+    printk("Logic   Address: %#8x:%#x\n", la.offset, la.sel);
+    printk("Virtual Address: %#8x\n", virtual);
+    printk("Linear  Address: %#8x\n", linear);
+    printk("Phyisc  Address: %#8x\n", physic);
+    printk("Original: %s\n", la.offset);
+    printk("Physic:   %s\n", physic);
 }
 
 /* common linear address entry */
 void debug_logic_address_common(void)
 {
     if (1) {
-        logic_to_physic();
+        logic_2_phys_brief();
     } else {
         obtain_logic_address();
         logic_to_linear();
         logic_to_physic();
+        logic_2_phys_brief();
     }
 }

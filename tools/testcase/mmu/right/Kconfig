@@ -1,0 +1,21 @@
+#
+# Access Right Machanism on MMU
+#
+
+menu "Linear Address Machanism on MMU"
+
+config DEBUG_MMU_LINEAR
+	bool "Debug Linear Address machanism on MMU"
+	help
+	  Debug Linear Address Machanism on MMU.
+
+if DEBUG_MMU_LINEAR
+
+config DEBUG_LINEAR_ADDR
+	bool "Debug logical address convent to linear address"
+	help
+	  Debug logical address convent to linear address.
+
+endif
+
+endmenu

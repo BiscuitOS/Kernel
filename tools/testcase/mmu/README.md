@@ -84,12 +84,29 @@ Protected-Mode Memory Management on X86 Architecture
   IA-32 processors can be paged (transparently) when they are run in
   virtual-8086 mode.
 
+### Segmentation
+
+  See segmentation/README.md
+
+### Paging
+
+  See paging/README.md
+
+### ACCESS RIGHT
+
+  See right/README.md
+
 ### File list
 
   * Segmentation
 
     The segmentation mechanism on IA-32 architecture. More Segmentation refer
     `segmentation/README.md` 
+
+  * Paging
+
+    The paging mechanism on IA-32 architecture. More Paging refer 
+    `paging/README.md`
   
   * logic
 
