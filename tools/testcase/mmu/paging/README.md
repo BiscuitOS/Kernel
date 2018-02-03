@@ -296,3 +296,22 @@ Paging Mechanism on X86 Architecture
   ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/mmu/Table-4-5-mmu.png)
 
   ![Alt text](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/mmu/Table4-6-mmu.png)
+
+### PAGING and Memory Typing
+
+  The memory type of a memory access refers to the type of caching used for 
+  that access. `Memory Cache Control` provides many details regarding memory
+  typing in the IA-32 architectures. This section describe how paging 
+  contributes to the determination of memory typing.
+
+  The way in which paging contributes to memory typing depends on whether the
+  processor supports the Page Attribute Table (PAT).
+
+#### Paging and Memory typing when the PAT is Not supported
+
+  The PAT is supported on all processors that support 4-level paging. Thus,
+  this section applies only to 32-bit paging and PAE paging.
+
+  If the PAT is not supported, paging contributes to memory typing in 
+  conjunction with memory-type range register (MTRRs).
+

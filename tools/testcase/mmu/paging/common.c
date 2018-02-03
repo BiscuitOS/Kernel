@@ -13,8 +13,8 @@
 /* common linear address entry */
 int debug_mmu_paging_common(void)
 {
-#ifdef CONFIG_DEBUG_PAGING_CR0
-    debug_paging_cr0_common();
+#ifdef CONFIG_DEBUG_PAGING_REGISTER
+    debug_paging_register_common();
 #endif
     return 0;
 }

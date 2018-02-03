@@ -1,2 +1,2 @@
-obj-$(CONFIG_DEBUG_MMU_LINEAR)        += common.o
-obj-$(CONFIG_DEBUG_LINEAR_ADDR)       += linear_address.o
+obj-$(CONFIG_DEBUG_MMU_ACCESS)        += common.o
+obj-$(CONFIG_DEBUG_ACCESS_RIGHT)      += right.o

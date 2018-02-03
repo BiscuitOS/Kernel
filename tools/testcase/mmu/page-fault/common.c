@@ -11,10 +11,10 @@
 #include <test/debug.h>
 
 /* common access right entry */
-int debug_mmu_access_right_common(void)
+int debug_mmu_page_fault_common(void)
 {
-#ifdef CONFIG_DEBUG_ACCESS_RIGHT
-    debug_access_right_common();
+#ifdef CONFIG_DEBUG_PAGE_FAULT
+    debug_page_fault_common();
 #endif
 
     return 0;

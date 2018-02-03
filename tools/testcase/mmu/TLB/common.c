@@ -1,5 +1,5 @@
 /*
- * Access Right Mechanism on MMU
+ * TLB Mechanism on MMU
  *
  * (C) 2018.01 BiscuitOS <buddy.zhang@aliyun.com>
  *
@@ -10,11 +10,11 @@
 #include <linux/kernel.h>
 #include <test/debug.h>
 
-/* common access right entry */
-int debug_mmu_access_right_common(void)
+/* common TLB entry */
+int debug_mmu_TLB_common(void)
 {
-#ifdef CONFIG_DEBUG_ACCESS_RIGHT
-    debug_access_right_common();
+#ifdef CONFIG_DEBUG_TLB
+    debug_TLB_common();
 #endif
 
     return 0;

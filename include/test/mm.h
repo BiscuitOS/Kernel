@@ -71,11 +71,38 @@ extern void debug_logic_address_common(void);
 #ifdef CONFIG_DEBUG_MMU_PAGING
 extern int debug_mmu_paging_common(void);
 
-#ifdef CONFIG_DEBUG_PAGING_CR0
-extern int debug_paging_cr0_common(void);
+#ifdef CONFIG_DEBUG_PAGING_REGISTER
+extern int debug_paging_register_common(void);
 #endif
 
 #endif // CONFIG_DEBUG_MMU_PAGING
+
+#ifdef CONFIG_DEBUG_MMU_ACCESS
+extern int debug_mmu_access_right_common(void);
+
+#ifdef CONFIG_DEBUG_ACCESS_RIGHT
+extern int debug_access_right_common(void);
+#endif
+
+#endif // CONFIG_DEBUG_MMU_ACCESS
+
+#ifdef CONFIG_DEBUG_MMU_PAGE_FAULT
+extern int debug_mmu_page_fault_common(void);
+
+#ifdef CONFIG_DEBUG_PAGE_FAULT
+extern int debug_page_fault_common(void);
+#endif
+
+#endif // CONFIG_DEBUG_MMU_PAGE_FAULT
+
+#ifdef CONFIG_DEBUG_MMU_TLB
+extern int debug_mmu_TLB_common(void);
+
+#ifdef CONFIG_DEBUG_TLB
+extern int debug_TLB_common(void);
+#endif
+
+#endif // CONFIG_DEBUG_MMU_TLB
 
 #endif // CONFIG_DEBUG_MMU
 #endif

@@ -43,5 +43,17 @@ int debug_mmu_common(void)
     debug_mmu_paging_common();
 #endif
 
+#ifdef CONFIG_DEBUG_MMU_ACCESS
+    debug_mmu_access_right_common();
+#endif
+
+#ifdef CONFIG_DEBUG_MMU_PAGE_FAULT
+    debug_mmu_page_fault_common();
+#endif
+
+#ifdef CONFIG_DEBUG_MMU_TLB
+    debug_mmu_TLB_common();
+#endif
+
     return 0;
 }

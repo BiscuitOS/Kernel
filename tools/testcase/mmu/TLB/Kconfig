@@ -1,0 +1,23 @@
+#
+# TLB mechanism on MMU
+#
+
+menu "TLB (Cache Translation information)"
+
+config DEBUG_MMU_TLB
+	bool "Debug TLB mechanism on MMU"
+	help
+	  The IA-32 architecture may accelerate the address-translation
+	  process by caching data from the paging structures on the
+	  processor.
+
+if DEBUG_MMU_TLB
+
+config DEBUG_TLB
+	bool "Caching address-translation information into TLB"
+	help
+	  Debug TLB and obtain address-translation information.
+
+endif
+
+endmenu

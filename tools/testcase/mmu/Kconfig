@@ -25,6 +25,12 @@ source tools/testcase/mmu/segmentation/Kconfig
 
 source tools/testcase/mmu/paging/Kconfig
 
+source tools/testcase/mmu/right/Kconfig
+
+source tools/testcase/mmu/page-fault/Kconfig
+
+source tools/testcase/mmu/TLB/Kconfig
+
 endif
 
 endmenu

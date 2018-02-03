@@ -51,10 +51,10 @@ int copy_mem(int nr, struct task_struct *p)
     unsigned long old_data_base, new_data_base, data_limit;
     unsigned long old_code_base, new_code_base, code_limit;
 
-    code_limit = get_limit(0x0f);
-    data_limit = get_limit(0x17);
-    old_code_base = get_base(current->ldt[1]);
-    old_data_base = get_base(current->ldt[2]);
+    code_limit = get_limit(0x0f); /* Obtain Code segment from LDT[1] */
+    data_limit = get_limit(0x17); /* Obtain Data segment from LDT[2] */
+    old_code_base = get_base(current->ldt[1]); /* Current CODE Segment */
+    old_data_base = get_base(current->ldt[2]); /* Current DATA Segment */
     if (old_data_base != old_code_base)
         panic("We don't support separate I&D");
     if (data_limit < code_limit)

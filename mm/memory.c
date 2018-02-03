@@ -119,12 +119,17 @@ int copy_page_tables(unsigned long from, unsigned long to, long size)
     unsigned long *from_dir, *to_dir;
     unsigned long nr;
 
+    /* PDE alignment check: linear address [21:0] must be clear */
     if ((from & 0x3fffff) || (to & 0x3fffff))
         panic("copy_page_tables called with wrong alignment");
+    /*
+     * Note! On BiscuitOS, we don't compute the PDE, 
+     */
     from_dir = (unsigned long *) ((from >> 20) & 0xFFC);  /* _pg_dir = 0 */
     to_dir = (unsigned long *) ((to >> 20) & 0xFFC);
     size = ((unsigned) (size + 0x3fffff)) >> 22;
     for ( ; size-- > 0; from_dir++, to_dir++) {
+        /* Check PDE P flag */
         if (1 & *to_dir)
             panic("copy_page_tables: already exist");
         if (!(1 & *from_dir))
@@ -132,6 +137,7 @@ int copy_page_tables(unsigned long from, unsigned long to, long size)
         from_page_table = (unsigned long *) (0xfffff000 & *from_dir);
         if (!(to_page_table = (unsigned long *) get_free_page()))
             return -1; /* Out of memory, see freeing */
+        /* Addition: Set Write/Read, U/S and P flag */
         *to_dir = ((unsigned long) to_page_table) | 7;
         nr = (from == 0) ? 0xA0 : 1024;
         for ( ; nr-- > 0; from_page_table++, to_page_table++) {

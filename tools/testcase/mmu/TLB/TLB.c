@@ -1,5 +1,5 @@
 /*
- * Access Right Mechanism on MMU
+ * Caching address-translation into TLB
  *
  * (C) 2018.01 BiscuitOS <buddy.zhang@aliyun.com>
  *
@@ -8,14 +8,13 @@
  * published by the Free Software Foundation.
  */
 #include <linux/kernel.h>
+#include <linux/head.h>
+#include <linux/sched.h>
+
 #include <test/debug.h>
 
 /* common access right entry */
-int debug_mmu_access_right_common(void)
+int debug_TLB_common(void)
 {
-#ifdef CONFIG_DEBUG_ACCESS_RIGHT
-    debug_access_right_common();
-#endif
-
     return 0;
 }
