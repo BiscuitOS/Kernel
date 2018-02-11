@@ -38,21 +38,21 @@ struct buffer_head *hash_table[NR_HASH];
 
 static inline void wait_on_buffer(struct buffer_head *bh)
 {
-	cli();
-	while (bh->b_lock)
-		sleep_on(&bh->b_wait);
-	sti();
+    cli();
+    while (bh->b_lock)
+        sleep_on(&bh->b_wait);
+    sti();
 }
 
 void brelse(struct buffer_head *bh)
 {
-	if (!bh)
-		return;
+    if (!bh)
+        return;
 
-	wait_on_buffer(bh);
-	if (!(bh->b_count--))
-		panic("Trying to free freed buffer.");
-	wake_up(&buffer_wait);
+    wait_on_buffer(bh);
+    if (!(bh->b_count--))
+        panic("Trying to free freed buffer.");
+    wake_up(&buffer_wait);
 }
 
 /*

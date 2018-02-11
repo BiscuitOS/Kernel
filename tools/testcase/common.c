@@ -36,6 +36,10 @@ void debug_on_kernel_later(void)
     debug_vfs_common();
 #endif
 
+#ifdef CONFIG_DEBUG_BLOCK_DEV
+    debug_block_common();
+#endif
+
 }
 #endif
 

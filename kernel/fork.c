@@ -124,7 +124,7 @@ int copy_process(int nr, long ebp, long edi, long esi, long gs, long none,
     p->tss.ds = ds & 0xffff;
     p->tss.fs = fs & 0xffff;
     p->tss.gs = gs & 0xffff;
-    p->tss.ldt = _LDT(nr);
+    p->tss.ldt = _LDT(nr); /* selector for LDT */
     p->tss.trace_bitmap = 0x80000000;
     if (last_task_used_math == current)
         __asm__("clts ; fnsave %0" :: "m" (p->tss.i387));

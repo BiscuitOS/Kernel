@@ -18,7 +18,7 @@ config HARDDISK
 	help
 	  Hard disk
 
-config CONFIG_HD_TYPE
+config HD_TYPE
 	bool "Support multi disk type"
 	help
 	  Disk type.

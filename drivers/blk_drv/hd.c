@@ -38,8 +38,8 @@ repeat:              \
     }
 
 #define CMOS_READ(addr) ({\
-outb_p(0x80|addr,0x70);\
-inb_p(0x71);\
+    outb_p(0x80|addr,0x70);\
+    inb_p(0x71);\
 })
 
 extern void rd_load(void);
@@ -126,10 +126,10 @@ static int drive_busy(void)
 
 static int controller_ready(void)
 {
-	int retries = 100000;
+    int retries = 100000;
 
-	while (--retries && (inb_p(HD_STATUS) & 0x80));
-	return (retries);
+    while (--retries && (inb_p(HD_STATUS) & 0x80));
+    return (retries);
 }
 
 static void hd_out(unsigned int drive, unsigned int nsect, unsigned int sect,

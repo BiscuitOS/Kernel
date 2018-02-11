@@ -60,7 +60,7 @@ static inline void unlock_buffer(struct buffer_head *bh)
 
 /*
  * add-request adds a request to the linked list.
- * It disables interrupts so that it can wuck with the
+ * It disables interrupts so that it can work with the
  * request-lists in peace.
  */
 static void add_request(struct blk_dev_struct *dev, struct request *req)

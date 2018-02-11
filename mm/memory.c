@@ -122,9 +122,6 @@ int copy_page_tables(unsigned long from, unsigned long to, long size)
     /* PDE alignment check: linear address [21:0] must be clear */
     if ((from & 0x3fffff) || (to & 0x3fffff))
         panic("copy_page_tables called with wrong alignment");
-    /*
-     * Note! On BiscuitOS, we don't compute the PDE, 
-     */
     from_dir = (unsigned long *) ((from >> 20) & 0xFFC);  /* _pg_dir = 0 */
     to_dir = (unsigned long *) ((to >> 20) & 0xFFC);
     size = ((unsigned) (size + 0x3fffff)) >> 22;

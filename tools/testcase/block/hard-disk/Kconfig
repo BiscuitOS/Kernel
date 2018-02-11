@@ -1,0 +1,33 @@
+#
+# Debug Hard Disk
+#
+menu "Hard-Disk device driver and HD-interrupt"
+
+config DEBUG_BLOCK_HD
+	select DEBUG_BLOCK_HD_INT
+        bool "Hard-Disk mechanism on X86 Architecture"
+        help
+          Debug Hard-Disk block device driver on X86
+
+if DEBUG_BLOCK_HD
+
+config DEBUG_BLOCK_HD_DEV
+	bool "Hard-Disk Controller and Driver 0, 1"
+	help
+	  Debug Hard-Disk Controller and Driver 0, 1
+
+config DEBUG_BLOCK_HD_INT
+	select DEBUG_BLOCK_HD_DEV
+	bool "Hard-Disk Interrupt handler for Read/Write request"
+	help
+	  Debug Hard-Disk Interrupt handler for Read/Write request.
+
+config DEBUG_BLOCK_HD_USAGE
+	depends on DEBUG_BLOCK_HD_DEV && DEBUG_BLOCK_HD_DEV
+	bool "Usage for Common Hard-Disk operation"
+	help
+	  Optional Hard-Disk operation.
+
+endif
+
+endmenu

@@ -29,6 +29,10 @@
 #include <test/vfs.h>
 #endif
 
+#ifdef CONFIG_DEBUG_BLOCK_DEV
+#include <test/block.h>
+#endif
+
 #ifdef CONFIG_DEBUG_KERNEL_LATER
 extern void debug_on_kernel_later(void);
 #endif

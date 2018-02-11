@@ -34,8 +34,8 @@ struct request {
 };
 
 struct blk_dev_struct {
-	void (*request_fn) (void);
-	struct request *current_request;
+    void (*request_fn) (void);
+    struct request *current_request;
 };
 
 static inline int IN_ORDER(struct request *s1, struct request *s2)
