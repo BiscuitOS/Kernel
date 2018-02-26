@@ -1,18 +1,18 @@
 #
 # Debug Disk Partition: MBR
 #
-menu "Disk Partition (MBR etc)"
+menu "Disk Partition (MBR, VBR, GPT etc)"
 
 
 config DEBUG_DISK_PARTITION
-	bool "Disk Partition usage (MBR, GPT)"
+	bool "Disk Partition usage (MBR, VBR, GPT)"
 	help
 	  Debug Disk Partition on legacy Hard-disk
 
 if DEBUG_DISK_PARTITION
 
 config DEBUG_PARTITION_MBR
-	bool "MBR"
+	bool "MBR (Master boot record)"
 	help
 	  MBR
 
