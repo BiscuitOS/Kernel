@@ -18,8 +18,12 @@ int debug_block_common(void)
     debug_block_hd_common();
 #endif
 
-#ifdef CONFIG_DEBUG_BLOCK_DISK
-    debug_block_disk_common();
+#ifdef CONFIG_DEBUG_DISK_CHS
+    debug_block_CHS_common();
+#endif
+
+#ifdef CONFIG_DEBUG_DISK_PARTITION
+    debug_block_partition_common();
 #endif
     return 0;
 }

@@ -1,0 +1,13 @@
+#
+# Debug Disk: Sector, Cylinder, head, track, etc
+#
+menu "Disk (Sector, Cylinder, Head, Track, etc)"
+
+
+config DEBUG_DISK_CHS
+	bool "Cylinder, Head, Sector, Track, Platter, Boom and Spindle"
+	help
+	  Debug Disk metadata of Cylinder, Head, Sector, Track, Platter,
+	  Boom and Spindle.
+
+endmenu

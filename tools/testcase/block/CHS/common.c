@@ -1,5 +1,5 @@
 /*
- * Disk: Sector, Cyliner, Head, Track, Partition
+ * Disk: Sector, Cyliner, Head, Track
  *
  * (C) 2018.02 BiscuitOS <buddy.zhang@aliyun.com>
  *
@@ -12,15 +12,8 @@
 #include <test/debug.h>
 
 /* common disk entry */
-int debug_block_disk_common(void)
+int debug_block_CHS_common(void)
 {
-#ifdef CONFIG_DEBUG_PARTITION_MBR
-    debug_block_disk_MBR_common();    
-#endif
-
-#ifdef CONFIG_DEBUG_DISK_CHS
     debug_block_disk_CHS_common();
-#endif
-
     return 0;
 }

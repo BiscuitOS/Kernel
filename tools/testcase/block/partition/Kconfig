@@ -1,0 +1,21 @@
+#
+# Debug Disk Partition: MBR
+#
+menu "Disk Partition (MBR etc)"
+
+
+config DEBUG_DISK_PARTITION
+	bool "Disk Partition usage (MBR, GPT)"
+	help
+	  Debug Disk Partition on legacy Hard-disk
+
+if DEBUG_DISK_PARTITION
+
+config DEBUG_PARTITION_MBR
+	bool "MBR"
+	help
+	  MBR
+
+endif
+
+endmenu
