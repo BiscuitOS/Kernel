@@ -17,5 +17,9 @@ int debug_block_common(void)
 #ifdef CONFIG_DEBUG_BLOCK_HD
     debug_block_hd_common();
 #endif
+
+#ifdef CONFIG_DEBUG_BLOCK_DISK
+    debug_block_disk_common();
+#endif
     return 0;
 }

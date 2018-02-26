@@ -56,4 +56,17 @@ extern int debug_block_usage_common(void);
 
 #endif // CONFIG_DEBUG_BLOCK_DEV
 
+#ifdef CONFIG_DEBUG_BLOCK_DISK
+extern int debug_block_disk_common(void);
+
+#ifdef CONFIG_DEBUG_PARTITION_MBR
+extern int debug_block_disk_MBR_common(void);
+#endif
+
+#ifdef CONFIG_DEBUG_DISK_CHS
+extern int debug_block_disk_CHS_common(void);
+#endif
+
+#endif // CONFIG_DEBUG_BLOCK_DISK
+
 #endif

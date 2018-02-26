@@ -12,6 +12,8 @@ if DEBUG_BLOCK_DEV
 
 source tools/testcase/block/hard-disk/Kconfig
 
+source tools/testcase/block/disk/Kconfig
+
 endif # End of DEBUG_BLOCK_DEV
 
 endmenu
