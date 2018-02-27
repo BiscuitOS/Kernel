@@ -53,16 +53,6 @@ void debug_on_kernel_early(void)
 }
 #endif
 
-#ifdef CONFIG_DEBUG_USERLAND_EARLY
-/*
- * debug on userland launch on early stage
- */
-void debug_on_userland_early(void)
-{
-
-}
-#endif
-
 #ifdef CONFIG_DEBUG_USERLAND_SHELL
 /*
  * debug on shell stage

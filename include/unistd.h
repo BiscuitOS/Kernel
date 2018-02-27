@@ -81,6 +81,9 @@
 #define __NR_ssetmask 69
 #define __NR_setreuid 70
 #define __NR_setregid 71
+#ifdef CONFIG_DEBUG_USERLAND
+#define __NR_biscuitos_debug 72
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -199,4 +202,8 @@ int dup2(int oldfd, int newfd);
 int getppid(void);
 pid_t getpgrp(void);
 pid_t setsid(void);
+#ifdef CONFIG_DEBUG_USERLAND
+int biscuitos_debug(void);
+#endif
+
 #endif

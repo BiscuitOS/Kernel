@@ -114,20 +114,20 @@ static void time_init(void)
  */
 static void memory_detect(void)
 {
-	memory_end = (1 << MB_SHIFT) + (EXT_MEM_K << KB_SHIFT);
-	memory_end &= 0xFFFFF000;
+    memory_end = (1 << MB_SHIFT) + (EXT_MEM_K << KB_SHIFT);
+    memory_end &= 0xFFFFF000;
 
-	/* Current version only support litter than 16Mb */
-	if (memory_end > 16 << MB_SHIFT)
-		memory_end = 16 << MB_SHIFT;
-	if (memory_end > 12 << MB_SHIFT)
-		buffer_memory_end = 4 << MB_SHIFT;
-	else if (memory_end > 6 << MB_SHIFT)
-		buffer_memory_end = 2 << MB_SHIFT;
-	else
-		buffer_memory_end = 1 << MB_SHIFT;
+    /* Current version only support litter than 16Mb */
+    if (memory_end > 16 << MB_SHIFT)
+        memory_end = 16 << MB_SHIFT;
+    if (memory_end > 12 << MB_SHIFT)
+        buffer_memory_end = 4 << MB_SHIFT;
+    else if (memory_end > 6 << MB_SHIFT)
+        buffer_memory_end = 2 << MB_SHIFT;
+    else
+        buffer_memory_end = 1 << MB_SHIFT;
 
-	main_memory_start = buffer_memory_end;
+    main_memory_start = buffer_memory_end;
 }
 
 int main(void)
@@ -166,9 +166,6 @@ int main(void)
 #endif
     move_to_user_mode();
     if (!fork()) {   /* we count on this going ok */
-#ifdef CONFIG_DEBUG_USERLAND_EARLY
-        debug_on_userland_early();
-#endif
         init();
     }
 /*
@@ -203,6 +200,9 @@ void init(void)
 {
     int pid, i;
 
+//#ifdef CONFIG_DEBUG_USERLAND
+    biscuitos_debug();
+//#endif
     setup((void *)&drive_info);
     (void)open("/dev/tty0", O_RDWR, 0);
     (void)dup(0);

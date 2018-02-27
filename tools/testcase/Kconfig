@@ -25,10 +25,10 @@ config DEBUG_KERNEL_LATER
 	help
 	  Debug function on kernel later stage. Before invoke init()
 
-config DEBUG_USERLAND_EARLY
-        bool "Debug on userland early"
+config DEBUG_USERLAND
+        bool "Debug on userland via system call"
 	help
-	  Debug function on launch userland early.
+	  Debug function on launch userland via system call.
 
 config DEBUG_USERLAND_SHELL
 	bool "Debug on userland shell"
