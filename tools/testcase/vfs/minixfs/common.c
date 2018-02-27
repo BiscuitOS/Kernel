@@ -1,5 +1,5 @@
 /*
- * Debug for VFS machanism on X86
+ * MINIX file system
  *
  * (C) 2018.1 BiscuitOS <buddy.zhang@aliyun.com>
  * 
@@ -10,15 +10,12 @@
 #include <linux/kernel.h>
 #include <test/debug.h>
 
-int debug_vfs_common(void)
+int debug_vfs_minixfs_common(void)
 {
 
-#ifdef CONFIG_DEBUG_VFS_BUFFER
-    debug_vfs_buffer();
+#ifdef CONFIG_DEBUG_MINIXFS_BLOCK
+    debug_vfs_minixfs();
 #endif
 
-#ifdef CONFIG_DEBUG_VFS_MINIXFS
-    debug_vfs_minixfs_common();
-#endif
     return 0;
 }

@@ -375,7 +375,6 @@ static void parse_partition_table(struct partition *p)
 /* common MBR entry */
 int debug_block_disk_MBR_common(void)
 {
-    printk("AAAAAA\n");
     if (1) {
         struct buffer_head *bh;    
     

@@ -140,7 +140,6 @@ repeat:
         sleep_on(&wait_for_request);
         goto repeat;
     }
-
     /* fill up the request-info, and add it to the queue */
     req->dev = bh->b_dev;
     req->cmd = rw;

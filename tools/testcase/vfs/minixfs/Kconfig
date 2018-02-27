@@ -1,0 +1,20 @@
+#
+# Debug Filesystem: MINIX filesystem
+#
+menu "MINIX Filesystem"
+
+config DEBUG_VFS_MINIXFS
+        bool "Debug MINIX Filesystem"
+        help
+	  MINIXFS
+
+if DEBUG_VFS_MINIXFS
+
+config DEBUG_MINIXFS_BLOCK
+	bool "Debug MINIXFS boot, super, inode, and zone block"
+	help
+	  MINIXFS boot block, super block, inode bit map, and zone bit map
+
+endif # End of DEBUG_VFS_MINIXFS
+
+endmenu
