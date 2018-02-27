@@ -67,5 +67,78 @@ Disk Partition
   or corss-platform standards for bootstrapping and partitioning.
 
   MBR partition entries and the MBR boot code used in commercial operating
-  systems,
+  systems, however, are limited to 32 bits. Therefore, the maximum disk size
+  supported on disks using 512-byte sectors (whether real or emulated) by the
+  MBR partitioning scheme (without using non-standard methods) is limited to
+  2-TiB. Consequently, a different partitioning scheme must be used for larger
+  disks, as they have become widely available since 2010. The MBR partitioning
+  scheme is therefore in the process of being superseded by the GUID Partition
+  Table (GPT). The official approach does little more than ensuring data
+  integrity by employing a protective MBR. Specifically, it does not provide
+  backward compatibility with operating systems that do not support the GPT
+  scheme as well. Meanwhile, multiple forms of hybrid MBRs have been designed
+  and implemented by third parties in order to maintain partitions located
+  in the first physical 2 TiB of a disk in both partitioning schemes "in 
+  parallel" and/or  to allow older operating systems to boot off GTP partitions
+  as well. The present non-standard nature of these solution causes various
+  compatibility problems in certain scenarios.
+
+  The MBR consists of 512 or more bytes located in the first sector of the 
+  drive.
+
+  * A partition table describing the partitions of a storage device. In this
+    context the boot sector may also be called a partition sector.
+
+  * Bootstrap code: Instructions to identify the configured bootable
+    partition, then load and execute its volume boot record (VBR) as a 
+    chain loader.
+
+  * Optional 32-bit disk timestamp.
+
+  * Optional 32-bit disk signature.
   
+##### MBR Disk partitioning
+
+  IBM PC DOS 2.0 introduced the `FDISK` utility to setup and maintain MBR
+  partitions. When a storage device has been partitioned according to this
+  scheme, its MBR contains a partition table describing the locations table
+  describing the locations, sizes, and other attributes of linear regions
+  referred to as partitions.
+
+  The partitions themselves may also contain data to descirbe more complex
+  partitioning schemes, such as extended boot record (EBRs). BSD disklabels,
+  or Logical Disk Manager metadata partitions.
+
+  The MBR is not located in a partition. It is located at a first sector of
+  the device (physical offset 0), preceding the first partition. (The boot
+  sector present on a non-partitioned device or within an individual
+  partition is called a volume boot recode insted.) In cases where the 
+  computer is running a DDO BIOS overlay or boot manager, the partition table
+  may be moved to some other physical location on the device. e.g., Ontrack
+  Disk Manager oftern placed a copy of the original MBR contents in the 
+  second sector, then hid itself from any subsequently booted OS or
+  application, so the MBR copy was treated as if it were still residing in
+  the first sector.
+
+##### MBR Sector layout
+
+  By convention, there are exactly four primary partition table entries in
+  the MBR partition table scheme, although some operating systems and system
+  tools extended this to five (Advanced Active Partitions (AAP) with PTS-DOS
+  6.60 and DR-DOS), eight (AST and NEC MS-DOS 3.x as well as Storage 
+  Dimensions SpeedStor), or even sixteen entries (with Ontrack Disk Manager)
+
+  ![MBR0](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/block/MBR_P0.png)
+
+  ![MBR1](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/block/MBR_P1.png)
+
+  ![MBR2](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/block/MBR_P2.png)
+
+  ![MBR3](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/block/MBR_P3.png)
+
+  ![MBR4](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/block/MBR_P4.png)
+
+  ![MBR5](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel_hacking/testcase/block/MBR_P5.png)
+
+
+
