@@ -21,6 +21,10 @@ extern int debug_vfs_minixfs_common_userland(void);
 extern int debug_vfs_minixfs_userland(void);
 #endif
 
+#ifdef CONFIG_DEBUG_MINIXFS_INODE
+extern int debug_vfs_minixfs_inode_userland(void);
+#endif
+
 #endif // End of CONFIG_DEBUG_VFS_MINIXFS
 
 #endif

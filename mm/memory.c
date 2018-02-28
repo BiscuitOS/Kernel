@@ -17,10 +17,10 @@
 #define USED 100
 
 #define invalidate() \
-	__asm__("movl %%eax, %%cr3" :: "a" (0))
+    __asm__("movl %%eax, %%cr3" :: "a" (0))
 
 #define copy_page(from, to) \
-	__asm__("cld ; rep ; movsl" ::"S" (from), "D" (to), "c" (1024))
+   __asm__("cld ; rep ; movsl" ::"S" (from), "D" (to), "c" (1024))
 
 static long HIGH_MEMORY = 0;
 extern void do_exit(int error_code);
@@ -137,10 +137,12 @@ int copy_page_tables(unsigned long from, unsigned long to, long size)
         /* Addition: Set Write/Read, U/S and P flag */
         *to_dir = ((unsigned long) to_page_table) | 7;
         nr = (from == 0) ? 0xA0 : 1024;
+        /* Copy old PTE contents to new PTE */
         for ( ; nr-- > 0; from_page_table++, to_page_table++) {
             this_page = *from_page_table;
             if (!(1 & this_page))
                 continue;
+            /* Only read this 4-KByte page */
             this_page &= ~2;
             *to_page_table = this_page;
             if (this_page > LOW_MEM) {
@@ -161,30 +163,30 @@ int copy_page_tables(unsigned long from, unsigned long to, long size)
  */
 int free_page_tables(unsigned long from, unsigned long size)
 {
-	unsigned long *pg_table;
-	unsigned long *dir, nr;
+    unsigned long *pg_table;
+    unsigned long *dir, nr;
 
-	if (from & 0x3fffff)
-		panic("free_page_tables called whit wrong alignment");
-	if (!from)
-		panic("Trying to free up swapper memory space");
-	size = (size + 0x3fffff) >> 22;
-	dir = (unsigned long *) ((from >> 20) & 0xffc); /* _gp_dir = 0 */
-	for ( ; size-- > 0; dir++) {
-		if (!(1 & *dir))
-			continue;
-		pg_table = (unsigned long *) (0xfffff000 & *dir);
-		for (nr = 0; nr < 1024 ; nr++) {
-			if (1 & *pg_table)
-				free_page(0xfffff000 & *pg_table);
-			*pg_table = 0;
-			pg_table++;
-		}
-		free_page(0xfffff000 & *dir);
-		*dir = 0;
-	}
-	invalidate();
-	return 0;
+    if (from & 0x3fffff)
+        panic("free_page_tables called whit wrong alignment");
+    if (!from)
+        panic("Trying to free up swapper memory space");
+    size = (size + 0x3fffff) >> 22;
+    dir = (unsigned long *) ((from >> 20) & 0xffc); /* _gp_dir = 0 */
+    for ( ; size-- > 0; dir++) {
+        if (!(1 & *dir))
+            continue;
+        pg_table = (unsigned long *) (0xfffff000 & *dir);
+        for (nr = 0; nr < 1024 ; nr++) {
+            if (1 & *pg_table)
+                free_page(0xfffff000 & *pg_table);
+                *pg_table = 0;
+                pg_table++;
+        }
+        free_page(0xfffff000 & *dir);
+        *dir = 0;
+    }
+    invalidate();
+    return 0;
 }
 
 /*

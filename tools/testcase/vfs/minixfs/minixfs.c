@@ -274,23 +274,62 @@ static void parse_inode_map(void)
         printk("\n");
     }
     printk("=========================================\n");
+    
+    /* Release buffer */
+    for (i = 0; i < sb->s_imap_blocks; i++)
+        brelse(sb->s_imap[i]);
     free_page((unsigned long)sb);
 }
 
 /*
- * Zone map
+ * Zone map (Logical BitMap)
  *
+ *   Logical Bitmap use to describe the usage of data block. Except first
+ *   bit, a bit represets a data block in turn. Bit 1 of Zone Bitmap represets
+ *   1st data block not 1st block. Special bit will be set when special 
+ *   data block is used. Because HD will return 0 when find special data
+ *   block, MINIXFS doesn't use bit 0, and set bit 0 when establish filesystem.
  */
 static void parse_zone_map(void)
 {
     struct super_block *sb;
     struct buffer_head *bh;
+    int i, j, block;
+    char *map;
 
     /* Obtain super block */
     bh = bread(SUPER_DEV, SUPER_BLOCK);
     if (!bh) {
         printk("MINIXFS: Unable to obtain Superblock.\n");
+        return;
     }
+    sb = (struct super_block *)get_free_page();
+    *((struct d_super_block *)sb) = *((struct d_super_block *)bh->b_data);
+    brelse(bh);
+
+    /* clear ZoneMap */
+    for (i = 0; i < Z_MAP_SLOTS; i++)
+        sb->s_zmap[i] = NULL;
+
+    block = IMAP_BLOCK + sb->s_imap_blocks;
+    /* Obtain Zmap from bread */
+    for (i = 0; i < sb->s_zmap_blocks; i++)
+        sb->s_zmap[i] = bread(SUPER_DEV, block + i);
+
+    /* Dump 1st Zmap */
+    map = (char *)sb->s_zmap[0]->b_data;
+    printk("======================Zone BitMap====================\n");
+    for (i = 0; i < 10; i++) {
+        for (j = 0; j < 8; j++)
+            printk("%#2x ", (unsigned char)map[i * 10 + j]);
+        printk("\n");
+    }
+    printk("=====================================================\n");
+
+    /* Release buffer */
+    for (i = 0; i < sb->s_zmap_blocks; i++)
+        brelse(sb->s_zmap[i]);
+    free_page((unsigned long)sb);
 }
 
 /*
@@ -375,13 +414,16 @@ static void parse_zone_map(void)
  *   | 0x1E     | ZONE 8                                              |
  *   | 0x1F     |                                                     |
  *   ------------------------------------------------------------------
+ * 
+ *  More information see inode.c
  */
 
 int debug_vfs_minixfs_userland(void)
 {
     if (1) {
-        parse_inode_map();
+        parse_zone_map();
     } else {
+        parse_zone_map();
         parse_inode_map();
         obtain_superblock_minixfs();
         obtain_boot_block_minixfs();

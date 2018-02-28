@@ -16,5 +16,8 @@ int debug_vfs_minixfs_common_userland(void)
     debug_vfs_minixfs_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_MINIXFS_INODE
+    debug_vfs_minixfs_inode_userland();
+#endif
     return 0;
 }
