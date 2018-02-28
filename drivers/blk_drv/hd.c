@@ -16,6 +16,10 @@
 
 #include <linux/blk.h>
 
+#ifdef CONFIG_DEBUG_USERLAND
+#include <test/debug.h>
+#endif
+
 /* Max read/write errors/sector */
 #define MAX_ERRORS          7
 #define MAX_HD              2
@@ -397,6 +401,9 @@ int sys_setup(void *BIOS)
     rd_load();
 #endif
     mount_root();
+#ifdef CONFIG_DEBUG_USERLAND
+    debug_kernel_on_userland();
+#endif
     return 0;
 }
 

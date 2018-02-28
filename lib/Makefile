@@ -10,4 +10,3 @@ lib-y += execve.o
 lib-y += wait.o
 lib-y += setsid.o
 lib-y += write.o
-lib-$(CONFIG_DEBUG_USERLAND) += biscuitos_debug.o

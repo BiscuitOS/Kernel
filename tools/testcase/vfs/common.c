@@ -16,9 +16,14 @@ int debug_vfs_common(void)
 #ifdef CONFIG_DEBUG_VFS_BUFFER
     debug_vfs_buffer();
 #endif
+    return 0;
+}
 
+/* debug on userland */
+int debug_vfs_common_userland(void)
+{
 #ifdef CONFIG_DEBUG_VFS_MINIXFS
-    debug_vfs_minixfs_common();
+    debug_vfs_minixfs_common_userland();
 #endif
     return 0;
 }

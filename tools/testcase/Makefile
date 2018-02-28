@@ -8,4 +8,3 @@ obj-$(CONFIG_TESTCASE_IOPORT)     += ioports/
 obj-$(CONFIG_DEBUG_SYSCALL)       += systemcall/
 obj-$(CONFIG_DEBUG_VFS)           += vfs/
 obj-$(CONFIG_DEBUG_BLOCK_DEV)     += block/
-obj-$(CONFIG_DEBUG_USERLAND)      += userland.o

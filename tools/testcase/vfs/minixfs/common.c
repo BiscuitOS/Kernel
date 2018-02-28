@@ -10,11 +10,10 @@
 #include <linux/kernel.h>
 #include <test/debug.h>
 
-int debug_vfs_minixfs_common(void)
+int debug_vfs_minixfs_common_userland(void)
 {
-
 #ifdef CONFIG_DEBUG_MINIXFS_BLOCK
-    debug_vfs_minixfs();
+    debug_vfs_minixfs_userland();
 #endif
 
     return 0;

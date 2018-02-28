@@ -46,4 +46,8 @@ extern void debug_on_shell_stage(void);
 extern void debug_kernel_on_userland_stage(void);
 #endif
 
+#ifdef CONFIG_DEBUG_USERLAND
+extern int debug_kernel_on_userland(void);
+#endif
+
 #endif

@@ -73,3 +73,15 @@ void debug_kernel_on_userland_stage(void)
 #endif
 }
 #endif
+
+#ifdef CONFIG_DEBUG_USERLAND
+/* debug kernel on userland */
+int debug_kernel_on_userland(void)
+{
+    printk("Debug kernel on userland :-)\n");
+#ifdef CONFIG_DEBUG_VFS
+    debug_vfs_common_userland();
+#endif
+    return 0;
+}
+#endif

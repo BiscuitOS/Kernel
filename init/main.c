@@ -200,9 +200,6 @@ void init(void)
 {
     int pid, i;
 
-//#ifdef CONFIG_DEBUG_USERLAND
-    biscuitos_debug();
-//#endif
     setup((void *)&drive_info);
     (void)open("/dev/tty0", O_RDWR, 0);
     (void)dup(0);

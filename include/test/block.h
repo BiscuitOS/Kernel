@@ -68,6 +68,9 @@ extern int debug_block_disk_MBR_common(void);
 
 #endif // CONFIG_DEBUG_DISK_PARTITION
 
+/* Userland API */
+extern int debug_vfs_common_userland(void);
+
 #endif // CONFIG_DEBUG_BLOCK_DEV
 
 #endif
