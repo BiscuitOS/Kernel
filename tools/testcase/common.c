@@ -41,7 +41,7 @@ void debug_on_kernel_later(void)
 #endif
 
 }
-#endif
+#endif // CONFIG_DEBUG_KERNEL_LATER
 
 #ifdef CONFIG_DEBUG_KERNEL_EARLY
 /*
@@ -51,28 +51,7 @@ void debug_on_kernel_early(void)
 {
 
 }
-#endif
-
-#ifdef CONFIG_DEBUG_USERLAND_SHELL
-/*
- * debug on shell stage
- */
-void debug_on_shell_stage(void)
-{
-
-}
-#endif
-
-#if defined (CONFIG_DEBUG_USERLAND_EARLY) || \
-    defined (CONFIG_DEBUG_USERLAND_SHELL)
-/* Debug kernel on Userland Stage */
-void debug_kernel_on_userland_stage(void)
-{
-#ifdef CONFIG_TESTCASE_SCHED
-    debug_scheduler_kernel_on_userland();
-#endif
-}
-#endif
+#endif // CONFIG_DEBUG_KERNEL_EARLY
 
 #ifdef CONFIG_DEBUG_USERLAND
 /* debug kernel on userland */
@@ -84,4 +63,17 @@ int debug_kernel_on_userland(void)
 #endif
     return 0;
 }
+#endif // CONFIG_DEBUG_USERLAND
+
+#ifdef CONFIG_DEBUG_USERLAND_SYSCALL
+/*
+ * Debug on userland.
+ */
+int debug_on_userland_syscall(void)
+{
+#ifdef CONFIG_DEBUG_SYSCALL
+    debug_syscall_common_userland();
 #endif
+    return 0;
+}
+#endif // CONFIG_DEBUG_USERLAND_SYSCALL

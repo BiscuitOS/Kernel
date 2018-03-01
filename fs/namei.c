@@ -162,7 +162,7 @@ static struct m_inode *get_dir(const char *pathname)
     if (!current->root || !current->root->i_count)
         panic("No root inode");
     if (!current->pwd || !current->pwd->i_count)
-        panic("No cwd inode");
+        panic("No pwd inode");
     if ((c = get_fs_byte(pathname)) == '/') {
         inode = current->root;
         pathname++;

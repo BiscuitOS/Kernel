@@ -1,0 +1,21 @@
+#
+# System Call: open
+#
+
+menu "open(): Open file/Directory/socket/pipe etc"
+
+config DEBUG_SYSCALL_OPEN
+	bool "open(): Open file/Directory/socket/pipe etc"
+	help
+	  Debug System Call Machanism on X86 Architecture.
+
+if DEBUG_SYSCALL_OPEN
+
+config DEBUG_SYSCALL_OPEN0
+	bool "System CALL: Open (linux0.11.1)"
+	help
+	  Open system call on linux0.11.1.
+
+endif
+
+endmenu

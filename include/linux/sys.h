@@ -70,6 +70,9 @@ extern int sys_sgetmask(void);
 extern int sys_ssetmask(void);
 extern int sys_setreuid(void);
 extern int sys_setregid(void);
+#ifdef CONFIG_DEBUG_SYSCALL_OPEN0
+extern int sys_d_open(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -144,4 +147,7 @@ sys_sgetmask, /* manipulation of signal mask */
 sys_ssetmask, /* -- */
 sys_setreuid, /* set real and/or effective user or group ID */
 sys_setregid, /* Set the numerical group id */
+#ifdef CONFIG_DEBUG_SYSCALL_OPEN0
+sys_d_open,  /* Open file/directory */
+#endif
 };

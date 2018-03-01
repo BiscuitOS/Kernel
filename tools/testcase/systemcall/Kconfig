@@ -2,10 +2,10 @@
 # Common System Call
 #
 
-menu "System CAll Machanism"
+menu "System CAll Mechanism"
 
 config DEBUG_SYSCALL
-	bool "Debug System CAll Machanism on X86 Architecture"
+	bool "Debug System CAll Mechanism on X86 Architecture"
 	help
 	  Debug System Call Machanism on X86 Architecture.
 
@@ -15,6 +15,8 @@ config DEBUG_SYSCALL_ROUTINE
 	bool "System CAll common routine from IDT"
 	help
 	  The routine of system call on IDT, GDT and LDT.
+
+source tools/testcase/systemcall/open/Kconfig
 
 endif
 

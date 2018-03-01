@@ -41,13 +41,12 @@ extern void debug_on_kernel_later(void);
 extern void debug_on_kernel_early(void);
 #endif
 
-#ifdef CONFIG_DEBUG_USERLAND_SHELL
-extern void debug_on_shell_stage(void);
-extern void debug_kernel_on_userland_stage(void);
-#endif
-
 #ifdef CONFIG_DEBUG_USERLAND
 extern int debug_kernel_on_userland(void);
+#endif
+
+#ifdef CONFIG_DEBUG_USERLAND_SYSCALL
+extern int debug_on_userland_syscall(void);
 #endif
 
 #endif
