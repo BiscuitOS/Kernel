@@ -12,8 +12,32 @@
 #include <linux/sched.h>
 
 #include <asm/segment.h>
+#include <sys/stat.h>
 
 #include <errno.h>
+
+#define MAY_EXEC   1
+
+/*
+ * permission()
+ *
+ * is used to check for read/write/execute permission on a file.
+ */
+static int permission(struct m_inode *inode, int mask)
+{
+    int mode = inode->i_mode;
+
+    /* Special case: not even root can read/write a delete file */
+    if (inode->i_dev && !inode->i_nlinks)
+        return 0;
+    else if (current->euid == inode->i_uid)
+        mode >>= 6;
+    else if (current->egid == inode->i_gid)
+        mode >>= 3;
+    if (((mode & mask & 0007) == mask) || suser())
+        return 1;
+    return 0;
+}
 
 /*
  * get_dir()
@@ -26,6 +50,7 @@ static struct m_inode *get_dir(const char *pathname)
     char c;
     const char *thisname;
     struct m_inode *inode;
+    int namelen;
 
     if (!current->root || !current->root->i_count)
         panic("No root inode");
@@ -41,7 +66,19 @@ static struct m_inode *get_dir(const char *pathname)
     inode->i_count++;
     while (1) {
         thisname = pathname;
-        if (!S_ISDIR(inode->i_mode) || !permission)
+        if (!S_ISDIR(inode->i_mode) || !permission(inode, MAY_EXEC)) {
+            iput(inode);
+            return NULL;
+        }
+        for (namelen = 0; (c = get_fs_byte(pathname++)) && (c != '/');
+                 namelen++);
+            /* nothing */;
+        if (!c)
+            return inode;
+         if (!(bh = find_entry(&inode, thisname, namelen, &de))) {
+             iput(inode);
+             return NULL;
+         }
     }
 
     return NULL;

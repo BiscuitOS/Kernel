@@ -54,6 +54,6 @@ int sys_d_open(const char *filename, int flag, int mode)
 /* Invoke by system call: int $0x80 */
 int debug_syscall_open0(void)
 {
-    d_open("/etc/rc", 0, 0);
+    d_open("/etc/profile", 0, 0);
     return 0;
 }
