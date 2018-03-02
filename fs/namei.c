@@ -73,7 +73,7 @@ static int match(int len, const char *name, struct dir_entry *de)
  * find_entry()
  *
  * finds an entry in the specified directory with the wanted name. It
- * returns the cache buffer in which the entry wa found, and the entry
+ * returns the cache buffer in which the entry was found, and the entry
  * itself (as a parameter - res_dir). It does NOT read the inode of the
  * entry - you'll have to do that yourself if you want to.
  *
