@@ -11,12 +11,16 @@
 #include <linux/fs.h>
 #include <linux/sched.h>
 
+#include <test/debug.h>
+
 #include <asm/segment.h>
 #include <sys/stat.h>
 
 #include <errno.h>
 
 #define MAY_EXEC   1
+
+extern int d_map(struct m_inode *inode, int block);
 
 /*
  * permission()
@@ -37,6 +41,30 @@ static int permission(struct m_inode *inode, int mask)
     if (((mode & mask & 0007) == mask) || suser())
         return 1;
     return 0;
+}
+
+/*
+ * ok, we cannot use strncmp, as the name is not in our data space.
+ * Thus we'll have to use match. No big problem. Match also makes
+ * some sanity tests.
+ *
+ * NOTE! unlike strncmp, match returns 1 for success, 0 for failure.
+ */
+static int match(int len, const char *name, struct dir_entry *de)
+{
+    register int same;
+
+    if (!de || !de->inode || len > NAME_LEN)
+        return 0;
+    if (len < NAME_LEN && de->name[len])
+        return 0;
+    __asm__("cld\n\t"
+            "fs; repe; cmpsb\n\t"
+            "setz %%al"
+            : "=a" (same)
+            : "0" (0), "S" ((long) name), "D" ((long) de->name),
+              "c" (len));
+    return same;
 }
 
 /*
@@ -91,15 +119,22 @@ static struct buffer_head *find_entry(struct m_inode **dir,
         if ((char *)de >= BLOCK_SIZE + bh->b_data) {
             brelse(bh);
             bh = NULL;
-            if (!(block = bmp(*dir, i / DIR_ENTRIES_PER_BLOCK)) ||
+            if (!(block = d_map(*dir, i / DIR_ENTRIES_PER_BLOCK)) ||
                 !(bh = bread((*dir)->i_dev, block))) {
                 i += DIR_ENTRIES_PER_BLOCK;
                 continue;
             }
             de = (struct dir_entry *)bh->b_data;
         }
+        if (match(namelen, name, de)) {
+            *res_dir = de;
+            printk("Name %s\n", de->name);
+            return bh;
+        }
+        de++;
+        i++;
     }
-
+    brelse(bh);
     return NULL;
 }
 

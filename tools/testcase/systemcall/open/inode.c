@@ -7,11 +7,14 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+#include <linux/kernel.h>
+#include <linux/fs.h>
 
 static int _bmap(struct m_inode *inode, int block, int create)
 {
     struct buffer_head *bh;
 
+    printk("Hello world\n");
     if (block < 0)
         panic("_bmp: block < 0");
 }
