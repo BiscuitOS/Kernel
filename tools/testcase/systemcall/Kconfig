@@ -20,6 +20,8 @@ source tools/testcase/systemcall/open/Kconfig
 
 source tools/testcase/systemcall/close/Kconfig
 
+source tools/testcase/systemcall/read/Kconfig
+
 endif
 
 endmenu

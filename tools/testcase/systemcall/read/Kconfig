@@ -1,0 +1,21 @@
+#
+# System Call: read
+#
+
+menu "Read(): Read data from a file/directory/socket/pipe etc"
+
+config DEBUG_SYSCALL_READ
+	bool "Read(): Read data from a file/directory/socket/pipe etc"
+	help
+	  Debug Read system Call Machanism on X86 Architecture.
+
+if DEBUG_SYSCALL_READ
+
+config DEBUG_SYSCALL_READ0
+	bool "System CALL: Read (linux0.11.1 MINIXFS)"
+	help
+	  READ system call on linux0.11.1.
+
+endif
+
+endmenu

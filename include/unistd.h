@@ -88,6 +88,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_CLOSE0
 #define __NR_d_close  72
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_READ0
+#define __NR_d_read   72
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -211,6 +214,9 @@ int d_open(const char *filename, int flag, ...);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_CLOSE0
 int d_close(int fildes);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_READ0
+int d_read(int fildes, char *buf, off_t count);
 #endif
 
 #endif

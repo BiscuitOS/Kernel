@@ -31,6 +31,13 @@ extern int debug_syscall_close0(void);
 
 #endif // CONFIG_DEBUG_SYSCALL_OPEN
 
+#ifdef CONFIG_DEBUG_SYSCALL_READ
+extern int debug_syscall_read_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_READ0
+extern int debug_syscall_read0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_READ
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif
