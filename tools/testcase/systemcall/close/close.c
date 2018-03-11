@@ -1,5 +1,5 @@
 /*
- * System Call: open
+ * System Call: close
  *
  * (C) 2018.03 BiscuitOS <buddy.zhang@aliyun.com>
  *
@@ -17,10 +17,25 @@
 #include <test/debug.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 
-int sys_d_close(const char *filename, int flag, int mode)
+extern void d_iput(struct m_inode *inode);
+
+int sys_d_close(unsigned int fd)
 {
-    printk("Hello world\n");
+    struct file *filp;
+
+    if (fd >= NR_OPEN)
+        return -EINVAL;
+    current->close_on_exec &= ~(1 << fd);
+    if (!(filp = current->filp[fd]))
+        return -EINVAL;
+    current->filp[fd] = NULL;
+    if (filp->f_count == 0)
+        panic("Close: file count is 0");
+    if (--filp->f_count)
+        return 0;
+    d_iput(filp->f_inode);
     return 0;
 }
 
