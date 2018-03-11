@@ -292,7 +292,8 @@ static struct buffer_head *add_entry(struct m_inode *dir,
 }
 
 /*
- * d_open_namei
+ * d_open_namei: Obtain inode via pathname.
+ *
  */
 int d_open_namei(const char *pathname, int flag, int mode,
                  struct m_inode **res_inode)
@@ -358,7 +359,7 @@ int d_open_namei(const char *pathname, int flag, int mode,
     iput(dir);
     if (flag & O_EXCL)
         return -EEXIST;
-    if (!(inode = iget(dev, inr)))
+    if (!(inode = d_iget(dev, inr)))
         return -EACCES;
     if ((S_ISDIR(inode->i_mode) && (flag & O_ACCMODE)) ||
          !permission(inode, ACC_MODE(flag))) {

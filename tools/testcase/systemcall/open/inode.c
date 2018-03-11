@@ -26,17 +26,6 @@ int d_map(struct m_inode *inode, int block)
 
 static struct m_inode *d_get_empty_inode(void)
 {
-    struct m_inode *inode;
-    static struct m_inode *last_inode = inode_table;
-    int i;
-
-    do {
-        inode = NULL;
-        for (i = NR_INODE; i; i--) {
-        
-        }
-    } while (inode->i_count); 
-    return NULL;
 }
 
 struct m_inode *d_iget(int dev, int nr)
