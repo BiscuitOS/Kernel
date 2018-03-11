@@ -362,6 +362,4 @@ Open
 
 ### External link
 
-  ```
-    http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html
-  ```
+  [opengroup](http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html "open - opengroup.org")
