@@ -23,6 +23,14 @@ extern struct m_inode *d_new_inode(int dev);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_OPEN
 
+#ifdef CONFIG_DEBUG_SYSCALL_CLOSE
+extern int debug_syscall_close_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_CLOSE0
+extern int debug_syscall_close0(void);
+#endif
+
+#endif // CONFIG_DEBUG_SYSCALL_OPEN
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

@@ -1,0 +1,21 @@
+#
+# System Call: close
+#
+
+menu "close(): Close file/Directory/socket/pipe etc"
+
+config DEBUG_SYSCALL_CLOSE
+	bool "close(): Close file/Directory/socket/pipe etc"
+	help
+	  Debug System Call Machanism on X86 Architecture.
+
+if DEBUG_SYSCALL_CLOSE
+
+config DEBUG_SYSCALL_CLOSE0
+	bool "System CALL: Close (linux0.11.1 MINIXFS)"
+	help
+	  Close system call on linux0.11.1.
+
+endif
+
+endmenu

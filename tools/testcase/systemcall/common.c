@@ -51,5 +51,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_open_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_CLOSE
+    debug_syscall_close_common_userland();
+#endif
+
     return 0;
 }

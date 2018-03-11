@@ -85,6 +85,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN0
 #define __NR_d_open  72
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_CLOSE0
+#define __NR_d_close  72
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -205,6 +208,9 @@ pid_t getpgrp(void);
 pid_t setsid(void);
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN0
 int d_open(const char *filename, int flag, ...);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_CLOSE0
+int d_close(int fildes);
 #endif
 
 #endif

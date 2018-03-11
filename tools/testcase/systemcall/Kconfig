@@ -18,6 +18,8 @@ config DEBUG_SYSCALL_ROUTINE
 
 source tools/testcase/systemcall/open/Kconfig
 
+source tools/testcase/systemcall/close/Kconfig
+
 endif
 
 endmenu
