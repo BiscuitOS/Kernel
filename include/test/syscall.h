@@ -18,6 +18,7 @@ extern int debug_syscall_open_common_userland(void);
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN0
 extern int debug_syscall_open0(void);
 extern struct m_inode *d_iget(int dev, int nr);
+extern struct m_inode *d_new_inode(int dev);
 
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_OPEN

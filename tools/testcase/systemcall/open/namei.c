@@ -28,6 +28,8 @@
 #define ACC_MODE(x) ("\004\002\006\377"[(x)&O_ACCMODE])
 
 extern int d_map(struct m_inode *inode, int block);
+extern int d_iput(struct m_inode *inode);
+extern int d_create_block(struct m_inode *inode, int block);
 
 /*
  * permission()
@@ -118,7 +120,7 @@ static struct buffer_head *find_entry(struct m_inode **dir,
                for the mount */
             sb = get_super((*dir)->i_dev);
             if (sb->s_imount) {
-                iput(*dir);
+                d_iput(*dir);
                 (*dir) = sb->s_imount;
                 (*dir)->i_count++;
             }
@@ -131,6 +133,7 @@ static struct buffer_head *find_entry(struct m_inode **dir,
     i = 0;
     de = (struct dir_entry *)bh->b_data;
     while (i < entries) {
+        /* Load new block while the dentry not find on current block. */
         if ((char *)de >= BLOCK_SIZE + bh->b_data) {
             brelse(bh);
             bh = NULL;
@@ -171,6 +174,7 @@ static struct m_inode *get_dir(const char *pathname)
         panic("No root inode");
     if (!current->pwd || !current->pwd->i_count)
         panic("No pwd inode");
+    /* The pathname is absolute pathname, we need serch inode from root */
     if ((c = get_fs_byte(pathname)) == '/') {
         inode = current->root;
         pathname++;
@@ -182,7 +186,7 @@ static struct m_inode *get_dir(const char *pathname)
     while (1) {
         thisname = pathname;
         if (!S_ISDIR(inode->i_mode) || !permission(inode, MAY_EXEC)) {
-            iput(inode);
+            d_iput(inode);
             return NULL;
         }
         for (namelen = 0; (c = get_fs_byte(pathname++)) && (c != '/');
@@ -191,13 +195,13 @@ static struct m_inode *get_dir(const char *pathname)
         if (!c)
             return inode;
          if (!(bh = find_entry(&inode, thisname, namelen, &de))) {
-             iput(inode);
+             d_iput(inode);
              return NULL;
          }
          inr = de->inode;
          idev = inode->i_dev;
          brelse(bh);
-         iput(inode);
+         d_iput(inode);
          if (!(inode = d_iget(idev, inr)))
              return NULL;
     }
@@ -205,6 +209,10 @@ static struct m_inode *get_dir(const char *pathname)
 
 /*
  * dir_namei()
+ *
+ * @oathname: the pathname to the file.
+ * @namelen:  the length to the pahtname.
+ * @name:     Top-direntory name on pathname.
  */
 static struct m_inode *dir_namei(const char *pathname,
       int *namelen, const char **name)
@@ -261,7 +269,7 @@ static struct buffer_head *add_entry(struct m_inode *dir,
         if ((char *)de >= BLOCK_SIZE + bh->b_data) {
             brelse(bh);
             bh = NULL;
-           // block = create_block(dir, i / DIR_ENTRIES_PER_BLOCK);
+            block = d_create_block(dir, i / DIR_ENTRIES_PER_BLOCK);
             if (!block)
                 return NULL;
             if (!(bh = bread(dir->i_dev, block))) {
@@ -294,6 +302,57 @@ static struct buffer_head *add_entry(struct m_inode *dir,
 /*
  * d_open_namei: Obtain inode via pathname.
  *
+ * @filename:  The pathname to the file.
+ * @flag:      The kind of access requested on the file (read, write, append 
+ *             etc.).
+ * @mode:      The initial file permission is requested using the third 
+ *             argument called mode. This argument is relevant only when 
+ *             a new file is being created.
+ * @res_inode: inode for pathname.
+ *
+ * @return:
+ *
+ * After using the file, the process should close the file using close call, 
+ * which takes the file descriptor of the file to be closed. Some filesystems
+ * include a disposition to permit releasing the file.
+ * 
+ * Some computer languages include run-time libraries which include additional
+ * functionality for particular filesystems. The open (or some auxiliary 
+ * routine) may include specifications for key size, record size, connection 
+ * speed. Some open routines include specification of the program code to be 
+ * executed in the event of an error.
+ *
+ * Open flag: (flag argument) 
+ *   O_RDONLY: Only read file
+ *   O_WRONLY: Only write file
+ *   O_ORDWR:  Read or Write file
+ *   O_CREAT:  Create the file if it does not exist; otherwise the open fails
+ *             setting errno to ENOENT.
+ *   O_EXCL:   Used with O_CREAT if the file already exists, then fail, setting
+ *             errno to EEXIST.
+ *   O_APPEND: data written will be appended to the end of the file. The file
+ *             operations will always adjust the position pointer to the end 
+ *             of the file.
+ *   O_TRUNC:  If the file already exists then discard its previous contents, 
+ *             reducing it to an empty file. Not applicable for a device or 
+ *             named pipe.
+ *
+ * mode:
+ *   Optional and relevant only when creating a new file, defines the file 
+ *   permissions. These include read, write or execute the file by the owner, 
+ *   group or all users. The mode is masked by the calling process's umask: 
+ *   bits set in the umask are cleared in the mode.
+ *
+ *   S_IRUSR: User readable.
+ *   S_IRGRP: Group readable.
+ *   S_IROTH: Other readable.
+ *
+ *   S_IWUSR: User writeable.
+ *   S_IWGRP: Group writeable.
+ *   S_IWOTH: Other writeable.
+ *
+ *   S_IXUSR: User executable.
+ *   S_IXGRP: Group executable.
  */
 int d_open_namei(const char *pathname, int flag, int mode,
                  struct m_inode **res_inode)
@@ -309,31 +368,32 @@ int d_open_namei(const char *pathname, int flag, int mode,
         flag |= O_WRONLY;
     mode &= 0777 & ~current->umask;
     mode |= I_REGULAR;
+    /* Obtain dentory inode */
     if (!(dir = dir_namei(pathname, &namelen, &basename)))
         return -ENOENT;
-
+    /* open a dentory directly */
     if (!namelen) {
         if (!(flag & (O_ACCMODE | O_CREAT | O_TRUNC))) {
             *res_inode = dir;
             return 0;
         }
-        iput(dir);
+        d_iput(dir);
         return -EISDIR;
     }
 
     bh = find_entry(&dir, basename, namelen, &de);
     if (!bh) {
         if (!(flag & O_CREAT)) {
-            iput(dir);
+            d_iput(dir);
             return -ENOENT;
         }
         if (!permission(dir, MAY_WRITE)) {
-            iput(dir);
+            d_iput(dir);
             return -EACCES;
         }
-        inode = new_inode(dir->i_dev);
+        inode = d_new_inode(dir->i_dev);
         if (!inode) {
-            iput(dir);
+            d_iput(dir);
             return -ENOSPC;
         }
         inode->i_uid  = current->euid;
@@ -342,28 +402,28 @@ int d_open_namei(const char *pathname, int flag, int mode,
         bh = add_entry(dir, basename, namelen, &de);
         if (!bh) {
             inode->i_nlinks--;
-            iput(inode);
-            iput(dir);
+            d_iput(inode);
+            d_iput(dir);
             return -ENOSPC;
         }
         de->inode = inode->i_num;
         bh->b_dirt = 1;
         brelse(bh);
-        iput(dir);
+        d_iput(dir);
         *res_inode = inode;
         return 0;
     }
     inr = de->inode;
     dev = dir->i_dev;
     brelse(bh);
-    iput(dir);
+    d_iput(dir);
     if (flag & O_EXCL)
         return -EEXIST;
     if (!(inode = d_iget(dev, inr)))
         return -EACCES;
     if ((S_ISDIR(inode->i_mode) && (flag & O_ACCMODE)) ||
          !permission(inode, ACC_MODE(flag))) {
-        iput(inode);
+        d_iput(inode);
         return -EPERM;
     }
     inode->i_atime = CURRENT_TIME;
