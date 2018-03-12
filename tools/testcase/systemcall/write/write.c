@@ -22,6 +22,8 @@
 
 int sys_d_write(unsigned int fd, char *buf, int count)
 {
+    printk("Hello World\n");
+    return 0;
 }
 
 /* Invoke by system call: int $0x80 */
@@ -37,7 +39,7 @@ int debug_syscall_write0(void)
     }
 
     /* write data into file */
-    write(fd, buf, strlen(buf));
+    d_write(fd, buf, strlen(buf));
 
     /* Close file */
     close(fd);
