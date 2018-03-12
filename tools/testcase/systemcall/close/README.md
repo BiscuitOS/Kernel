@@ -12,7 +12,7 @@ Close
   of an operating system recovery as a result of a system failure.
 
 
-## DESCRIPTION
+### DESCRIPTION
 
   The close() function shall deallocate the file descriptor indicated by 
   fildes. To deallocate means to make the file descriptor available for return 
@@ -108,6 +108,6 @@ Close
     EIO      An I/O error occurred
   ```
 
-## Link
+### External Link
 
-  [opengroup](http://pubs.opengroup.org/onlinepubs/009695399/functions/close.html "close - opengroup.org")
+  [close() - opengroup](http://pubs.opengroup.org/onlinepubs/009695399/functions/close.html "close - opengroup.org")

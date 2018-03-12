@@ -272,4 +272,4 @@ READ
 
 ### External link
 
-  [opengroup](http://pubs.opengroup.org/onlinepubs/009695399/functions/close.html "read - opengroup.org")  
+  [read() - opengroup](http://pubs.opengroup.org/onlinepubs/009695399/functions/close.html "read - opengroup.org")  
