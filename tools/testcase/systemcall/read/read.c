@@ -19,11 +19,27 @@
 #include <unistd.h>
 #include <errno.h>
 
+extern int d_file_read(struct m_inode *inode, struct file *filp, char *buf, 
+                 int count);
 
 int sys_d_read(unsigned int fd, char *buf, int count)
 {
-    /* Main-routine: read */
-    printk("sys_d_read: Hello World\n");
+    struct file *file;
+    struct m_inode *inode;
+
+    if (fd >= NR_OPEN || count < 0 || !(file = current->filp[fd]))
+        return -EINVAL;
+    if (!count)
+        return 0;
+    verify_area(buf, count);
+    inode = file->f_inode;
+    if (S_ISDIR(inode->i_mode) || S_ISREG(inode->i_mode)) {
+        if (count + file->f_pos > inode->i_size)
+            count = inode->i_size - file->f_pos;
+        if (count <= 0)
+            return 0;
+        return d_file_read(inode, file, buf, count);
+    }
     return 0;
 }
 
