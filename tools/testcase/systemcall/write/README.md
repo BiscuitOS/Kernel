@@ -78,7 +78,6 @@ Write
     * If the O_NONBLOCK flag is set, write() requests shall be handled 
       differently, in the following ways:
 
-      ```
         The write() function shall not block the thread.
         A write request for {PIPE_BUF} or fewer bytes shall have the following 
         effect: if there is sufficient space available in the pipe, write() 
@@ -96,7 +95,6 @@ Write
 
         2) When no data can be written, transfer no data, and return -1 with
            errno set to [EAGAIN].
-      ```
 
   When attempting to write to a file descriptor (other than a pipe or FIFO) 
   that supports non-blocking writes and cannot accept the data immediately:
