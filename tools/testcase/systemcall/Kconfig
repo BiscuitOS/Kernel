@@ -22,6 +22,8 @@ source tools/testcase/systemcall/close/Kconfig
 
 source tools/testcase/systemcall/read/Kconfig
 
+source tools/testcase/systemcall/write/Kconfig
+
 endif
 
 endmenu

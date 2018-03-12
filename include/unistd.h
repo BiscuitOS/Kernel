@@ -83,13 +83,16 @@
 #define __NR_setregid 71
 
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN0
-#define __NR_d_open  72
+#define __NR_d_open   72
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_CLOSE0
 #define __NR_d_close  72
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_READ0
 #define __NR_d_read   72
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_WRITE0
+#define __NR_d_write  72
 #endif
 
 #define _syscall0(type, name) \
@@ -217,6 +220,9 @@ int d_close(int fildes);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_READ0
 int d_read(int fildes, char *buf, off_t count);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_WRITE0
+int d_write(int fildes, const char *buf, off_t count);
 #endif
 
 #endif

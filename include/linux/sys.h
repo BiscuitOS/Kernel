@@ -79,6 +79,9 @@ extern int sys_d_close(void);
 #ifdef CONFIG_DEBUG_SYSCALL_READ0
 extern int sys_d_read(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_WRITE0
+extern int sys_d_write(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -161,5 +164,8 @@ sys_d_close,  /* Close file/directory */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_READ0
 sys_d_read,  /* Read data from file/directory */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_WRITE0
+sys_d_write,  /* Write data to file/directory */
 #endif
 };
