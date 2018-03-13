@@ -49,6 +49,7 @@ extern int debug_syscall_write0(void);
 extern int debug_syscall_dup_common_userland(void);
 #ifdef CONFIG_DEBUG_SYSCALL_DUP0
 extern int debug_syscall_dup0(void);
+extern int dupfd(unsigned int fd, unsigned int arg);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_DUP
 

@@ -20,16 +20,16 @@
 #include <errno.h>
 #include <string.h>
 
-int sys_d_dup(unsigned int fd, char *buf, int count)
+int sys_d_dup(unsigned int fildes)
 {
-    return 0;
+    return dupfd(fildes, 0);
 }
 
 /* Invoke by system call: int $0x80 */
 int debug_syscall_dup0(void)
 {
     /* dumplicate standard error */
-    dup(0);
+    d_dup(0);
 
     /* close standard error */
     close(0);

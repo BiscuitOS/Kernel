@@ -10,4 +10,4 @@
 #define __LIBRARY__
 #include <unistd.h>
 
-_syscall1(int, dup, int, fd);
+_syscall1(int, d_dup, int, fd);
