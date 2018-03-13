@@ -97,6 +97,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_DUP0
 #define __NR_d_dup    72
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
+#define __NR_d_execve 72
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -229,6 +232,9 @@ int d_write(int fildes, const char *buf, off_t count);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_DUP0
 int d_dup(int fildes);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
+int d_execve(const char *filename, char **argv, char **envp);
 #endif
 
 #endif

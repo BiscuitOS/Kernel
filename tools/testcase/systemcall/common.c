@@ -67,5 +67,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_dup_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_EXECVE
+    debug_syscall_execve_common_userland();
+#endif
+
     return 0;
 }

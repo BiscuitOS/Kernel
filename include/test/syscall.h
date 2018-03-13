@@ -53,6 +53,13 @@ extern int dupfd(unsigned int fd, unsigned int arg);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_DUP
 
+#ifdef CONFIG_DEBUG_SYSCALL_EXECVE
+extern int debug_syscall_execve_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
+extern int debug_syscall_execve0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_DUP
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

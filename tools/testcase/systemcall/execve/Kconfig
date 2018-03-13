@@ -1,0 +1,21 @@
+#
+# System Call: execve
+#
+
+menu "execve(): execute a executable file"
+
+config DEBUG_SYSCALL_EXECVE
+	bool "execve(): execute a executable file"
+	help
+	  Debug execve system Call Machanism on X86 Architecture.
+
+if DEBUG_SYSCALL_EXECVE
+
+config DEBUG_SYSCALL_EXECVE0
+	bool "System CALL: execve (linux0.11.1 MINIXFS)"
+	help
+	  Execve system call on linux0.11.1.
+
+endif
+
+endmenu
