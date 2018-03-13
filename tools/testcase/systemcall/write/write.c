@@ -20,19 +20,30 @@
 #include <errno.h>
 #include <string.h>
 
+extern int d_file_write(struct m_inode *inode, struct file *filp, char *buf,
+     int count);
+
 int sys_d_write(unsigned int fd, char *buf, int count)
 {
-    printk("Hello World\n");
-    return 0;
+    struct file *file;
+    struct m_inode *inode;
+
+    if (fd >= NR_OPEN || count < 0 || !(file = current->filp[fd]))
+        return -EINVAL;
+    inode = file->f_inode;
+    if (S_ISREG(inode->i_mode))
+        return d_file_write(inode, file, buf, count);
+    printk("(Write)inode->i_mode=%060\n\r", inode->i_mode);
+    return -EINVAL;
 }
 
 /* Invoke by system call: int $0x80 */
 int debug_syscall_write0(void)
 {
     int fd;
-    char buf[20] = "BiscuitOS";
+    char buf[20] = "BiscuitOS-Anna\n";
 
-    fd = open("/etc/biscuitos.cnf", O_RDWR | O_CREAT, 0);
+    fd = open("/etc/biscuitos.conf", O_RDWR | O_CREAT, 0);
     if (!fd) {
         d_printf("Unable to open /etc/biscuitos.conf\n");
         return -1;
