@@ -25,7 +25,11 @@ static char *envp_rc[] = { "HOME=/", NULL };
 
 int sys_d_execve(const char *file, char **argv, char **envp)
 {
-    printk("Hello World\n");
+    __asm__ volatile ("lea 0x1C(%%esp), %%eax\n\r"
+                      "pushl %%eax\n\r"
+                      "call d_do_execve\n\r"
+                      "addl $4, %%esp\n\r"
+                      "ret" ::);
     return 0;
 }
 
