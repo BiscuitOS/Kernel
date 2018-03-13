@@ -1,0 +1,21 @@
+#
+# System Call: dup
+#
+
+menu "dup(): duplicate an open file descriptor"
+
+config DEBUG_SYSCALL_DUP
+	bool "dup(): duplicate an open file descriptor"
+	help
+	  Debug dup system Call Machanism on X86 Architecture.
+
+if DEBUG_SYSCALL_DUP
+
+config DEBUG_SYSCALL_DUP0
+	bool "System CALL: dup (linux0.11.1 MINIXFS)"
+	help
+	  Dup system call on linux0.11.1.
+
+endif
+
+endmenu

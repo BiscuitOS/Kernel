@@ -45,6 +45,13 @@ extern int debug_syscall_write0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_WRITE
 
+#ifdef CONFIG_DEBUG_SYSCALL_DUP
+extern int debug_syscall_dup_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_DUP0
+extern int debug_syscall_dup0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_DUP
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif
