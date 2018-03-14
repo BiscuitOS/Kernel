@@ -20,8 +20,8 @@
 #include <errno.h>
 #include <string.h>
 
-static char *argv_rc[] = { "/bin/sh", NULL };
-static char *envp_rc[] = { "HOME=/", NULL };
+static char *argv_rc[] = { "-/bin/sh", NULL };
+static char *envp_rc[] = { "HOME=/usr/root", NULL };
 
 int sys_d_execve(const char *file, char **argv, char **envp)
 {
