@@ -15,5 +15,9 @@ int debug_binary_aout_common_userland(void)
 #ifdef CONFIG_DEBUG_AOUT_EXEC
     debug_binary_aout_exec();
 #endif
+
+#ifdef CONFIG_DEBUG_AOUT_FORMAT
+    debug_binary_aout_format();
+#endif
     return 0;
 }

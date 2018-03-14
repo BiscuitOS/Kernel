@@ -88,7 +88,7 @@ extern int sys_d_dup(void);
 #ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
 extern int sys_d_execve(void); 
 #endif
-#ifdef CONFIG_DEBUG_AOUT_EXEC
+#ifdef CONFIG_DEBUG_BINARY_AOUT
 extern int sys_d_execve(void); 
 #endif
 
@@ -183,7 +183,7 @@ sys_d_dup,  /* duplicate an open file descriptor */
 #ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
 sys_d_execve,  /* execute program */
 #endif
-#ifdef CONFIG_DEBUG_AOUT_EXEC
+#ifdef CONFIG_DEBUG_BINARY_AOUT
 sys_d_execve,  /* execute program */
 #endif
 };

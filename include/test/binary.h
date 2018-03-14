@@ -12,6 +12,10 @@ extern int debug_binary_aout_common_userland(void);
 int debug_binary_aout_exec(void);
 #endif
 
+#ifdef CONFIG_DEBUG_AOUT_FORMAT
+int debug_binary_aout_format(void);
+#endif
+
 #endif // CONFIG_DEBUG_BINARY_AOUT
 
 #endif // CONFIG_DEBUG_BINARY

@@ -22,6 +22,11 @@ config DEBUG_AOUT_EXEC
 	help
 	  Execute a a.out format file on MINIXFS-linux0.11
 
+config DEBUG_AOUT_FORMAT
+	bool "Format for a.out (Assembly output)"
+	help
+	  Parse foramt for a.out (Assembly output).
+
 endif
 
 endmenu

@@ -100,7 +100,7 @@
 #ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
 #define __NR_d_execve 72
 #endif
-#ifdef CONFIG_DEBUG_AOUT_EXEC
+#ifdef CONFIG_DEBUG_BINARY_AOUT
 #define __NR_d_execve 72
 #endif
 
@@ -239,7 +239,7 @@ int d_dup(int fildes);
 #ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
 int d_execve(const char *filename, char **argv, char **envp);
 #endif
-#ifdef CONFIG_DEBUG_AOUT_EXEC
+#ifdef CONFIG_DEBUG_BINARY_AOUT
 int d_execve(const char *filename, char **argv, char **envp);
 #endif
 
