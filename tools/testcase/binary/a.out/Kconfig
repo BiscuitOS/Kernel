@@ -1,0 +1,27 @@
+#
+# Execute-Link format file: a.out
+#
+
+menu "a.out: Assembler output format file"
+
+config DEBUG_BINARY_AOUT
+	bool "a.out: Assembler output format file"
+	help
+	  a.out is a file format used in older versions of Unix-like 
+	  computer operating systems for executables, object code, and, 
+	  in later systems, shared libraries. This is an abbreviated 
+	  form of "assembler output", the filename of the output of Ken 
+	  Thompson's PDP-7 assembler.[1] The term was subsequently 
+	  applied to the format of the resulting file to contrast with 
+	  other formats for object code.
+
+if DEBUG_BINARY_AOUT
+
+config DEBUG_AOUT_EXEC
+	bool "Execute a.out format file on Linux0.11"
+	help
+	  Execute a a.out format file on MINIXFS-linux0.11
+
+endif
+
+endmenu

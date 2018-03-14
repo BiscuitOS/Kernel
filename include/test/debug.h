@@ -33,6 +33,10 @@
 #include <test/block.h>
 #endif
 
+#ifdef CONFIG_DEBUG_BINARY
+#include <test/binary.h>
+#endif
+
 #ifdef CONFIG_DEBUG_KERNEL_LATER
 extern void debug_on_kernel_later(void);
 #endif

@@ -56,6 +56,8 @@ source "tools/testcase/systemcall/Kconfig"
 
 source "tools/testcase/vfs/Kconfig"
 
+source "tools/testcase/binary/Kconfig"
+
 endif
 
 endmenu

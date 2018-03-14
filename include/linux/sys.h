@@ -88,6 +88,9 @@ extern int sys_d_dup(void);
 #ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
 extern int sys_d_execve(void); 
 #endif
+#ifdef CONFIG_DEBUG_AOUT_EXEC
+extern int sys_d_execve(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -178,6 +181,9 @@ sys_d_write,  /* Write data to file/directory */
 sys_d_dup,  /* duplicate an open file descriptor */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
+sys_d_execve,  /* execute program */
+#endif
+#ifdef CONFIG_DEBUG_AOUT_EXEC
 sys_d_execve,  /* execute program */
 #endif
 };

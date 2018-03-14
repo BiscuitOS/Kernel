@@ -1,0 +1,18 @@
+#
+# Execute format file mechanism on X86 architecture
+#
+menu "Execute-Link format file Mechanism on X86 Architecture"
+
+config DEBUG_BINARY
+        bool "Execute-Link format file  mechanism on X86 Architecture"
+        help
+	  a.out and ELF format file.
+
+if DEBUG_BINARY
+
+
+source tools/testcase/binary/a.out/Kconfig
+
+endif # End of DEBUG_BINARY
+
+endmenu
