@@ -16,6 +16,11 @@ config DEBUG_SYSCALL_ROUTINE
 	help
 	  The routine of system call on IDT, GDT and LDT.
 
+config DEBUG_SYSCALL_STACK
+	bool "Stack map on trigger system call"
+	help
+	  The stack map on trigger system call.
+
 source tools/testcase/systemcall/open/Kconfig
 
 source tools/testcase/systemcall/close/Kconfig

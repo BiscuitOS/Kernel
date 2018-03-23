@@ -12,6 +12,10 @@ extern int d_printf(const char *fmt, ...);
 extern void system_call_rountine(void);
 #endif 
 
+#ifdef CONFIG_DEBUG_SYSCALL_STACK
+extern int debug_syscall_stack(void);
+#endif
+
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN
 extern int debug_syscall_open_common_userland(void);
 

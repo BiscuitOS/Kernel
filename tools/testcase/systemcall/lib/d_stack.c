@@ -1,5 +1,5 @@
 /*
- * exec.c
+ * System Call: stack
  *
  * (C) 2018.03 BiscuitOS <buddy.zhang@aliyun.com>
  *
@@ -7,12 +7,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#include <linux/kernel.h>
+#define __LIBRARY__
+#include <unistd.h>
 
-int d_do_execve(unsigned long *eip, long tmp, char *filename,
-              char **argv, char **envp)
-{
-    if ((0xffff & eip[1]) != 0x000f)
-        panic("exec called from superisor mode");
-    return 0;
-}
+_syscall1(int, d_stack, int, fd);

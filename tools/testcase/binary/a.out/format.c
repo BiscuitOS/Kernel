@@ -85,6 +85,15 @@ static void parse_aout_header(struct exec ex)
 {
     if (N_MAGIC(ex) == ZMAGIC)
         printk("load a.out format file.\n");
+    printk("Entry: %#8x\n", ex.a_entry);
+    printk("Text:  %#8x - %#8x\n", ex.a_entry, ex.a_entry + ex.a_text);
+    printk("Date:  %#8x - %#8x\n", ex.a_entry + ex.a_text, 
+                                 ex.a_entry + ex.a_text + ex.a_data);
+    printk("BSS:   %#8x - %#8x\n", ex.a_entry + ex.a_text + ex.a_data, 
+                      ex.a_bss + ex.a_entry + ex.a_text + ex.a_data);
+    printk("SYM:   %#8x\n", ex.a_syms);
+    printk("RelC:  %#8x\n", ex.a_trsize);
+    printk("RelD:  %#8x\n", ex.a_drsize);
 }
 
 int sys_d_execve(const char *file, char **argv, char **envp)

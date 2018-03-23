@@ -9,11 +9,13 @@ extern int debug_binary_common_userland(void);
 extern int debug_binary_aout_common_userland(void);
 
 #ifdef CONFIG_DEBUG_AOUT_EXEC
-int debug_binary_aout_exec(void);
+extern int debug_binary_aout_exec(void);
+extern int d_do_execve(unsigned long *eip, long tmp, char *filename,
+              char **argv, char **envp);
 #endif
 
 #ifdef CONFIG_DEBUG_AOUT_FORMAT
-int debug_binary_aout_format(void);
+extern int debug_binary_aout_format(void);
 #endif
 
 #endif // CONFIG_DEBUG_BINARY_AOUT
