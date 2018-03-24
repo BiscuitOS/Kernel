@@ -77,6 +77,10 @@ int sys_d_stack(unsigned int fildes)
 {
     __asm__ volatile ("call stack_map\n\r"
                       "ret" ::);
+
+    /* nothing to do! */
+    if (0)
+        stack_map(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     return 0;
 }
 

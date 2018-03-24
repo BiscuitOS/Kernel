@@ -48,7 +48,7 @@ static int count(char **argv)
  *
  * from_kmem    argv *        argv **
  *   0          user space    user space
- *   1          kernel space  kernel space
+ *   1          kernel space  user space
  *   2          kernel space  kernel space
  *
  * We do this by playing games with the fs segment register. Since it
