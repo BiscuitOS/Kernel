@@ -25,7 +25,7 @@
 static long HIGH_MEMORY = 0;
 extern void do_exit(int error_code);
 
-static unsigned char mem_map[PAGING_PAGES] = { 0, };
+unsigned char mem_map[PAGING_PAGES] = { 0, };
 
 static inline void oom(void)
 {
@@ -167,11 +167,11 @@ int free_page_tables(unsigned long from, unsigned long size)
     unsigned long *dir, nr;
 
     if (from & 0x3fffff)
-        panic("free_page_tables called whit wrong alignment");
+        panic("free_page_tables called while wrong alignment");
     if (!from)
         panic("Trying to free up swapper memory space");
     size = (size + 0x3fffff) >> 22;
-    dir = (unsigned long *) ((from >> 20) & 0xffc); /* _gp_dir = 0 */
+    dir = (unsigned long *) ((from >> 20) & 0xffc); /* _pg_dir = 0 */
     for ( ; size-- > 0; dir++) {
         if (!(1 & *dir))
             continue;
@@ -179,8 +179,8 @@ int free_page_tables(unsigned long from, unsigned long size)
         for (nr = 0; nr < 1024 ; nr++) {
             if (1 & *pg_table)
                 free_page(0xfffff000 & *pg_table);
-                *pg_table = 0;
-                pg_table++;
+            *pg_table = 0;
+            pg_table++;
         }
         free_page(0xfffff000 & *dir);
         *dir = 0;

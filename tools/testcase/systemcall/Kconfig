@@ -31,6 +31,8 @@ source tools/testcase/systemcall/write/Kconfig
 
 source tools/testcase/systemcall/dup/Kconfig
 
+source tools/testcase/systemcall/fork/Kconfig
+
 source tools/testcase/systemcall/execve/Kconfig
 
 endif

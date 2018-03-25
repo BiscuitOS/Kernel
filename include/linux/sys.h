@@ -85,6 +85,9 @@ extern int sys_d_write(void);
 #ifdef CONFIG_DEBUG_SYSCALL_DUP0
 extern int sys_d_dup(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_FORK0
+extern int sys_d_fork(void); 
+#endif
 #ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
 extern int sys_d_execve(void); 
 #endif
@@ -182,6 +185,9 @@ sys_d_write,  /* Write data to file/directory */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_DUP0
 sys_d_dup,  /* duplicate an open file descriptor */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_FORK0
+sys_d_fork,  /* create a new process */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
 sys_d_execve,  /* execute program */

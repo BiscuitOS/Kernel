@@ -1,7 +1,6 @@
 /*
- * Page-Table Machanism on Two-Level Page-table Machanism
+ * Common System Call: fork
  *
- * (C) 2017.12 BiscuitOS <buddy.zhang@aliyun.com>
  * (C) 2018.03 BiscuitOS <buddy.zhang@aliyun.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -9,18 +8,12 @@
  * published by the Free Software Foundation.
  */
 #include <linux/kernel.h>
-#include <linux/sched.h>
-
 #include <test/debug.h>
 
-/*
- * Copy mem
- */
-static int copy_mem(void)
+int debug_syscall_fork_common_userland(void)
 {
-}
-
-/* common page-table entry */
-void debug_page_table_common(void)
-{
+#ifdef CONFIG_DEBUG_SYSCALL_FORK0
+    debug_syscall_fork0();
+#endif
+    return 0;
 }

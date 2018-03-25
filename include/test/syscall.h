@@ -57,6 +57,15 @@ extern int dupfd(unsigned int fd, unsigned int arg);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_DUP
 
+#ifdef CONFIG_DEBUG_SYSCALL_FORK
+extern int debug_syscall_fork_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_FORK0
+extern int debug_syscall_fork0(void);
+extern int d_copy_page_tables(unsigned long from, unsigned long to, long size);
+extern int d_free_page_tables(unsigned long from, unsigned long size);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_FORK
+
 #ifdef CONFIG_DEBUG_SYSCALL_EXECVE
 extern int debug_syscall_execve_common_userland(void);
 #ifdef CONFIG_DEBUG_SYSCALL_EXECVE0

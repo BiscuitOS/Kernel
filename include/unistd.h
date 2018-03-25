@@ -100,6 +100,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
 #define __NR_d_execve 72
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_FORK0
+#define __NR_d_fork   72
+#endif
 #ifdef CONFIG_DEBUG_BINARY_AOUT
 #define __NR_d_execve 72
 #endif
@@ -238,6 +241,9 @@ int d_write(int fildes, const char *buf, off_t count);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_DUP0
 int d_dup(int fildes);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_FORK0
+int d_fork(void);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
 int d_execve(const char *filename, char **argv, char **envp);
