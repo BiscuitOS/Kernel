@@ -120,6 +120,8 @@ static unsigned long change_ldt(unsigned long text_size, unsigned long *page)
     data_limit = 0x4000000;
     code_base = get_base(current->ldt[1]);
     data_base = code_base;
+    /* New code and data segment are same as old code and data segment,
+     * so we don't need to re-set base address */
     set_base(current->ldt[1], code_base);
     set_limit(current->ldt[1], code_limit);
     set_base(current->ldt[2], data_base);
