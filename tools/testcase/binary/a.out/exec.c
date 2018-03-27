@@ -150,6 +150,25 @@ static unsigned long *create_tables(char *p, int argc, int envc)
     sp = (unsigned long *)(0xfffffffc & (unsigned long)p);
     sp -= envc + 1;
     envp = sp;
+    sp -= argc + 1;
+    argv = sp;
+    put_fs_long((unsigned long)envp, --sp);
+    put_fs_long((unsigned long)argv, --sp);
+    put_fs_long((unsigned long)argc, --sp);
+    while (argc-- > 0) {
+        put_fs_long((unsigned long)p, argv++);
+        while (get_fs_byte(p++))
+            /* nothing */;
+    }
+    put_fs_long(0, argv);
+    while (envc-- > 0) {
+        put_fs_long((unsigned long)p, envp++);
+        while (get_fs_byte(p++))
+            /* nothing */;
+    }
+    put_fs_long(0, envp);
+
+    return sp;
 }
 
 int d_do_execve(unsigned long *eip, long tmp, char *filename,
@@ -198,7 +217,7 @@ int d_do_execve(unsigned long *eip, long tmp, char *filename,
     }
     /* obtain a.out header  */
     ex = *((struct exec *)bh->b_data);
-    if ((bh->b_data[0] == "#") && (bh->b_data[1] == "!") && (!sh_bang)) {
+    if ((bh->b_data[0] == '#') && (bh->b_data[1] == '!') && (!sh_bang)) {
         /* Shell scripts */;
     }
     brelse(bh);
@@ -240,9 +259,20 @@ int d_do_execve(unsigned long *eip, long tmp, char *filename,
     current->used_math = 0;
     p += change_ldt(ex.a_text, page) - MAX_ARG_PAGES * PAGE_SIZE;
     p = (unsigned long)create_tables((char *)p, argc, envc);
+    current->brk = ex.a_bss +
+                   (current->end_data = ex.a_data +
+                   (current->end_code = ex.a_text));
+    current->start_stack = p & 0xfffff000;
+    current->euid = e_uid;
+    current->egid = e_gid;
+    i = ex.a_text + ex.a_data;
+    while (i & 0xfff)
+       put_fs_byte(0, (char *)(i++));
+    eip[0] = ex.a_entry;   /* eip, magic happens :-) */
+    eip[3] = p;            /* stack pointer */
+    return 0;
 
 exec_error2:
     iput(inode);
-
     return retval;
 }
