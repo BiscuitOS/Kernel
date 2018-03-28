@@ -109,6 +109,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_STACK
 #define __NR_d_stack  72
 #endif
+#ifdef CONFIG_DEBUG_SEGMENT_FS
+#define __NR_d_fs     72
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -253,6 +256,9 @@ int d_execve(const char *filename, char **argv, char **envp);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_STACK
 int d_stack(int fildes);
+#endif
+#ifdef CONFIG_DEBUG_SEGMENT_FS
+int d_fs(const char *filename, char **argv, char **envp);
 #endif
 
 #endif

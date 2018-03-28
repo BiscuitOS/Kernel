@@ -97,6 +97,9 @@ extern int sys_d_execve(void);
 #ifdef CONFIG_DEBUG_SYSCALL_STACK
 extern int sys_d_stack(void); 
 #endif
+#ifdef CONFIG_DEBUG_SEGMENT_FS
+extern int sys_d_fs(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -197,5 +200,8 @@ sys_d_execve,  /* execute program */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_STACK
 sys_d_stack,  /* dump stack map on trigger system call */
+#endif
+#ifdef CONFIG_DEBUG_SEGMENT_FS
+sys_d_fs,  /* Exchange data between kernel and userland */
 #endif
 };

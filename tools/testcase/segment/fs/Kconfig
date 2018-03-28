@@ -1,0 +1,12 @@
+#
+# Data segment: FS
+#
+menu "FS Segment(Common Data Segment)"
+
+
+config DEBUG_SEGMENT_FS
+	bool "Exchange data between kernel and userland via FS segment"
+	help
+	  Exchange data between kernel and userland via FS segment
+
+endmenu

@@ -350,6 +350,7 @@ ifdef CONFIG_TESTCASE
   objs-y        += tools/testcase/
   libs-y        += tools/testcase/systemcall/lib/
   libs-y        += tools/testcase/binary/lib/
+  libs-y        += tools/testcase/segment/lib/
 endif
 
 vmlinux-dirs	:= $(patsubst %/,%,$(objs-y) $(libs-y))

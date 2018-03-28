@@ -43,6 +43,10 @@ void debug_on_kernel_later(void)
 #ifdef CONFIG_DEBUG_BINARY
     debug_binary_common();
 #endif
+
+#ifdef CONFIG_DEBUG_SEGMENT
+    debug_segment_common();
+#endif
 }
 #endif // CONFIG_DEBUG_KERNEL_LATER
 
@@ -77,8 +81,13 @@ int debug_on_userland_syscall(void)
 #ifdef CONFIG_DEBUG_SYSCALL
     debug_syscall_common_userland();
 #endif
+
 #ifdef CONFIG_DEBUG_BINARY
     debug_binary_common_userland();
+#endif
+
+#ifdef CONFIG_DEBUG_SEGMENT
+    debug_segment_common_userland();
 #endif
     return 0;
 }

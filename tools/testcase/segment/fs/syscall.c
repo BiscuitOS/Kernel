@@ -1,5 +1,5 @@
 /*
- * System Call: execve
+ * FS: exchange data between kernel and userland
  *
  * (C) 2018.03 BiscuitOS <buddy.zhang@aliyun.com>
  *
@@ -20,22 +20,18 @@
 #include <errno.h>
 #include <string.h>
 
-static char *argv_rc[] = { "-/bin/sh", NULL };
-static char *envp_rc[] = { "HOME=/root", NULL };
+static char *argv_rc[] = { "-/bin/sh", "/usr/bin/bash", NULL };
+static char *envp_rc[] = { "HOME=/root", "PATH=/usr/bin:/bin", NULL};
 
-int sys_d_execve(const char *file, char **argv, char **envp)
+int sys_d_fs(const char *file, char **argv, char **envp)
 {
-    __asm__ volatile ("lea 0x1C(%%esp), %%eax\n\r"
-                      "pushl %%eax\n\r"
-                      "call d_do_execve\n\r"
-                      "addl $4, %%esp\n\r"
-                      "ret" ::);
+    printk("Hello World\n");
     return 0;
 }
 
 /* Invoke by system call: int $0x80 */
 int debug_binary_aout_exec(void)
 {
-    d_execve("/bin/sh", argv_rc, envp_rc);
+    d_fs("/bin/sh", argv_rc, envp_rc);
     return 0;
 }

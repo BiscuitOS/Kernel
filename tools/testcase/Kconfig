@@ -58,6 +58,8 @@ source "tools/testcase/vfs/Kconfig"
 
 source "tools/testcase/binary/Kconfig"
 
+source "tools/testcase/segment/Kconfig"
+
 endif
 
 endmenu
