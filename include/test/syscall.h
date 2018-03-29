@@ -5,9 +5,6 @@
 extern int debug_syscall_common(void);
 extern int debug_syscall_common_userland(void);
 
-extern int d_printf(const char *fmt, ...);
-
-
 #ifdef CONFIG_DEBUG_SYSCALL_ROUTINE
 extern void system_call_rountine(void);
 #endif 

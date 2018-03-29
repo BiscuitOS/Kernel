@@ -54,6 +54,8 @@ extern int debug_kernel_on_userland(void);
 #endif
 
 #ifdef CONFIG_DEBUG_USERLAND_SYSCALL
+extern int d_printf(const char *fmt, ...);
+
 extern int debug_on_userland_syscall(void);
 #endif
 

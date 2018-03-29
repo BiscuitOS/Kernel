@@ -10,6 +10,22 @@
 #include <linux/kernel.h>
 #include <test/debug.h>
 
+#ifdef CONFIG_DEBUG_USERLAND_SYSCALL
+/*
+ * Note! Broken the number of system call on linux 0.11, we should modify
+ * 'nr_system_calls' on kernel/system_call.c. Default value is 72, so the 
+ * number of system call over it will directly return -1.
+ */
+#define __LIBRARY__
+#include <stdarg.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+static char printbuf[1024];
+
+extern int vsprintf(char *buf, const char *fmt, va_list args);
+#endif
+
 #ifdef CONFIG_DEBUG_KERNEL_LATER
 /*
  * debug on kernel last before userland launch.
@@ -73,6 +89,17 @@ int debug_kernel_on_userland(void)
 #endif // CONFIG_DEBUG_USERLAND
 
 #ifdef CONFIG_DEBUG_USERLAND_SYSCALL
+/******* Userland *********/
+int d_printf(const char *fmt, ...)
+{
+    va_list args;
+    int i;
+
+    va_start(args, fmt);
+    write(1, printbuf, i = vsprintf(printbuf, fmt, args));
+    va_end(args);
+    return i;
+}
 /*
  * Debug on userland.
  */

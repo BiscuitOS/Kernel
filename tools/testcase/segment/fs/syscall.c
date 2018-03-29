@@ -21,17 +21,29 @@
 #include <string.h>
 
 static char *argv_rc[] = { "-/bin/sh", "/usr/bin/bash", NULL };
-static char *envp_rc[] = { "HOME=/root", "PATH=/usr/bin:/bin", NULL};
 
-int sys_d_fs(const char *file, char **argv, char **envp)
+int sys_d_fs(const char *file, char **argv, char *buffer)
 {
-    printk("Hello World\n");
+#ifdef CONFIG_DEBUG_SEGMENT_OBTAIN_USERLAND
+    obtain_data_from_userland(file, argv);
+#endif
+
+#ifdef CONFIG_DEBUG_SEGMENT_PUSH_KERNEL
+    copy_kernel_to_userland(buffer);
+#endif
+
     return 0;
 }
 
 /* Invoke by system call: int $0x80 */
 int debug_binary_aout_exec(void)
 {
-    d_fs("/bin/sh", argv_rc, envp_rc);
+    char buffer[40];
+
+    d_fs("/bin/sh", argv_rc, buffer);
+
+    d_printf("Data: %c\n", buffer[0]);
+    d_printf("String: %s\n", buffer);
+
     return 0;
 }

@@ -258,7 +258,7 @@ int d_execve(const char *filename, char **argv, char **envp);
 int d_stack(int fildes);
 #endif
 #ifdef CONFIG_DEBUG_SEGMENT_FS
-int d_fs(const char *filename, char **argv, char **envp);
+int d_fs(const char *filename, char **argv, char *buffer);
 #endif
 
 #endif
