@@ -10,7 +10,7 @@
 #include <linux/kernel.h>
 #include <linux/mm.h>
 
-#include <test/mm.h>
+#include <test/debug.h>
 
 /* common memory entry */
 int debug_mmu_common(void)
@@ -55,5 +55,13 @@ int debug_mmu_common(void)
     debug_mmu_TLB_common();
 #endif
 
+    return 0;
+}
+
+int debug_mmu_common_userland(void)
+{
+#ifdef CONFIG_DEBUG_MMU_VIRTUAL
+    debug_mmu_virtual_common_userland();
+#endif
     return 0;
 }

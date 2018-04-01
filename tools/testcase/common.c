@@ -116,6 +116,10 @@ int debug_on_userland_syscall(void)
 #ifdef CONFIG_DEBUG_SEGMENT
     debug_segment_common_userland();
 #endif
+
+#ifdef CONFIG_DEBUG_MMU
+    debug_mmu_common_userland();
+#endif
     return 0;
 }
 #endif // CONFIG_DEBUG_USERLAND_SYSCALL

@@ -116,7 +116,7 @@ static inline void init_bucket_desc(void)
 	free_bucket_desc = first;
 }
 
-void *kmalloc(unsigned int len)
+void *malloc(unsigned int len)
 {
 	struct _bucket_dir *bdir;
 	struct bucket_desc *bdesc;

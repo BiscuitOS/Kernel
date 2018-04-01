@@ -9,6 +9,7 @@ struct logic_addr
 };
 
 extern int debug_mmu_common(void);
+extern int debug_mmu_common_userland(void);
 
 #ifdef CONFIG_DEBUG_MMU_LINEAR
 extern int debug_mmu_linear_common(void);
@@ -25,6 +26,8 @@ extern int debug_mmu_physic_common(void);
 
 #ifdef CONFIG_DEBUG_MMU_VIRTUAL
 extern int debug_mmu_virtual_common(void);
+extern int debug_mmu_virtual_common_userland(void);
+extern void debug_virtual_address_common_userland(void);
 #endif // CONFIG_DEBUG_VIRTUAL
 
 #ifdef CONFIG_DEBUG_MMU_PGTABLE
