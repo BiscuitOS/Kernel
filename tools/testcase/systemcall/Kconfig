@@ -35,6 +35,8 @@ source tools/testcase/systemcall/fork/Kconfig
 
 source tools/testcase/systemcall/execve/Kconfig
 
+source tools/testcase/systemcall/creat/Kconfig
+
 endif
 
 endmenu

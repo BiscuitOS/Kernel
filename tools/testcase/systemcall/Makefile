@@ -8,3 +8,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_WRITE)          += write/
 obj-$(CONFIG_DEBUG_SYSCALL_DUP)            += dup/
 obj-$(CONFIG_DEBUG_SYSCALL_FORK)           += fork/
 obj-$(CONFIG_DEBUG_SYSCALL_EXECVE)         += execve/
+obj-$(CONFIG_DEBUG_SYSCALL_CREAT)          += creat/

@@ -115,6 +115,9 @@
 #ifdef CONFIG_DEBUG_MMU
 #define __NR_d_mmu    72
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_CREAT
+#define __NR_d_creat  72
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -265,6 +268,9 @@ int d_fs(const char *filename, char **argv, char *buffer);
 #endif
 #ifdef CONFIG_DEBUG_MMU
 int d_mmu(const char *filename, char **argv, char *buffer);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_CREAT
+int d_creat(const char *filename, int mode);
 #endif
 
 #endif

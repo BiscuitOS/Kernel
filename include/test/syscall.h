@@ -72,6 +72,13 @@ extern int d_do_execve(unsigned long *eip, long tmp, char *filename,
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_DUP
 
+#ifdef CONFIG_DEBUG_SYSCALL_CREAT
+extern int debug_syscall_creat_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_CREAT0
+extern int debug_syscall_creat0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_CREAT
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

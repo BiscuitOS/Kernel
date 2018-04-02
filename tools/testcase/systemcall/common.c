@@ -54,6 +54,10 @@ int debug_syscall_common_userland(void)
     debug_syscall_execve_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_CREAT
+    debug_syscall_creat_common_userland();
+#endif
+
 #ifdef CONFIG_DEBUG_SYSCALL_STACK
     debug_syscall_stack();
 #endif

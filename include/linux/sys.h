@@ -103,6 +103,9 @@ extern int sys_d_fs(void);
 #ifdef CONFIG_DEBUG_MMU
 extern int sys_d_mmu(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_CREAT
+extern int sys_d_creat(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -209,5 +212,8 @@ sys_d_fs,  /* Exchange data between kernel and userland */
 #endif
 #ifdef CONFIG_DEBUG_MMU
 sys_d_mmu,  /* physical, linaer, logica and virtual address */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_CREAT
+sys_d_creat,  /* create a new file or rewrite an existing one */
 #endif
 };

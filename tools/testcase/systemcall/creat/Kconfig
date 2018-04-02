@@ -1,0 +1,21 @@
+#
+# System Call: creat
+#
+
+menu "creat(): create a new file or rewrite an existing one"
+
+config DEBUG_SYSCALL_CREAT
+	bool "creat(): create a new file or rewrite an existing one"
+	help
+	  Debug creat system Call Machanism on X86 Architecture.
+
+if DEBUG_SYSCALL_CREAT
+
+config DEBUG_SYSCALL_CREAT0
+	bool "System CALL: creat (linux0.11.1 MINIXFS)"
+	help
+	  creat system call on linux0.11.1.
+
+endif
+
+endmenu
