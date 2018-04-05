@@ -11,3 +11,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_EXECVE)         += execve/
 obj-$(CONFIG_DEBUG_SYSCALL_CREAT)          += creat/
 obj-$(CONFIG_DEBUG_SYSCALL_LINK)           += link/
 obj-$(CONFIG_DEBUG_SYSCALL_UNLINK)         += unlink/
+obj-$(CONFIG_DEBUG_SYSCALL_MKDIR)          += mkdir/

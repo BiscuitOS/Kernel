@@ -93,6 +93,13 @@ extern int debug_syscall_unlink0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_UNLINK
 
+#ifdef CONFIG_DEBUG_SYSCALL_MKDIR
+extern int debug_syscall_mkdir_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_MKDIR0
+extern int debug_syscall_mkdir0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_MKDIR
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

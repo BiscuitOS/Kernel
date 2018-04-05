@@ -1,0 +1,21 @@
+#
+# System Call: mkdir
+#
+
+menu "mkdir(): create a directory and specify access mode"
+
+config DEBUG_SYSCALL_MKDIR
+	bool "mkdir() : create a new directory and specify access mode"
+	help
+	  Debug mkdir system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_MKDIR
+
+config DEBUG_SYSCALL_MKDIR0
+	bool "System CALL: mkdir (linux0.11.1 MINIXFS)"
+	help
+	  Mkdir system call on linux0.11.1.
+
+endif
+
+endmenu

@@ -124,6 +124,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_UNLINK
 #define __NR_d_unlink 72
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_MKDIR
+#define __NR_d_mkdir  72
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -283,6 +286,9 @@ int d_link(const char *filename1, const char *filename2);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_UNLINK
 int d_unlink(const char *filename1);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_MKDIR
+int d_mkdir(const char *filename, int mode);
 #endif
 
 #endif

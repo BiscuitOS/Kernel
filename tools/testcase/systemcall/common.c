@@ -70,5 +70,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_unlink_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_MKDIR
+    debug_syscall_mkdir_common_userland();
+#endif
+
     return 0;
 }
