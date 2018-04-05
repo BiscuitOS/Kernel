@@ -39,6 +39,8 @@ source tools/testcase/systemcall/creat/Kconfig
 
 source tools/testcase/systemcall/link/Kconfig
 
+source tools/testcase/systemcall/unlink/Kconfig
+
 endif
 
 endmenu

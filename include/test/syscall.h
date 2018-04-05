@@ -86,6 +86,13 @@ extern int debug_syscall_link0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_LINK
 
+#ifdef CONFIG_DEBUG_SYSCALL_UNLINK
+extern int debug_syscall_unlink_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_UNLINK0
+extern int debug_syscall_unlink0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_UNLINK
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

@@ -1,0 +1,21 @@
+#
+# System Call: unlink
+#
+
+menu "unlink(): remove a symbolic link or a hard link to an existing file"
+
+config DEBUG_SYSCALL_UNLINK
+	bool "unlink() : remove a symbolic link or a hard link to an file"
+	help
+	  Debug unlink system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_UNLINK
+
+config DEBUG_SYSCALL_UNLINK0
+	bool "System CALL: unlink (linux0.11.1 MINIXFS)"
+	help
+	  Unink system call on linux0.11.1.
+
+endif
+
+endmenu

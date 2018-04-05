@@ -109,6 +109,9 @@ extern int sys_d_creat(void);
 #ifdef CONFIG_DEBUG_SYSCALL_LINK
 extern int sys_d_link(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_UNLINK
+extern int sys_d_unlink(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -220,6 +223,9 @@ sys_d_mmu,  /* physical, linaer, logica and virtual address */
 sys_d_creat,  /* create a new file or rewrite an existing one */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_LINK
-sys_d_link,  /* make a new name for a file */
+sys_d_link,  /* link a file */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_UNLINK
+sys_d_unlink,  /* remove a link file */
 #endif
 };
