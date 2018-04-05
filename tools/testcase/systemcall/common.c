@@ -62,5 +62,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_stack();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_LINK
+    debug_syscall_link_common_userland();
+#endif
+
     return 0;
 }

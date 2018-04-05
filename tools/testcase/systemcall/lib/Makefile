@@ -7,3 +7,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_FORK0)      += d_fork.o
 lib-$(CONFIG_DEBUG_SYSCALL_EXECVE0)    += d_execve.o
 lib-$(CONFIG_DEBUG_SYSCALL_CREAT0)     += d_creat.o
 lib-$(CONFIG_DEBUG_SYSCALL_STACK)      += d_stack.o
+lib-$(CONFIG_DEBUG_SYSCALL_LINK)       += d_link.o

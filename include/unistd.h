@@ -118,6 +118,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_CREAT
 #define __NR_d_creat  72
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_LINK
+#define __NR_d_link   72
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -271,6 +274,9 @@ int d_mmu(const char *filename, char **argv, char *buffer);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_CREAT
 int d_creat(const char *filename, int mode);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_LINK
+int d_link(const char *filename1, const char *filename2);
 #endif
 
 #endif

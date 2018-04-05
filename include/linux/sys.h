@@ -106,6 +106,9 @@ extern int sys_d_mmu(void);
 #ifdef CONFIG_DEBUG_SYSCALL_CREAT
 extern int sys_d_creat(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_LINK
+extern int sys_d_link(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -215,5 +218,8 @@ sys_d_mmu,  /* physical, linaer, logica and virtual address */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_CREAT
 sys_d_creat,  /* create a new file or rewrite an existing one */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_LINK
+sys_d_link,  /* make a new name for a file */
 #endif
 };
