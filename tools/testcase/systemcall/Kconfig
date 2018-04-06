@@ -47,6 +47,8 @@ source tools/testcase/systemcall/rmdir/Kconfig
 
 source tools/testcase/systemcall/mknod/Kconfig
 
+source tools/testcase/systemcall/access/Kconfig
+
 endif
 
 endmenu

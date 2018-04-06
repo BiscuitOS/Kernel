@@ -14,3 +14,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_UNLINK)         += unlink/
 obj-$(CONFIG_DEBUG_SYSCALL_MKDIR)          += mkdir/
 obj-$(CONFIG_DEBUG_SYSCALL_RMDIR)          += rmdir/
 obj-$(CONFIG_DEBUG_SYSCALL_MKNOD)          += mknod/
+obj-$(CONFIG_DEBUG_SYSCALL_ACCESS)         += access/

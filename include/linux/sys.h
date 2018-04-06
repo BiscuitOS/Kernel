@@ -121,6 +121,9 @@ extern int sys_d_rmdir(void);
 #ifdef CONFIG_DEBUG_SYSCALL_MKNOD
 extern int sys_d_mknod(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_ACCESS
+extern int sys_d_access(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -245,5 +248,8 @@ sys_d_rmdir,  /* remove a existed directory */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_MKNOD
 sys_d_mknod,  /* create a regular file or director or special file */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_ACCESS
+sys_d_access,  /* check user's permissions for a file */
 #endif
 };

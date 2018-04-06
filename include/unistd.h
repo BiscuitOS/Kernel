@@ -137,6 +137,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_MKNOD
 #define __NR_d_mknod  DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_ACCESS
+#define __NR_d_access DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -307,4 +310,8 @@ int d_rmdir(const char *filename);
 #ifdef CONFIG_DEBUG_SYSCALL_MKNOD
 int d_mknod(const char *filename, mode_t mode, dev_t dev);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_ACCESS
+int d_access(const char *filename, mode_t mode);
+#endif
+
 #endif

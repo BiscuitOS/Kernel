@@ -114,6 +114,13 @@ extern int debug_syscall_mknod0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_MKNOD
 
+#ifdef CONFIG_DEBUG_SYSCALL_ACCESS
+extern int debug_syscall_access_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_ACCESS0
+extern int debug_syscall_access0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_ACCESS
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif
