@@ -7,6 +7,10 @@
 #include <sys/utsname.h>
 #include <utime.h>
 
+#ifdef CONFIG_DEBUG_USERLAND_SYSCALL
+#define DEBUG_SYSCALL_NR     72
+#endif
+
 #ifdef __LIBRARY__
 
 #define __NR_setup    0 /* used only by init, to get system going */
@@ -83,49 +87,52 @@
 #define __NR_setregid 71
 
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN0
-#define __NR_d_open   72
+#define __NR_d_open   DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_CLOSE0
-#define __NR_d_close  72
+#define __NR_d_close  DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_READ0
-#define __NR_d_read   72
+#define __NR_d_read   DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_WRITE0
-#define __NR_d_write  72
+#define __NR_d_write  DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_DUP0
-#define __NR_d_dup    72
+#define __NR_d_dup    DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_EXECVE0
-#define __NR_d_execve 72
+#define __NR_d_execve DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_FORK0
-#define __NR_d_fork   72
+#define __NR_d_fork   DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_BINARY_AOUT
-#define __NR_d_execve 72
+#define __NR_d_execve DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_STACK
-#define __NR_d_stack  72
+#define __NR_d_stack  DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_SEGMENT_FS
-#define __NR_d_fs     72
+#define __NR_d_fs     DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_MMU
-#define __NR_d_mmu    72
+#define __NR_d_mmu    DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_CREAT
-#define __NR_d_creat  72
+#define __NR_d_creat  DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_LINK
-#define __NR_d_link   72
+#define __NR_d_link   DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_UNLINK
-#define __NR_d_unlink 72
+#define __NR_d_unlink DEBUG_SYSCALL_NR
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_MKDIR
-#define __NR_d_mkdir  72
+#define __NR_d_mkdir  DEBUG_SYSCALL_NR
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_RMDIR
+#define __NR_d_rmdir  DEBUG_SYSCALL_NR
 #endif
 
 #define _syscall0(type, name) \
@@ -289,6 +296,10 @@ int d_unlink(const char *filename1);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_MKDIR
 int d_mkdir(const char *filename, int mode);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_RMDIR
+int mkdir(const char *filename, int mode);
+int d_rmdir(const char *filename);
 #endif
 
 #endif

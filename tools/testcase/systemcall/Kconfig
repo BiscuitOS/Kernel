@@ -43,6 +43,8 @@ source tools/testcase/systemcall/unlink/Kconfig
 
 source tools/testcase/systemcall/mkdir/Kconfig
 
+source tools/testcase/systemcall/rmdir/Kconfig
+
 endif
 
 endmenu

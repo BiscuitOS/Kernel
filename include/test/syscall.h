@@ -100,6 +100,13 @@ extern int debug_syscall_mkdir0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_MKDIR
 
+#ifdef CONFIG_DEBUG_SYSCALL_RMDIR
+extern int debug_syscall_rmdir_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_RMDIR0
+extern int debug_syscall_rmdir0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_RMDIR
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

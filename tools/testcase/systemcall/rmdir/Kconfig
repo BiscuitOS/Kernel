@@ -1,0 +1,21 @@
+#
+# System Call: rmkdir
+#
+
+menu "rmdir(): remove a existed directory"
+
+config DEBUG_SYSCALL_RMDIR
+	bool "rmdir() : remove a existed directory"
+	help
+	  Debug rmdir system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_RMDIR
+
+config DEBUG_SYSCALL_RMDIR0
+	bool "System CALL: rmdir (linux0.11.1 MINIXFS)"
+	help
+	  Rmdir system call on linux0.11.1.
+
+endif
+
+endmenu

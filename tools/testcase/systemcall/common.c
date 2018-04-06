@@ -74,5 +74,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_mkdir_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_RMDIR
+    debug_syscall_rmdir_common_userland();
+#endif
+
     return 0;
 }

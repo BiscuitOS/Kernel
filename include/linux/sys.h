@@ -115,6 +115,9 @@ extern int sys_d_unlink(void);
 #ifdef CONFIG_DEBUG_SYSCALL_MKDIR
 extern int sys_d_mkdir(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_RMDIR
+extern int sys_d_rmdir(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -233,5 +236,8 @@ sys_d_unlink,  /* remove a link file */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_MKDIR
 sys_d_mkdir,  /* create a new directory and specify access mode */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_RMDIR
+sys_d_rmdir,  /* remove a existed directory */
 #endif
 };
