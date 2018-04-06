@@ -1,0 +1,21 @@
+#
+# System Call: mknod
+#
+
+menu "mknod: make a directory, a special file, or a regular file"
+
+config DEBUG_SYSCALL_MKNOD
+	bool "mknod() : make a directory, a special file, or a regular file"
+	help
+	  Debug mknod system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_MKNOD
+
+config DEBUG_SYSCALL_MKNOD0
+	bool "System CALL: mknod (linux0.11.1 MINIXFS)"
+	help
+	  mknod system call on linux0.11.1.
+
+endif
+
+endmenu

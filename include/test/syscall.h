@@ -107,6 +107,13 @@ extern int debug_syscall_rmdir0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_RMDIR
 
+#ifdef CONFIG_DEBUG_SYSCALL_MKNOD
+extern int debug_syscall_mknod_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_MKNOD0
+extern int debug_syscall_mknod0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_MKNOD
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

@@ -11,3 +11,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_LINK)       += d_link.o
 lib-$(CONFIG_DEBUG_SYSCALL_UNLINK)     += d_unlink.o
 lib-$(CONFIG_DEBUG_SYSCALL_MKDIR)      += d_mkdir.o
 lib-$(CONFIG_DEBUG_SYSCALL_RMDIR)      += d_rmdir.o
+lib-$(CONFIG_DEBUG_SYSCALL_MKNOD)      += d_mknod.o
