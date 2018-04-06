@@ -1,0 +1,21 @@
+#
+# System Call: acct -- enable/disable process accounting
+#
+
+menu "acct(): enable/disable process accounting"
+
+config DEBUG_SYSCALL_ACCT
+	bool "acct(): enable/disable process accounting"
+	help
+	  Debug acct system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_ACCT
+
+config DEBUG_SYSCALL_ACCT0
+	bool "System CALL: acct (linux0.11.1 MINIXFS)"
+	help
+	  Acct system call on linux0.11.1.
+
+endif
+
+endmenu

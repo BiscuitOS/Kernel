@@ -121,6 +121,13 @@ extern int debug_syscall_access0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_ACCESS
 
+#ifdef CONFIG_DEBUG_SYSCALL_ACCT
+extern int debug_syscall_acct_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_ACCT0
+extern int debug_syscall_acct0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_ACCT
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

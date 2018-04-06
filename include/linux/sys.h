@@ -124,6 +124,9 @@ extern int sys_d_mknod(void);
 #ifdef CONFIG_DEBUG_SYSCALL_ACCESS
 extern int sys_d_access(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_ACCT
+extern int sys_d_acct(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -251,5 +254,8 @@ sys_d_mknod,  /* create a regular file or director or special file */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_ACCESS
 sys_d_access,  /* check user's permissions for a file */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_ACCT
+sys_d_acct,  /* enable/disable process accounting */
 #endif
 };
