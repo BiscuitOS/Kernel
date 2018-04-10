@@ -16,3 +16,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_RMDIR)          += rmdir/
 obj-$(CONFIG_DEBUG_SYSCALL_MKNOD)          += mknod/
 obj-$(CONFIG_DEBUG_SYSCALL_ACCESS)         += access/
 obj-$(CONFIG_DEBUG_SYSCALL_ACCT)           += acct/
+obj-$(CONFIG_DEBUG_SYSCALL_ALARM)          += alarm/

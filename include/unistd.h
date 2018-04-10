@@ -143,6 +143,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_ACCT
 #define __NR_d_acct   DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_ALARM
+#define __NR_d_alarm  DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -319,6 +322,8 @@ int d_access(const char *filename, mode_t mode);
 #ifdef CONFIG_DEBUG_SYSCALL_ACCT
 int d_acct(const char *filename);
 #endif
-
+#ifdef CONFIG_DEBUG_SYSCALL_ALARM
+int d_alarm(long seconds);
+#endif
 
 #endif

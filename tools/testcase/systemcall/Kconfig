@@ -51,6 +51,8 @@ source tools/testcase/systemcall/access/Kconfig
 
 source tools/testcase/systemcall/acct/Kconfig
 
+source tools/testcase/systemcall/alarm/Kconfig
+
 endif
 
 endmenu

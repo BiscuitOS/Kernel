@@ -127,6 +127,9 @@ extern int sys_d_access(void);
 #ifdef CONFIG_DEBUG_SYSCALL_ACCT
 extern int sys_d_acct(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_ALARM
+extern int sys_d_alarm(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -257,5 +260,8 @@ sys_d_access,  /* check user's permissions for a file */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_ACCT
 sys_d_acct,  /* enable/disable process accounting */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_ALARM
+sys_d_alarm,  /* set an alarm clock for delivery of a signal */
 #endif
 };

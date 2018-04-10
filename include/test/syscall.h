@@ -128,6 +128,13 @@ extern int debug_syscall_acct0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_ACCT
 
+#ifdef CONFIG_DEBUG_SYSCALL_ALARM
+extern int debug_syscall_alarm_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_ALARM0
+extern int debug_syscall_alarm0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_ALARM
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif
