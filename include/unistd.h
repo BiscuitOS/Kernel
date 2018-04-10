@@ -146,6 +146,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_ALARM
 #define __NR_d_alarm  DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_CHDIR
+#define __NR_d_chdir  DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -324,6 +327,9 @@ int d_acct(const char *filename);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_ALARM
 int d_alarm(long seconds);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_CHDIR
+int d_chdir(const char *filename);
 #endif
 
 #endif

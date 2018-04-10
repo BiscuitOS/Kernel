@@ -1,0 +1,21 @@
+#
+# System Call: chdir
+#
+
+menu "chdir(): change working directory"
+
+config DEBUG_SYSCALL_CHDIR
+	bool "chdir(): change working directory"
+	help
+	  Debug chdir system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_CHDIR
+
+config DEBUG_SYSCALL_CHDIR0
+	bool "System CALL: chdir (linux0.11.1 MINIXFS)"
+	help
+	  Chdir system call on linux0.11.1.
+
+endif
+
+endmenu

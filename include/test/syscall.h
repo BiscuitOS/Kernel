@@ -135,6 +135,13 @@ extern int debug_syscall_alarm0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_ALARM
 
+#ifdef CONFIG_DEBUG_SYSCALL_CHDIR
+extern int debug_syscall_chdir_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_CHDIR0
+extern int debug_syscall_chdir0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_CHDIR
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

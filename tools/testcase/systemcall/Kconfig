@@ -53,6 +53,8 @@ source tools/testcase/systemcall/acct/Kconfig
 
 source tools/testcase/systemcall/alarm/Kconfig
 
+source tools/testcase/systemcall/chdir/Kconfig
+
 endif
 
 endmenu

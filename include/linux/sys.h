@@ -130,6 +130,9 @@ extern int sys_d_acct(void);
 #ifdef CONFIG_DEBUG_SYSCALL_ALARM
 extern int sys_d_alarm(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_CHDIR
+extern int sys_d_chdir(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -263,5 +266,8 @@ sys_d_acct,  /* enable/disable process accounting */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_ALARM
 sys_d_alarm,  /* set an alarm clock for delivery of a signal */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_CHDIR
+sys_d_chdir,  /* change working directory */
 #endif
 };
