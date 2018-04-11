@@ -142,6 +142,13 @@ extern int debug_syscall_chdir0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_CHDIR
 
+#ifdef CONFIG_DEBUG_SYSCALL_CHMOD
+extern int debug_syscall_chmod_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_CHMOD0
+extern int debug_syscall_chmod0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_CHMOD
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

@@ -98,5 +98,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_chdir_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_CHMOD
+    debug_syscall_chmod_common_userland();
+#endif
+
     return 0;
 }

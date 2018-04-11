@@ -133,6 +133,9 @@ extern int sys_d_alarm(void);
 #ifdef CONFIG_DEBUG_SYSCALL_CHDIR
 extern int sys_d_chdir(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_CHMOD
+extern int sys_d_chmod(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -269,5 +272,8 @@ sys_d_alarm,  /* set an alarm clock for delivery of a signal */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_CHDIR
 sys_d_chdir,  /* change working directory */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_CHMOD
+sys_d_chmod,  /* change permissions of a file */
 #endif
 };

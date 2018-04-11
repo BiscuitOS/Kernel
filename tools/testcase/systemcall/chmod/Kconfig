@@ -1,0 +1,21 @@
+#
+# System Call: chmod
+#
+
+menu "chmod(): change permissions of a file"
+
+config DEBUG_SYSCALL_CHMOD
+	bool "chmod(): change permissions of a file"
+	help
+	  Debug chmod system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_CHMOD
+
+config DEBUG_SYSCALL_CHMOD0
+	bool "System CALL: chmod (linux0.11.1 MINIXFS)"
+	help
+	  Chmod system call on linux0.11.1.
+
+endif
+
+endmenu

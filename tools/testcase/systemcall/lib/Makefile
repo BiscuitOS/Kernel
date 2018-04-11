@@ -16,3 +16,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_ACCESS)     += d_access.o
 lib-$(CONFIG_DEBUG_SYSCALL_ACCT)       += d_acct.o
 lib-$(CONFIG_DEBUG_SYSCALL_ALARM)      += d_alarm.o
 lib-$(CONFIG_DEBUG_SYSCALL_CHDIR)      += d_chdir.o
+lib-$(CONFIG_DEBUG_SYSCALL_CHMOD)      += d_chmod.o

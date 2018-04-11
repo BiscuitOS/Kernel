@@ -55,6 +55,8 @@ source tools/testcase/systemcall/alarm/Kconfig
 
 source tools/testcase/systemcall/chdir/Kconfig
 
+source tools/testcase/systemcall/chmod/Kconfig
+
 endif
 
 endmenu
