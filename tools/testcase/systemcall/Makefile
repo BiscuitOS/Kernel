@@ -22,3 +22,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_CHMOD)          += chmod/
 obj-$(CONFIG_DEBUG_SYSCALL_CHOWN)          += chown/
 obj-$(CONFIG_DEBUG_SYSCALL_UTIME)          += utime/
 obj-$(CONFIG_DEBUG_SYSCALL_CHROOT)         += chroot/
+obj-$(CONFIG_DEBUG_SYSCALL_USTAT)          += ustat/

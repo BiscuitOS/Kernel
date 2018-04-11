@@ -161,6 +161,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_CHROOT
 #define __NR_d_chroot DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_USTAT
+#define __NR_d_ustat  DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -354,6 +357,9 @@ int d_utime(const char *filename, struct utimbuf *times);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_CHROOT
 int d_chroot(const char *filename);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_USTAT
+int d_ustat(int dev, struct ustat *ubuf);
 #endif
 
 #endif

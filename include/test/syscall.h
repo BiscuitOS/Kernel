@@ -170,6 +170,13 @@ extern int debug_syscall_chroot0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_CHROOT
 
+#ifdef CONFIG_DEBUG_SYSCALL_USTAT
+extern int debug_syscall_ustat_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_USTAT0
+extern int debug_syscall_ustat0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_USTAT
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

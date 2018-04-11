@@ -20,3 +20,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_CHMOD)      += d_chmod.o
 lib-$(CONFIG_DEBUG_SYSCALL_CHOWN)      += d_chown.o
 lib-$(CONFIG_DEBUG_SYSCALL_UTIME)      += d_utime.o
 lib-$(CONFIG_DEBUG_SYSCALL_CHROOT)     += d_chroot.o
+lib-$(CONFIG_DEBUG_SYSCALL_USTAT)      += d_ustat.o

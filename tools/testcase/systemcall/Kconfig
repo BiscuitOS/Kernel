@@ -63,6 +63,8 @@ source tools/testcase/systemcall/utime/Kconfig
 
 source tools/testcase/systemcall/chroot/Kconfig
 
+source tools/testcase/systemcall/ustat/Kconfig
+
 endif
 
 endmenu
