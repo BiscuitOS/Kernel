@@ -163,6 +163,13 @@ extern int debug_syscall_utime0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_UTIME
 
+#ifdef CONFIG_DEBUG_SYSCALL_CHROOT
+extern int debug_syscall_chroot_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_CHROOT0
+extern int debug_syscall_chroot0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_CHROOT
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

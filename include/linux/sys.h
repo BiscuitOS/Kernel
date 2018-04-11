@@ -142,6 +142,9 @@ extern int sys_d_chown(void);
 #ifdef CONFIG_DEBUG_SYSCALL_UTIME
 extern int sys_d_utime(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_CHROOT
+extern int sys_d_chroot(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -287,5 +290,8 @@ sys_d_chown,  /* change ownership of a file */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_UTIME
 sys_d_utime,  /* change access and/or modification times of an inode */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_CHROOT
+sys_d_chroot,  /* change root directory */
 #endif
 };

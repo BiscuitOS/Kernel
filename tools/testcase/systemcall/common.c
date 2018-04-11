@@ -110,5 +110,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_utime_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_CHROOT
+    debug_syscall_chroot_common_userland();
+#endif
+
     return 0;
 }
