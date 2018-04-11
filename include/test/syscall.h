@@ -149,6 +149,13 @@ extern int debug_syscall_chmod0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_CHMOD
 
+#ifdef CONFIG_DEBUG_SYSCALL_CHOWN
+extern int debug_syscall_chown_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_CHOWN0
+extern int debug_syscall_chown0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_CHOWN
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

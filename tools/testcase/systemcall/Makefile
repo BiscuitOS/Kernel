@@ -19,3 +19,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_ACCT)           += acct/
 obj-$(CONFIG_DEBUG_SYSCALL_ALARM)          += alarm/
 obj-$(CONFIG_DEBUG_SYSCALL_CHDIR)          += chdir/
 obj-$(CONFIG_DEBUG_SYSCALL_CHMOD)          += chmod/
+obj-$(CONFIG_DEBUG_SYSCALL_CHOWN)          += chown/

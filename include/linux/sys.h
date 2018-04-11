@@ -136,6 +136,9 @@ extern int sys_d_chdir(void);
 #ifdef CONFIG_DEBUG_SYSCALL_CHMOD
 extern int sys_d_chmod(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_CHOWN
+extern int sys_d_chown(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -275,5 +278,8 @@ sys_d_chdir,  /* change working directory */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_CHMOD
 sys_d_chmod,  /* change permissions of a file */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_CHOWN
+sys_d_chown,  /* change ownership of a file */
 #endif
 };

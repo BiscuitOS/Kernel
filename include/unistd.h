@@ -152,6 +152,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_CHMOD
 #define __NR_d_chmod  DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_CHOWN
+#define __NR_d_chown  DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -336,6 +339,9 @@ int d_chdir(const char *filename);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_CHMOD
 int d_chmod(const char *filename, int mode);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_CHOWN
+int d_chown(const char *filename, int uid, int gid);
 #endif
 
 #endif

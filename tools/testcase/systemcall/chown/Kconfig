@@ -1,0 +1,21 @@
+#
+# System Call: chown
+#
+
+menu "chown(): change owner and group of a file"
+
+config DEBUG_SYSCALL_CHOWN
+	bool "chown(): change owner and group of a file"
+	help
+	  Debug chown system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_CHOWN
+
+config DEBUG_SYSCALL_CHOWN0
+	bool "System CALL: chown (linux0.11.1 MINIXFS)"
+	help
+	  Chown system call on linux0.11.1.
+
+endif
+
+endmenu
