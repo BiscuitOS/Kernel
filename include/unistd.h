@@ -155,6 +155,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_CHOWN
 #define __NR_d_chown  DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_UTIME
+#define __NR_d_utime  DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -342,6 +345,9 @@ int d_chmod(const char *filename, int mode);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_CHOWN
 int d_chown(const char *filename, int uid, int gid);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_UTIME
+int d_utime(const char *filename, struct utimbuf *times);
 #endif
 
 #endif

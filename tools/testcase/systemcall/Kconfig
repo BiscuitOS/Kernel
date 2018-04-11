@@ -59,6 +59,8 @@ source tools/testcase/systemcall/chmod/Kconfig
 
 source tools/testcase/systemcall/chown/Kconfig
 
+source tools/testcase/systemcall/utime/Kconfig
+
 endif
 
 endmenu

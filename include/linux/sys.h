@@ -139,6 +139,9 @@ extern int sys_d_chmod(void);
 #ifdef CONFIG_DEBUG_SYSCALL_CHOWN
 extern int sys_d_chown(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_UTIME
+extern int sys_d_utime(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -281,5 +284,8 @@ sys_d_chmod,  /* change permissions of a file */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_CHOWN
 sys_d_chown,  /* change ownership of a file */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_UTIME
+sys_d_utime,  /* change access and/or modification times of an inode */
 #endif
 };

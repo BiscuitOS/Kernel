@@ -156,6 +156,13 @@ extern int debug_syscall_chown0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_CHOWN
 
+#ifdef CONFIG_DEBUG_SYSCALL_UTIME
+extern int debug_syscall_utime_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_UTIME0
+extern int debug_syscall_utime0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_UTIME
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

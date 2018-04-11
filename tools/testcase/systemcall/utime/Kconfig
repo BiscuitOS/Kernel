@@ -1,0 +1,21 @@
+#
+# System Call: utime
+#
+
+menu "utime(): set file access and modification times"
+
+config DEBUG_SYSCALL_UTIME
+	bool "utime(): set file access and modification times"
+	help
+	  Debug utime system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_UTIME
+
+config DEBUG_SYSCALL_UTIME0
+	bool "System CALL: utime (linux0.11.1 MINIXFS)"
+	help
+	  Utime system call on linux0.11.1.
+
+endif
+
+endmenu
