@@ -87,6 +87,8 @@ source tools/testcase/systemcall/time/Kconfig
 
 source tools/testcase/systemcall/stime/Kconfig
 
+source tools/testcase/systemcall/times/Kconfig
+
 endif
 
 endmenu

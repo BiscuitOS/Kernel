@@ -1,0 +1,21 @@
+#
+# System Call: times
+#
+
+menu "times       file access and modification times structure"
+
+config DEBUG_SYSCALL_TIMES
+	bool "times(): file access and modification times structure"
+	help
+	  Debug times system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_TIMES
+
+config DEBUG_SYSCALL_TIMES0
+	bool "System CALL: times (linux0.11.1 MINIXFS)"
+	help
+	  Times system call on linux0.11.1.
+
+endif
+
+endmenu

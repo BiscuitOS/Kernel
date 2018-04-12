@@ -254,6 +254,13 @@ extern int debug_syscall_stime0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_STIME
 
+#ifdef CONFIG_DEBUG_SYSCALL_TIMES
+extern int debug_syscall_times_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_TIMES0
+extern int debug_syscall_times0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_TIMES
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

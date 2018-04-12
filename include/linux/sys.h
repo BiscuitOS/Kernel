@@ -181,6 +181,9 @@ extern int sys_d_time(void);
 #ifdef CONFIG_DEBUG_SYSCALL_STIME
 extern int sys_d_stime(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_TIMES
+extern int sys_d_times(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -365,5 +368,8 @@ sys_d_time, /* get time in seconds */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_STIME
 sys_d_stime, /* set time in seconds */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_TIMES
+sys_d_times, /* file access and modification times structure */
 #endif
 };

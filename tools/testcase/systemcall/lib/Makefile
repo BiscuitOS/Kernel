@@ -32,3 +32,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_GETEUID)    += d_geteuid.o
 lib-$(CONFIG_DEBUG_SYSCALL_GETPPID)    += d_getppid.o
 lib-$(CONFIG_DEBUG_SYSCALL_TIME)       += d_time.o
 lib-$(CONFIG_DEBUG_SYSCALL_STIME)      += d_stime.o
+lib-$(CONFIG_DEBUG_SYSCALL_TIMES)      += d_times.o
