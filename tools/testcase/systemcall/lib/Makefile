@@ -27,3 +27,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_GETPID)     += d_getpid.o
 lib-$(CONFIG_DEBUG_SYSCALL_GETUID)     += d_getuid.o
 lib-$(CONFIG_DEBUG_SYSCALL_PAUSE)      += d_pause.o
 lib-$(CONFIG_DEBUG_SYSCALL_NICE)       += d_nice.o
+lib-$(CONFIG_DEBUG_SYSCALL_GETGID)     += d_getgid.o

@@ -182,6 +182,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_NICE
 #define __NR_d_nice   DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETGID
+#define __NR_d_getgid DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -396,6 +399,9 @@ int d_pause(void);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_NICE
 int d_nice(long increment);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETGID
+int d_getgid(void);
 #endif
 
 #endif

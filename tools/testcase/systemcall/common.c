@@ -142,5 +142,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_nice_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_GETGID
+    debug_syscall_getgid_common_userland();
+#endif
+
     return 0;
 }

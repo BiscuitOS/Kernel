@@ -77,6 +77,8 @@ source tools/testcase/systemcall/pause/Kconfig
 
 source tools/testcase/systemcall/nice/Kconfig
 
+source tools/testcase/systemcall/getgid/Kconfig
+
 endif
 
 endmenu

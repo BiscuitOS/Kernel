@@ -166,6 +166,9 @@ extern int sys_d_pause(void);
 #ifdef CONFIG_DEBUG_SYSCALL_NICE
 extern int sys_d_nice(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETGID
+extern int sys_d_getgid(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -335,5 +338,8 @@ sys_d_pause, /* wait for signal */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_NICE
 sys_d_nice, /* change process priority */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETGID
+sys_d_getgid, /* Get the numerical group id */
 #endif
 };

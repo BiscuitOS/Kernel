@@ -219,6 +219,13 @@ extern int debug_syscall_nice0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_NICE
 
+#ifdef CONFIG_DEBUG_SYSCALL_GETGID
+extern int debug_syscall_getgid_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_GETGID0
+extern int debug_syscall_getgid0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_GETGID
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif
