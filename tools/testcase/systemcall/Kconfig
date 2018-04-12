@@ -85,6 +85,8 @@ source tools/testcase/systemcall/getppid/Kconfig
 
 source tools/testcase/systemcall/time/Kconfig
 
+source tools/testcase/systemcall/stime/Kconfig
+
 endif
 
 endmenu

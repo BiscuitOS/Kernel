@@ -178,6 +178,9 @@ extern int sys_d_getppid(void);
 #ifdef CONFIG_DEBUG_SYSCALL_TIME
 extern int sys_d_time(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_STIME
+extern int sys_d_stime(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -359,5 +362,8 @@ sys_d_getppid, /* get the parent process ID */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_TIME
 sys_d_time, /* get time in seconds */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_STIME
+sys_d_stime, /* set time in seconds */
 #endif
 };

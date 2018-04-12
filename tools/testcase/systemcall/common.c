@@ -158,5 +158,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_time_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_STIME
+    debug_syscall_stime_common_userland();
+#endif
+
     return 0;
 }

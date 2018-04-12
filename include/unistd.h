@@ -194,6 +194,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_TIME
 #define __NR_d_time    DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_STIME
+#define __NR_d_stime   DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -420,6 +423,9 @@ int d_getppid(void);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_TIME
 int d_time(long *tloc);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_STIME
+int d_stime(long *tptr);
 #endif
 
 #endif

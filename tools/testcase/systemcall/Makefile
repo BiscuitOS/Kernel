@@ -33,3 +33,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_GETGID)         += getgid/
 obj-$(CONFIG_DEBUG_SYSCALL_GETEUID)        += geteuid/
 obj-$(CONFIG_DEBUG_SYSCALL_GETPPID)        += getppid/
 obj-$(CONFIG_DEBUG_SYSCALL_TIME)           += time/
+obj-$(CONFIG_DEBUG_SYSCALL_STIME)          += stime/
