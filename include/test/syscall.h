@@ -198,6 +198,13 @@ extern int debug_syscall_getpid0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_GETPID
 
+#ifdef CONFIG_DEBUG_SYSCALL_GETUID
+extern int debug_syscall_getuid_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_GETUID0
+extern int debug_syscall_getuid0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_GETUID
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

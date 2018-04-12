@@ -26,3 +26,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_USTAT)          += ustat/
 obj-$(CONFIG_DEBUG_SYSCALL_FSTAT)          += fstat/
 obj-$(CONFIG_DEBUG_SYSCALL_STAT)           += stat/
 obj-$(CONFIG_DEBUG_SYSCALL_GETPID)         += getpid/
+obj-$(CONFIG_DEBUG_SYSCALL_GETUID)         += getuid/

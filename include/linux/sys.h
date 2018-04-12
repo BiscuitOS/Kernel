@@ -157,6 +157,9 @@ extern int sys_d_stat(void);
 #ifdef CONFIG_DEBUG_SYSCALL_GETPID
 extern int sys_d_getpid(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETUID
+extern int sys_d_getuid(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -317,5 +320,8 @@ sys_d_stat, /* -- unknown -- */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_GETPID
 sys_d_getpid, /* get process identification */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETUID
+sys_d_getuid, /* get current task euid */
 #endif
 };

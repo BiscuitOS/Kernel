@@ -130,5 +130,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_getpid_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_GETUID
+    debug_syscall_getuid_common_userland();
+#endif
+
     return 0;
 }

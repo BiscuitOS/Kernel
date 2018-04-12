@@ -24,3 +24,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_USTAT)      += d_ustat.o
 lib-$(CONFIG_DEBUG_SYSCALL_FSTAT)      += d_fstat.o
 lib-$(CONFIG_DEBUG_SYSCALL_STAT)       += d_stat.o
 lib-$(CONFIG_DEBUG_SYSCALL_GETPID)     += d_getpid.o
+lib-$(CONFIG_DEBUG_SYSCALL_GETUID)     += d_getuid.o
