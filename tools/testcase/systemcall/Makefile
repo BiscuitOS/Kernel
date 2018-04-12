@@ -31,3 +31,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_PAUSE)          += pause/
 obj-$(CONFIG_DEBUG_SYSCALL_NICE)           += nice/
 obj-$(CONFIG_DEBUG_SYSCALL_GETGID)         += getgid/
 obj-$(CONFIG_DEBUG_SYSCALL_GETEUID)        += geteuid/
+obj-$(CONFIG_DEBUG_SYSCALL_GETPPID)        += getppid/

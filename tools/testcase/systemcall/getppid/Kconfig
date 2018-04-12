@@ -1,0 +1,21 @@
+#
+# System Call: getppid
+#
+
+menu "getppid     get the parent process ID"
+
+config DEBUG_SYSCALL_GETPPID
+	bool "getppid(): get the parent process ID"
+	help
+	  Debug getppid system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_GETPPID
+
+config DEBUG_SYSCALL_GETPPID0
+	bool "System CALL: getppid (linux0.11.1 MINIXFS)"
+	help
+	  Getppid system call on linux0.11.1.
+
+endif
+
+endmenu

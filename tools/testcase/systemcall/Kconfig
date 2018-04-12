@@ -81,6 +81,8 @@ source tools/testcase/systemcall/getgid/Kconfig
 
 source tools/testcase/systemcall/geteuid/Kconfig
 
+source tools/testcase/systemcall/getppid/Kconfig
+
 endif
 
 endmenu

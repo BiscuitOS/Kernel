@@ -172,6 +172,9 @@ extern int sys_d_getgid(void);
 #ifdef CONFIG_DEBUG_SYSCALL_GETEUID
 extern int sys_d_geteuid(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETPPID
+extern int sys_d_getppid(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -347,5 +350,8 @@ sys_d_getgid, /* Get the numerical group id */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_GETEUID
 sys_d_geteuid, /* get current task euid */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETPPID
+sys_d_getppid, /* get the parent process ID */
 #endif
 };

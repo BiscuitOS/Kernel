@@ -233,6 +233,13 @@ extern int debug_syscall_geteuid0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_GETEUID
 
+#ifdef CONFIG_DEBUG_SYSCALL_GETPPID
+extern int debug_syscall_getppid_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_GETPPID0
+extern int debug_syscall_getppid0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_GETPPID
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif
