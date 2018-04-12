@@ -167,6 +167,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_FSTAT
 #define __NR_d_fstat  DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_STAT
+#define __NR_d_stat   DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -366,6 +369,9 @@ int d_ustat(int dev, struct ustat *ubuf);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_FSTAT
 int d_fstat(unsigned int fd, struct stat *statbuf);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_STAT
+int d_stat(unsigned int fd, struct stat *statbuf);
 #endif
 
 #endif

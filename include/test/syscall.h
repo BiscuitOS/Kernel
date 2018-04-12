@@ -184,6 +184,13 @@ extern int debug_syscall_fstat0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_FSTAT
 
+#ifdef CONFIG_DEBUG_SYSCALL_STAT
+extern int debug_syscall_stat_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_STAT0
+extern int debug_syscall_stat0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_STAT
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

@@ -67,6 +67,8 @@ source tools/testcase/systemcall/ustat/Kconfig
 
 source tools/testcase/systemcall/fstat/Kconfig
 
+source tools/testcase/systemcall/stat/Kconfig
+
 endif
 
 endmenu

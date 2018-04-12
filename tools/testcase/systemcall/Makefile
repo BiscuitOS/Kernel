@@ -24,3 +24,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_UTIME)          += utime/
 obj-$(CONFIG_DEBUG_SYSCALL_CHROOT)         += chroot/
 obj-$(CONFIG_DEBUG_SYSCALL_USTAT)          += ustat/
 obj-$(CONFIG_DEBUG_SYSCALL_FSTAT)          += fstat/
+obj-$(CONFIG_DEBUG_SYSCALL_STAT)           += stat/

@@ -22,3 +22,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_UTIME)      += d_utime.o
 lib-$(CONFIG_DEBUG_SYSCALL_CHROOT)     += d_chroot.o
 lib-$(CONFIG_DEBUG_SYSCALL_USTAT)      += d_ustat.o
 lib-$(CONFIG_DEBUG_SYSCALL_FSTAT)      += d_fstat.o
+lib-$(CONFIG_DEBUG_SYSCALL_STAT)       += d_stat.o

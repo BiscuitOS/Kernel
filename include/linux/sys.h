@@ -151,6 +151,9 @@ extern int sys_d_ustat(void);
 #ifdef CONFIG_DEBUG_SYSCALL_FSTAT
 extern int sys_d_fstat(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_STAT
+extern int sys_d_stat(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -305,5 +308,8 @@ sys_d_ustat,   /* -- unknown -- */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_FSTAT
 sys_d_fstat, /* -- unknown -- */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_STAT
+sys_d_stat, /* -- unknown -- */
 #endif
 };

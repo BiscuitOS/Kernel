@@ -122,5 +122,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_fstat_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_STAT
+    debug_syscall_stat_common_userland();
+#endif
+
     return 0;
 }
