@@ -163,6 +163,9 @@ extern int sys_d_getuid(void);
 #ifdef CONFIG_DEBUG_SYSCALL_PAUSE
 extern int sys_d_pause(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_NICE
+extern int sys_d_nice(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -329,5 +332,8 @@ sys_d_getuid, /* get current task euid */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_PAUSE
 sys_d_pause, /* wait for signal */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_NICE
+sys_d_nice, /* change process priority */
 #endif
 };

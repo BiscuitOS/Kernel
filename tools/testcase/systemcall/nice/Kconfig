@@ -1,0 +1,21 @@
+#
+# System Call: nice
+#
+
+menu "nice        change the nice value of a process"
+
+config DEBUG_SYSCALL_NICE
+	bool "nice(): change the nice value of a process"
+	help
+	  Debug nice system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_NICE
+
+config DEBUG_SYSCALL_NICE0
+	bool "System CALL: nice (linux0.11.1 MINIXFS)"
+	help
+	  Nice system call on linux0.11.1.
+
+endif
+
+endmenu

@@ -212,6 +212,13 @@ extern int debug_syscall_pause0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_PAUSE
 
+#ifdef CONFIG_DEBUG_SYSCALL_NICE
+extern int debug_syscall_nice_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_NICE0
+extern int debug_syscall_nice0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_NICE
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

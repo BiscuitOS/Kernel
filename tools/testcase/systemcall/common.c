@@ -138,5 +138,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_pause_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_NICE
+    debug_syscall_nice_common_userland();
+#endif
+
     return 0;
 }
