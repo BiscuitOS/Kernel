@@ -30,3 +30,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_NICE)       += d_nice.o
 lib-$(CONFIG_DEBUG_SYSCALL_GETGID)     += d_getgid.o
 lib-$(CONFIG_DEBUG_SYSCALL_GETEUID)    += d_geteuid.o
 lib-$(CONFIG_DEBUG_SYSCALL_GETPPID)    += d_getppid.o
+lib-$(CONFIG_DEBUG_SYSCALL_TIME)       += d_time.o

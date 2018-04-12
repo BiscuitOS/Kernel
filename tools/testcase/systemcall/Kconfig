@@ -83,6 +83,8 @@ source tools/testcase/systemcall/geteuid/Kconfig
 
 source tools/testcase/systemcall/getppid/Kconfig
 
+source tools/testcase/systemcall/time/Kconfig
+
 endif
 
 endmenu

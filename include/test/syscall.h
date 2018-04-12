@@ -240,6 +240,13 @@ extern int debug_syscall_getppid0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_GETPPID
 
+#ifdef CONFIG_DEBUG_SYSCALL_TIME
+extern int debug_syscall_time_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_TIME0
+extern int debug_syscall_time0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_TIME
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif
