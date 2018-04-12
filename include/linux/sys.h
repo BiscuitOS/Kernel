@@ -148,6 +148,9 @@ extern int sys_d_chroot(void);
 #ifdef CONFIG_DEBUG_SYSCALL_USTAT
 extern int sys_d_ustat(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_FSTAT
+extern int sys_d_fstat(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -298,6 +301,9 @@ sys_d_utime,  /* change access and/or modification times of an inode */
 sys_d_chroot,  /* change root directory */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_USTAT
-sys_d_ustat,
+sys_d_ustat,   /* -- unknown -- */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_FSTAT
+sys_d_fstat, /* -- unknown -- */
 #endif
 };

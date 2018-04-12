@@ -1,0 +1,21 @@
+#
+# System Call: fstat
+#
+
+menu "fstat       -- unknow system call"
+
+config DEBUG_SYSCALL_FSTAT
+	bool "fstat(): unknow system call"
+	help
+	  Debug fstat system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_FSTAT
+
+config DEBUG_SYSCALL_FSTAT0
+	bool "System CALL: fstat (linux0.11.1 MINIXFS)"
+	help
+	  Fstat system call on linux0.11.1.
+
+endif
+
+endmenu
