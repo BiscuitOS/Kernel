@@ -154,6 +154,9 @@ extern int sys_d_fstat(void);
 #ifdef CONFIG_DEBUG_SYSCALL_STAT
 extern int sys_d_stat(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETPID
+extern int sys_d_getpid(void); 
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -311,5 +314,8 @@ sys_d_fstat, /* -- unknown -- */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_STAT
 sys_d_stat, /* -- unknown -- */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETPID
+sys_d_getpid, /* get process identification */
 #endif
 };

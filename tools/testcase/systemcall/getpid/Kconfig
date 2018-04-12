@@ -1,0 +1,21 @@
+#
+# System Call: getpid
+#
+
+menu "getpid      get the process ID"
+
+config DEBUG_SYSCALL_GETPID
+	bool "getpid(): get the process ID"
+	help
+	  Debug getpid system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_GETPID
+
+config DEBUG_SYSCALL_GETPID0
+	bool "System CALL: getpid (linux0.11.1 MINIXFS)"
+	help
+	  Getpid system call on linux0.11.1.
+
+endif
+
+endmenu
