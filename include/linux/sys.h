@@ -169,6 +169,9 @@ extern int sys_d_nice(void);
 #ifdef CONFIG_DEBUG_SYSCALL_GETGID
 extern int sys_d_getgid(void); 
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETEUID
+extern int sys_d_geteuid(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -341,5 +344,8 @@ sys_d_nice, /* change process priority */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_GETGID
 sys_d_getgid, /* Get the numerical group id */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETEUID
+sys_d_geteuid, /* get current task euid */
 #endif
 };

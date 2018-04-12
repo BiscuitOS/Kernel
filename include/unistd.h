@@ -185,6 +185,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_GETGID
 #define __NR_d_getgid DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETEUID
+#define __NR_d_geteuid DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -402,6 +405,9 @@ int d_nice(long increment);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_GETGID
 int d_getgid(void);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETEUID
+int d_geteuid(void);
 #endif
 
 #endif
