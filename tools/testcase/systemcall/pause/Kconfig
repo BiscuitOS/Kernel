@@ -1,0 +1,21 @@
+#
+# System Call: pause
+#
+
+menu "pause       suspend the thread until a signal is received"
+
+config DEBUG_SYSCALL_PAUSE
+	bool "pause(): suspend the thread until a signal is received"
+	help
+	  Debug pause system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_PAUSE
+
+config DEBUG_SYSCALL_PAUSE0
+	bool "System CALL: pause (linux0.11.1 MINIXFS)"
+	help
+	  Pause system call on linux0.11.1.
+
+endif
+
+endmenu

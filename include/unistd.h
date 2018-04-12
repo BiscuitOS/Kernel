@@ -176,6 +176,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_GETUID
 #define __NR_d_getuid DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_PAUSE
+#define __NR_d_pause  DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -384,6 +387,9 @@ int d_getpid(void);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_GETUID
 int d_getuid(void);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_PAUSE
+int d_pause(void);
 #endif
 
 #endif

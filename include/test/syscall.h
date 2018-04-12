@@ -205,6 +205,13 @@ extern int debug_syscall_getuid0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_GETUID
 
+#ifdef CONFIG_DEBUG_SYSCALL_PAUSE
+extern int debug_syscall_pause_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_PAUSE0
+extern int debug_syscall_pause0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_PAUSE
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

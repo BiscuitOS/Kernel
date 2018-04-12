@@ -73,6 +73,8 @@ source tools/testcase/systemcall/getpid/Kconfig
 
 source tools/testcase/systemcall/getuid/Kconfig
 
+source tools/testcase/systemcall/pause/Kconfig
+
 endif
 
 endmenu
