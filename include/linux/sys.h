@@ -220,6 +220,9 @@ extern int sys_d_setsid(void);
 #ifdef CONFIG_DEBUG_SYSCALL_UMASK
 extern int sys_d_umask(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_UNAME
+extern int sys_d_uname(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -443,5 +446,8 @@ sys_d_setsid, /* creates a session and sets the process group ID */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_UMASK
 sys_d_umask, /* get current task umask */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_UNAME
+sys_d_uname, /* get name and information about current kernel */
 #endif
 };

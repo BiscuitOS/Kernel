@@ -113,6 +113,8 @@ source tools/testcase/systemcall/setsid/Kconfig
 
 source tools/testcase/systemcall/umask/Kconfig
 
+source tools/testcase/systemcall/uname/Kconfig
+
 endif
 
 endmenu

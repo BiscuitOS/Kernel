@@ -214,5 +214,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_umask_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_UNAME
+    debug_syscall_uname_common_userland();
+#endif
+
     return 0;
 }

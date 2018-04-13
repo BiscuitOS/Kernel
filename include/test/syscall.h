@@ -345,6 +345,13 @@ extern int debug_syscall_umask0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_UMASK
 
+#ifdef CONFIG_DEBUG_SYSCALL_UNAME
+extern int debug_syscall_uname_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_UNAME0
+extern int debug_syscall_uname0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_UNAME
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

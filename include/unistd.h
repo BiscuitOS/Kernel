@@ -236,6 +236,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_UMASK
 #define __NR_d_umask   DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_UNAME
+#define __NR_d_uname   DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -504,6 +507,9 @@ int d_setsid(void);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_UMASK
 int d_umask(int umask);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_UNAME
+int d_uname(struct utsname *name);
 #endif
 
 #endif

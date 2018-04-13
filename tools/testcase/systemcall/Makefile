@@ -47,3 +47,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_PTRACE)         += ptrace/
 obj-$(CONFIG_DEBUG_SYSCALL_GETPGRP)        += getpgrp/
 obj-$(CONFIG_DEBUG_SYSCALL_SETSID)         += setsid/
 obj-$(CONFIG_DEBUG_SYSCALL_UMASK)          += umask/
+obj-$(CONFIG_DEBUG_SYSCALL_UNAME)          += uname/
