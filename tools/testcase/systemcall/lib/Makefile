@@ -36,3 +36,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_TIMES)      += d_times.o
 lib-$(CONFIG_DEBUG_SYSCALL_ULIMIT)     += d_ulimit.o
 lib-$(CONFIG_DEBUG_SYSCALL_MPX)        += d_mpx.o
 lib-$(CONFIG_DEBUG_SYSCALL_LOCK)       += d_lock.o
+lib-$(CONFIG_DEBUG_SYSCALL_PHYS)       += d_phys.o

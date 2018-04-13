@@ -196,6 +196,9 @@ extern int sys_d_mpx(void);
 #ifdef CONFIG_DEBUG_SYSCALL_LOCK
 extern int sys_d_lock(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_PHYS
+extern int sys_d_phys(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -395,5 +398,8 @@ sys_d_mpx, /* unknow system call */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_LOCK
 sys_d_lock, /* unknow system call */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_PHYS
+sys_d_phys, /* unknow system call */
 #endif
 };

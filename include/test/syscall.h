@@ -289,6 +289,13 @@ extern int debug_syscall_lock0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_LOCK
 
+#ifdef CONFIG_DEBUG_SYSCALL_PHYS
+extern int debug_syscall_phys_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_PHYS0
+extern int debug_syscall_phys0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_PHYS
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

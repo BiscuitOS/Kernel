@@ -212,6 +212,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_LOCK
 #define __NR_d_lock    DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_PHYS
+#define __NR_d_phys    DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -456,6 +459,9 @@ int d_mpx(void);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_LOCK
 int d_lock(void);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_PHYS
+int d_phys(void);
 #endif
 
 #endif

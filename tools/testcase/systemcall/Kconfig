@@ -97,6 +97,8 @@ source tools/testcase/systemcall/mpx/Kconfig
 
 source tools/testcase/systemcall/lock/Kconfig
 
+source tools/testcase/systemcall/phys/Kconfig
+
 endif
 
 endmenu
