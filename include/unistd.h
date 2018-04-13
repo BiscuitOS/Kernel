@@ -230,6 +230,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_GETPGRP
 #define __NR_d_getpgrp DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETSID
+#define __NR_d_setsid  DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -492,6 +495,9 @@ int d_ptrace(void);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_GETPGRP
 int d_getpgrp(void);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETSID
+int d_setsid(void);
 #endif
 
 #endif

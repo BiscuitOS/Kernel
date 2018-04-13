@@ -214,6 +214,9 @@ extern int sys_d_ptrace(void);
 #ifdef CONFIG_DEBUG_SYSCALL_GETPGRP
 extern int sys_d_getpgrp(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETSID
+extern int sys_d_setsid(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -431,5 +434,8 @@ sys_d_ptrace, /* process trace */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_GETPGRP
 sys_d_getpgrp, /* get pgrp of current task */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETSID
+sys_d_setsid, /* creates a session and sets the process group ID */
 #endif
 };

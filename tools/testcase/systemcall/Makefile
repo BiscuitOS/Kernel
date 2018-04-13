@@ -45,3 +45,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_GTTY)           += gtty/
 obj-$(CONFIG_DEBUG_SYSCALL_STTY)           += stty/
 obj-$(CONFIG_DEBUG_SYSCALL_PTRACE)         += ptrace/
 obj-$(CONFIG_DEBUG_SYSCALL_GETPGRP)        += getpgrp/
+obj-$(CONFIG_DEBUG_SYSCALL_SETSID)         += setsid/

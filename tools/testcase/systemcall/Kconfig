@@ -109,6 +109,8 @@ source tools/testcase/systemcall/ptrace/Kconfig
 
 source tools/testcase/systemcall/getpgrp/Kconfig
 
+source tools/testcase/systemcall/setsid/Kconfig
+
 endif
 
 endmenu

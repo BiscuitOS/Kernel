@@ -331,6 +331,13 @@ extern int debug_syscall_getpgrp0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_GETPGRP
 
+#ifdef CONFIG_DEBUG_SYSCALL_SETSID
+extern int debug_syscall_setsid_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_SETSID0
+extern int debug_syscall_setsid0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_SETSID
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif
