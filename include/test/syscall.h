@@ -359,6 +359,13 @@ extern int debug_syscall_setpgid0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_SETPGID
 
+#ifdef CONFIG_DEBUG_SYSCALL_SETGID
+extern int debug_syscall_setgid_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_SETGID0
+extern int debug_syscall_setgid0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_SETPGID
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

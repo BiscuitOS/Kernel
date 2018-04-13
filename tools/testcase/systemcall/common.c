@@ -222,5 +222,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_setpgid_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_SETGID
+    debug_syscall_setgid_common_userland();
+#endif
+
     return 0;
 }

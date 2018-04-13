@@ -117,6 +117,8 @@ source tools/testcase/systemcall/uname/Kconfig
 
 source tools/testcase/systemcall/setpgid/Kconfig
 
+source tools/testcase/systemcall/setgid/Kconfig
+
 endif
 
 endmenu

@@ -49,3 +49,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_SETSID)         += setsid/
 obj-$(CONFIG_DEBUG_SYSCALL_UMASK)          += umask/
 obj-$(CONFIG_DEBUG_SYSCALL_UNAME)          += uname/
 obj-$(CONFIG_DEBUG_SYSCALL_SETPGID)        += setpgid/
+obj-$(CONFIG_DEBUG_SYSCALL_SETGID)         += setgid/
