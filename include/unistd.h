@@ -245,6 +245,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_SETGID
 #define __NR_d_setgid  DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETREGID
+#define __NR_d_setregid  DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -522,6 +525,9 @@ int d_setpgid(int pid, int pgid);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_SETGID
 int d_setgid(int gid);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETREGID
+int d_setregid(int gid, int egid);
 #endif
 
 #endif

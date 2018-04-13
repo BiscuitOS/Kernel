@@ -366,6 +366,13 @@ extern int debug_syscall_setgid0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_SETPGID
 
+#ifdef CONFIG_DEBUG_SYSCALL_SETREGID
+extern int debug_syscall_setregid_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_SETREGID0
+extern int debug_syscall_setregid0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_SETREPGID
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

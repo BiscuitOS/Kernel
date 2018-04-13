@@ -229,6 +229,9 @@ extern int sys_d_setpgid(void);
 #ifdef CONFIG_DEBUG_SYSCALL_SETGID
 extern int sys_d_setgid(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETREGID
+extern int sys_d_setregid(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -461,5 +464,8 @@ sys_d_setpgid, /* simplify pid/ns interaction */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_SETGID
 sys_d_setgid, /* Set the numerical group id */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETREGID
+sys_d_setregid, /* Set the numerical group id */
 #endif
 };
