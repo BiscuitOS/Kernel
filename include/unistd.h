@@ -227,6 +227,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_PTRACE
 #define __NR_d_ptrace  DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETPGRP
+#define __NR_d_getpgrp DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -486,6 +489,9 @@ int d_stty(void);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_PTRACE
 int d_ptrace(void);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETPGRP
+int d_getpgrp(void);
 #endif
 
 #endif

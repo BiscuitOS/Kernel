@@ -324,6 +324,13 @@ extern int debug_syscall_ptrace0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_PTRACE
 
+#ifdef CONFIG_DEBUG_SYSCALL_GETPGRP
+extern int debug_syscall_getpgrp_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_GETPGRP0
+extern int debug_syscall_getpgrp0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_GETPGRP
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

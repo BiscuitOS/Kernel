@@ -211,6 +211,9 @@ extern int sys_d_stty(void);
 #ifdef CONFIG_DEBUG_SYSCALL_PTRACE
 extern int sys_d_ptrace(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETPGRP
+extern int sys_d_getpgrp(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -425,5 +428,8 @@ sys_d_stty, /* set typewriter status */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_PTRACE
 sys_d_ptrace, /* process trace */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_GETPGRP
+sys_d_getpgrp, /* get pgrp of current task */
 #endif
 };

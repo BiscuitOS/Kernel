@@ -44,3 +44,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_PROF)           += prof/
 obj-$(CONFIG_DEBUG_SYSCALL_GTTY)           += gtty/
 obj-$(CONFIG_DEBUG_SYSCALL_STTY)           += stty/
 obj-$(CONFIG_DEBUG_SYSCALL_PTRACE)         += ptrace/
+obj-$(CONFIG_DEBUG_SYSCALL_GETPGRP)        += getpgrp/

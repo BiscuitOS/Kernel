@@ -41,3 +41,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_PROF)       += d_prof.o
 lib-$(CONFIG_DEBUG_SYSCALL_GTTY)       += d_gtty.o
 lib-$(CONFIG_DEBUG_SYSCALL_STTY)       += d_stty.o
 lib-$(CONFIG_DEBUG_SYSCALL_PTRACE)     += d_ptrace.o
+lib-$(CONFIG_DEBUG_SYSCALL_GETPGRP)    += d_getpgrp.o

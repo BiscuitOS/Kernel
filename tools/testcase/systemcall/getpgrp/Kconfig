@@ -1,0 +1,21 @@
+#
+# System Call: getpgrp
+#
+
+menu "getpgrp     get pgrp of current task"
+
+config DEBUG_SYSCALL_GETPGRP
+	bool "getpgrp(): get pgrp of current task"
+	help
+	  Debug getpgrp system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_GETPGRP
+
+config DEBUG_SYSCALL_GETPGRP0
+	bool "System CALL: getpgrp (linux0.11.1 MINIXFS)"
+	help
+	  Getpgrp system call on linux0.11.1.
+
+endif
+
+endmenu
