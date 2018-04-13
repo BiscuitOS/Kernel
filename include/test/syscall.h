@@ -317,6 +317,13 @@ extern int debug_syscall_stty0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_STTY
 
+#ifdef CONFIG_DEBUG_SYSCALL_PTRACE
+extern int debug_syscall_ptrace_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_PTRACE0
+extern int debug_syscall_ptrace0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_PTRACE
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

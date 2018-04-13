@@ -208,6 +208,9 @@ extern int sys_d_gtty(void);
 #ifdef CONFIG_DEBUG_SYSCALL_STTY
 extern int sys_d_stty(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_PTRACE
+extern int sys_d_ptrace(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -419,5 +422,8 @@ sys_d_gtty, /* get typewriter status */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_STTY
 sys_d_stty, /* set typewriter status */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_PTRACE
+sys_d_ptrace, /* process trace */
 #endif
 };

@@ -105,6 +105,8 @@ source tools/testcase/systemcall/gtty/Kconfig
 
 source tools/testcase/systemcall/stty/Kconfig
 
+source tools/testcase/systemcall/ptrace/Kconfig
+
 endif
 
 endmenu
