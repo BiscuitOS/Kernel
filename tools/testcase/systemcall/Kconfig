@@ -99,6 +99,8 @@ source tools/testcase/systemcall/lock/Kconfig
 
 source tools/testcase/systemcall/phys/Kconfig
 
+source tools/testcase/systemcall/prof/Kconfig
+
 endif
 
 endmenu

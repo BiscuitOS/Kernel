@@ -296,6 +296,13 @@ extern int debug_syscall_phys0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_PHYS
 
+#ifdef CONFIG_DEBUG_SYSCALL_PROF
+extern int debug_syscall_prof_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_PROF0
+extern int debug_syscall_prof0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_PROF
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

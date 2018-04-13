@@ -1,0 +1,21 @@
+#
+# System Call: prof
+#
+
+menu "prof        -- unknown system call --"
+
+config DEBUG_SYSCALL_PROF
+	bool "prof(): -- unknown system call --"
+	help
+	  Debug prof system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_PROF
+
+config DEBUG_SYSCALL_PROF0
+	bool "System CALL: prof (linux0.11.1 MINIXFS)"
+	help
+	  Prof system call on linux0.11.1.
+
+endif
+
+endmenu
