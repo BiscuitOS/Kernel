@@ -35,3 +35,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_GETPPID)        += getppid/
 obj-$(CONFIG_DEBUG_SYSCALL_TIME)           += time/
 obj-$(CONFIG_DEBUG_SYSCALL_STIME)          += stime/
 obj-$(CONFIG_DEBUG_SYSCALL_TIMES)          += times/
+obj-$(CONFIG_DEBUG_SYSCALL_FTIME)          += ftime/

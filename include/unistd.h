@@ -200,6 +200,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_TIMES
 #define __NR_d_times   DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_FTIME
+#define __NR_d_ftime   DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -432,6 +435,9 @@ int d_stime(long *tptr);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_TIMES
 int d_times(struct tms *tbuf);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_FTIME
+int d_ftime(void);
 #endif
 
 #endif

@@ -1,0 +1,21 @@
+#
+# System Call: ftime
+#
+
+menu "ftime       get date and time (LEGACY)"
+
+config DEBUG_SYSCALL_FTIME
+	bool "ftime(): get date and time (LEGACY)"
+	help
+	  Debug ftime system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_FTIME
+
+config DEBUG_SYSCALL_FTIME0
+	bool "System CALL: ftime (linux0.11.1 MINIXFS)"
+	help
+	  Ftime system call on linux0.11.1.
+
+endif
+
+endmenu
