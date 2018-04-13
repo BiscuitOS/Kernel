@@ -1,0 +1,21 @@
+#
+# System Call: stty
+#
+
+menu "stty        set mode of typewriter"
+
+config DEBUG_SYSCALL_STTY
+	bool "stty(): set mode of typewriter"
+	help
+	  Debug stty system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_STTY
+
+config DEBUG_SYSCALL_STTY0
+	bool "System CALL: stty (linux0.11.1 MINIXFS)"
+	help
+	  Stty system call on linux0.11.1.
+
+endif
+
+endmenu

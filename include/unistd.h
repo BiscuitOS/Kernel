@@ -221,6 +221,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_GTTY
 #define __NR_d_gtty    DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_STTY
+#define __NR_d_stty    DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -474,6 +477,9 @@ int d_prof(void);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_GTTY
 int d_gtty(void);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_STTY
+int d_stty(void);
 #endif
 
 #endif

@@ -310,6 +310,13 @@ extern int debug_syscall_gtty0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_GTTY
 
+#ifdef CONFIG_DEBUG_SYSCALL_STTY
+extern int debug_syscall_stty_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_STTY0
+extern int debug_syscall_stty0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_STTY
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

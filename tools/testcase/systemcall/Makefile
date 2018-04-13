@@ -42,3 +42,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_LOCK)           += lock/
 obj-$(CONFIG_DEBUG_SYSCALL_PHYS)           += phys/
 obj-$(CONFIG_DEBUG_SYSCALL_PROF)           += prof/
 obj-$(CONFIG_DEBUG_SYSCALL_GTTY)           += gtty/
+obj-$(CONFIG_DEBUG_SYSCALL_STTY)           += stty/

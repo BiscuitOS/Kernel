@@ -39,3 +39,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_LOCK)       += d_lock.o
 lib-$(CONFIG_DEBUG_SYSCALL_PHYS)       += d_phys.o
 lib-$(CONFIG_DEBUG_SYSCALL_PROF)       += d_prof.o
 lib-$(CONFIG_DEBUG_SYSCALL_GTTY)       += d_gtty.o
+lib-$(CONFIG_DEBUG_SYSCALL_STTY)       += d_stty.o

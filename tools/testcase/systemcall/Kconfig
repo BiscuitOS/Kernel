@@ -103,6 +103,8 @@ source tools/testcase/systemcall/prof/Kconfig
 
 source tools/testcase/systemcall/gtty/Kconfig
 
+source tools/testcase/systemcall/stty/Kconfig
+
 endif
 
 endmenu
