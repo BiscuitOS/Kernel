@@ -93,6 +93,8 @@ source tools/testcase/systemcall/ftime/Kconfig
 
 source tools/testcase/systemcall/ulimit/Kconfig
 
+source tools/testcase/systemcall/mpx/Kconfig
+
 endif
 
 endmenu

@@ -275,6 +275,13 @@ extern int debug_syscall_ulimit0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_ULIMIT
 
+#ifdef CONFIG_DEBUG_SYSCALL_MPX
+extern int debug_syscall_mpx_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_MPX0
+extern int debug_syscall_mpx0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_MPX
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

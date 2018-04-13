@@ -190,6 +190,9 @@ extern int sys_d_ftime(void);
 #ifdef CONFIG_DEBUG_SYSCALL_ULIMIT
 extern int sys_d_ulimit(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_MPX
+extern int sys_d_mpx(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -383,5 +386,8 @@ sys_d_ftime, /* get date and time (LEGACY) */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_ULIMIT
 sys_d_ulimit, /* get and set process limits */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_MPX
+sys_d_mpx, /* unknow system call */
 #endif
 };

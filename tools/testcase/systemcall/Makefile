@@ -37,3 +37,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_STIME)          += stime/
 obj-$(CONFIG_DEBUG_SYSCALL_TIMES)          += times/
 obj-$(CONFIG_DEBUG_SYSCALL_FTIME)          += ftime/
 obj-$(CONFIG_DEBUG_SYSCALL_ULIMIT)         += ulimit/
+obj-$(CONFIG_DEBUG_SYSCALL_MPX)            += mpx/

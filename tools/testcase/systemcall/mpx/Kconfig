@@ -1,0 +1,21 @@
+#
+# System Call: mpx
+#
+
+menu "mpx         -- unknown legacy system call --"
+
+config DEBUG_SYSCALL_MPX
+	bool "mpx(): -- unknown legacy system call --"
+	help
+	  Debug mpx system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_MPX
+
+config DEBUG_SYSCALL_MPX0
+	bool "System CALL: mpx (linux0.11.1 MINIXFS)"
+	help
+	  Mpx system call on linux0.11.1.
+
+endif
+
+endmenu

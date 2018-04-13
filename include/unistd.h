@@ -206,6 +206,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_ULIMIT
 #define __NR_d_ulimit  DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_MPX
+#define __NR_d_mpx     DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -444,6 +447,9 @@ int d_ftime(void);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_ULIMIT
 int d_ulimit(void);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_MPX
+int d_mpx(void);
 #endif
 
 #endif
