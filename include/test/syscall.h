@@ -268,6 +268,13 @@ extern int debug_syscall_ftime0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_FTIME
 
+#ifdef CONFIG_DEBUG_SYSCALL_ULIMIT
+extern int debug_syscall_ulimit_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_ULIMIT0
+extern int debug_syscall_ulimit0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_ULIMIT
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

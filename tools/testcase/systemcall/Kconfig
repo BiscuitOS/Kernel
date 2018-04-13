@@ -91,6 +91,8 @@ source tools/testcase/systemcall/times/Kconfig
 
 source tools/testcase/systemcall/ftime/Kconfig
 
+source tools/testcase/systemcall/ulimit/Kconfig
+
 endif
 
 endmenu

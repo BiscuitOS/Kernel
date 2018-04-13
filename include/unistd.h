@@ -203,6 +203,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_FTIME
 #define __NR_d_ftime   DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_ULIMIT
+#define __NR_d_ulimit  DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -438,6 +441,9 @@ int d_times(struct tms *tbuf);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_FTIME
 int d_ftime(void);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_ULIMIT
+int d_ulimit(void);
 #endif
 
 #endif

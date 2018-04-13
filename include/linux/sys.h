@@ -187,6 +187,9 @@ extern int sys_d_times(void);
 #ifdef CONFIG_DEBUG_SYSCALL_FTIME
 extern int sys_d_ftime(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_ULIMIT
+extern int sys_d_ulimit(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -377,5 +380,8 @@ sys_d_times, /* file access and modification times structure */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_FTIME
 sys_d_ftime, /* get date and time (LEGACY) */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_ULIMIT
+sys_d_ulimit, /* get and set process limits */
 #endif
 };
