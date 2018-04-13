@@ -101,6 +101,8 @@ source tools/testcase/systemcall/phys/Kconfig
 
 source tools/testcase/systemcall/prof/Kconfig
 
+source tools/testcase/systemcall/gtty/Kconfig
+
 endif
 
 endmenu

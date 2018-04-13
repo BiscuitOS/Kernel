@@ -1,0 +1,21 @@
+#
+# System Call: gtty
+#
+
+menu "gtty        get typewriter status"
+
+config DEBUG_SYSCALL_GTTY
+	bool "gtty(): get typewriter status"
+	help
+	  Debug gtty system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_GTTY
+
+config DEBUG_SYSCALL_GTTY0
+	bool "System CALL: gtty (linux0.11.1 MINIXFS)"
+	help
+	  Gtty system call on linux0.11.1.
+
+endif
+
+endmenu

@@ -303,6 +303,13 @@ extern int debug_syscall_prof0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_PROF
 
+#ifdef CONFIG_DEBUG_SYSCALL_GTTY
+extern int debug_syscall_gtty_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_GTTY0
+extern int debug_syscall_gtty0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_GTTY
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif
