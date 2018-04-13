@@ -282,6 +282,13 @@ extern int debug_syscall_mpx0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_MPX
 
+#ifdef CONFIG_DEBUG_SYSCALL_LOCK
+extern int debug_syscall_lock_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_LOCK0
+extern int debug_syscall_lock0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_LOCK
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

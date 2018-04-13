@@ -1,0 +1,21 @@
+#
+# System Call: lock
+#
+
+menu "lock        -- unknown system call --"
+
+config DEBUG_SYSCALL_LOCK
+	bool "lock(): -- unknown system call --"
+	help
+	  Debug lock system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_LOCK
+
+config DEBUG_SYSCALL_LOCK0
+	bool "System CALL: lock (linux0.11.1 MINIXFS)"
+	help
+	  Lock system call on linux0.11.1.
+
+endif
+
+endmenu

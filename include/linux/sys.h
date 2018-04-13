@@ -193,6 +193,9 @@ extern int sys_d_ulimit(void);
 #ifdef CONFIG_DEBUG_SYSCALL_MPX
 extern int sys_d_mpx(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_LOCK
+extern int sys_d_lock(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -389,5 +392,8 @@ sys_d_ulimit, /* get and set process limits */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_MPX
 sys_d_mpx, /* unknow system call */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_LOCK
+sys_d_lock, /* unknow system call */
 #endif
 };
