@@ -248,6 +248,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_SETREGID
 #define __NR_d_setregid  DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_BRK
+#define __NR_d_brk       DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -528,6 +531,9 @@ int d_setgid(int gid);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_SETREGID
 int d_setregid(int gid, int egid);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_BRK
+int d_brk(unsigned long end_data_seg);
 #endif
 
 #endif

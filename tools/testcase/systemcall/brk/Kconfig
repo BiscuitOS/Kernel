@@ -1,0 +1,21 @@
+#
+# System Call: brk
+#
+
+menu "brk         allocates memory right behind application image in memory"
+
+config DEBUG_SYSCALL_BRK
+	bool "brk(): allocates memory right behind application image in memory"
+	help
+	  Debug brk system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_BRK
+
+config DEBUG_SYSCALL_BRK0
+	bool "System CALL: brk (linux0.11.1 MINIXFS)"
+	help
+	  BRK system call on linux0.11.1.
+
+endif
+
+endmenu

@@ -48,3 +48,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_UNAME)      += d_uname.o
 lib-$(CONFIG_DEBUG_SYSCALL_SETPGID)    += d_setpgid.o
 lib-$(CONFIG_DEBUG_SYSCALL_SETGID)     += d_setgid.o
 lib-$(CONFIG_DEBUG_SYSCALL_SETREGID)   += d_setregid.o
+lib-$(CONFIG_DEBUG_SYSCALL_BRK)        += d_brk.o
