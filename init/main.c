@@ -42,7 +42,7 @@ inline _syscall1(int, setup, void *, BIOS)
 inline _syscall0(int, pause)
 inline _syscall0(int, sync)
 
-static char printbuf[1024];
+char printbuf[1024];
 
 /*
  * This is set up by the setup-routine at boot-time
@@ -179,7 +179,7 @@ int main(void)
         pause();
 }
 
-static int printf(const char *fmt, ...)
+int printf(const char *fmt, ...)
 {
     va_list args;
     int i;
