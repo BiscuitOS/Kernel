@@ -217,6 +217,9 @@ extern int sys_d_getpgrp(void);
 #ifdef CONFIG_DEBUG_SYSCALL_SETSID
 extern int sys_d_setsid(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_UMASK
+extern int sys_d_umask(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -437,5 +440,8 @@ sys_d_getpgrp, /* get pgrp of current task */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_SETSID
 sys_d_setsid, /* creates a session and sets the process group ID */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_UMASK
+sys_d_umask, /* get current task umask */
 #endif
 };

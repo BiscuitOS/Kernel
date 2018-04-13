@@ -210,5 +210,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_setsid_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_UMASK
+    debug_syscall_umask_common_userland();
+#endif
+
     return 0;
 }

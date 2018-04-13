@@ -1,0 +1,21 @@
+#
+# System Call: umask
+#
+
+menu "umask       get current task umask"
+
+config DEBUG_SYSCALL_UMASK
+	bool "umask(): get current task umask"
+	help
+	  Debug umask system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_UMASK
+
+config DEBUG_SYSCALL_UMASK0
+	bool "System CALL: umask (linux0.11.1 MINIXFS)"
+	help
+	  Umask system call on linux0.11.1.
+
+endif
+
+endmenu

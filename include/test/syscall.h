@@ -338,6 +338,13 @@ extern int debug_syscall_setsid0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_SETSID
 
+#ifdef CONFIG_DEBUG_SYSCALL_UMASK
+extern int debug_syscall_umask_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_UMASK0
+extern int debug_syscall_umask0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_UMASK
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

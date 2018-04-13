@@ -43,3 +43,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_STTY)       += d_stty.o
 lib-$(CONFIG_DEBUG_SYSCALL_PTRACE)     += d_ptrace.o
 lib-$(CONFIG_DEBUG_SYSCALL_GETPGRP)    += d_getpgrp.o
 lib-$(CONFIG_DEBUG_SYSCALL_SETSID)     += d_setsid.o
+lib-$(CONFIG_DEBUG_SYSCALL_UMASK)      += d_umask.o
