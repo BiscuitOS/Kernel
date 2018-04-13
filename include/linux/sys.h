@@ -223,6 +223,9 @@ extern int sys_d_umask(void);
 #ifdef CONFIG_DEBUG_SYSCALL_UNAME
 extern int sys_d_uname(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETPGID
+extern int sys_d_setpgid(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -449,5 +452,8 @@ sys_d_umask, /* get current task umask */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_UNAME
 sys_d_uname, /* get name and information about current kernel */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETPGID
+sys_d_setpgid, /* simplify pid/ns interaction */
 #endif
 };

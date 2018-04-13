@@ -239,6 +239,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_UNAME
 #define __NR_d_uname   DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETPGID
+#define __NR_d_setpgid DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -510,6 +513,9 @@ int d_umask(int umask);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_UNAME
 int d_uname(struct utsname *name);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETPGID
+int d_setpgid(int pid, int pgid);
 #endif
 
 #endif

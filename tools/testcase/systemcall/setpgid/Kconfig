@@ -1,0 +1,21 @@
+#
+# System Call: setpgid
+#
+
+menu "setpgid     simplify pid/ns interaction"
+
+config DEBUG_SYSCALL_SETPGID
+	bool "setpgid(): simplify pid/ns interaction"
+	help
+	  Debug setpgid system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_SETPGID
+
+config DEBUG_SYSCALL_SETPGID0
+	bool "System CALL: setpgid (linux0.11.1 MINIXFS)"
+	help
+	  Setpgid system call on linux0.11.1.
+
+endif
+
+endmenu
