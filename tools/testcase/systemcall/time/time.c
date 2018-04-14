@@ -42,6 +42,6 @@ int debug_syscall_time0(void)
 
     d_time(&time);
     
-    d_printf("CurrentTime: %d\n", time);
+    printf("CurrentTime: %d\n", time);
     return 0;
 }

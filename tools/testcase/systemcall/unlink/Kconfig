@@ -2,7 +2,7 @@
 # System Call: unlink
 #
 
-menu "unlink(): remove a symbolic link or a hard link to an existing file"
+menu "unlink      remove a symbolic link or a hard link to an existing file"
 
 config DEBUG_SYSCALL_UNLINK
 	bool "unlink() : remove a symbolic link or a hard link to an file"

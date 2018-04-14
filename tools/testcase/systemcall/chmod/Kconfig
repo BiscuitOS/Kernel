@@ -2,7 +2,7 @@
 # System Call: chmod
 #
 
-menu "chmod(): change permissions of a file"
+menu "chmod       change permissions of a file"
 
 config DEBUG_SYSCALL_CHMOD
 	bool "chmod(): change permissions of a file"

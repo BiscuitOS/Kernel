@@ -2,7 +2,7 @@
 # System Call: mkdir
 #
 
-menu "mkdir(): create a directory and specify access mode"
+menu "mkdir       create a directory and specify access mode"
 
 config DEBUG_SYSCALL_MKDIR
 	bool "mkdir() : create a new directory and specify access mode"

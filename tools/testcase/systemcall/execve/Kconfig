@@ -2,7 +2,7 @@
 # System Call: execve
 #
 
-menu "execve(): execute a executable file"
+menu "execve      execute a executable file"
 
 config DEBUG_SYSCALL_EXECVE
 	bool "execve(): execute a executable file"

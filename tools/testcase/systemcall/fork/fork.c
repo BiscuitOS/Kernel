@@ -178,6 +178,6 @@ int sys_d_fork(void)
 int debug_syscall_fork0(void)
 {
     if (!d_fork())
-        d_printf("Child process\n");
+        printf("Child process\n");
     return 0;
 }

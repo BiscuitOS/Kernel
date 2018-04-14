@@ -64,7 +64,7 @@ int debug_syscall_fstat0(void)
     fd = open("/etc/rc", O_RDWR);
     d_fstat(fd, &statbuf);
 
-    d_printf("Block %d\n", statbuf.st_rdev);
+    printf("Block %d\n", statbuf.st_rdev);
 
     close(fd);
     return 0;

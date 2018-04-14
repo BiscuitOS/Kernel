@@ -42,8 +42,8 @@ int debug_binary_aout_exec(void)
 
     d_fs("/bin/sh", argv_rc, buffer);
 
-    d_printf("Data: %c\n", buffer[0]);
-    d_printf("String: %s\n", buffer);
+    printf("Data: %c\n", buffer[0]);
+    printf("String: %s\n", buffer);
 
     return 0;
 }

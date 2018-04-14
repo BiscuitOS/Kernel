@@ -2,7 +2,7 @@
 # System Call: access
 #
 
-menu "access(): determine accessibility of a file"
+menu "access      determine accessibility of a file"
 
 config DEBUG_SYSCALL_ACCESS
 	bool "access(): determine accessibility of a file"

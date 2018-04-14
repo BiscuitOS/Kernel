@@ -34,6 +34,6 @@ int debug_syscall_getgid0(void)
     int gid;
 
     gid = d_getgid();
-    d_printf("GID %d\n", gid);
+    printf("GID %d\n", gid);
     return 0;
 }

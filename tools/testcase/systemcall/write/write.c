@@ -45,7 +45,7 @@ int debug_syscall_write0(void)
 
     fd = open("/etc/biscuitos.conf", O_RDWR | O_CREAT, 0);
     if (!fd) {
-        d_printf("Unable to open /etc/biscuitos.conf\n");
+        printf("Unable to open /etc/biscuitos.conf\n");
         return -1;
     }
 

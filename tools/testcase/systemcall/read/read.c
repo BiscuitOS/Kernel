@@ -52,14 +52,14 @@ int debug_syscall_read0(void)
     /* open a file */
     fd = open("/etc/rc", O_RDONLY, 0);
     if (!fd) {
-        d_printf("Can't open special file\n");
+        printf("Can't open special file\n");
         return -1;
     }
 
     /* Read data from file */
     d_read(fd, buff, 10);
     buff[10] = '\0';
-    d_printf("READ: %s\n", buff);
+    printf("READ: %s\n", buff);
 
     /* close fd */
     close(fd);

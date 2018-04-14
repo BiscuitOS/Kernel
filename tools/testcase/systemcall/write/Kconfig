@@ -2,7 +2,7 @@
 # System Call: write
 #
 
-menu "Write(): Write data to a file/directory/socket/pipe etc"
+menu "write       Write data to a file/directory/socket/pipe etc"
 
 config DEBUG_SYSCALL_WRITE
 	bool "Write(): Write data to a file/directory/socket/pipe etc"

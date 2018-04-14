@@ -65,14 +65,14 @@ int debug_syscall_access0(void)
 {
     /* Verify Read permission */
     if ((d_access("/etc/rc", R_OK)) == 0)
-        d_printf("Access Read permission\n");
+        printf("Access Read permission\n");
 
     /* verify write permission */
     if ((d_access("/etc/rc", W_OK)) == 0)
-        d_printf("Access Write permission\n");
+        printf("Access Write permission\n");
 
     /* verify execute permission */
     if ((d_access("/usr/bin/ls", X_OK)) == 0)
-        d_printf("Access Execute permission\n");
+        printf("Access Execute permission\n");
     return 0;
 }

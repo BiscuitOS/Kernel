@@ -2,7 +2,7 @@
 # System Call: close
 #
 
-menu "close(): Close file/Directory/socket/pipe etc"
+menu "close       Close file/Directory/socket/pipe etc"
 
 config DEBUG_SYSCALL_CLOSE
 	bool "close(): Close file/Directory/socket/pipe etc"

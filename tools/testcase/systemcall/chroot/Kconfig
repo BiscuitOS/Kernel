@@ -2,7 +2,7 @@
 # System Call: chroot
 #
 
-menu "chroot:     change root directory"
+menu "chroot      change root directory"
 
 config DEBUG_SYSCALL_CHROOT
 	bool "chroot(): change root directory"

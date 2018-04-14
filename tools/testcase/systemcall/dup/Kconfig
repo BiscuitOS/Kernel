@@ -2,7 +2,7 @@
 # System Call: dup
 #
 
-menu "dup(): duplicate an open file descriptor"
+menu "dup         duplicate an open file descriptor"
 
 config DEBUG_SYSCALL_DUP
 	bool "dup(): duplicate an open file descriptor"

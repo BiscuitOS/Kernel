@@ -2,7 +2,7 @@
 # System Call: utime
 #
 
-menu "utime(): set file access and modification times"
+menu "utime       set file access and modification times"
 
 config DEBUG_SYSCALL_UTIME
 	bool "utime(): set file access and modification times"

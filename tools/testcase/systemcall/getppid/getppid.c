@@ -34,6 +34,6 @@ int debug_syscall_getppid0(void)
     int ppid;
 
     ppid = d_getppid();
-    d_printf("Father PID %d\n", ppid);
+    printf("Father PID %d\n", ppid);
     return 0;
 }

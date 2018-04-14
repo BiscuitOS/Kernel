@@ -2,7 +2,7 @@
 # System Call: creat
 #
 
-menu "creat(): create a new file or rewrite an existing one"
+menu "creat       create a new file or rewrite an existing one"
 
 config DEBUG_SYSCALL_CREAT
 	bool "creat(): create a new file or rewrite an existing one"

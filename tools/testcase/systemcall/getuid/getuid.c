@@ -34,6 +34,6 @@ int debug_syscall_getuid0(void)
     int uid;
 
     uid = d_getuid();
-    d_printf("UID %d\n", uid);
+    printf("UID %d\n", uid);
     return 0;
 }

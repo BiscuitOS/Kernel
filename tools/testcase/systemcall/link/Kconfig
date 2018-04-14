@@ -2,7 +2,7 @@
 # System Call: link
 #
 
-menu "link(): create a symbolic link or a hard link to an existing file"
+menu "link        create a symbolic link or a hard link to an existing file"
 
 config DEBUG_SYSCALL_LINK
 	bool "link() : create a symbolic link or a hard link to an file"

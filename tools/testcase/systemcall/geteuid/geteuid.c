@@ -34,6 +34,6 @@ int debug_syscall_geteuid0(void)
     int euid;
 
     euid = d_geteuid();
-    d_printf("EUID %d\n", euid);
+    printf("EUID %d\n", euid);
     return 0;
 }

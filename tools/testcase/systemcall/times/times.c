@@ -42,10 +42,10 @@ int debug_syscall_times0(void)
     struct tms tbuf;
 
     d_times(&tbuf);
-    d_printf("Utime:  %d\n", tbuf.tms_utime);
-    d_printf("Stime:  %d\n", tbuf.tms_stime);
-    d_printf("Cutime: %d\n", tbuf.tms_cutime);
-    d_printf("Cstime: %d\n", tbuf.tms_cstime);
+    printf("Utime:  %d\n", tbuf.tms_utime);
+    printf("Stime:  %d\n", tbuf.tms_stime);
+    printf("Cutime: %d\n", tbuf.tms_cutime);
+    printf("Cstime: %d\n", tbuf.tms_cstime);
     
     return 0;
 }

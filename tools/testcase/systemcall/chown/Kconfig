@@ -2,7 +2,7 @@
 # System Call: chown
 #
 
-menu "chown(): change owner and group of a file"
+menu "chown       change owner and group of a file"
 
 config DEBUG_SYSCALL_CHOWN
 	bool "chown(): change owner and group of a file"

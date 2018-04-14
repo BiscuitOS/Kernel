@@ -2,7 +2,7 @@
 # System Call: fork
 #
 
-menu "fork(): create a new process"
+menu "fork        create a new process"
 
 config DEBUG_SYSCALL_FORK
 	bool "dup(): create a new process"

@@ -2,7 +2,7 @@
 # System Call: read
 #
 
-menu "Read(): Read data from a file/directory/socket/pipe etc"
+menu "read        Read data from a file/directory/socket/pipe etc"
 
 config DEBUG_SYSCALL_READ
 	bool "Read(): Read data from a file/directory/socket/pipe etc"

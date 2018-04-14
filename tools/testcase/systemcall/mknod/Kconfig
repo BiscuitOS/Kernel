@@ -2,7 +2,7 @@
 # System Call: mknod
 #
 
-menu "mknod: make a directory, a special file, or a regular file"
+menu "mknod       make a directory, a special file, or a regular file"
 
 config DEBUG_SYSCALL_MKNOD
 	bool "mknod() : make a directory, a special file, or a regular file"

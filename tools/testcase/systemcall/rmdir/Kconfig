@@ -2,7 +2,7 @@
 # System Call: rmkdir
 #
 
-menu "rmdir(): remove a existed directory"
+menu "rmdir       remove a existed directory"
 
 config DEBUG_SYSCALL_RMDIR
 	bool "rmdir() : remove a existed directory"

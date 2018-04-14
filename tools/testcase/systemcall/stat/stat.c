@@ -62,7 +62,7 @@ int debug_syscall_stat0(void)
 
     d_stat("/etc/rc", &statbuf);
 
-    d_printf("Block %d\n", statbuf.st_rdev);
+    printf("Block %d\n", statbuf.st_rdev);
 
     return 0;
 }

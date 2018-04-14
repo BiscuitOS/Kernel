@@ -152,7 +152,7 @@ void debug_virtual_address_common_userland(void)
 
     /* violation page-fault */
     strcpy(tmp, "Hello BiscuitOS");
-    d_printf("String: %s\n", tmp);
+    printf("String: %s\n", tmp);
 
     d_mmu(tmp, argv, buffer);
 }

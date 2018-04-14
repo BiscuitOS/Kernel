@@ -2,7 +2,7 @@
 # System Call: chdir
 #
 
-menu "chdir(): change working directory"
+menu "chdir       change working directory"
 
 config DEBUG_SYSCALL_CHDIR
 	bool "chdir(): change working directory"

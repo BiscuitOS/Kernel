@@ -2,7 +2,7 @@
 # System Call: alarm
 #
 
-menu "alarm(): schedule an alarm signal - SIGALRM"
+menu "alarm       schedule an alarm signal - SIGALRM"
 
 config DEBUG_SYSCALL_ALARM
 	bool "alarm(): schedule an alarm signal - SIGALRM"

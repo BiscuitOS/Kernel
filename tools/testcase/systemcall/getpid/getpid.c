@@ -34,6 +34,6 @@ int debug_syscall_getpid0(void)
     int pid;
 
     pid = d_getpid();
-    d_printf("PID %d\n", pid);
+    printf("PID %d\n", pid);
     return 0;
 }

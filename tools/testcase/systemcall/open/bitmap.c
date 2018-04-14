@@ -81,7 +81,6 @@ struct m_inode *d_new_inode(int dev)
     struct buffer_head *bh;
     int i, j;
 
-    printk("A\n");
     if (!(inode = d_get_empty_inode()))
         return NULL;
     if (!(sb = get_super(dev)))

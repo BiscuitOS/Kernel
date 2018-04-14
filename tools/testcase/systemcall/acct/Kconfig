@@ -2,7 +2,7 @@
 # System Call: acct -- enable/disable process accounting
 #
 
-menu "acct(): enable/disable process accounting"
+menu "acct        enable/disable process accounting"
 
 config DEBUG_SYSCALL_ACCT
 	bool "acct(): enable/disable process accounting"
