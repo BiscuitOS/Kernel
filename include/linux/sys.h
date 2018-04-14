@@ -241,6 +241,9 @@ extern int sys_d_setuid(void);
 #ifdef CONFIG_DEBUG_SYSCALL_SETREUID
 extern int sys_d_setreuid(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_BREAK
+extern int sys_d_break(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -485,5 +488,8 @@ sys_d_setuid, /* set user identity */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_SETREUID
 sys_d_setreuid, /* set real and/or effective user or group ID */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_BREAK
+sys_d_break, /* call exists only for compatibility */
 #endif
 };

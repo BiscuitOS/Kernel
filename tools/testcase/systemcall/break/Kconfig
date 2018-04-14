@@ -1,0 +1,21 @@
+#
+# System Call: break
+#
+
+menu "break       call exists only for compatibility"
+
+config DEBUG_SYSCALL_BREAK
+	bool "break(): call exists only for compatibility"
+	help
+	  Debug break system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_BREAK
+
+config DEBUG_SYSCALL_BREAK0
+	bool "System CALL: break (linux0.11.1 MINIXFS)"
+	help
+	  Break system call on linux0.11.1.
+
+endif
+
+endmenu
