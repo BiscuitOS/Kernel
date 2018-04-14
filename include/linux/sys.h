@@ -235,6 +235,9 @@ extern int sys_d_setregid(void);
 #ifdef CONFIG_DEBUG_SYSCALL_BRK
 extern int sys_d_brk(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETUID
+extern int sys_d_setuid(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -473,5 +476,8 @@ sys_d_setregid, /* Set the numerical group id */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_BRK
 sys_d_brk, /* allocates memory right behind application image in memory */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETUID
+sys_d_setuid, /* set user identity */
 #endif
 };

@@ -123,6 +123,8 @@ source tools/testcase/systemcall/setregid/Kconfig
 
 source tools/testcase/systemcall/brk/Kconfig
 
+source tools/testcase/systemcall/setuid/Kconfig
+
 endif
 
 endmenu

@@ -380,6 +380,13 @@ extern int debug_syscall_brk0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_BRK
 
+#ifdef CONFIG_DEBUG_SYSCALL_SETUID
+extern int debug_syscall_setuid_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_SETUID0
+extern int debug_syscall_setuid0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_SETUID
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

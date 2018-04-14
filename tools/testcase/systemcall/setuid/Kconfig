@@ -1,0 +1,21 @@
+#
+# System Call: setuid
+#
+
+menu "setuid      set user identity"
+
+config DEBUG_SYSCALL_SETUID
+	bool "setuid(): set user identity"
+	help
+	  Debug setuid system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_SETUID
+
+config DEBUG_SYSCALL_SETUID0
+	bool "System CALL: setuid (linux0.11.1 MINIXFS)"
+	help
+	  Setuid system call on linux0.11.1.
+
+endif
+
+endmenu

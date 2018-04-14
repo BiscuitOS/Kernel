@@ -52,3 +52,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_SETPGID)        += setpgid/
 obj-$(CONFIG_DEBUG_SYSCALL_SETGID)         += setgid/
 obj-$(CONFIG_DEBUG_SYSCALL_SETREGID)       += setregid/
 obj-$(CONFIG_DEBUG_SYSCALL_BRK)            += brk/
+obj-$(CONFIG_DEBUG_SYSCALL_SETUID)         += setuid/

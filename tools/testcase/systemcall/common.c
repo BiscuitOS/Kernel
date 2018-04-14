@@ -234,5 +234,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_brk_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_SETUID
+    debug_syscall_setuid_common_userland();
+#endif
+
     return 0;
 }
