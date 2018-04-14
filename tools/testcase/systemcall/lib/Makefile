@@ -50,3 +50,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_SETGID)     += d_setgid.o
 lib-$(CONFIG_DEBUG_SYSCALL_SETREGID)   += d_setregid.o
 lib-$(CONFIG_DEBUG_SYSCALL_BRK)        += d_brk.o
 lib-$(CONFIG_DEBUG_SYSCALL_SETUID)     += d_setuid.o
+lib-$(CONFIG_DEBUG_SYSCALL_SETREUID)   += d_setreuid.o

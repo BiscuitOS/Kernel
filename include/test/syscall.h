@@ -387,6 +387,13 @@ extern int debug_syscall_setuid0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_SETUID
 
+#ifdef CONFIG_DEBUG_SYSCALL_SETREUID
+extern int debug_syscall_setreuid_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_SETREUID0
+extern int debug_syscall_setreuid0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_SETREUID
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif
