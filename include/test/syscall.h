@@ -401,6 +401,13 @@ extern int debug_syscall_break0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_BREAK
 
+#ifdef CONFIG_DEBUG_SYSCALL_RENAME
+extern int debug_syscall_rename_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_RENAME0
+extern int debug_syscall_rename0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_RENAME
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

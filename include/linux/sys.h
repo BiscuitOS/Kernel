@@ -244,6 +244,9 @@ extern int sys_d_setreuid(void);
 #ifdef CONFIG_DEBUG_SYSCALL_BREAK
 extern int sys_d_break(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_RENAME
+extern int sys_d_rename(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -491,5 +494,8 @@ sys_d_setreuid, /* set real and/or effective user or group ID */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_BREAK
 sys_d_break, /* call exists only for compatibility */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_RENAME
+sys_d_rename, /* Renames a specified file */
 #endif
 };

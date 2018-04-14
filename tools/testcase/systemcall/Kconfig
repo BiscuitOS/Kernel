@@ -129,6 +129,8 @@ source tools/testcase/systemcall/setreuid/Kconfig
 
 source tools/testcase/systemcall/break/Kconfig
 
+source tools/testcase/systemcall/rename/Kconfig
+
 endif
 
 endmenu
