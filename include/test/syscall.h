@@ -429,6 +429,13 @@ extern int debug_syscall_lseek0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_LSEEK
 
+#ifdef CONFIG_DEBUG_SYSCALL_MOUNT
+extern int debug_syscall_mount_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_MOUNT0
+extern int debug_syscall_mount0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_MOUNT
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

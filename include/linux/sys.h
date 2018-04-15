@@ -256,6 +256,9 @@ extern int sys_d_dup2(void);
 #ifdef CONFIG_DEBUG_SYSCALL_LSEEK
 extern int sys_d_lseek(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_MOUNT
+extern int sys_d_mount(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -515,5 +518,8 @@ sys_d_dup2, /* duplicate a file descriptor */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_LSEEK
 sys_d_lseek, /* reposition read/write file offset */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_MOUNT
+sys_d_mount, /* mount filesystems */
 #endif
 };

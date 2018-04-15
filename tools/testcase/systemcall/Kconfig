@@ -137,6 +137,8 @@ source tools/testcase/systemcall/dup2/Kconfig
 
 source tools/testcase/systemcall/lseek/Kconfig
 
+source tools/testcase/systemcall/mount/Kconfig
+
 endif
 
 endmenu

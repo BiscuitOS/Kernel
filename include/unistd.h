@@ -272,6 +272,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_LSEEK
 #define __NR_d_lseek     DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_MOUNT
+#define __NR_d_mount     DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -576,6 +579,9 @@ int d_dup2(unsigned int oldfd, unsigned int newfd);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_LSEEK
 int d_lseek(unsigned int fd, off_t offset, int origin);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_MOUNT
+int d_mount(void);
 #endif
 
 #endif

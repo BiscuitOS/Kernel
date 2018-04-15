@@ -1,0 +1,21 @@
+#
+# System Call: mount
+#
+
+menu "mount       mount filesystems"
+
+config DEBUG_SYSCALL_MOUNT
+	bool "mount(): mount filesystems"
+	help
+	  Debug mount system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_MOUNT
+
+config DEBUG_SYSCALL_MOUNT0
+	bool "System CALL: mount (linux0.11.1 MINIXFS)"
+	help
+	  Mount system call on linux0.11.1.
+
+endif
+
+endmenu
