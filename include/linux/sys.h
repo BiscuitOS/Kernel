@@ -250,6 +250,9 @@ extern int sys_d_rename(void);
 #ifdef CONFIG_DEBUG_SYSCALL_FCNTL
 extern int sys_d_fcntl(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_DUP2
+extern int sys_d_dup2(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -503,5 +506,8 @@ sys_d_rename, /* Renames a specified file */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_FCNTL
 sys_d_fcntl, /* manipulate file descriptor */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_DUP2
+sys_d_dup2, /* duplicate a file descriptor */
 #endif
 };

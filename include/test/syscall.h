@@ -415,6 +415,13 @@ extern int debug_syscall_fcntl0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_FCNTL
 
+#ifdef CONFIG_DEBUG_SYSCALL_DUP2
+extern int debug_syscall_dup2_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_DUP20
+extern int debug_syscall_dup20(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_DUP2
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

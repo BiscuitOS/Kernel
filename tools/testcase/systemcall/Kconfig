@@ -133,6 +133,8 @@ source tools/testcase/systemcall/rename/Kconfig
 
 source tools/testcase/systemcall/fcntl/Kconfig
 
+source tools/testcase/systemcall/dup2/Kconfig
+
 endif
 
 endmenu

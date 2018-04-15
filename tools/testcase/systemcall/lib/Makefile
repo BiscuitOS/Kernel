@@ -54,3 +54,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_SETREUID)   += d_setreuid.o
 lib-$(CONFIG_DEBUG_SYSCALL_BREAK)      += d_break.o
 lib-$(CONFIG_DEBUG_SYSCALL_RENAME)     += d_rename.o
 lib-$(CONFIG_DEBUG_SYSCALL_FCNTL)      += d_fcntl.o
+lib-$(CONFIG_DEBUG_SYSCALL_DUP2)       += d_dup2.o

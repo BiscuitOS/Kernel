@@ -1,0 +1,21 @@
+#
+# System Call: dup2
+#
+
+menu "dup2        duplicate a file descriptor"
+
+config DEBUG_SYSCALL_DUP2
+	bool "dup2(): duplicate a file descriptor"
+	help
+	  Debug dup2 system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_DUP2
+
+config DEBUG_SYSCALL_DUP20
+	bool "System CALL: dup2 (linux0.11.1 MINIXFS)"
+	help
+	  Dup2 system call on linux0.11.1.
+
+endif
+
+endmenu
