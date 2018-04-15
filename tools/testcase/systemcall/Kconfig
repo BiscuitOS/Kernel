@@ -63,12 +63,6 @@ source tools/testcase/systemcall/utime/Kconfig
 
 source tools/testcase/systemcall/chroot/Kconfig
 
-source tools/testcase/systemcall/ustat/Kconfig
-
-source tools/testcase/systemcall/fstat/Kconfig
-
-source tools/testcase/systemcall/stat/Kconfig
-
 source tools/testcase/systemcall/getpid/Kconfig
 
 source tools/testcase/systemcall/getuid/Kconfig
@@ -92,14 +86,6 @@ source tools/testcase/systemcall/times/Kconfig
 source tools/testcase/systemcall/ftime/Kconfig
 
 source tools/testcase/systemcall/ulimit/Kconfig
-
-source tools/testcase/systemcall/mpx/Kconfig
-
-source tools/testcase/systemcall/lock/Kconfig
-
-source tools/testcase/systemcall/phys/Kconfig
-
-source tools/testcase/systemcall/prof/Kconfig
 
 source tools/testcase/systemcall/gtty/Kconfig
 
@@ -144,6 +130,20 @@ source tools/testcase/systemcall/umount/Kconfig
 source tools/testcase/systemcall/setup/Kconfig
 
 source tools/testcase/systemcall/signal/Kconfig
+
+source tools/testcase/systemcall/ustat/Kconfig
+
+source tools/testcase/systemcall/fstat/Kconfig
+
+source tools/testcase/systemcall/stat/Kconfig
+
+source tools/testcase/systemcall/mpx/Kconfig
+
+source tools/testcase/systemcall/lock/Kconfig
+
+source tools/testcase/systemcall/phys/Kconfig
+
+source tools/testcase/systemcall/prof/Kconfig
 
 endif
 

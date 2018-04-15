@@ -169,6 +169,7 @@ int debug_syscall_open0(void)
 
     /* Other operation */
     write(fd2, "BiscuitOS\n", 10);
+    printf("Open /etc/profile");
 
     /* close file */
     close(fd3);
