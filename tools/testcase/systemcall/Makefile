@@ -61,3 +61,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_DUP2)           += dup2/
 obj-$(CONFIG_DEBUG_SYSCALL_LSEEK)          += lseek/
 obj-$(CONFIG_DEBUG_SYSCALL_MOUNT)          += mount/
 obj-$(CONFIG_DEBUG_SYSCALL_UMOUNT)         += umount/
+obj-$(CONFIG_DEBUG_SYSCALL_SETUP)          += setup/

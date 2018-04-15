@@ -278,6 +278,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_UMOUNT
 #define __NR_d_umount    DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETUP
+#define __NR_d_setup     DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -588,6 +591,9 @@ int d_mount(void);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_UMOUNT
 int d_umount(void);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETUP
+int d_setup(void);
 #endif
 
 #endif

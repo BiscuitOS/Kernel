@@ -262,6 +262,9 @@ extern int sys_d_mount(void);
 #ifdef CONFIG_DEBUG_SYSCALL_UMOUNT
 extern int sys_d_umount(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETUP
+extern int sys_d_setup(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -527,5 +530,8 @@ sys_d_mount, /* mount filesystems */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_UMOUNT
 sys_d_umount, /* unmount filesystems */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_SETUP
+sys_d_setup, /* system setup */
 #endif
 };

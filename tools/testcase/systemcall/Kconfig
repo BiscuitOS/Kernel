@@ -141,6 +141,8 @@ source tools/testcase/systemcall/mount/Kconfig
 
 source tools/testcase/systemcall/umount/Kconfig
 
+source tools/testcase/systemcall/setup/Kconfig
+
 endif
 
 endmenu

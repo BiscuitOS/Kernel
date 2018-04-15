@@ -443,6 +443,13 @@ extern int debug_syscall_umount0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_UMOUNT
 
+#ifdef CONFIG_DEBUG_SYSCALL_SETUP
+extern int debug_syscall_setup_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_SETUP0
+extern int debug_syscall_setup0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_SETUP
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif
