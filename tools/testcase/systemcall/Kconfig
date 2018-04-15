@@ -131,6 +131,8 @@ source tools/testcase/systemcall/break/Kconfig
 
 source tools/testcase/systemcall/rename/Kconfig
 
+source tools/testcase/systemcall/fcntl/Kconfig
+
 endif
 
 endmenu

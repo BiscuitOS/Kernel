@@ -263,6 +263,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_RENAME
 #define __NR_d_rename    DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_FCNTL
+#define __NR_d_fcntl     DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -558,6 +561,9 @@ int d_break(void);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_RENAME
 int d_rename(void);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_FCNTL
+int d_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg);
 #endif
 
 #endif

@@ -56,3 +56,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_SETUID)         += setuid/
 obj-$(CONFIG_DEBUG_SYSCALL_SETREUID)       += setreuid/
 obj-$(CONFIG_DEBUG_SYSCALL_BREAK)          += break/
 obj-$(CONFIG_DEBUG_SYSCALL_RENAME)         += rename/
+obj-$(CONFIG_DEBUG_SYSCALL_FCNTL)          += fcntl/

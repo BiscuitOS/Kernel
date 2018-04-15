@@ -1,0 +1,21 @@
+#
+# System Call: fcntl
+#
+
+menu "fcntl       manipulate file descriptor"
+
+config DEBUG_SYSCALL_FCNTL
+	bool "fcntl(): manipulate file descriptor"
+	help
+	  Debug fcntl system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_FCNTL
+
+config DEBUG_SYSCALL_FCNTL0
+	bool "System CALL: fcntl (linux0.11.1 MINIXFS)"
+	help
+	  Fcntl system call on linux0.11.1.
+
+endif
+
+endmenu

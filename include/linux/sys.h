@@ -247,6 +247,9 @@ extern int sys_d_break(void);
 #ifdef CONFIG_DEBUG_SYSCALL_RENAME
 extern int sys_d_rename(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_FCNTL
+extern int sys_d_fcntl(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -497,5 +500,8 @@ sys_d_break, /* call exists only for compatibility */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_RENAME
 sys_d_rename, /* Renames a specified file */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_FCNTL
+sys_d_fcntl, /* manipulate file descriptor */
 #endif
 };

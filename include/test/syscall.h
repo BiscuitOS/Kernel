@@ -408,6 +408,13 @@ extern int debug_syscall_rename0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_RENAME
 
+#ifdef CONFIG_DEBUG_SYSCALL_FCNTL
+extern int debug_syscall_fcntl_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_FCNTL0
+extern int debug_syscall_fcntl0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_FCNTL
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif
