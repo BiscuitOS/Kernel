@@ -422,6 +422,13 @@ extern int debug_syscall_dup20(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_DUP2
 
+#ifdef CONFIG_DEBUG_SYSCALL_LSEEK
+extern int debug_syscall_lseek_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_LSEEK0
+extern int debug_syscall_lseek0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_LSEEK
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

@@ -253,6 +253,9 @@ extern int sys_d_fcntl(void);
 #ifdef CONFIG_DEBUG_SYSCALL_DUP2
 extern int sys_d_dup2(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_LSEEK
+extern int sys_d_lseek(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -509,5 +512,8 @@ sys_d_fcntl, /* manipulate file descriptor */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_DUP2
 sys_d_dup2, /* duplicate a file descriptor */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_LSEEK
+sys_d_lseek, /* reposition read/write file offset */
 #endif
 };

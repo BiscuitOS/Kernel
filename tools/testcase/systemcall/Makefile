@@ -58,3 +58,4 @@ obj-$(CONFIG_DEBUG_SYSCALL_BREAK)          += break/
 obj-$(CONFIG_DEBUG_SYSCALL_RENAME)         += rename/
 obj-$(CONFIG_DEBUG_SYSCALL_FCNTL)          += fcntl/
 obj-$(CONFIG_DEBUG_SYSCALL_DUP2)           += dup2/
+obj-$(CONFIG_DEBUG_SYSCALL_LSEEK)          += lseek/

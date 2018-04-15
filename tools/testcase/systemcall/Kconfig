@@ -135,6 +135,8 @@ source tools/testcase/systemcall/fcntl/Kconfig
 
 source tools/testcase/systemcall/dup2/Kconfig
 
+source tools/testcase/systemcall/lseek/Kconfig
+
 endif
 
 endmenu
