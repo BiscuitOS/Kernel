@@ -281,6 +281,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_SETUP
 #define __NR_d_setup     DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_SIGNAL
+#define __NR_d_signal    DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -594,6 +597,9 @@ int d_umount(void);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_SETUP
 int d_setup(void);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_SIGNAL
+int d_signal(int signum, long handler, long restorer);
 #endif
 
 #endif

@@ -450,6 +450,13 @@ extern int debug_syscall_setup0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_SETUP
 
+#ifdef CONFIG_DEBUG_SYSCALL_SIGNAL
+extern int debug_syscall_signal_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_SIGNAL0
+extern int debug_syscall_signal0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_SIGNAL
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

@@ -1,0 +1,21 @@
+#
+# System Call: signal
+#
+
+menu "signal      signal handling"
+
+config DEBUG_SYSCALL_SIGNAL
+	bool "signal(): signal handling"
+	help
+	  Debug signal system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_SIGNAL
+
+config DEBUG_SYSCALL_SIGNAL0
+	bool "System CALL: signal (linux0.11.1 MINIXFS)"
+	help
+	  Signal system call on linux0.11.1.
+
+endif
+
+endmenu

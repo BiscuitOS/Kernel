@@ -274,5 +274,9 @@ int debug_syscall_common_userland(void)
     debug_syscall_setup_common_userland();
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL_SIGNAL
+    debug_syscall_signal_common_userland();
+#endif
+
     return 0;
 }

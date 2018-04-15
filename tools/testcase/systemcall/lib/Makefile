@@ -59,3 +59,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_LSEEK)      += d_lseek.o
 lib-$(CONFIG_DEBUG_SYSCALL_MOUNT)      += d_mount.o
 lib-$(CONFIG_DEBUG_SYSCALL_UMOUNT)     += d_umount.o
 lib-$(CONFIG_DEBUG_SYSCALL_SETUP)      += d_setup.o
+lib-$(CONFIG_DEBUG_SYSCALL_SIGNAL)     += d_signal.o

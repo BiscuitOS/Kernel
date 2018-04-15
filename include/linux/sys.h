@@ -265,6 +265,9 @@ extern int sys_d_umount(void);
 #ifdef CONFIG_DEBUG_SYSCALL_SETUP
 extern int sys_d_setup(void);
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_SIGNAL
+extern int sys_d_signal(void);
+#endif
 
 fn_ptr sys_call_table[] = {
 sys_setup, /* system setup */
@@ -533,5 +536,8 @@ sys_d_umount, /* unmount filesystems */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_SETUP
 sys_d_setup, /* system setup */
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_SIGNAL
+sys_d_signal, /* signal handling */
 #endif
 };
