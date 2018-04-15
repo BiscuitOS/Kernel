@@ -436,6 +436,13 @@ extern int debug_syscall_mount0(void);
 #endif
 #endif // CONFIG_DEBUG_SYSCALL_MOUNT
 
+#ifdef CONFIG_DEBUG_SYSCALL_UMOUNT
+extern int debug_syscall_umount_common_userland(void);
+#ifdef CONFIG_DEBUG_SYSCALL_UMOUNT0
+extern int debug_syscall_umount0(void);
+#endif
+#endif // CONFIG_DEBUG_SYSCALL_UMOUNT
+
 #endif // CONFIG_DEBUG_SYSCALL
 
 #endif

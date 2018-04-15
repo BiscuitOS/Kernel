@@ -275,6 +275,9 @@
 #ifdef CONFIG_DEBUG_SYSCALL_MOUNT
 #define __NR_d_mount     DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_SYSCALL_UMOUNT
+#define __NR_d_umount    DEBUG_SYSCALL_NR
+#endif
 
 #define _syscall0(type, name) \
 	type name(void) \
@@ -582,6 +585,9 @@ int d_lseek(unsigned int fd, off_t offset, int origin);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_MOUNT
 int d_mount(void);
+#endif
+#ifdef CONFIG_DEBUG_SYSCALL_UMOUNT
+int d_umount(void);
 #endif
 
 #endif

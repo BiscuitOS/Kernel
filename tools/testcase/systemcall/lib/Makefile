@@ -57,3 +57,4 @@ lib-$(CONFIG_DEBUG_SYSCALL_FCNTL)      += d_fcntl.o
 lib-$(CONFIG_DEBUG_SYSCALL_DUP2)       += d_dup2.o
 lib-$(CONFIG_DEBUG_SYSCALL_LSEEK)      += d_lseek.o
 lib-$(CONFIG_DEBUG_SYSCALL_MOUNT)      += d_mount.o
+lib-$(CONFIG_DEBUG_SYSCALL_UMOUNT)     += d_umount.o

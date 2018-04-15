@@ -1,0 +1,21 @@
+#
+# System Call: umount
+#
+
+menu "umount      unmount filesystems"
+
+config DEBUG_SYSCALL_UMOUNT
+	bool "umount(): unmount filesystems"
+	help
+	  Debug mount system Call Mechanism on X86 Architecture.
+
+if DEBUG_SYSCALL_UMOUNT
+
+config DEBUG_SYSCALL_UMOUNT0
+	bool "System CALL: uount (linux0.11.1 MINIXFS)"
+	help
+	  Umount system call on linux0.11.1.
+
+endif
+
+endmenu
