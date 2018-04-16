@@ -20,6 +20,15 @@ extern int debug_binary_aout_format(void);
 
 #endif // CONFIG_DEBUG_BINARY_AOUT
 
+#ifdef CONFIG_DEBUG_BINARY_ELF
+extern int debug_binary_elf_common_userland(void);
+
+#ifdef CONFIG_DEBUG_ELF_FORMAT
+extern int debug_binary_elf_format(void);
+#endif
+
+#endif // CONFIG_DEBUG_BINARY_ELF
+
 #endif // CONFIG_DEBUG_BINARY
 
 #endif

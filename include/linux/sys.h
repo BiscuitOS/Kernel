@@ -94,6 +94,9 @@ extern int sys_d_execve(void);
 #ifdef CONFIG_DEBUG_BINARY_AOUT
 extern int sys_d_execve(void); 
 #endif
+#ifdef CONFIG_DEBUG_BINARY_ELF
+extern int sys_d_parse_elf(void); 
+#endif
 #ifdef CONFIG_DEBUG_SYSCALL_STACK
 extern int sys_d_stack(void); 
 #endif
@@ -365,6 +368,9 @@ sys_d_execve,  /* execute program */
 #endif
 #ifdef CONFIG_DEBUG_BINARY_AOUT
 sys_d_execve,  /* execute program */
+#endif
+#ifdef CONFIG_DEBUG_BINARY_ELF
+sys_d_parse_elf,  /* parse elf format */
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_STACK
 sys_d_stack,  /* dump stack map on trigger system call */

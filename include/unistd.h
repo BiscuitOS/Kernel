@@ -110,6 +110,9 @@
 #ifdef CONFIG_DEBUG_BINARY_AOUT
 #define __NR_d_execve DEBUG_SYSCALL_NR
 #endif
+#ifdef CONFIG_DEBUG_BINARY_ELF
+#define __NR_d_parse_elf DEBUG_SYSCALL_NR
+#endif
 #ifdef CONFIG_DEBUG_SYSCALL_STACK
 #define __NR_d_stack  DEBUG_SYSCALL_NR
 #endif
@@ -425,6 +428,9 @@ int d_execve(const char *filename, char **argv, char **envp);
 #endif
 #ifdef CONFIG_DEBUG_BINARY_AOUT
 int d_execve(const char *filename, char **argv, char **envp);
+#endif
+#ifdef CONFIG_DEBUG_BINARY_ELF
+int d_parse_elf(const char *filename, char **argv, char **envp);
 #endif
 #ifdef CONFIG_DEBUG_SYSCALL_STACK
 int d_stack(int fildes);

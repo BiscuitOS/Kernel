@@ -127,8 +127,6 @@ source tools/testcase/systemcall/mount/Kconfig
 
 source tools/testcase/systemcall/umount/Kconfig
 
-source tools/testcase/systemcall/setup/Kconfig
-
 source tools/testcase/systemcall/signal/Kconfig
 
 source tools/testcase/systemcall/ustat/Kconfig

@@ -1,0 +1,23 @@
+#
+# Execute-Link format file: ELF
+#
+
+menu "ELF: Executable and Linkable Format"
+
+config DEBUG_BINARY_ELF
+	bool "ELF: Executable and Linkable Format"
+	help
+	  Executable and Linkable Format (ELF, formerly named Extensible 
+	  Linking Format), is a common standard file format for executable
+	  files, object code, shared libraries, and core dumps. 
+
+if DEBUG_BINARY_ELF
+
+config DEBUG_ELF_FORMAT
+	bool "Format for ELF (Executable and Linkable Format)"
+	help
+	  Parse foramt for ELF (Executable and Linkable Format).
+
+endif
+
+endmenu

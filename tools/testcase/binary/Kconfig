@@ -13,6 +13,8 @@ if DEBUG_BINARY
 
 source tools/testcase/binary/a.out/Kconfig
 
+source tools/testcase/binary/elf/Kconfig
+
 endif # End of DEBUG_BINARY
 
 endmenu
