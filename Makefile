@@ -9,8 +9,9 @@
 # published by the Free Software Foundation.
 
 VERSION = 0
-PATCHLEVEL = 0
-SUBLEVEL = 3
+PATCHLEVEL = 1
+SUBLEVEL = 1
+BOSLEVEL = 3
 NAME = Jon Snow
 
 # Do not:
@@ -211,7 +212,7 @@ KBUILD_AFLAGS   := -D__ASSEMBLY__
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
 KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
-KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
+KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)$(if $(BOSLEVEL),.$(BOSLEVEL))))$(EXTRAVERSION)
 
 export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
 export CPP AR NM STRIP OBJCOPY OBJDUMP
