@@ -1,6 +1,7 @@
 	.code16
 # rewrite with AT&T syntax by falcon <wuzhangjin@gmail.com> at 081012
 # modify for biscuitos by buddy <buddy.zhang@aliyun.com> at 170303
+# rewrite for biscuitos by buddy <buddy.zhang@aliyun.com> at 180420
 #
 # SYS_SIZE is the number of clicks (16 bytes) to be loaded.
 # 0x3000 is 0x30000 bytes = 196KB, more than enough for current
@@ -9,6 +10,7 @@
 
 #
 #	bootsect.s		(C) 1991 Linus Torvalds
+#       modified by Drew Eckhardt
 #
 # bootsect.s is loaded at 0x7c00 by the bios-startup routines, and moves
 # iself out of the way to address 0x90000, and jump there.
@@ -68,47 +70,105 @@
 # 0x304    : /dev/hd4 - The second hard disk
 # 0x305    : /dev/hd5 - The first partition on second hard disk.
 # 0x306    : /dev/hd6 - The second partition on second hard disk.
-# ROOT_DEV = 0 ; The same device with boot device.
-	.equ ROOT_DEV, 0x301
+# ROOT_DEV = 0 & SWAP_DEV are now written by "build"
+	.equ	ROOT_DEV, 0x301
+	.equ	SWAP_DEV, 0
 
 	# Normalize the start address
-	ljmp $BOOTSEG, $_start
+	ljmp	$BOOTSEG, $_start
 
 _start:
-	mov $BOOTSEG, %ax
-	mov %ax, %ds
-	mov $INITSEG, %ax
-	mov %ax, %es
-	mov $256, %cx
-	sub %si, %si
-	sub %di, %di
+	mov	$BOOTSEG, %ax
+	mov	%ax, %ds
+	mov	$INITSEG, %ax
+	mov	%ax, %es
+	mov	$256, %cx
+	sub	%si, %si
+	sub	%di, %di
 	rep
 	movsw
-	ljmp $INITSEG, $go
+	ljmp	$INITSEG, $go
 go:
-	mov %cs, %ax
-	mov %ax, %ds
-	mov %ax, %es
-# put stack at 0x9ff00
-	mov %ax, %ss
-	mov $0xFF00, %sp # arbitrary value >> 512
+	mov	%cs, %ax
+	mov	$0xfef4, %dx
+	mov	%ax, %ds
+	mov	%ax, %es
+	push	%ax
+
+# put stack at 0x9ff00 - 12
+	mov	%ax, %ss
+	mov	%dx, %sp
+
+#
+# Many BIOS's default disk paramenter tables will not
+# recognize multi-sector reads beyond the maximum sector number
+# specified in the default diskette parameter tables - this may
+# mean 7 sectors in some cases.
+#
+# Since single sector reads are slow and out of the question,
+# we must take care of this by creating new parameter tables
+# (for the first disk) in RAM. We will set the maximum sector
+# count to 18 - the most we will encounter on an HD 1.44.
+#
+# High doesn't hurt. Low does.
+#
+# Segments are as follows: ds=es=ss=cs - INITSEG,
+#     fs = 0, es = parameter table segment
+#
+	push 	$0
+	pop 	%fs
+	mov 	$0x78, %di
+	mov	%di, %bx
+	mov	%fs:(%di), %si
+	mov	%fs:2(%di), %ds
+	mov 	%ax, %es	# ds:si is source
+	mov 	%dx, %di	# es:di is distination point to parameter table
+
+	mov	$6, %cx		# copy 12 bytes
+	cld
+
+	rep
+	movsw
+
+	mov	%dx, %di
+	movb	$18, %es:4(%di)	# patch sector count
+
+	#seg	%ds
+	mov	%di, %fs:(%bx)
+	#seg	%ds
+	mov	%es, %ds:2(%bx)
+
+	pop	%ax	# Bad pop operation!
+	push	%cs
+	pop	%ax
+	mov	%ax, %ds
+	mov	%ax, %es
+
+	xor	%ah, %ah         # reset FDC
+	xor	%dl, %dl
+	int	$0x13
 
 # load the setup-sectors directly after the bootblock
 # Note that 'es' is already set up
 
 load_setup:
 	# If use hard disk, dirver is 0x80
-	mov $0x0000, %dx      # head 0
-	mov $DEVICE_NR, %dl   # dirve 0
+	xor %dx, %dx       # head 0
 	mov $0x0002, %cx   # sector 2, track 0
 	mov $0x0200, %bx   # address = 512, in INITSEG
 	.equ     AX, 0x200+SETUPLEN
 	mov     $AX, %ax   # service 2, nr of sectors
 	int $0x13          # read it
 	jnc ok_load_setup  # ok -continue
-	mov $0x0000, %dx
-	mov $DEVICE_NR, %dl
-	mov $0x0000, %ax   # reset the diskette
+
+	push %ax           # dump error code
+	call print_nl
+	mov %sp, %bp
+	call print_hex
+	pop %ax
+
+	xor %dl, %dl       # reset FDC
+	xor %ah, %ah
 	int $0x13
 	jmp load_setup
 
@@ -116,12 +176,10 @@ ok_load_setup:
 
 # Get disk dirve parameters, specifically nr of sectors/track
 
-	mov $DEVICE_NR, %dl
-	mov $0x0800, %ax
+	xor %dl, %dl
+	mov $0x08, %ah      # AH=8 is get drive parameters
 	int $0x13
-	mov $0x00, %ch
-	mov %ax, %ax
-	mov %ax, %ax
+	xor %ch, %ch
 	#seg cs
 	mov %cx, %cs:sectors+0
 	mov $INITSEG, %ax
@@ -147,6 +205,7 @@ ok_load_setup:
 	mov %ax, %es    # Segment of 0x010000
 	call read_it
 	call kill_motor
+	call print_nl
 
 # After that we check which root-device to use. If the device is
 # defined (#= 0), nothing is done and the given device is used.
@@ -155,7 +214,7 @@ ok_load_setup:
 
 	#seg cs
 	mov %cs:root_dev+0, %ax
-	cmp $0, %ax
+	or %ax, %ax
 	jne root_defined
 	#seg cs
 	mov %cs:sectors+0, %bx
@@ -233,7 +292,7 @@ ok3_read:
 	add %cx, %bx
 	jnc rp_read
 	mov %es, %ax
-	add $0x1000, %ax
+	add $0x10, %ah
 	mov %ax, %es
 	xor %bx, %bx
 	jmp rp_read
@@ -242,35 +301,106 @@ ok3_read:
 # AL: the number of read sector
 # [BX:ES]: Store data
 read_track:
-	push %ax
-	push %bx
-	push %cx
-	push %dx
+	pusha
+	pusha
+	mov $0xe2e, %ax     # loading... message 2e= .
+	mov $7, %bx
+	int $0x10
+	popa
+
 	mov track, %dx
 	mov sread, %cx
 	inc %cx             # Sectors
 	mov %dl, %ch        # Cylinders
 	mov head, %dx
 	mov %dl, %dh        # Heads
-	mov $DEVICE_NR, %dl
 	and $0x0100, %dx  # boot from floppy
 	mov $2, %ah
+	
+	push %dx            # save for error dump
+	push %cx
+	push %bx
+	push %ax
+
 	int $0x13
 	jc bad_rt
-	pop %dx
-	pop %cx
-	pop %bx
-	pop %ax
+	add $8, %sp
+	popa
 	ret
 bad_rt:
-	mov $0, %ax
-	mov $0, %dx
+	push %ax            # save error code
+	call print_all      # ah = error, al = read
+	xor %ah, %ah
+	xor %dl, %dl
 	int $0x13
-	pop %dx
-	pop %cx
-	pop %bx
-	pop %ax
+	add $10, %sp
+	popa
 	jmp read_track
+
+/*
+ * print_all is for debugging purposes.
+ * It will print out all of the registers. The assumption is that this is
+ * called from a routine, with a stack frame like
+ * dx
+ * cx
+ * ax
+ * error
+ * ret <- sp
+ */
+print_all:
+	mov $5, %cx       # error code + 4 registers
+	mov %sp, %bp
+
+print_loop:
+	push %cx          # save count left
+	call print_nl     # nl for readability
+	jae no_reg        # see if register name is needed
+
+	mov $0xe45, %ax
+	sub %cl, %al
+	int $0x10
+
+	mov $0x58, %al
+	int $0x10
+
+	mov $0x3a, %al
+	int $0x10
+
+no_reg:
+	add $2, %bp       # next register
+	call print_hex
+	pop %cx
+	loop print_loop
+	ret
+
+print_nl:
+	mov $0xe0d, %ax   # CR
+	int $0x10
+	mov $0xa, %al     # LF
+	int $0x10
+	ret
+
+/*
+ * print_hex is for debugging purposes, and prints the word
+ * pointed to by ss:bp in hexadecmial.
+ */
+print_hex:
+	mov $4, %cx       # 4 hex digits
+	mov (%bp), %dx    # load word into dx
+print_digit:
+	rol $4, %dx       # rotate so that lowest 4 bits are used
+	mov $0xe, %ah
+	mov %dl, %al      # mask off so we have only next nibble
+	and $0xf, %al
+	add $0x30, %al    # convert to 0 based digit, '0'
+	cmp $0x39, %al    # check for overflow
+	jbe good_digit
+	add $0x7, %al     # 'A' - '0' - 0xa
+
+good_digit:
+	int $0x10
+	loop print_digit
+	ret
 
 #
 # This procedure turns off the floppy dirve motor, so
@@ -279,7 +409,7 @@ bad_rt:
 kill_motor:
 	push %dx
 	mov $0x3f2, %dx
-	mov $0, %al
+	xor %al, %al
 	outsb
 	pop %dx
 	ret
@@ -292,9 +422,12 @@ msg1:
 	.ascii "Loading BiscuitOS ..."
 	.byte 13,10,13,10
 
-	.org 508
+	.org 506
+swap_dev:
+	.word SWAP_DEV
 root_dev:
 	.word ROOT_DEV
+boot_flag:
 	.word 0xAA55
 
 	.text
