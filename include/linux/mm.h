@@ -3,6 +3,8 @@
 
 #define PAGE_SIZE 4096
 
+extern int SWAP_DEV;
+
 #define kfree(x) free_s((void *)(x), (int)0)
 
 extern void free_page(unsigned long);

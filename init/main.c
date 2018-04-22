@@ -15,6 +15,7 @@
 #include <linux/fs.h>
 #include <linux/sched.h>
 #include <linux/tty.h>
+#include <linux/mm.h>
 
 #include <asm/io.h>
 #include <asm/system.h>
@@ -48,8 +49,11 @@ char printbuf[1024];
  * This is set up by the setup-routine at boot-time
  */
 #define EXT_MEM_K        (*(unsigned short *)0x90002)
+#define CON_ROWS        ((*(unsigned short *)0x9000e) & 0xff)
+#define CON_COLS       (((*(unsigned short *)0x9000e) & 0xff00) >> 8)
 #define DRIVE_INFO       (*(struct drive_info *)0x90080)
 #define ORIG_ROOT_DEV    (*(unsigned short *)0x901FC)
+#define ORIG_SWAP_DEV    (*(unsigned short *)0x901FA)
 
 /*
  * Yeah, yeah, it's ugly, but I cannot find how to do this correctly
@@ -72,6 +76,13 @@ const char *command_line = "loglevel=8 console=ttyS0,115200";
 static long memory_end;
 static long buffer_memory_end;
 static long main_memory_start;
+static char term[32];
+
+static char *argv_rc[] = { "/bin/sh", NULL };
+static char *envp_rc[] = { "HOME=/", NULL, NULL };
+
+static char *argv[] = { "-/bin/sh", NULL };
+static char *envp[] = { "HOME=/usr/root", NULL, NULL };
 
 extern void init(void);
 extern int vsprintf(char *buf, const char *fmt, va_list args);
@@ -81,7 +92,17 @@ extern void chr_dev_init(void);
 extern void hd_init(void);
 extern void floppy_init(void);
 extern long kernel_mktime(struct tm *);
-extern long startup_time;
+
+static int sprintf(char *str, const char *fmt, ...)
+{
+    va_list args;
+    int i;
+
+    va_start(args, fmt);
+    i = vsprintf(str, fmt, args);
+    va_end(args);
+    return i;
+}
 
 /*
  * Initialize system time.
@@ -140,6 +161,10 @@ int main(void)
     debug_on_kernel_early();
 #endif
     ROOT_DEV = ORIG_ROOT_DEV;
+    SWAP_DEV = ORIG_SWAP_DEV;
+    sprintf(term, "TERM=con%dx%d", CON_COLS, CON_ROWS);
+    envp[1] = term;
+    envp_rc[1] = term;
     drive_info = DRIVE_INFO;
     memory_detect();
     mem_init(main_memory_start, memory_end);
@@ -189,12 +214,6 @@ int printf(const char *fmt, ...)
     va_end(args);
     return i;
 }
-
-static char *argv_rc[] = { "/bin/sh", NULL };
-static char *envp_rc[] = { "HOME=/", NULL };
-
-static char *argv[] = { "-/bin/sh", NULL };
-static char *envp[] = { "HOME=/usr/root", NULL };
 
 void init(void)
 {
