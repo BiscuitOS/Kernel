@@ -1,8 +1,6 @@
-# ----------------------------------------------------------
-# Setup.s
-# Maintainer: Buddy <buddy.zhang@aliyun.com>
-#
-# Copyright (C) 2017 BiscuitOS
+# rewrite with AT&T syntax by falcon <wuzhangjin@gmail.com> at 081012
+# modify  for biscuitos by buddy <buddy.zhang@aliyun.com> at 170303
+# rewrite for biscuitos by buddy <buddy.zhang@aliyun.com> at 180420
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -46,10 +44,10 @@ _start:
 
 	mov	$INITSEG, %ax	# this is done in bootsect already, but...
 	mov	%ax, %ds
-	mov	$0x03, %ah	# read cursor pos
+	mov	$0x03, %ah
 	xor	%bh, %bh
-	int	$0x10		# save it in known place, con_init fetches
-	mov	%dx, %ds:0	# it from 0x90000.
+	int	$0x10
+	mov	%dx, %ds:0
 # Get memory size (extended mem, kB)
 
 	mov	$0x88, %ah 
@@ -57,12 +55,11 @@ _start:
 	mov	%ax, %ds:2
 
 # Get video-card data:
-
 	mov	$0x0f, %ah
 	int	$0x10
-	mov	%bx, %ds:4	# bh = display page
-	mov	%ax, %ds:6	# al = video mode, ah = window width
-
+	mov	%bx, %ds:4
+	mov	%ax, %ds:6
+	
 # check for EGA/VGA and some config parameters
 
 	mov	$0x12, %ah
@@ -71,6 +68,26 @@ _start:
 	mov	%ax, %ds:8
 	mov	%bx, %ds:10
 	mov	%cx, %ds:12
+	jmp	novideo_check
+	mov	$0x5019, %ax
+	cmp	$0x10, %bl
+	je	novga
+	call	chsvga
+
+novga:
+	mov	%ax, %ds:14
+	mov	$0x03, %ah	# read cursor pos
+	xor	%bh, %bh
+	int	$0x10		# save it in know place, con_init fetches
+	mov	%dx, %ds:0	# it from 0x90000.
+
+novideo_check:
+	
+# Get video-card data:
+	mov	$0x0f, %ah
+	int	$0x10
+	mov	%bx, %ds:4	# bh = display page
+	mov	%ax, %ds:6	# al = video mode, ah = window width
 
 # Get hd0 data
 
@@ -220,6 +237,434 @@ empty_8042:
 	test	$2, %al		# is input buffer full?
 	jnz	empty_8042	# yes - loop
 	ret
+
+# Routine trying to recognize type of SVGA-board present (if any)
+# and if it recognize one gives the choices of resolution it offsets.
+# If one is found the resolution chosen is given by al,ah (row, cols).
+
+chsvga:
+	cld
+	push	%ds
+	push	%cs
+	pop	%ds
+	mov	$0xc000, %ax
+	mov	%ax, %es
+	lea	msg1, %si
+	call	prtstr
+nokey:
+# I don't care press buttom, so skip this routine.
+#	in	$0x60, %al
+#	cmp	$0x82, %al
+#	jb	nokey
+#	cmp	$0xe0, %al
+#	ja	nokey
+#	cmp	$0x9c, %al
+	jmp	svga
+	mov	$0x5019, %ax
+	pop	%ds
+	ret
+
+svga:
+	lea	idati, %si	# Check ATI 'clues'
+	mov	$0x31, %di
+	mov	$0x09, %cx
+	repe
+	cmpsb
+	jne	noati
+	lea	dscati, %si
+	lea	moati, %di
+	lea	selmod, %cx
+	jmp	*%cx
+
+noati:
+	mov	$0x200f, %ax	# Check Ahead 'clues'
+	mov	$0x3ce, %dx
+	out	%ax, %dx
+	inc	%dx
+	in	%dx, %al
+	cmp	$0x20, %al
+	je	isahed
+	cmp	$0x21, %al
+	jne	noahed
+isahed:
+	lea	dscahead, %si
+	lea	moahead, %di
+	lea	selmod, %cx
+noahed:
+	mov	$0x3c3, %dx	# Check Chips & Tech. 'clues'
+	in	%dx, %al
+	or	$0x10, %al
+	out	%al, %dx
+	mov	$0x104, %dx
+	in	%dx, %al
+	mov	%al, %bl
+	mov	$0x3c3, %dx
+	in	%dx, %al
+	and	$0xef, %al
+	out	%al, %dx
+	cmp	%ds:idcandt, %bl
+	jne	nocant
+	lea	dsccandt, %si
+	lea	mocandt, %di
+	lea	selmod, %cx
+	jmp	*%cx
+nocant:
+	mov	%ax, %ax
+	mov	%bx, %bx
+	mov	$0x3d4, %dx	# Check Cirrus 'clues'
+	mov	$0x0c, %al
+	out	%al, %dx
+	inc	%dx
+	in	%dx, %al
+	mov	%al, %bl
+	xor	%al, %al
+	out	%al, %dx
+	dec	%dx
+	mov	$0x1f, %al
+	out	%al, %dx
+	inc	%dx
+	in	%dx, %al
+	mov	%al, %bh
+	xor	%ah, %ah
+	shl	$4, %al
+	mov	%ax, %cx
+	mov	%bh, %al
+	shr	$4, %al
+	add	%ax, %cx
+	shl	$8, %cx
+	add	$6, %cx
+	mov	%cx, %ax
+	mov	$0x3c4, %dx
+	out	%ax, %dx
+	inc	%dx
+	in	%dx, %al
+	and	%al, %al
+	jnz	nocirr
+	mov	%bh, %al
+	out	%al, %dx
+	in	%dx, %al
+	cmp	$0x01, %al
+	jne	nocirr
+	call	rst3d4
+	lea	dsccirrus, %si
+	lea	mocirrus, %di
+	lea	selmod, %cx
+rst3d4:
+	mov	$0x3d4, %dx
+	mov	%bl, %al
+	xor	%ah, %ah
+	shl	$8, %ax
+	add	$0x0c, %ax
+	out	%ax, %dx
+	ret
+nocirr:
+	call	rst3d4		# Check Everex 'clues'
+	mov	$0x7000, %ax
+	xor	%bx, %bx
+	int	$0x10
+	cmp	$0x70, %al
+	jne	noevrx
+	shr	$4, %dx
+	cmp	$0x678, %dx
+	je	istrid
+	cmp	$0x236, %dx
+	je	istrid
+	lea	dsceverex, %si
+	lea	moeverex, %di
+	lea	selmod, %cx
+	jmp	*%cx
+
+istrid:
+	lea	ev2tri, %cx
+	jmp	*%cx
+noevrx:
+	lea	idgenoa, %si
+	xor	%ax, %ax
+	mov	%es:0x37, %al
+	mov	%ax, %di
+	mov	$0x04, %cx
+	dec	%si
+	dec	%di
+l1:
+	inc	%si
+	inc	%di
+	mov	%ds:(%si), %al
+	#seg	%es
+	and	%es:(%di), %al
+	cmp	%ds:(%si), %al
+	loope	l1
+	cmp	$0x00, %cx
+	jne	nogen
+	lea	dscgenoa, %si
+	lea	mogenoa, %di
+	lea	selmod, %cx
+	jmp	*%cx
+nogen:
+	lea	idparadise, %si	# Check Paradise 'clues'
+	mov	$0x7d, %di
+	mov	$0x04, %cx
+	repe
+	cmpsb
+	jne	nopara
+	lea	dscparadise, %si
+	lea	moparadise, %di
+	lea	selmod, %cx
+	jmp	*%cx
+nopara:
+	mov	$0x3c4, %dx	# Check Trident 'clues'
+	mov	$0x0e, %al
+	out	%al, %dx
+	inc	%dx
+	in	%dx, %al
+	xchg	%al, %ah
+	mov	$0x00, %al
+	out	%al, %dx
+	in	%dx, %al
+	xchg	%ah, %al
+	mov	%al, %bl	# Strange thing ... in the book this wasn't
+	and	$0x02, %bl	# necessary but it worked on my card which
+	jz	setb2		# is a trident. Without it the screen goes
+	and	$0xfd, %al
+	jmp	clrb2
+setb2:
+	or	$0x02, %al
+clrb2:
+	out	%al, %dx
+	and	$0x0f, %ah
+	cmp	$0x02, %ah
+	jne	notrid
+ev2tri:
+	lea	dsctrident, %si
+	lea	motrident, %di
+	lea	selmod, %cx
+	jmp	*%cx
+notrid:
+	mov	$0x3cd, %dx	# Check Tseng 'clues'
+	in	%dx, %al	# Could thing be this simple ! :-)
+	mov	%al, %bl
+	mov	$0x55, %al
+	out	%al, %dx
+	in	%dx, %al
+	mov	%al, %ah
+	mov	%bl, %al
+	out	%al, %dx
+	cmp	$0x55, %ah
+	jne	notsen
+	lea	dsctseng, %si
+	lea	motseng, %di
+	lea	selmod, %cx
+	jmp	*%cx
+notsen:
+	mov	$0x3cc, %dx	# Check Video7 'clues'
+	in	%dx, %al
+	mov	$0x3b4, %dx
+	and	$0x01, %al
+	jz	even7
+	mov	$0x3d4, %dx
+even7:
+	mov	$0x0c, %al
+	out	%al, %dx
+	inc	%dx
+	in	%dx, %al
+	mov	%al, %bl
+	mov	$0x55, %al
+	out	%al, %dx
+	in	%dx, %al
+	dec	%dx
+	mov	$0x1f, %al
+	out	%al, %dx
+	inc	%dx
+	in	%dx, %al
+	mov	%al, %bh
+	out	%al, %dx
+	inc	%dx
+	mov	%bl, %al
+	out	%al, %dx
+	mov	$0x55, %al
+	mov	$0xea, %al
+	cmp	%bh, %al
+	jne	novid7
+	lea	dscvideo7, %si
+	lea	movideo7, %di
+selmod:
+	push	%si
+	lea	msg2, %si
+	call	prtstr
+	xor	%cx, %cx
+	mov	%ds:(%di), %cl
+	pop	%si
+	push	%si
+	push	%cx
+tbl:
+	pop	%bx
+	push	%bx
+	mov	%bl, %al
+	sub	%cl, %al
+	call	dprnt
+	call	spcing
+	lodsw
+	xchg	%ah, %al
+	call	dprnt
+	xchg	%ah, %al
+	push	%ax
+	mov	$0x78, %al
+	call	prnt1
+	pop	%ax
+	call	dprnt
+	call	docr
+	loop	tbl
+	pop	%cx
+	call	docr
+	lea	msg3, %si
+	call	prtstr
+	pop	%si
+	add	$0x80, %cl
+nonum:
+	in	$0x60, %al	# Quick and dirty ...
+	cmp	$0x82, %al
+	jb	nonum
+	cmp	$0x8b, %al
+	je	zero
+	cmp	%cl, %al
+	ja	nonum
+	jmp	nozero
+zero:
+	sub	$0x0a, %al
+nozero:
+	sub	$0x80, %al
+	dec	%al
+	xor	%ah, %ah
+	add	%ax, %di
+	inc	%di
+	push	%ax
+	mov	%ds:(%di), %al
+	int	$0x10
+	pop	%ax
+	shl	$1, %ax
+	add	%ax, %si
+	lodsw
+	pop	%ds
+	ret
+novid7:
+	pop	%ds	# Here could be code to support standard 80x50, 80x30
+	mov	$0x5019, %ax
+	ret
+
+# Routine that 'tabs' to next col
+
+spcing:
+	mov	$0x2e, %al
+	call	prnt1
+	mov	$0x20, %al
+	call	prnt1
+	mov	$0x20, %al
+	call	prnt1
+	mov	$0x20, %al
+	call	prnt1
+	mov	$0x20, %al
+	call	prnt1
+	ret
+
+# Routine to print asciiz-string at DS:SI
+
+prtstr:
+	lodsb
+	and	%al, %al
+	jz	fin
+	call	prnt1
+	jmp	prtstr
+fin:
+	ret
+
+# Routine to print a decimal value on screen, the value to be
+# printed is put in al (i.e 0-255).
+
+dprnt:
+	push	%ax
+	push	%cx
+	mov	$0x00, %ah
+	mov	$0x0a, %cl
+	idiv	%cl
+	cmp	$0x09, %al
+	jbe	lt100
+	call	dprnt
+	jmp	skip10
+lt100:
+	add	$0x30, %al
+	call	prnt1
+skip10:
+	mov	%ah, %al
+	add	$0x30, %al
+	call	prnt1
+	pop	%cx
+	pop	%ax
+	ret
+
+# Part of above routine, this one just prints ascii al
+prnt1:
+	push	%ax
+	push	%cx
+	mov	$0x00, %bh
+	mov	$0x01, %cx
+	mov	$0x0e, %ah
+	int	$0x10
+	pop	%cx
+	pop	%ax
+	ret
+
+# Prints <CR> + <LF>
+
+docr:
+	push	%ax
+	push	%cx
+	mov	$0x00, %bh
+	mov	$0x0e, %ah
+	mov	$0x0a, %al
+	mov	$0x01, %cx
+	int	$0x10
+	mov	$0x0d, %al
+	int	$0x10
+	pop	%cx
+	pop	%ax
+	ret
+
+msg1:		.ascii	"Press <RETURN> to see SVGA-modes available or any other key to continue."
+		.byte	0x0d, 0x0a, 0x0a, 0x00
+msg2:		.ascii	"Mode:  COLSxROWS:"
+		.byte	0x0d, 0x0a, 0x0a, 0x00
+msg3:		.ascii	"Choose mode by pressing the corresponding number."
+		.byte	0x0d, 0x0a, 0x00
+		
+idati:		.ascii	"761295520"
+idcandt:	.byte	0xa5
+idgenoa:	.byte	0x77, 0x00, 0x66, 0x99
+idparadise:	.ascii	"VGA="
+
+# Manufacturer:	  Numofmodes:	Mode:
+
+moati:		.byte	0x02,	0x23, 0x33 
+moahead:	.byte	0x05,	0x22, 0x23, 0x24, 0x2f, 0x34
+mocandt:	.byte	0x02,	0x60, 0x61
+mocirrus:	.byte	0x04,	0x1f, 0x20, 0x22, 0x31
+moeverex:	.byte	0x0a,	0x03, 0x04, 0x07, 0x08, 0x0a, 0x0b, 0x16, 0x18, 0x21, 0x40
+mogenoa:	.byte	0x0a,	0x58, 0x5a, 0x60, 0x61, 0x62, 0x63, 0x64, 0x72, 0x74, 0x78
+moparadise:	.byte	0x02,	0x55, 0x54
+motrident:	.byte	0x07,	0x50, 0x51, 0x52, 0x57, 0x58, 0x59, 0x5a
+motseng:	.byte	0x05,	0x26, 0x2a, 0x23, 0x24, 0x22
+movideo7:	.byte	0x06,	0x40, 0x43, 0x44, 0x41, 0x42, 0x45
+
+# msb = Cols lsb = Rows:
+
+dscati:		.word	0x8419, 0x842c
+dscahead:	.word	0x842c, 0x8419, 0x841c, 0xa032, 0x5042
+dsccandt:	.word	0x8419, 0x8432
+dsccirrus:	.word	0x8419, 0x842c, 0x841e, 0x6425
+dsceverex:	.word	0x5022, 0x503c, 0x642b, 0x644b, 0x8419, 0x842c, 0x501e, 0x641b, 0xa040, 0x841e
+dscgenoa:	.word	0x5020, 0x642a, 0x8419, 0x841d, 0x8420, 0x842c, 0x843c, 0x503c, 0x5042, 0x644b
+dscparadise:	.word	0x8419, 0x842b
+dsctrident:	.word 	0x501e, 0x502b, 0x503c, 0x8419, 0x841e, 0x842b, 0x843c
+dsctseng:	.word	0x503c, 0x6428, 0x8419, 0x841c, 0x842c
+dscvideo7:	.word	0x502b, 0x503c, 0x643c, 0x8419, 0x842c, 0x841c
 
 gdt:
 	.word	0,0,0,0		# dummy
