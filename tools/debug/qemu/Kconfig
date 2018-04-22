@@ -42,6 +42,33 @@ config QEMU_SERIAL_PTY
 	depends on QEMU
 	help
 	  Support pty serial.
+config QEMU_VGA
+	bool "Select type of VGA card to emulate"
+	depends on QEMU
+	help
+	  Support VGA
+
+# VGA
+if QEMU_VGA
+
+config QEMU_VGA_CIRRUS
+	bool "Cirrus Logic GD5446 Video card"
+	help
+	  Cirrus Logic GD5446 Video card. All Windows versions starting 
+	  from Windows 95 should recognize and use this graphic card.
+	  For optimal performances, use 16 bit color depth in the guest
+	  and the host OS. (This card was the default before QEMU 2.2)
+
+config QEMU_VGA_STD
+	bool "Standard VGA card with Bochs VBE extensions."
+	help
+	  Standard VGA card with Bochs VBE extensions. If your guest OS
+	  supports the VESA 2.0 VBE extensions (e.g. Windows XP) and if
+	  you want to use high resolution modes (>= 1280x1024x16) then
+	  you should use this option. (This card is the default since 
+	  QEMU 2.2)
+
+endif
 
 endif
 

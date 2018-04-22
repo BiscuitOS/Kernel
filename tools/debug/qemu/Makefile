@@ -37,6 +37,20 @@ endif
 QEMU_FLAGS  += -m $(MEMORY_SIZE)
 
 # -----------------------------------
+# VGA 
+#   Cirrus
+#   Std
+# -----------------------------------
+VGA_TYPE := 
+ifneq ($(CONFIG_QEMU_VGA_CIRRUS),)
+  VGA_TYPE := -vga cirrus
+endif
+ifneq ($(CONFIG_QEMU_VGA_STD),)
+  VGA_TYPE := -vga std
+endif
+QEMU_FLAGS += $(VGA_TYPE)
+
+# -----------------------------------
 # Boot order
 # On X86 machine
 # a: floppy 1
