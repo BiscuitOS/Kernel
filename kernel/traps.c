@@ -13,6 +13,9 @@
 #include <asm/system.h>
 #include <linux/sched.h>
 #include <linux/kernel.h>
+#include <linux/head.h>
+
+#include <string.h>
 
 #include <asm/io.h>
 
@@ -33,7 +36,6 @@
 	__asm__("mov %%fs, %%ax":"=a" (__res):);  \
 	__res;})
 
-int do_exit(long code);
 void divide_error(void);
 void debug(void);
 void nmi(void);
@@ -53,6 +55,8 @@ void coprocessor_error(void);
 void reserved(void);
 void parallel_interrupt(void);
 void irq13(void);
+void alignment_check(void);
+void page_exception(void);
 
 static void die(char *str, long esp_ptr, long nr)
 {
@@ -90,6 +94,11 @@ void do_double_fault(long esp, long error_code)
 void do_general_protection(long esp, long error_code)
 {
 	die("general protection", esp, error_code);
+}
+
+void do_alignment_check(long esp, long error_code)
+{
+    die("alignment check",esp,error_code);
 }
 
 void do_divide_error(long esp, long error_code)
@@ -196,8 +205,9 @@ void trap_init(void)
     set_trap_gate(14, &page_fault);
     set_trap_gate(15, &reserved);
     set_trap_gate(16, &coprocessor_error);
+    set_trap_gate(17,&alignment_check);
 
-    for (i = 17; i < 48; i++)
+    for (i = 18; i < 48; i++)
         set_trap_gate(i, &reserved);
     set_trap_gate(45, &irq13);
     outb_p(inb_p(0x21) & 0xfb, 0x21);

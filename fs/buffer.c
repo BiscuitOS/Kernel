@@ -3,32 +3,41 @@
  *
  * (C) 1991 Linus Torvalds
  */
-#include <string.h>
-#include <stdarg.h>
+/*
+ *  'buffer.c' implements the buffer-cache functions. Race-conditions have
+ * been avoided by NEVER letting a interrupt change a buffer (except for the
+ * data, of course), but instead letting the caller do it. NOTE! As interrupts
+ * can wake up a caller, some cli-sti sequences are needed to check for
+ * sleep-on-calls. These should be extremely quick, though (I hope).
+ */
 
-#include <linux/fs.h>
-#include <sys/types.h>
-#include <linux/list.h>
+/*
+ * NOTE! There is one discordant note here: checking floppies for
+ * disk change. This is where it fits best, I think, as it should
+ * invalidate changed floppy-disk-caches.
+ */
+
+#include <linux/config.h>
 #include <asm/system.h>
 #include <linux/sched.h>
 #include <linux/kernel.h>
+#include <linux/fs.h>
+#include <asm/io.h>
 
+#include <stdarg.h>
 
 extern int end;
-extern void put_super(int);
 
 /* 640KB-1MB is used by BIOS and Vedio, it is hard coded, sorry */
 #define COPYBLK(from, to) \
 __asm__("cld\n\t" \
 	"rep\n\t" \
 	"movsl\n\t" \
-	: : "c" (BLOCK_SIZE/4), "S" (from), "D" (to) \
-	)
+	: : "c" (BLOCK_SIZE/4), "S" (from), "D" (to))
 
 int NR_BUFFERS = 0;
 static struct task_struct *buffer_wait = NULL;
 static struct buffer_head *free_list;
-struct buffer_head *free_list_head;
 
 struct buffer_head *start_buffer = (struct buffer_head *)&end;
 struct buffer_head *hash_table[NR_HASH];
@@ -110,7 +119,6 @@ void buffer_init(long buffer_end)
     free_list = start_buffer;
     free_list->b_prev_free = h;
     h->b_next_free = free_list;
-    free_list_head = free_list;
     for (i = 0; i < NR_HASH; i++)
         hash_table[i] = NULL;
 }
@@ -220,7 +228,7 @@ struct buffer_head *getblk(int dev, int block)
     struct buffer_head *tmp, *bh;
 
 repeat:
-    if ((bh = get_hash_table(dev, block)))
+    if (bh = get_hash_table(dev, block))
         return bh;
     tmp = free_list;
     do {
@@ -293,7 +301,7 @@ struct buffer_head *breada(int dev, int first, ...)
     return NULL;
 }
 
-static void inline invalidate_buffers(int dev)
+void inline invalidate_buffers(int dev)
 {
     int i;
     struct buffer_head *bh;
@@ -365,7 +373,7 @@ void bread_page(unsigned long address, int dev, int b[4])
 
     for (i = 0; i < 4; i++)
         if (b[i]) {
-            if ((bh[i] = getblk(dev, b[i])))
+            if (bh[i] = getblk(dev, b[i]))
                 if (!bh[i]->b_uptodate)
                     ll_rw_block(READ, bh[i]);
         } else

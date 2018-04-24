@@ -3,9 +3,8 @@
  *
  * (C) 1991 Linus Torvalds
  */
-#include <linux/fs.h>
-#include <linux/mm.h>
 #include <linux/sched.h>
+#include <linux/kernel.h>
 
 #include <asm/segment.h>
 

@@ -1,15 +1,65 @@
 #ifndef _UNISTD_H_
 #define _UNISTD_H_
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/times.h>
-#include <sys/utsname.h>
-#include <utime.h>
+/* ok, this may be a joke, but I'm working on it */
+#define _POSIX_VERSION 198808L
+
+#define _POSIX_CHOWN_RESTRICTED	/* only root can do a chown (I think..) */
+#define _POSIX_NO_TRUNC		/* no pathname truncation (but see in kernel) */
+#define _POSIX_VDISABLE '\0'	/* character to disable things like ^C */
+#define _POSIX_JOB_CONTROL
+#define _POSIX_SAVED_IDS	/* Implemented, for whatever good it is */
 
 #ifdef CONFIG_DEBUG_USERLAND_SYSCALL
-#define DEBUG_SYSCALL_NR     72
+#define DEBUG_SYSCALL_NR     87
 #endif
+
+#define STDIN_FILENO	0
+#define STDOUT_FILENO	1
+#define STDERR_FILENO	2
+
+#ifndef NULL
+#define NULL    ((void *)0)
+#endif
+
+/* access */
+#define F_OK	0
+#define X_OK	1
+#define W_OK	2
+#define R_OK	4
+
+/* lseek */
+#define SEEK_SET	0
+#define SEEK_CUR	1
+#define SEEK_END	2
+
+/* _SC stands for System Configuration. We don't use them much */
+#define _SC_ARG_MAX		1
+#define _SC_CHILD_MAX		2
+#define _SC_CLOCKS_PER_SEC	3
+#define _SC_NGROUPS_MAX		4
+#define _SC_OPEN_MAX		5
+#define _SC_JOB_CONTROL		6
+#define _SC_SAVED_IDS		7
+#define _SC_VERSION		8
+
+/* more (possibly) configurable things - now pathnames */
+#define _PC_LINK_MAX		1
+#define _PC_MAX_CANON		2
+#define _PC_MAX_INPUT		3
+#define _PC_NAME_MAX		4
+#define _PC_PATH_MAX		5
+#define _PC_PIPE_BUF		6
+#define _PC_NO_TRUNC		7
+#define _PC_VDISABLE		8
+#define _PC_CHOWN_RESTRICTED	9
+
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/times.h>
+#include <sys/utsname.h>
+#include <sys/resource.h>
+#include <utime.h>
 
 #ifdef __LIBRARY__
 
@@ -85,6 +135,21 @@
 #define __NR_ssetmask 69
 #define __NR_setreuid 70
 #define __NR_setregid 71
+#define __NR_sigsuspend	72
+#define __NR_sigpending 73
+#define __NR_sethostname 74
+#define __NR_setrlimit	75
+#define __NR_getrlimit	76
+#define __NR_getrusage	77
+#define __NR_gettimeofday 78
+#define __NR_settimeofday 79
+#define __NR_getgroups	80
+#define __NR_setgroups	81
+#define __NR_select	82
+#define __NR_symlink	83
+#define __NR_lstat	84
+#define __NR_readlink	85
+#define __NR_uselib	86
 
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN0
 #define __NR_d_open   DEBUG_SYSCALL_NR
@@ -348,10 +413,11 @@ int access(const char *filename, mode_t mode);
 int acct(const char *filename);
 int alarm(int sec);
 int brk(void *end_data_segment);
-void *sbrk(long filename);
+void *sbrk(ptrdiff_t increment);
 int chdir(const char *filename);
 int chmod(const char *filename, mode_t mode);
-int chroot(const char *filename, uid_t owner, gid_t group);
+int chown(const char *filename, uid_t owner, gid_t group);
+int chroot(const char *filename);
 int close(int fildes);
 int creat(const char *filename, mode_t mode);
 int dup(int fildes);
@@ -361,7 +427,8 @@ int execvp(const char *file, char **argv);
 int execl(const char *pathname, char *arg0, ...);
 int execlp(const char *file, char *arg0, ...);
 int execle(const char *pathname, char *arg0, ...);
-void _exit(int status);
+volatile void exit(int status);
+volatile void _exit(int status);
 int fcntl(int fildes, int cmd, ...);
 int fork(void);
 int getpid(void);
@@ -387,12 +454,12 @@ int setgid(gid_t gid);
 void (*signal(int sig, void (*fn)(int)))(int);
 int stat(const char *filename, struct stat *stat_buf);
 int fstat(int fildes, struct stat *stat_buf);
-int fstat(int fildes, struct stat *stat_buf);
 int stime(time_t *tptr);
 int sync(void);
 time_t time(time_t *tloc);
 time_t times(struct tms *tbuf);
 int ulimit(int cmd, long limit);
+mode_t umask(mode_t mask);
 int umount(const char *specialfile);
 int uname(struct utsname *name);
 int unlink(const char *filename);
@@ -405,6 +472,16 @@ int dup2(int oldfd, int newfd);
 int getppid(void);
 pid_t getpgrp(void);
 pid_t setsid(void);
+int sethostname(char *name, int len);
+int setrlimit(int resource, struct rlimit *rlp);
+int getrlimit(int resource, struct rlimit *rlp);
+int getrusage(int who, struct rusage *rusage);
+int gettimeofday(struct timeval *tv, struct timezone *tz);
+int settimeofday(struct timeval *tv, struct timezone *tz);
+int getgroups(int gidsetlen, gid_t *gidset);
+int setgroups(int gidsetlen, gid_t *gidset);
+int select(int width, fd_set * readfds, fd_set * writefds,
+	fd_set * exceptfds, struct timeval * timeout);
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN0
 int d_open(const char *filename, int flag, ...);
 #endif

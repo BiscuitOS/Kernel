@@ -1,3 +1,6 @@
+/*
+ * Why isn't this a .c file?  Enquiring minds....
+ */
 extern int sys_setup(void);
 extern int sys_exit(void);
 extern int sys_fork(void);
@@ -70,6 +73,21 @@ extern int sys_sgetmask(void);
 extern int sys_ssetmask(void);
 extern int sys_setreuid(void);
 extern int sys_setregid(void);
+extern int sys_sigpending();
+extern int sys_sigsuspend();
+extern int sys_sethostname();
+extern int sys_setrlimit();
+extern int sys_getrlimit();
+extern int sys_getrusage();
+extern int sys_gettimeofday();
+extern int sys_settimeofday();
+extern int sys_getgroups();
+extern int sys_setgroups();
+extern int sys_select();
+extern int sys_symlink();
+extern int sys_lstat();
+extern int sys_readlink();
+extern int sys_uselib();
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN0
 extern int sys_d_open(void); 
 #endif
@@ -345,6 +363,21 @@ sys_sgetmask, /* manipulation of signal mask */
 sys_ssetmask, /* -- */
 sys_setreuid, /* set real and/or effective user or group ID */
 sys_setregid, /* Set the numerical group id */
+sys_sigsuspend,
+sys_sigpending,
+sys_sethostname,
+sys_setrlimit,
+sys_getrlimit,
+sys_getrusage,
+sys_gettimeofday,
+sys_settimeofday,
+sys_getgroups,
+sys_setgroups,
+sys_select,
+sys_symlink,
+sys_lstat,
+sys_readlink,
+sys_uselib,
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN0
 sys_d_open,  /* Open file/directory */
 #endif
@@ -547,3 +580,6 @@ sys_d_setup, /* system setup */
 sys_d_signal, /* signal handling */
 #endif
 };
+
+/* So we don't have to do any more manual updating.... */
+int NR_syscalls = sizeof(sys_call_table)/sizeof(fn_ptr);

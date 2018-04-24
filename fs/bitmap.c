@@ -5,33 +5,32 @@
  */
 
 /* bitmap.c contains the code that handles the inode and block bitmaps */
-#include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
 
 #include <string.h>
 
 #define clear_block(addr) \
-__asm__ __volatile__ ("cld\n\t" \
+__asm__ ("cld\n\t" \
     "rep\n\t"  \
     "stosl" \
     ::"a" (0),"c" (BLOCK_SIZE/4),"D"((long)(addr)))
 
 #define set_bit(nr, addr) ({\
-register int res; \
+register int res __asm__ ("ax"); \
 __asm__ __volatile__("btsl %2,%3\n\tsetb %%al": \
 "=a" (res): "0" (0), "r" (nr), "m" (*(addr))); \
 res;})
 
 #define clear_bit(nr, addr) ({\
-register int res; \
+register int res __asm__ ("ax"); \
 __asm__ __volatile__("btrl %2,%3\n\tsetnb %%al": \
 "=a" (res): "0" (0), "r" (nr), "m" (*(addr))); \
 res;})
 
 #define find_first_zero(addr) ({ \
 int __res; \
-__asm__ __volatile__ ("cld\n" \
+__asm__ ("cld\n" \
                       "1:\tlodsl\n\t" \
                       "notl %%eax\n\t" \
                       "bsfl %%eax, %%edx\n\t" \
@@ -74,7 +73,7 @@ void free_inode(struct m_inode *inode)
     memset(inode, 0, sizeof(*inode));
 }
 
-void free_block(int dev, int block)
+int free_block(int dev, int block)
 {
     struct super_block *sb;
     struct buffer_head *bh;
@@ -85,21 +84,22 @@ void free_block(int dev, int block)
         panic("trying to free block not in datazone");
     bh = get_hash_table(dev, block);
     if (bh) {
-        if (bh->b_count != 1) {
-            printk("trying to free block (%04x:%d), count=%d\n",
-                    dev, block, bh->b_count);
-            return;
+        if (bh->b_count > 1) {
+            brelse(bh);
+            return 0;
         }
         bh->b_dirt = 0;
         bh->b_uptodate = 0;
+        if (bh->b_count)
         brelse(bh);
     }
     block -= sb->s_firstdatazone - 1;
     if (clear_bit(block & 8191, sb->s_zmap[block / 8192]->b_data)) {
         printk("block (%04x:%d) ", dev, block + sb->s_firstdatazone - 1);
-        panic("free_block: bit already cleared");
+        printk("free_block: bit already cleared");
     }
     sb->s_zmap[block / 8192]->b_dirt = 1;
+    return 1;
 }
 
 int new_block(int dev)
@@ -147,7 +147,7 @@ struct m_inode *new_inode(int dev)
         panic("new_inode with unknown device");
     j = 8192;
     for (i = 0; i < 8; i++)
-        if ((bh = sb->s_imap[i]))
+        if (bh = sb->s_imap[i])
             if ((j = find_first_zero(bh->b_data)) < 8192)
                 break;
     if (!bh || j >= 8192 || j + i * 8192 > sb->s_ninodes) {

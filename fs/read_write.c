@@ -3,11 +3,13 @@
  *
  * (C) 1991 Linus Torvalds
  */
-#include <linux/fs.h>
 #include <linux/sched.h>
 #include <linux/kernel.h>
 
 #include <sys/stat.h>
+#include <sys/types.h>
+
+#include <asm/segment.h>
 
 #include <errno.h>
 
@@ -15,7 +17,13 @@ extern int read_pipe(struct m_inode * inode, char * buf, int count);
 extern int rw_char(int rw,int dev, char * buf, int count, off_t * pos);
 extern int file_read(struct m_inode * inode, struct file * filp,
                 char * buf, int count);
-int block_read(int dev, unsigned long *pos, char *buf, int count);
+
+extern int write_pipe(struct m_inode * inode, char * buf, int count);
+extern int block_read(int dev, off_t * pos, char * buf, int count);
+extern int block_write(int dev, off_t * pos, char * buf, int count);
+
+extern int file_write(struct m_inode * inode, struct file * filp,
+		char * buf, int count);
 
 int sys_read(unsigned int fd, char *buf, int count)
 {

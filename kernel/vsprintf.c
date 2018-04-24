@@ -3,6 +3,12 @@
  *
  *  (C) 1991  Linus Torvalds
  */
+/*
+ * vsprintf.c -- Lars Wirzenius & Linus Torvalds
+ *
+ * Wirzenius wrote this protably, Torvalds fucked it up :-)
+ */
+
 #include <stdarg.h>
 #include <string.h>
 
@@ -101,10 +107,11 @@ int vsprintf(char *buf, const char *fmt, va_list args)
     char *s;
     int *ip;
 
-    int flags;
-    int field_width;
-    int precision;
-
+    int flags;                      /* flags to number() */
+    int field_width;                /* width of output field */
+    int precision;                  /* min. # of digits for integers; max
+                                     * number of chars for from string */
+    int qualifier;                  /* 'h', 'l', or 'L' for integer fields */
 
     for (str = buf; *fmt; ++fmt) {
         if (*fmt != '%') {
@@ -159,9 +166,12 @@ repeat:
             if (precision < 0)
                 precision = 0;
         }
-
-        if (*fmt == 'h' || *fmt == 'l' || *fmt == 'L')
+        /* get the conversion qualifier */
+        qualifier = -1;
+        if (*fmt == 'h' || *fmt == 'l' || *fmt == 'L') {
+            qualifier = *fmt;
             ++fmt;
+        }
 
         switch (*fmt) {
         case 'c':

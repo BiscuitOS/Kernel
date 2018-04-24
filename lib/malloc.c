@@ -186,7 +186,6 @@ void free_s(void *obj, int size)
 	void *page;
 	struct _bucket_dir *bdir;
 	struct bucket_desc *bdesc, *prev;
-	bdesc = prev = 0;
 	/* Calculate what page this object lives in */
 	page = (void *)((unsigned long) obj & 0xFFFFF000);
 	/* Now search the buckets looking for that page */

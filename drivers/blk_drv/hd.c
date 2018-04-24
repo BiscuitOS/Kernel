@@ -3,6 +3,15 @@
  *
  * (C) 1991 Linus Torvalds
  */
+/*
+ * This is the low-level hd interrupt support. It traverses the
+ * request-list, using interrupts to jump between functions. As
+ * all the functions are called within interrupts, we may not
+ * sleep. Special care is recommended.
+ * 
+ *  modified by Drew Eckhardt to check nr of hd's from the CMOS.
+ */
+
 #include <asm/io.h>
 #include <asm/system.h>
 #include <linux/head.h>
@@ -52,7 +61,10 @@ static int reset = 0;
 extern void hd_interrupt(void);
 static void do_hd_request(void);
 static void recal_intr(void);
+static void bad_rw_intr(void);
+extern int *blk_size[];
 
+int hd_timeout = 0;
 /*
  * This struct define the HD's and their types.
  */
@@ -82,11 +94,13 @@ static struct hd_struct {
 	long nr_sects;
 } hd[5 * MAX_HD] = { { 0, 0 },};
 
+static int hd_sizes[5*MAX_HD] = {0, };
+
 #define port_read(port, buf, nr) \
-	__asm__("cld;rep;insw"::"d" (port),"D" (buf),"c" (nr))
+	__asm__("cld;rep;insw":: "d" (port),"D" (buf),"c" (nr))
 
 #define port_write(port, buf, nr) \
-	__asm__("cld;rep;outsw"::"d" (port),"S" (buf),"c" (nr))
+	__asm__("cld;rep;outsw":: "d" (port),"S" (buf),"c" (nr))
 
 static inline void unlock_buffer(struct buffer_head *bh)
 {
@@ -115,24 +129,24 @@ static inline void end_request(int uptodate)
 
 static int drive_busy(void)
 {
-	unsigned int i;
+    unsigned int i;
+    unsigned char c;
 
-	for (i = 0; i < 10000; i++)
-		if (READY_STAT == (inb_p(HD_STATUS) & (BUSY_STAT | READY_STAT)))
-			break;
-	i = inb(HD_STATUS);
-	i &= BUSY_STAT | READY_STAT | SEEK_STAT;
-	if (i == (READY_STAT | SEEK_STAT))
-		return (0);
-	printk("HD controller times out\n\r");
-	return (1);
+    for (i = 0; i < 50000; i++) {
+        c = inb_p(HD_STATUS);
+        c &= (BUSY_STAT | READY_STAT | SEEK_STAT);
+        if (c == (READY_STAT | SEEK_STAT))
+            return 0;
+    }
+    printk("HD controller times out\n\r");
+    return 1;
 }
 
 static int controller_ready(void)
 {
     int retries = 100000;
 
-    while (--retries && (inb_p(HD_STATUS) & 0x80));
+    while (--retries && (inb_p(HD_STATUS) & 0xC0) != 0x40);
     return (retries);
 }
 
@@ -163,7 +177,7 @@ static void reset_controller(void)
 	int i;
 
 	outb(4, HD_CMD);
-	for (i = 0; i < 100; i++)
+	for (i = 0; i < 1000; i++)
 		nop();
 
 	outb(hd_info[0].ctl & 0x0f, HD_CMD);
@@ -200,11 +214,26 @@ static void recal_intr(void)
 	do_hd_request();
 }
 
-static void reset_hd(int nr)
+static void reset_hd(void)
 {
-	reset_controller();
-	hd_out(nr, hd_info[nr].sect, hd_info[nr].sect, hd_info[nr].head - 1,
-	       hd_info[nr].cyl, WIN_SPECIFY, &recal_intr);
+    static int i;
+
+repeat:
+    if (reset) {
+        reset = 0;
+        i = -1;
+        reset_controller();
+    } else if (win_result()) {
+        bad_rw_intr();
+        if (reset)
+            goto repeat;
+    }
+    i++;
+    if (i < NR_HD) {
+        hd_out(i, hd_info[i].sect, hd_info[i].sect, hd_info[i].head - 1,
+                  hd_info[i].cyl, WIN_SPECIFY, &reset_hd);
+    } else
+        do_hd_request();
 }
 
 static void write_intr(void)
@@ -223,6 +252,18 @@ static void write_intr(void)
 	}
 	end_request(1);
 	do_hd_request();
+}
+
+void hd_times_out(void)
+{
+    if (!CURRENT)
+        return;
+    printk("HD timeout");
+    if (++CURRENT->errors >= MAX_ERRORS)
+        end_request(0);
+    do_hd = (NULL);
+    reset = 1;
+    do_hd_request();
 }
 
 static void read_intr(void)
@@ -247,7 +288,7 @@ static void read_intr(void)
 
 void do_hd_request(void)
 {
-    int i, r = 0;
+    int i, r;
     unsigned int block, dev;
     unsigned int sec, head, cyl;
     unsigned int nsect;
@@ -278,9 +319,8 @@ repeat:
     sec++;
     nsect = CURRENT->nr_sectors;
     if (reset) {
-        reset = 0;
         recalibrate = 1;
-        reset_hd(CURRENT_DEV);
+        reset_hd();
         return;
     }
 
@@ -293,7 +333,7 @@ repeat:
 
     if (CURRENT->cmd == WRITE) {
         hd_out(dev, nsect, sec, head, cyl, WIN_WRITE, &write_intr);
-        for (i = 0; i < 3000 && !(r = inb_p(HD_STATUS) & DRQ_STAT); i++)
+        for (i = 0; i < 10000 && !(r = inb_p(HD_STATUS) & DRQ_STAT); i++)
             /* nothing */ ;
         if (!r) {
             bad_rw_intr();
@@ -395,11 +435,15 @@ int sys_setup(void *BIOS)
         }
         brelse(bh);
     }
+    for (i = 0; i < 5 * MAX_HD; i++)
+        hd_sizes[i] = hd[i].nr_sects >> 1;
+    blk_size[MAJOR_NR] = hd_sizes;
     if (NR_HD)
         printk("Partition table%s ok.\n\r", (NR_HD > 1) ? "s" : "");
 #ifdef CONFIG_RAMDISK
     rd_load();
 #endif
+    init_swapping();
     mount_root();
 #ifdef CONFIG_DEBUG_USERLAND
     debug_kernel_on_userland();
@@ -410,4 +454,6 @@ int sys_setup(void *BIOS)
 void unexpected_hd_interrupt(void)
 {
     printk("Unexpected HD interrupt\n\r");
+    reset = 1;
+    do_hd_request();
 }

@@ -1,6 +1,21 @@
+/*
+ *  linux/kernel/mktime.c
+ *
+ *  (C) 1991  Linus Torvalds
+ */
 
 #include <time.h>
-
+/*
+ * This isn't the library routine, it is only used in the kernel.
+ * as such, we don't care about years<1970 etc, but assume everything
+ * is ok. Similarly, TZ etc is happily ignored. We just do everything
+ * as easily as possible. Let's find something public for the library
+ * routines (although I think minix times is public).
+ */
+/*
+ * PS. I hate whoever though up the year 1970 - couldn't they have gotten
+ * a leap-year instead? I also hate Gregorius, pope or no. I'm grumpy.
+ */
 #define MINUTE 60
 #define HOUR   (60 * MINUTE)
 #define DAY    (24 * HOUR)
@@ -29,10 +44,7 @@ long kernel_mktime(struct tm *tm)
 	long res;
 	int year;
 
-	if (tm->tm_year >= 70)
-		year = tm->tm_year - 70;
-	else
-		year = tm->tm_year + 100 - 70;
+	year = tm->tm_year - 70;
 	/* magic offsets (y+1) needed to get leapyears right. */
 	res = YEAR * year + DAY * ((year + 1) / 4);
 	res += month[tm->tm_mon];

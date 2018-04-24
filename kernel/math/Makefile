@@ -1,1 +1,9 @@
 obj-y += math_emulate.o
+obj-y += add.o
+obj-y += compare.o
+obj-y += convert.o
+obj-y += div.o
+obj-y += ea.o
+obj-y += error.o
+obj-y += get_put.o
+obj-y += mul.o

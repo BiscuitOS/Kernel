@@ -3,10 +3,19 @@
  *
  * Written by Theodore Ts'o, 12/2/91
  */
-#include <linux/fs.h>
 #include <linux/kernel.h>
+#include <linux/config.h>
+#include <linux/fs.h>
+
+#include <asm/system.h>
+#include <asm/segment.h>
 
 #include <string.h>
+
+#define MAJOR_NR 1
+
+#define READ     1
+#define WRITE    2
 
 char *rd_start;
 int rd_length = 0;
@@ -60,7 +69,7 @@ void rd_load(void)
             printk("I/O error on block %d, aborting load\n", block);
             return;
         }
-        (void) memcpy(cp, bh->b_data, BLOCK_SIZE);
+        //(void) memcpy(cp, bh->b_data, BLOCK_SIZE);
         brelse(bh);
         printk("\010\010\010\010\010%4dk",i);
         cp += BLOCK_SIZE;
@@ -71,3 +80,50 @@ void rd_load(void)
     printk("\010\010\010\010\010done \n");
     ROOT_DEV = 0x0101;
 }
+
+void do_rd_request(void)
+{
+        int     len;
+        char    *addr;
+
+repeat:
+#if 0
+        //INIT_REQUEST;
+        //addr = rd_start + (CURRENT->sector << 9);
+        //len = CURRENT->nr_sectors << 9;
+        if ((MINOR(CURRENT->dev) != 1) || (addr+len > rd_start+rd_length)) {
+                //end_request(0);
+                goto repeat;
+        }
+        if (CURRENT-> cmd == WRITE) {
+                (void ) memcpy(addr,
+                              CURRENT->buffer,
+                              len);
+        } else if (CURRENT->cmd == READ) {
+                (void) memcpy(CURRENT->buffer,
+                              addr,
+                              len);
+        } else
+                panic("unknown ramdisk-command");
+        //end_request(1);
+#endif
+        goto repeat;
+}
+
+/*
+ * Returns amount of memory which needs to be reserved.
+ */
+long rd_init(long mem_start, int length)
+{
+        int     i;
+        char    *cp;
+
+        //blk_dev[MAJOR_NR].request_fn = DEVICE_REQUEST;
+        rd_start = (char *) mem_start;
+        rd_length = length;
+        cp = rd_start;
+        for (i=0; i < length; i++)
+                *cp++ = '\0';
+        return(length);
+}
+

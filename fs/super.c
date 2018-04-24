@@ -7,9 +7,9 @@
 /*
  * super.c contains code to handle the super-block tables.
  */
-#include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
+#include <linux/config.h>
 
 #include <sys/stat.h>
 
@@ -19,7 +19,7 @@
 
 /* set_bit uses setb, as gas doesn't recognize sets */
 #define set_bit(bitnr, addr) ({ \
-register int __res; \
+register int __res __asm__ ("ax"); \
 __asm__("bt %2, %3; setb %%al":"=a"(__res):"a"(0),"r"(bitnr),"m"(*(addr))); \
 __res; })
 
@@ -187,7 +187,6 @@ void mount_root(void)
 void put_super(int dev)
 {
     struct super_block *sb;
-    /* struct m_inode * inode */
     int i;
 
     if (dev == ROOT_DEV) {

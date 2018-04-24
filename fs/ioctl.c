@@ -4,15 +4,16 @@
  * (C) 1991 Linus Torvalds
  */
 
-#include <linux/kernel.h>
-#include <linux/fs.h>
 #include <linux/sched.h>
 
 #include <sys/stat.h>
 
 #include <errno.h>
+#include <string.h>
 
 extern int tty_ioctl(int dev, int cmd, int arg);
+extern int pipe_ioctl(struct m_inode *pino, int cmd, int arg);
+
 typedef int (*ioctl_ptr)(int dev, int cmd, int arg);
 
 #define NRDEVS ((sizeof(ioctl_table))/(sizeof(ioctl_ptr)))
@@ -35,6 +36,9 @@ int sys_ioctl(unsigned int fd, unsigned int cmd, unsigned long arg)
 
     if (fd >= NR_OPEN || !(filp = current->filp[fd]))
         return -EBADF;
+    if (filp->f_inode->i_pipe)
+        return (filp->f_mode & 1) ? 
+              pipe_ioctl(filp->f_inode, cmd, arg) : -EBADF;
     mode = filp->f_inode->i_mode;
     if (!S_ISCHR(mode) && !S_ISBLK(mode))
         return -EINVAL;

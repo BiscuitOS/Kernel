@@ -15,3 +15,4 @@ obj-y += exec.o
 obj-y += stat.o
 obj-y += fcntl.o
 obj-y += ioctl.o
+obj-y += select.o

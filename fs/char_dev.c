@@ -8,6 +8,7 @@
 
 #include <sys/types.h>
 #include <linux/sched.h>
+#include <linux/kernel.h>
 
 #include <asm/segment.h>
 #include <asm/io.h>
@@ -15,7 +16,7 @@
 extern int tty_read(unsigned minor, char *buf, int count);
 extern int tty_write(unsigned minor, char *buf, int count);
 
-typedef int (*crw_ptr)(int rw,unsigned minor,char *buf,int count,off_t *pos);
+typedef (*crw_ptr)(int rw,unsigned minor,char *buf,int count,off_t *pos);
 
 static int rw_ram(int rw, char *buf, int count, off_t *pos)
 {

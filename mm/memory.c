@@ -4,34 +4,48 @@
  *  (C) 1991  Linus Torvalds
  */
 
+/*
+ * demand-loading started 01.12.91 - seems it is high on the list of
+ * things wanted, and it should be easy to implement. - Linus
+ */
+
+/*
+ * Ok, demand-loading was easy, shared pages a little bit tricker. Shared
+ * pages started 02.12.91, seems to work. - Linus.
+ *
+ * Tested sharing by executing about 30 /bin/sh: under the old kernel it
+ * would have taken more than the 6M I have free, but it worked well as
+ * far as I could see.
+ *
+ * Also corrected some "invalidate()"s - I wasn't doing enough of them.
+ */
+
+/*
+ * Real VM (paging to/from disk) started 18.12.91. Much more work and
+ * thought has to go into this. Oh, well..
+ * 19.12.91  -  works, somewhat. Sometimes I get faults, don't know why.
+ *		Found it. Everything seems to work now.
+ * 20.12.91  -  Ok, making the swap-device changeable like the root.
+ */
+
+
 #include <linux/kernel.h>
 #include <linux/sched.h>
-/*
- * These are not to be changed without changing head.s etc.
- * Current version only support litter than 16Mb.
- */
-#define LOW_MEM        0x100000
-#define PAGING_MEMORY  (15 * 1024 * 1024)
-#define PAGING_PAGES   (PAGING_MEMORY >> 12)
-#define MAP_NR(addr)   (((addr) - LOW_MEM) >> 12)
-#define USED 100
+#include <linux/head.h>
 
-#define invalidate() \
-    __asm__("movl %%eax, %%cr3" :: "a" (0))
+#include <asm/system.h>
+
+#include <signal.h>
 
 #define copy_page(from, to) \
-   __asm__("cld ; rep ; movsl" ::"S" (from), "D" (to), "c" (1024))
+   __asm__ ("cld ; rep ; movsl" :: "S" (from), "D" (to), "c" (1024))
 
-static long HIGH_MEMORY = 0;
-extern void do_exit(int error_code);
+#define CODE_SPACE(addr) ((((addr)+4095)&~4095) > \
+                         current->start_code + current->end_code)
+
+unsigned long HIGH_MEMORY = 0;
 
 unsigned char mem_map[PAGING_PAGES] = { 0, };
-
-static inline void oom(void)
-{
-	printk("out of memory\n\r");
-	do_exit(SIGSEGV);
-}
 
 /*
  * Initialize memory, build mapping array.
@@ -48,32 +62,6 @@ void mem_init(long start_mem, long end_mem)
     end_mem >>= 12;
     while (end_mem-- > 0)
         mem_map[i++] = 0;
-}
-
-/*
- * Get physical address of first (actully last :-) free page, and mark it
- * used. If no free pages left, return 0.
- */
-unsigned long get_free_page(void)
-{
-	register unsigned long __res asm("ax");
-
-	__asm__("std ; repne ; scasb\n\t"
-			"jne 1f\n\t"
-			"movb $1, 1(%%edi)\n\t"
-			"sall $12, %%ecx\n\t"
-			"addl %2, %%ecx\n\t"
-			"movl %%ecx, %%edx\n\t"
-			"movl $1024, %%ecx\n\t"
-			"leal 4092(%%edx), %%edi\n\t"
-			"rep ; stosl\n\t"
-			" movl %%edx, %%eax\n"
-			"1:cld"
-			: "=a" (__res)
-			: "0" (0), "i" (LOW_MEM), "c" (PAGING_PAGES),
-			  "D" (mem_map + PAGING_PAGES - 1)
-			  );
-	return __res;
 }
 
 /*
@@ -117,6 +105,7 @@ int copy_page_tables(unsigned long from, unsigned long to, long size)
     unsigned long *to_page_table;
     unsigned long this_page;
     unsigned long *from_dir, *to_dir;
+    unsigned long new_page;
     unsigned long nr;
 
     /* PDE alignment check: linear address [21:0] must be clear */
@@ -140,9 +129,16 @@ int copy_page_tables(unsigned long from, unsigned long to, long size)
         /* Copy old PTE contents to new PTE */
         for ( ; nr-- > 0; from_page_table++, to_page_table++) {
             this_page = *from_page_table;
-            if (!(1 & this_page))
+            if (!this_page)
                 continue;
-            /* Only read this 4-KByte page */
+            if (!(1 & this_page)) {
+                if (!(new_page = get_free_page()))
+                    return -1;
+                read_swap_page(this_page>>1, (char *) new_page);
+                *to_page_table = this_page;
+                *from_page_table = new_page | (PAGE_DIRTY | 7);
+                continue;
+            }
             this_page &= ~2;
             *to_page_table = this_page;
             if (this_page > LOW_MEM) {
@@ -177,9 +173,13 @@ int free_page_tables(unsigned long from, unsigned long size)
             continue;
         pg_table = (unsigned long *) (0xfffff000 & *dir);
         for (nr = 0; nr < 1024 ; nr++) {
-            if (1 & *pg_table)
-                free_page(0xfffff000 & *pg_table);
-            *pg_table = 0;
+            if (*pg_table) {
+                if (1 & *pg_table)
+                    free_page(0xfffff000 & *pg_table);
+                else
+                    swap_free(*pg_table >> 1);
+                *pg_table = 0;
+            }
             pg_table++;
         }
         free_page(0xfffff000 & *dir);
@@ -190,29 +190,12 @@ int free_page_tables(unsigned long from, unsigned long size)
 }
 
 /*
- * Free a page of memory at physical address 'addr'. Used by
- * 'free_page_tables()'
- */
-void free_table(unsigned long addr)
-{
-	if (addr < LOW_MEM)
-		return;
-	if (addr >= HIGH_MEMORY)
-		panic("trying to free nonexistent page");
-	addr -= LOW_MEM;
-	addr >>= 12;
-	if (mem_map[addr]--)
-		return;
-	panic("trying to free free page");
-}
-
-/*
  * This function puts a page in memory at the wanted address.
  * It returns the physical address of the page gotten, 0 if
  * out of memory (either when trying to access page-table or 
  * page.)
  */
-unsigned long put_page(unsigned long page, unsigned long address)
+static unsigned long put_page(unsigned long page, unsigned long address)
 {
 	unsigned long tmp, *page_table;
 
@@ -235,6 +218,37 @@ unsigned long put_page(unsigned long page, unsigned long address)
 	return page;
 }
 
+/*
+ * The previous function doesn't work very well if you also want to mark
+ * the page dirty: exec.c wants this, as it has earlier changed the page,
+ * and we want the dirty-status to be correct (for VM). Thus the same
+ * routine, but this time we mark it dirty too.
+ */
+unsigned long put_dirty_page(unsigned long page, unsigned long address)
+{
+    unsigned long tmp, *page_table;
+
+    /* NOTE !!! This uses the fact that _pg_dir=0 */
+
+    if (page < LOW_MEM || page >= HIGH_MEMORY)
+        printk("Trying to put page %p at %p\n", page, address);
+    if (mem_map[(page-LOW_MEM) >> 12] != 1)
+        printk("mem_map disagrees with %p at %p\n", page, address);
+    page_table = (unsigned long *) ((address >> 20) & 0xffc);
+    if ((*page_table) & 1)
+        page_table = (unsigned long *) (0xfffff000 & *page_table);
+    else {
+        if (!(tmp = get_free_page()))
+            return 0;
+        *page_table = tmp | 7;
+        page_table = (unsigned long *) tmp;
+    }
+    page_table[(address >> 12) & 0x3ff] = page | (PAGE_DIRTY | 7);
+    /* no need for invalidate */
+    return page;
+}
+
+
 void get_empty_page(unsigned long address)
 {
 	unsigned long tmp;
@@ -251,7 +265,7 @@ void get_empty_page(unsigned long address)
  * task.
  * 
  * NOTE! This assumes we have checked that p != current, and that they
- * share the same executable.
+ * share the same executable or library.
  */
 static int try_to_share(unsigned long address, struct task_struct *p)
 {
@@ -306,59 +320,90 @@ static int try_to_share(unsigned long address, struct task_struct *p)
  * We first check if it at all feasible by checking executable->i_count.
  * It should by >1 if there are other tasks sharing this inode.
  */
-static int share_page(unsigned long address)
+static int share_page(struct m_inode *inode, unsigned long address)
 {
-	struct task_struct **p;
+    struct task_struct ** p;
 
-	if (!current->executable)
-		return 0;
-	if (current->executable->i_count < 2)
-		return 0;
-	for (p = &LAST_TASK; p > &FIRST_TASK; --p) {
-		if (!*p)
-			continue;
-		if (current == *p)
-			continue;
-		if ((*p)->executable != current->executable)
-			continue;
-		if (try_to_share(address, *p))
-			return 1;
-	}
-	return 0;
+    if (inode->i_count < 2 || !inode)
+        return 0;
+    for (p = &LAST_TASK ; p > &FIRST_TASK ; --p) {
+        if (!*p)
+            continue;
+        if (current == *p)
+            continue;
+        if (address < LIBRARY_OFFSET) {
+            if (inode != (*p)->executable)
+                continue;
+        } else {
+            if (inode != (*p)->library)
+                continue;
+        }
+        if (try_to_share(address,*p))
+            return 1;
+    }
+    return 0;
 }
 
 void do_no_page(unsigned long error_code, unsigned long address)
 {
-	int nr[4];
-	unsigned long tmp;
-	unsigned long page;
-	int block, i;
+    int nr[4];
+    unsigned long tmp;
+    unsigned long page;
+    int block,i;
+    struct m_inode * inode;
 
-	address &= 0xfffff000;
-	tmp = address - current->start_code;
-	if (!current->executable || tmp >= current->end_data) {
-		get_empty_page(address);
-		return;
-	}
-	if (share_page(tmp))
-		return;
-	if (!(page = get_free_page()))
-		oom();
-	/* remeber that 1 block is used for header */
-	block = 1 + tmp / BLOCK_SIZE;
-	for (i = 0; i < 4; block++, i++)
-		nr[i] = bmap(current->executable, block);
-	bread_page(page, current->executable->i_dev, nr);
-	i = tmp + 4096 - current->end_data;
-	tmp = page + 4096;
-	while (i-- > 0) {
-		tmp--;
-		*(char *)tmp = 0;
-	}
-	if (put_page(page, address))
-		return;
-	free_page(page);
-	oom();
+    if (address < TASK_SIZE)
+        printk("\n\rBAD!! KERNEL PAGE MISSING\n\r");
+    if (address - current->start_code > TASK_SIZE) {
+        printk("Bad things happen: nonexistent page error in do_no_page\n\r");
+        do_exit(SIGSEGV);
+    }
+    page = *(unsigned long *) ((address >> 20) & 0xffc);
+    if (page & 1) {
+        page &= 0xfffff000;
+        page += (address >> 10) & 0xffc;
+        tmp = *(unsigned long *) page;
+        if (tmp && !(1 & tmp)) {
+            swap_in((unsigned long *) page);
+            return;
+        }
+    }
+    address &= 0xfffff000;
+    tmp = address - current->start_code;
+    if (tmp >= LIBRARY_OFFSET) {
+        inode = current->library;
+        block = 1 + (tmp-LIBRARY_OFFSET) / BLOCK_SIZE;
+    } else if (tmp < current->end_data) {
+        inode = current->executable;
+        block = 1 + tmp / BLOCK_SIZE;
+    } else {
+        inode = NULL;
+        block = 0;
+    }
+    if (!inode) {
+        get_empty_page(address);
+        return;
+    }
+    if (share_page(inode, tmp))
+        return;
+    if (!(page = get_free_page()))
+        oom();
+    /* remember that 1 block is used for header */
+    for (i = 0; i < 4; block++, i++)
+        nr[i] = bmap(inode, block);
+    bread_page(page,inode->i_dev, nr);
+    i = tmp + 4096 - current->end_data;
+    if (i > 4095)
+        i = 0;
+    tmp = page + 4096;
+    while (i-- > 0) {
+        tmp--;
+        *(char *)tmp = 0;
+    }
+    if (put_page(page, address))
+        return;
+    free_page(page);
+    oom();
 }
 
 void un_wp_page(unsigned long *table_entry)
@@ -375,9 +420,9 @@ void un_wp_page(unsigned long *table_entry)
 		oom();
 	if (old_page >= LOW_MEM)
 		mem_map[MAP_NR(old_page)]--;
+	copy_page(old_page, new_page);
 	*table_entry = new_page | 7;
 	invalidate();
-	copy_page(old_page, new_page);
 }
 
 /*
@@ -389,6 +434,12 @@ void un_wp_page(unsigned long *table_entry)
  */
 void do_wp_page(unsigned long error_code, unsigned long address)
 {
+    if (address < TASK_SIZE)
+        printk("\n\rBAD! KERNEL MEMORY WP-ERR!\n\r");
+    if (address - current->start_code > TASK_SIZE) {
+        printk("Bad things happen: page error in do_wp_page\n\r");
+        do_exit(SIGSEGV);
+    }
 #if 0
 	/* we cannot do this yet: the estdio library writes to
 	* code space stupid, stupid. I really want the libc.a from GNU */
@@ -400,24 +451,51 @@ void do_wp_page(unsigned long error_code, unsigned long address)
 		*((unsigned long *) ((address >> 20) & 0xffc)))));
 }
 
-void calc_mem(void)
+void show_mem(void)
 {
-	int i, j, k, free = 0;
-	long *pg_tbl;
+    int i, j, k, free = 0, total = 0;
+    int shared = 0;
+    unsigned long *pg_tbl;
 
-	for (i = 0; i < PAGING_PAGES ; i++)
-		if (!mem_map[i])
-			free++;
-	printk("%d pages free (of %d)\n\r", free, PAGING_PAGES);
-	for (i = 2; i < 1024; i++) {
-		if (1 & pg_dir[i]) {
-			pg_tbl = (long *)(0xfffff000 & pg_dir[i]);
-			for (j = k = 0; j < 1024; j++)
-				if (pg_tbl[j] & 1)
-					k++;
-				printk("Pg-dir[%d] uses %d pages\n", i, k);
-		}	
-	}
+    printk("Mem-info:\n\r");
+    for(i = 0 ; i < PAGING_PAGES ; i++) {
+        if (mem_map[i] == USED)
+            continue;
+        total++;
+        if (!mem_map[i])
+            free++;
+        else
+            shared += mem_map[i] - 1;
+    }
+    printk("%d free pages of %d\n\r", free, total);
+    printk("%d pages shared\n\r", shared);
+    k = 0;
+    for(i = 4; i < 1024; ) {
+        if (1 & pg_dir[i]) {
+            if (pg_dir[i] > HIGH_MEMORY) {
+                printk("page directory[%d]: %08X\n\r",
+                        i, pg_dir[i]);
+                continue;
+            }
+            if (pg_dir[i] > LOW_MEM)
+                free++, k++;
+            pg_tbl = (unsigned long *)(0xfffff000 & pg_dir[i]);
+            for(j = 0; j < 1024; j++)
+                if ((pg_tbl[j] & 1) && pg_tbl[j] > LOW_MEM)
+                    if (pg_tbl[j] > HIGH_MEMORY)
+                        printk("page_dir[%d][%d]: %08X\n\r",
+                                i, j, pg_tbl[j]);
+                    else
+                        k++,free++;
+        }
+        i++;
+        if (!(i & 15) && k) {
+            k++,free++;             /* one page/process for task_struct */
+            printk("Process %d: %d pages\n\r",(i >> 4) - 1, k);
+            k = 0;
+        }
+    }
+    printk("Memory found: %d (%d)\n\r", free - shared, total);
 }
 
 void write_verify(unsigned long address)

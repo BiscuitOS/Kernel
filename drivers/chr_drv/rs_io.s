@@ -60,13 +60,13 @@ rep_int:
 	xorl %eax, %eax
 	inb %dx, %al
 	testb $1, %al
-	ja end
-	cmpb $6, %al          /* this should't happen, but ... */
 	jne end
+	cmpb $6, %al
+	ja end
 	movl 24(%esp), %ecx
 	pushl %edx
 	subl $2, %edx
-	call *jmp_table(,%eax,2)     /* NOTE! not *4, bit0 is 0 already */
+	call jmp_table(,%eax,2)     /* NOTE! not *4, bit0 is 0 already */
 	popl %edx
 	jmp rep_int
 end:
@@ -111,6 +111,7 @@ read_char:
 	je 1f
 	movl %ebx, head(%ecx)
 1:
+	addl $63, %edx
 	pushl %edx
 	call do_tty_interrupt
 	addl $4, %esp

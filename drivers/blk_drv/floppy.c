@@ -1,3 +1,35 @@
+/*
+ *  linux/kernel/floppy.c
+ *
+ *  (C) 1991  Linus Torvalds
+ */
+
+/*
+ * 02.12.91 - Changed to static variables to indicate need for reset
+ * and recalibrate. This makes some things easier (output_byte reset
+ * checking etc), and means less interrupt jumping in case of errors,
+ * so the code is hopefully easier to understand.
+ */
+
+/*
+ * This file is certainly a mess. I've tried my best to get it working,
+ * but I don't like programming floppies, and I have only one anyway.
+ * Urgel. I should check for more errors, and do more graceful error
+ * recovery. Seems there are problems with several drives. I've tried to
+ * correct them. No promises. 
+ */
+
+/*
+ * As with hd.c, all routines within this file can (and will) be called
+ * by interrupts, so extreme caution is needed. A hardware interrupt
+ * handler may not sleep, or a kernel panic will happen. Thus I cannot
+ * call "floppy-on" directly, but have to set a special timer interrupt
+ * etc.
+ *
+ * Also, I'm not certain this works on more than 1 floppy. Bugs may
+ * abund.
+ */
+
 #include <linux/fs.h>
 #include <linux/head.h>
 #include <linux/kernel.h>
@@ -10,6 +42,9 @@
 static int recalibrate = 0;
 static int reset = 0;
 static int seek = 0;
+
+#define TYPE(x)    ((x)>>2)
+#define DRIVE(x)   ((x)&0x03)
 
 #define MAJOR_NR              2
 #define DEVICE_NAME           "floppy"
@@ -61,6 +96,18 @@ static struct floppy_struct {
 	{
 	2880, 18, 2, 80, 0, 0x1B, 0x00, 0xCF},	/* 1.44MB diskette */
 };
+
+static int floppy_sizes[] ={
+	   0,   0,   0,   0,
+	 360, 360 ,360, 360,
+	1200,1200,1200,1200,
+	 360, 360, 360, 360,
+	 720, 720, 720, 720,
+	 360, 360, 360, 360,
+	 720, 720, 720, 720,
+	1440,1440,1440,1440
+};
+
 
 /*
  * globals used by 'result()'
@@ -265,7 +312,8 @@ static void bad_flp_intr(void)
 #define copy_buffer(from, to) \
 	__asm__ ("cld ; rep ; movsl" \
 			 :: "c" (BLOCK_SIZE / 4), "S" ((long)(from)), \
-			 "D" ((long)(to))   \
+			    "D" ((long)(to) \
+                         :  "cx", "di", "si")   \
 )
 
 static void setup_DMA(void)
@@ -286,7 +334,7 @@ static void setup_DMA(void)
 	 */
 	__asm__("outb %%al, $12\n\tjmp 1f\n1:\tjmp 1f\n1:\t"
 		"outb %%al, $11\n\tjmp 1f\n1:\tjmp 1f\n1:"::"a"((char)
-	    ((command =	FD_READ) ?  DMA_READ : DMA_WRITE)));
+	    ((command == FD_READ) ?  DMA_READ : DMA_WRITE)));
 	/* 8 low bits of addr */
 	immoutb_p(addr, 4);
 	addr >>= 8;
@@ -328,7 +376,7 @@ static void rw_interrupt(void)
 	do_fd_request();
 }
 
-static inline void setup_rw_floppy(void)
+inline void setup_rw_floppy(void)
 {
 	setup_DMA();
 	do_floppy = rw_interrupt;
@@ -464,6 +512,7 @@ void do_fd_request(void)
 
 void floppy_init(void)
 {
+	blk_size[MAJOR_NR] = floppy_sizes;
 	blk_dev[MAJOR_NR].request_fn = do_fd_request;
 	set_trap_gate(0x26, &floppy_interrupt);
 	outb(inb_p(0x21) & ~0x40, 0x21);
@@ -480,7 +529,7 @@ int floppy_change(unsigned int nr)
 repeat:
     floppy_on(nr);
     while ((current_DOR & 3) != nr && selected)
-        interruptible_sleep_on(&wait_on_floppy_select);
+        sleep_on(&wait_on_floppy_select);
     if ((current_DOR & 3) != nr)
         goto repeat;
     if (inb(FD_DIR) & 0x80) {

@@ -4,11 +4,16 @@
  * (C) 1991 Linus Torvalds
  */
 
-#include <linux/fs.h>
 #include <linux/sched.h>
+#include <linux/kernel.h>
+
+#include <sys/stat.h>
+
+#include <asm/segment.h>
 
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 
 extern int sys_close(int fd);
 
