@@ -256,7 +256,7 @@ int tty_signal(int sig, struct tty_struct *tty)
 
 int tty_write(unsigned channel, char *buf, int nr)
 {
-    static cr_flag = 0;
+    static int cr_flag = 0;
     struct tty_struct * tty;
     char c, *b=buf;
 

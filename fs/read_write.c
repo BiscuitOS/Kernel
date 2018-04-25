@@ -42,7 +42,7 @@ int sys_read(unsigned int fd, char *buf, int count)
         return rw_char(READ, inode->i_zone[0], buf, count, &file->f_pos);
     if (S_ISBLK(inode->i_mode))
         return block_read(inode->i_zone[0],
-               (unsigned long *)(unsigned long)&file->f_pos, buf, count);
+                (off_t *)(unsigned long)&file->f_pos, buf, count);
     if (S_ISDIR(inode->i_mode) || S_ISREG(inode->i_mode)) {
         if (count + file->f_pos > inode->i_size)
             count = inode->i_size - file->f_pos;

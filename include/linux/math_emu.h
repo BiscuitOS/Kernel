@@ -50,7 +50,7 @@ struct info {
 void __math_abort(struct info *, unsigned int);
 
 #define math_abort(x,y) \
-(((volatile void (*)(struct info *,unsigned int)) __math_abort)((x),(y)))
+(((void (*)(struct info *,unsigned int)) __math_abort)((x),(y)))
 
 /*
  * Gcc forces this stupid alignment problem: I want to use only two longs

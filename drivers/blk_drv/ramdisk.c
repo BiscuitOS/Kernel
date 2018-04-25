@@ -14,9 +14,6 @@
 
 #define MAJOR_NR 1
 
-#define READ     1
-#define WRITE    2
-
 char *rd_start;
 int rd_length = 0;
 
@@ -83,9 +80,6 @@ void rd_load(void)
 
 void do_rd_request(void)
 {
-        int     len;
-        char    *addr;
-
 repeat:
 #if 0
         //INIT_REQUEST;

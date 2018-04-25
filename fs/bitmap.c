@@ -147,7 +147,7 @@ struct m_inode *new_inode(int dev)
         panic("new_inode with unknown device");
     j = 8192;
     for (i = 0; i < 8; i++)
-        if (bh = sb->s_imap[i])
+        if ((bh = sb->s_imap[i]) != NULL)
             if ((j = find_first_zero(bh->b_data)) < 8192)
                 break;
     if (!bh || j >= 8192 || j + i * 8192 > sb->s_ninodes) {

@@ -18,15 +18,16 @@ static int free_ind(int dev,int block)
 	if (!block)
 		return 1;
 	block_busy = 0;
-	if (bh=bread(dev,block)) {
+	if ((bh = bread(dev,block)) != NULL) {
 		p = (unsigned short *) bh->b_data;
 		for (i=0;i<512;i++,p++)
-			if (*p)
+			if (*p) {
 				if (free_block(dev,*p)) {
 					*p = 0;
 					bh->b_dirt = 1;
 				} else
 					block_busy = 1;
+			}
 		brelse(bh);
 	}
 	if (block_busy)
@@ -45,15 +46,16 @@ static int free_dind(int dev,int block)
 	if (!block)
 		return 1;
 	block_busy = 0;
-	if (bh=bread(dev,block)) {
+	if ((bh = bread(dev, block)) != NULL) {
 		p = (unsigned short *) bh->b_data;
 		for (i=0;i<512;i++,p++)
-			if (*p)
+			if (*p) {
 				if (free_ind(dev,*p)) {
 					*p = 0;
 					bh->b_dirt = 1;
 				} else
 					block_busy = 1;
+			}
 		brelse(bh);
 	}
 	if (block_busy)

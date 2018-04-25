@@ -140,7 +140,7 @@ repeat:
     }
     if (!*p)
         printk("Warning: *P = NULL\n\r");
-    if (*p = tmp)
+    if ((*p = tmp) != NULL)
         tmp->state = 0;
 }
 

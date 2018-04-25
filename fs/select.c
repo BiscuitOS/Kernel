@@ -73,7 +73,7 @@ static void free_wait(select_table * p)
 		}
 		if (!*tpp)
 			printk("free_wait: NULL");
-		if (*tpp = p->entry[i].old_task)
+		if ((*tpp = p->entry[i].old_task) != NULL)
 			(**tpp).state = 0;
 	}
 	p->nr = 0;
@@ -104,16 +104,17 @@ static int check_in(select_table * wait, struct m_inode * inode)
 {
 	struct tty_struct * tty;
 
-	if (tty = get_tty(inode))
+	if ((tty = get_tty(inode)) != NULL) {
 		if (!EMPTY(tty->secondary))
 			return 1;
 		else
 			add_wait(&tty->secondary->proc_list, wait);
-	else if (inode->i_pipe)
+	} else if (inode->i_pipe) {
 		if (!PIPE_EMPTY(*inode))
 			return 1;
 		else
 			add_wait(&inode->i_wait, wait);
+	}
 	return 0;
 }
 
@@ -121,16 +122,17 @@ static int check_out(select_table * wait, struct m_inode * inode)
 {
 	struct tty_struct * tty;
 
-	if (tty = get_tty(inode))
+	if ((tty = get_tty(inode)) != NULL) { 
 		if (!FULL(tty->write_q))
 			return 1;
 		else
 			add_wait(&tty->write_q->proc_list, wait);
-	else if (inode->i_pipe)
+	} else if (inode->i_pipe) {
 		if (!PIPE_FULL(*inode))
 			return 1;
 		else
 			add_wait(&inode->i_wait, wait);
+	}
 	return 0;
 }
 
@@ -138,16 +140,17 @@ static int check_ex(select_table * wait, struct m_inode * inode)
 {
 	struct tty_struct * tty;
 
-	if (tty = get_tty(inode))
+	if ((tty = get_tty(inode)) != NULL) {
 		if (!FULL(tty->write_q))
 			return 0;
 		else
 			return 0;
-	else if (inode->i_pipe)
+	} else if (inode->i_pipe) {
 		if (inode->i_count < 2)
 			return 1;
 		else
 			add_wait(&inode->i_wait,wait);
+	}
 	return 0;
 }
 

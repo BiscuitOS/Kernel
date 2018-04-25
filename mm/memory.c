@@ -481,12 +481,13 @@ void show_mem(void)
                 free++, k++;
             pg_tbl = (unsigned long *)(0xfffff000 & pg_dir[i]);
             for(j = 0; j < 1024; j++)
-                if ((pg_tbl[j] & 1) && pg_tbl[j] > LOW_MEM)
+                if ((pg_tbl[j] & 1) && pg_tbl[j] > LOW_MEM) {
                     if (pg_tbl[j] > HIGH_MEMORY)
                         printk("page_dir[%d][%d]: %08X\n\r",
                                 i, j, pg_tbl[j]);
                     else
                         k++,free++;
+		}
         }
         i++;
         if (!(i & 15) && k) {

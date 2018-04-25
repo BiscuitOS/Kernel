@@ -66,7 +66,7 @@ rep_int:
 	movl 24(%esp), %ecx
 	pushl %edx
 	subl $2, %edx
-	call jmp_table(,%eax,2)     /* NOTE! not *4, bit0 is 0 already */
+	call *jmp_table(,%eax,2)     /* NOTE! not *4, bit0 is 0 already */
 	popl %edx
 	jmp rep_int
 end:

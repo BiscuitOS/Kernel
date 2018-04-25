@@ -151,11 +151,12 @@ int swap_out(void)
 			if (dir_entry >= 1024)
 				dir_entry = FIRST_VM_PAGE>>10;
 			pg_table = pg_dir[dir_entry];
-			if (!(pg_table&1))
+			if (!(pg_table&1)) {
 				if ((counter -= 1024) > 0)
 					goto repeat;
 				else
 					break;
+			}
 			pg_table &= 0xfffff000;
 		}
 		if (try_to_swap_out(page_entry + (unsigned long *) pg_table))

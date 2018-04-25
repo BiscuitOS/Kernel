@@ -70,7 +70,7 @@ static int count(char **argv)
     int i = 0;
     char **tmp;
 
-    if (tmp = argv)
+    if ((tmp = argv) != NULL)
         while (get_fs_long((unsigned long *)(tmp++)))
             i++;
     return i;
@@ -131,7 +131,7 @@ static unsigned long copy_strings(int argc, char **argv, unsigned long *page,
                     set_fs(old_fs);
                 if (!(pag = (char *)page[p / PAGE_SIZE]) &&
                     !(pag = (char *)(page[p / PAGE_SIZE] =
-                      (unsigned long *)get_free_page())))
+                      (unsigned long)(unsigned long *)get_free_page())))
                     return 0;
                 if (from_kmem == 2)
                     set_fs(new_fs);
@@ -264,7 +264,7 @@ restart_interp:
         brelse(bh);
         iput(inode);
         buf[127] = '\0';
-        if (cp = strchr(buf, '\n')) {
+        if ((cp = strchr(buf, '\n')) != NULL) {
             *cp = '\0';
             for (cp = buf; (*cp == ' ') || (*cp == '\t'); cp++)
                 ;
