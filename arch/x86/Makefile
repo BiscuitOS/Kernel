@@ -19,7 +19,7 @@ KBUILD_DEFCONFIG := defconfig
 -include include/config/auto.conf
 
 ifdef CONFIG_DEBUG_KERNEL
-  KBUILD_CFLAGS += $(call cc-option,-g -Wall -Wunused)
+  KBUILD_CFLAGS += $(call cc-option,-g -Wall -Wunused -gdwarf-2 -g3)
   KBUILD_AFLAGS_KERNEL += -ggdb  -am
 endif
 
