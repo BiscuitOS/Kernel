@@ -184,7 +184,8 @@ repeat:
 		"movl $1024,%%ecx\n\t"
 		"leal 4092(%%edx),%%edi\n\t"
 		"rep ; stosl\n\t"
-		"movl %%edx,%%eax\n"
+		"movl %%edx,%%eax\n\t"
+		"cld\n\t"
 		"1:"
 		:"=a" (__res)
 		:"0" (0),"i" (LOW_MEM),"c" (PAGING_PAGES),
