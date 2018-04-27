@@ -144,9 +144,9 @@ static int drive_busy(void)
 
 static int controller_ready(void)
 {
-    int retries = 100000;
+    int retries = 10000;
 
-    while (--retries && (inb_p(HD_STATUS) & 0xC0) != 0x40);
+    while (--retries && (inb_p(HD_STATUS) & 0x80));
     return (retries);
 }
 
