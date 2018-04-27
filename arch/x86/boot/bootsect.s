@@ -72,7 +72,7 @@
 # 0x306    : /dev/hd6 - The second partition on second hard disk.
 # ROOT_DEV = 0 & SWAP_DEV are now written by "build"
 	.equ	ROOT_DEV, 0x301
-	.equ	SWAP_DEV, 0
+	.equ	SWAP_DEV, 0x302
 
 	# Normalize the start address
 	ljmp	$BOOTSEG, $_start

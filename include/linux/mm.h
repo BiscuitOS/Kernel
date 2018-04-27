@@ -42,4 +42,8 @@ extern unsigned char mem_map [ PAGING_PAGES ];
 #define PAGE_RW		0x02
 #define PAGE_PRESENT	0x01
 
+/* SWAP partition table */
+#define SWAP_ROOT       0x0
+#define SWAP_ID         "SWAPSPACE2"
+
 #endif
