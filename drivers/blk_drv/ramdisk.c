@@ -6,6 +6,7 @@
 #include <linux/kernel.h>
 #include <linux/config.h>
 #include <linux/fs.h>
+#include <linux/minix_fs.h>
 
 #include <asm/system.h>
 #include <asm/segment.h>
@@ -42,7 +43,7 @@ void rd_load(void)
         printk("Disk error while looking for ramdisk!\n");
         return;
     }
-    *((struct d_super_block *) &s) = *((struct d_super_block *)bh->b_data);
+    *((struct minix_super_block *) &s) = *((struct minix_super_block *)bh->b_data);
     brelse(bh);
     if (s.s_magic != SUPER_MINIX_MAGIC && 
         s.s_magic != SUPER_MINIX_MAGIC_V1)
@@ -66,7 +67,7 @@ void rd_load(void)
             printk("I/O error on block %d, aborting load\n", block);
             return;
         }
-        //(void) memcpy(cp, bh->b_data, BLOCK_SIZE);
+        (void) memcpy(cp, bh->b_data, BLOCK_SIZE);
         brelse(bh);
         printk("\010\010\010\010\010%4dk",i);
         cp += BLOCK_SIZE;

@@ -98,6 +98,7 @@ novideo_check:
 	mov	%ax, %es
 	mov	$0x0080, %di
 	mov	$0x10, %cx
+	cld
 	rep
 	movsb
 
@@ -110,6 +111,7 @@ novideo_check:
 	mov	%ax, %es
 	mov	$0x0090, %di
 	mov	$0x10, %cx
+	cld
 	rep
 	movsb
 
@@ -127,6 +129,7 @@ no_disk1:
 	mov	$0x0090, %di
 	mov	$0x10, %cx
 	mov	$0x00, %ax
+	cld
 	rep
 	stosb
 is_disk1:
@@ -251,6 +254,11 @@ chsvga:
 	mov	%ax, %es
 	lea	msg1, %si
 	call	prtstr
+flush:
+	in	$0x60, %al	# Flush the keyboard buffer
+	cmp	$0x82, %al
+	jb	nokey
+	jmp	flush
 nokey:
 # I don't care press buttom, so skip this routine.
 #	in	$0x60, %al
@@ -265,6 +273,7 @@ nokey:
 	ret
 
 svga:
+	cld
 	lea	idati, %si	# Check ATI 'clues'
 	mov	$0x31, %di
 	mov	$0x09, %cx
@@ -400,6 +409,7 @@ l1:
 	lea	selmod, %cx
 	jmp	*%cx
 nogen:
+	cld
 	lea	idparadise, %si	# Check Paradise 'clues'
 	mov	$0x7d, %di
 	mov	$0x04, %cx

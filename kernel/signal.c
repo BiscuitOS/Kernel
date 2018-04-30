@@ -10,6 +10,10 @@
 
 #include <linux/sched.h>
 #include <linux/kernel.h>
+#include <sys/wait.h>
+
+int send_sig(int, struct task_struct *, int);
+extern int sys_waitpid(pid_t pid,unsigned long * stat_addr, int options);
 
 /*
  * Routine writes a core dump image in the current directory.
@@ -20,9 +24,12 @@ int core_dump(long signr)
     return(0);                      /* We didn't do a dump */
 }
 
-int do_signal(long signr, long eax, long ebx, long ecx, long edx,
-	       long orig_eax, long fs, long es, long ds,
-	       long eip, long cs, long eflags, unsigned long *esp, long ss)
+int do_signal(long signr,long ebx, long ecx, long edx,
+	      long esi, long edi, long ebp, long eax,
+	      long ds, long es, long fs, long gs,
+	      long orig_eax,
+	long eip, long cs, long eflags,
+	unsigned long * esp, long ss)
 {
     unsigned long sa_handler;
     long old_eip=eip;
@@ -47,12 +54,18 @@ int do_signal(long signr, long eax, long ebx, long ecx, long edx,
         }
     }
     sa_handler = (unsigned long) sa->sa_handler;
-    if (sa_handler==1)
-        return 1;   /* Ignore, see if there are more signals... */
+    if (sa_handler==1) {
+        /* check for SIGCHLD: it's special */
+        if (signr == SIGCHLD)
+        while (sys_waitpid(-1,NULL,WNOHANG) > 0)
+            /* nothing */;
+        return(1);   /* Ignore, see if there are more signals... */
+    }
     if (!sa_handler) {
         switch (signr) {
         case SIGCONT:
         case SIGCHLD:
+        case SIGWINCH:
             return(1);  /* Ignore, ... */
 
         case SIGSTOP:
@@ -63,7 +76,8 @@ int do_signal(long signr, long eax, long ebx, long ecx, long edx,
             current->exit_code = signr;
             if (!(current->p_pptr->sigaction[SIGCHLD - 1].sa_flags & 
                   SA_NOCLDSTOP))
-                current->p_pptr->signal |= (1<<(SIGCHLD - 1));
+                send_sig(SIGCHLD, current->p_pptr, 1);   
+               /* current->p_pptr->signal |= (1<<(SIGCHLD - 1)); */
             return 1;  /* Reschedule another event */
 
         case SIGQUIT:
@@ -99,6 +113,8 @@ int do_signal(long signr, long eax, long ebx, long ecx, long edx,
     put_fs_long(eflags, tmp_esp++);
     put_fs_long(old_eip, tmp_esp++);
     current->blocked |= sa->sa_mask;
+    /* force a supervisor-mode page-in of the signal handler to reduce races */
+    __asm__("testb $0,%%fs:%0"::"m" (*(char *) sa_handler));
     return 0;                       /* Continue, execute handler */
 }
 

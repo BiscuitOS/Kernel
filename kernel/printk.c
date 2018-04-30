@@ -1,12 +1,13 @@
 /*
- * kernel/printk.c
- * Maintainer: Buddy <buddy.zhang@aliyun.com>
+ *  linux/kernel/printk.c
  *
- * Copyright (C) 2017 BiscuitOS
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ *  (C) 1991  Linus Torvalds
+ */
+
+/*
+ * When in kernel-mode, we cannot use printf, as fs is liable to
+ * point to 'interesting' things. Make a printf with fs-saving, and
+ * all is well.
  */
 
 #include <stdarg.h>

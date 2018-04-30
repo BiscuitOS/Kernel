@@ -17,12 +17,13 @@
  */
 
 	.text
-	.globl idt, gdt, pg_dir, tmp_floppy_area
+	.globl idt, gdt, pg_dir, tmp_floppy_area, _floppy_track_buffer
 
 pg_dir:
 	.globl startup_32
 
 startup_32:
+	cld
 	movl $0x10, %eax  # 0x10, Global data segment.
 	mov %ax, %ds
 	mov %ax, %es
@@ -43,6 +44,26 @@ startup_32:
 	movl %eax, 0x000000      # loop forever if it isn't
 	cmpl %eax, 0x100000
 	je 1b
+	/* check if it is 486 or 386. */
+	movl %esp,%edi		# save stack pointer
+	andl $0xfffffffc,%esp	# align stack to avoid AC fault
+	pushfl			# push EFLAGS
+	popl %eax		# get EFLAGS
+	movl %eax,%ecx		# save original EFLAGS
+	xorl $0x40000,%eax	# flip AC bit in EFLAGS
+	pushl %eax		# copy to EFLAGS
+	popfl			# set EFLAGS
+	pushfl			# get new EFLAGS
+	popl %eax		# put it in eax
+	xorl %ecx,%eax		# check if AC bit is changed. zero is 486.
+	jz 1f			# 486
+	pushl %ecx		# restore original EFLAGS
+	popfl
+	movl %edi,%esp		# restore esp
+	movl %cr0,%eax		# 386
+	andl $0x80000011,%eax	# Save PG,PE,ET
+	orl $2,%eax		# set MP
+	jmp 2f	
 
 /*
  * NOTE! 486 should set bit 16, to check for write-protect in
@@ -50,10 +71,15 @@ startup_32:
  * "verify_area()" -calls. 486 users probably want to set the
  * NE (#5) bit also, so as to use int 16 for math errors.
  */
-	movl %cr0, %eax          # Check math chip
-	andl $0x80000011, %eax   # Save PG, PE, ET
+1:
+	pushl	%ecx		# restore original EFLAGS
+	popfl
+	movl	%edi, %esp	# restore esp
+	movl	%cr0, %eax	# 486
+	andl $0x80000011, %eax	# Save PG, PE, ET
 	/* "orl $0x10020, %eax" here for 486 might be good */
-	orl $2, %eax             # set MP
+	orl	$0x10022, %eax	# set NE and MP
+2:
 	movl %eax, %cr0
 	call check_x87
 	jmp after_page_tables
@@ -63,12 +89,12 @@ startup_32:
  */
 check_x87:
 	fninit
-	fstsw %ax
-	cmpb $0, %al
-	je 1f              /* no coprocessor: have to set bits */
-	movl %cr0, %eax
-	xorl $6, %eax      /* reset MP, set EM */
-	movl %eax, %cr0
+	fstsw	%ax
+	cmpb	$0, %al
+	je	1f		/* no coprocessor: have to set bits */
+	movl	%cr0, %eax
+	xorl	$6, %eax	/* reset MP, set EM */
+	movl	%eax, %cr0
 	ret
 
 .align 2
@@ -145,13 +171,22 @@ pg3:
 tmp_floppy_area:
 	.fill 1024,1,0
 
+/*
+ * floppy_track_buffer is used to buffer one track of floppy data: it
+ * has to be separate from the tmp_floppy area, as otherwise a single-
+ * sector read/write can mess it up. It can contain one full track of
+ * data (18*2*512 bytes).
+ */
+_floppy_track_buffer:
+	.fill 512*2*18,1,0
+
 after_page_tables:
-	pushl $0         # These are the parameters to main :-)
-	pushl $0
-	pushl $0
-	pushl $L6
-	pushl $main
-	jmp setup_paging
+	call	setup_paging
+	pushl	$0	# These are the parameters to main :-)
+	pushl	$0
+	pushl	$0
+	cld		# gcc2 wants the direction flag cleard at all times
+	call	start_kernel
 
 L6:
 	jmp L6           # main should never return here, but
@@ -162,6 +197,7 @@ int_msg:
 	.asciz "Unknown Interrupt\n\r"
 .align 2
 ignore_int:
+	cld
 	pushl %eax
 	pushl %ecx
 	pushl %edx

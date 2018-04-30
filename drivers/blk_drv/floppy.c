@@ -25,9 +25,11 @@
  * handler may not sleep, or a kernel panic will happen. Thus I cannot
  * call "floppy-on" directly, but have to set a special timer interrupt
  * etc.
- *
- * Also, I'm not certain this works on more than 1 floppy. Bugs may
- * abund.
+ */
+
+/*
+ * 28.02.92 - made track-buffering routines, based on the routines written
+ * by entropy@wintermute.wpi.edu (Lawrence Foard). Linus.
  */
 
 #include <linux/fs.h>
@@ -75,10 +77,12 @@ static void (do_fd_request) (void);
  * types (ie 360kb diskette in 1.2Mb drive etc). Others should
  * be self-explanatory.
  */
-static struct floppy_struct {
+struct floppy_struct {
 	unsigned int size, sect, head, track, stretch;
 	unsigned char gap, rate, spec1;
-} floppy_type[] = {
+};
+
+static struct floppy_struct floppy_type[] = {
 	{
 	0, 0, 0, 0, 0, 0x00, 0x00, 0x00},	/* no thing */
 	{
@@ -124,6 +128,9 @@ static unsigned char reply_buffer[MAX_REPLIES];
  * information to interrupts. They are the data used for the current
  * request.
  */
+static int read_track = 0; /* flag to indicate if we want to read all track */
+static int buffer_track = -1;
+static int buffer_drive = -1;
 static int cur_spec1 = -1;
 static int cur_rate = -1;
 static struct floppy_struct *floppy = floppy_type;
@@ -148,6 +155,8 @@ struct task_struct *wait_on_floppy_select = NULL;
  */
 extern void floppy_interrupt(void);
 extern char tmp_floppy_area[1024];
+extern char floppy_track_buffer[512*2*18];
+
 extern unsigned char current_DOR;
 
 void do_fd_request(void);
@@ -159,11 +168,11 @@ void (*do_floppy) (void) = NULL;
 			 :: "a" ((char) (val)), "i" (port))
 
 /*
- * Note that MAX_ERRORS=8 doesn't imply that we retry every bad read
- * max 8 times - some types of errors increase the errorcount by 2,
- * so we might actually retry only 5-6 times before giving up.
+ * Note that MAX_ERRORS=X doesn't imply that we retry every bad read
+ * max X times - some types of errors increase the errorcount by 2,
+ * so we might actually retry only X/2 times before giving up.
  */
-#define MAX_ERRORS 8
+#define MAX_ERRORS 12
 
 static void (do_fd_request) (void);
 
@@ -298,6 +307,7 @@ static void recalibrate_floppy(void)
 
 static void bad_flp_intr(void)
 {
+	current_track = -1;
 	CURRENT->errors++;
 	if (CURRENT->errors > MAX_ERRORS) {
 		floppy_deselect(current_drive);
@@ -305,8 +315,6 @@ static void bad_flp_intr(void)
 	}
 	if (CURRENT->errors > MAX_ERRORS / 2)
 		reset = 1;
-	else
-		recalibrate = 1;
 }
 
 #define copy_buffer(from, to) \
@@ -318,13 +326,19 @@ static void bad_flp_intr(void)
 
 static void setup_DMA(void)
 {
-	long addr = (long)CURRENT->buffer;
+	unsigned long addr = (long) CURRENT->buffer;
+	unsigned long count = 1024;
 
 	cli();
-	if (addr >= 0x100000) {
-		addr = (long)tmp_floppy_area;
+	if (read_track) {
+/* mark buffer-track bad, in case all this fails.. */
+		buffer_drive = buffer_track = -1;
+		count = floppy->sect*2*512;
+		addr = (long) floppy_track_buffer;
+	} else if (addr >= 0x100000) {
+		addr = (long) tmp_floppy_area;
 		if (command == FD_WRITE)
-			copy_buffer(CURRENT->buffer, tmp_floppy_area);
+			copy_buffer(CURRENT->buffer,tmp_floppy_area);
 	}
 	/* mask DMA 2 */
 	immoutb_p(4 | 2, 10);
@@ -343,10 +357,12 @@ static void setup_DMA(void)
 	addr >>= 8;
 	/* bits 16-19 of addr */
 	immoutb_p(addr, 0x81);
-	/* low 8 bits of count-1 (1024-1=0x3ff) */
-	immoutb_p(0xff, 5);
+	/* low 8 bits of count-1 */
+	count--;
+        immoutb_p(count, 5);
+        count >>= 8;
 	/* high 8 bits of count-1 */
-	immoutb_p(3, 5);
+	immoutb_p(count, 5);
 	/* activate DMA 2 */
 	immoutb_p(0 | 2, 10);
 	sti();
@@ -358,6 +374,8 @@ static void setup_DMA(void)
  */
 static void rw_interrupt(void)
 {
+	char *buffer_area;
+
 	if (result() != 7 || (ST0 & 0xf8) || (ST1 & 0xbf) || (ST2 & 0x73)) {
 		if (ST1 & 0x02) {
 			printk("Drive %d is write protected\n\r",
@@ -369,27 +387,47 @@ static void rw_interrupt(void)
 		do_fd_request();
 		return;
 	}
-	if (command == FD_READ && (unsigned long)(CURRENT->buffer) >= 0x100000)
-		copy_buffer(tmp_floppy_area, CURRENT->buffer);
+	if (read_track) {
+		buffer_track = seek_track;
+		buffer_drive = current_drive;
+		buffer_area = floppy_track_buffer +
+			((sector-1 + head*floppy->sect)<<9);
+		copy_buffer(buffer_area,CURRENT->buffer);
+	} else if (command == FD_READ &&
+		(unsigned long)(CURRENT->buffer) >= 0x100000)
+		copy_buffer(tmp_floppy_area,CURRENT->buffer);
 	floppy_deselect(current_drive);
 	end_request(1);
 	do_fd_request();
 }
 
+/*
+ * We try to read tracks, but if we get too many errors, we
+ * go back to reading just one sector at a time.
+ *
+ * This means we should be able to read a sector even if there
+ * are other bad sectors on this track.
+ */
 inline void setup_rw_floppy(void)
 {
 	setup_DMA();
 	do_floppy = rw_interrupt;
 	output_byte(command);
-	output_byte(head << 2 | current_drive);
-	output_byte(track);
-	output_byte(head);
-	output_byte(sector);
-	output_byte(2);
+	if (read_track) {
+		output_byte(current_drive);
+		output_byte(track);
+		output_byte(0);
+		output_byte(1);
+	} else {
+		output_byte(head<<2 | current_drive);
+		output_byte(track);
+		output_byte(head);
+		output_byte(sector);
+	}
+	output_byte(2);		/* sector size = 512 */
 	output_byte(floppy->sect);
 	output_byte(floppy->gap);
-	output_byte(0xFF);
-
+	output_byte(0xFF);	/* sector size (0xff when n!=0 ?) */
 	if (reset)
 		do_fd_request();
 }
@@ -404,6 +442,7 @@ static void seek_interrupt(void)
 	/* sense drive status */
 	output_byte(FD_SENSEI);
 	if (result() != 2 || (ST0 & 0xF8) != 0x20 || ST1 != seek_track) {
+                recalibrate = 1;
 		bad_flp_intr();
 		do_fd_request();
 		return;
@@ -419,14 +458,15 @@ static void seek_interrupt(void)
  */
 static void transfer(void)
 {
+	read_track = (command == FD_READ) && (CURRENT->errors < 4);
 	if (cur_spec1 != floppy->spec1) {
 		cur_spec1 = floppy->spec1;
 		output_byte(FD_SPECIFY);
-		output_byte(cur_spec1);
-		output_byte(6);
+		output_byte(cur_spec1);		/* hut etc */
+		output_byte(6);			/* Head load time =6ms, DMA */
 	}
 	if (cur_rate != floppy->rate)
-		outb_p(cur_rate = floppy->rate, FD_DCR);
+		outb_p(cur_rate = floppy->rate,FD_DCR);
 	if (reset) {
 		do_fd_request();
 		return;
@@ -436,14 +476,12 @@ static void transfer(void)
 		return;
 	}
 	do_floppy = seek_interrupt;
-	if (seek_track) {
-		output_byte(FD_SEEK);
-		output_byte(head << 2 | current_drive);
-		output_byte(seek_track);
-	} else {
-		output_byte(FD_RECALIBRATE);
-		output_byte(head << 2 | current_drive);
-	}
+	output_byte(FD_SEEK);
+	if (read_track)
+		output_byte(current_drive);
+	else
+		output_byte((head<<2) | current_drive);
+	output_byte(seek_track);
 	if (reset)
 		do_fd_request();
 }
@@ -467,27 +505,24 @@ static void floppy_on_interrupt(void)
 void do_fd_request(void)
 {
 	unsigned int block;
+	char * buffer_area;
 
 	seek = 0;
 	if (reset) {
 		reset_floppy();
 		return;
 	}
-
 	if (recalibrate) {
 		recalibrate_floppy();
 		return;
 	}
-
 	INIT_REQUEST;
-	floppy = (MINOR(CURRENT->dev) >> 2) + floppy_type;
+	floppy = (MINOR(CURRENT->dev)>>2) + floppy_type;
 	if (current_drive != CURRENT_DEV)
 		seek = 1;
-
 	current_drive = CURRENT_DEV;
 	block = CURRENT->sector;
-
-	if (block + 2 > floppy->size) {
+	if (block+2 > floppy->size) {
 		end_request(0);
 		goto repeat;
 	}
@@ -496,26 +531,39 @@ void do_fd_request(void)
 	head = block % floppy->head;
 	track = block / floppy->head;
 	seek_track = track << floppy->stretch;
-
-	if (seek_track != current_track)
-		seek = 1;
-
-	sector++;
 	if (CURRENT->cmd == READ)
 		command = FD_READ;
 	else if (CURRENT->cmd == WRITE)
 		command = FD_WRITE;
-	else
-		panic("do_fd_request: unknown command");
-	add_timer(ticks_to_floppy_on(current_drive), &floppy_on_interrupt);
+	else {
+		printk("do_fd_request: unknown command\n");
+		end_request(0);
+		goto repeat;
+	}
+	if ((seek_track == buffer_track) &&
+	 (current_drive == buffer_drive)) {
+		buffer_area = floppy_track_buffer +
+			((sector + head*floppy->sect)<<9);
+		if (command == FD_READ) {
+			copy_buffer(buffer_area,CURRENT->buffer);
+			end_request(1);
+			goto repeat;
+		} else
+			copy_buffer(CURRENT->buffer,buffer_area);
+	}
+	if (seek_track != current_track)
+		seek = 1;
+	sector++;
+	add_timer(ticks_to_floppy_on(current_drive),&floppy_on_interrupt);
 }
 
 void floppy_init(void)
 {
+	outb(current_DOR,FD_DOR);
 	blk_size[MAJOR_NR] = floppy_sizes;
-	blk_dev[MAJOR_NR].request_fn = do_fd_request;
-	set_trap_gate(0x26, &floppy_interrupt);
-	outb(inb_p(0x21) & ~0x40, 0x21);
+	blk_dev[MAJOR_NR].request_fn = DEVICE_REQUEST;
+	set_intr_gate(0x26,&floppy_interrupt);
+	outb(inb_p(0x21)&~0x40,0x21);
 }
 
 /*
@@ -534,6 +582,7 @@ repeat:
         goto repeat;
     if (inb(FD_DIR) & 0x80) {
         floppy_off(nr);
+        buffer_track = -1;
         return 1;
     }
     floppy_off(nr);

@@ -19,6 +19,12 @@
 #include <string.h>
 #include <errno.h>
 
+/*
+ * this indicates wether you can reboot with ctrl-alt-del: the deault is yes
+ */
+static int C_A_D = 1;
+
+extern void hard_reset_now(void);
 /* 
  * The timezone where the local system is located.  Used as a default by some
  * programs who obtain this value by using gettimeofday.
@@ -463,14 +469,45 @@ int sys_setsid(void)
     return current->pgrp;
 }
 
+/*
+ * Reboot system call: for obvious reasons only root may call it,
+ * and even root needs to set up some magic numbers in the registers
+ * so that some mistake won't make this reboot the whole machine.
+ * You can also set the meaning of the ctrl-alt-del-key here.
+ *
+ * reboot doesn't sync: do that yourself before calling this.
+ */
+int sys_reboot(int magic, int magic_too, int flag)
+{
+	if (!suser())
+		return -EPERM;
+	if (magic != 0xfee1dead || magic_too != 672274793)
+		return -EINVAL;
+	if (flag == 0x01234567)
+		hard_reset_now();
+	else if (flag == 0x89ABCDEF)
+		C_A_D = 1;
+	else if (!flag)
+		C_A_D = 0;
+	else
+		return -EINVAL;
+	return (0);
+}
+
+/*
+ * This function gets called by ctrl-alt-del - ie the keyboard interrupt.
+ * As it's called within an interrupt, it may NOT sync: the only choice
+ * is wether to reboot at once, or just ignore the ctrl-alt-del.
+ */
+void ctrl_alt_del(void)
+{
+	if (C_A_D)
+		hard_reset_now();
+}
+
 int sys_getpgrp(void)
 {
     return current->pgrp;
-}
-
-int sys_ptrace(void)
-{
-    return -ENOSYS;
 }
 
 int sys_stty(void)
@@ -479,11 +516,6 @@ int sys_stty(void)
 }
 
 int sys_gtty(void)
-{
-    return -ENOSYS;
-}
-
-int sys_rename(void)
 {
     return -ENOSYS;
 }

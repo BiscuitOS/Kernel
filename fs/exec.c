@@ -30,6 +30,7 @@
 #include <signal.h>
 
 extern int sys_exit(int exit_code);
+int send_sig(long, struct task_struct *, int);
 
 /*
  * MAX_ARG_PAGES defines the number of pages allocated for arguments
@@ -42,7 +43,7 @@ extern int sys_close(int fd);
 
 int sys_uselib(const char * library)
 {
-    struct m_inode * inode;
+    struct inode * inode;
     unsigned long base;
 
     if (get_limit(0x17) != TASK_SIZE)
@@ -70,7 +71,7 @@ static int count(char **argv)
     int i = 0;
     char **tmp;
 
-    if ((tmp = argv) != NULL)
+    if ((tmp = argv))
         while (get_fs_long((unsigned long *)(tmp++)))
             i++;
     return i;
@@ -117,7 +118,7 @@ static unsigned long copy_strings(int argc, char **argv, unsigned long *page,
         do {
             len++;
         } while (get_fs_byte(tmp++));
-        if (p - len < 0) {
+        if (p < len) {
             set_fs(old_fs);   /* this should't happen - 128kB */
             return 0;
         }
@@ -211,7 +212,7 @@ static unsigned long change_ldt(unsigned long text_size, unsigned long *page)
 int do_execve(unsigned long *eip, long tmp, char *filename,
               char **argv, char **envp)
 {
-    struct m_inode *inode;
+    struct inode *inode;
     struct buffer_head *bh;
     struct exec ex;
     unsigned long page[MAX_ARG_PAGES];
@@ -236,18 +237,24 @@ restart_interp:
         goto exec_error2;
     }
     i = inode->i_mode;
-    e_uid = (i & S_ISUID) ? inode->i_uid : current->euid;
-    e_gid = (i & S_ISGID) ? inode->i_gid : current->egid;
+	/* make sure we don't let suid, sgid files be ptraced. */
+	if (current->flags & PF_PTRACED) {
+		e_uid = current->euid;
+		e_gid = current->egid;
+	} else {
+		e_uid = (i & S_ISUID) ? inode->i_uid : current->euid;
+		e_gid = (i & S_ISGID) ? inode->i_gid : current->egid;
+	}
     if (current->euid == inode->i_uid)
         i >>= 6;
     else if (in_group_p(inode->i_gid))
         i >>= 3;
     if (!(i & 1) &&
         !((inode->i_mode & 0111) && suser())) {
-        retval = -ENOEXEC;
+        retval = -EACCES;
         goto exec_error2;
     }
-    if (!(bh = bread(inode->i_dev, inode->i_zone[0]))) {
+    if (!(bh = bread(inode->i_dev, inode->i_data[0]))) {
         retval = -EACCES;
         goto exec_error2;
     }
@@ -264,7 +271,7 @@ restart_interp:
         brelse(bh);
         iput(inode);
         buf[127] = '\0';
-        if ((cp = strchr(buf, '\n')) != NULL) {
+        if ((cp = strchr(buf, '\n'))) {
             *cp = '\0';
             for (cp = buf; (*cp == ' ') || (*cp == '\t'); cp++)
                 ;
@@ -371,11 +378,13 @@ restart_interp:
     current->brk = ex.a_bss +
                    (current->end_data = ex.a_data +
                    (current->end_code = ex.a_text));
-    current->start_stack = p & 0xfffff000;
+    current->start_stack = p;
     current->suid = current->euid = e_uid;
     current->sgid = current->egid = e_gid;
     eip[0] = ex.a_entry;     /* eip, magic happens :-) */
     eip[3] = p;              /* stack pointer */
+    if (current->flags & PF_PTRACED)
+        send_sig(SIGTRAP, current, 0);
     return 0;
 exec_error2:
     iput(inode);

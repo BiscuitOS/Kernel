@@ -6,7 +6,7 @@
 # SYS_SIZE is the number of clicks (16 bytes) to be loaded.
 # 0x3000 is 0x30000 bytes = 196KB, more than enough for current
 # version of linux
-	.equ SYSSIZE, 0x3000
+	.equ SYSSIZE, 0x4000
 
 #
 #	bootsect.s		(C) 1991 Linus Torvalds
@@ -85,6 +85,7 @@ _start:
 	mov	$256, %cx
 	sub	%si, %si
 	sub	%di, %di
+	cld
 	rep
 	movsw
 	ljmp	$INITSEG, $go

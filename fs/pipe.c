@@ -3,7 +3,6 @@
  *
  * (C) 1991 Linus Torvalds
  */
-#include <linux/mm.h>
 #include <linux/sched.h>
 #include <linux/kernel.h>
 #include <asm/segment.h>
@@ -11,70 +10,74 @@
 #include <signal.h>
 #include <errno.h>
 #include <termios.h>
+#include <fcntl.h>
 
-int read_pipe(struct m_inode *inode, char *buf, int count)
+int pipe_read(struct inode *inode, struct file * filp, char *buf, int count)
 {
-    int chars, size, read = 0;
+	int chars, size, read = 0;
 
-    while (count > 0) {
-        while (!(size = PIPE_SIZE(*inode))) {
-            wake_up(&PIPE_WRITE_WAIT(*inode));
-            if (inode->i_count != 2) /* are there any writers? */
-                return read;
-            if (current->signal & ~current->blocked)
-                return read ? read : -ERESTARTSYS;
-            interruptible_sleep_on(&PIPE_READ_WAIT(*inode));
-        }
-        chars = PAGE_SIZE - PIPE_TAIL(*inode);
-        if (chars > count)
-            chars = count;
-        if (chars > size)
-            chars = size;
-        count -= chars;
-        read  += chars;
-        size = PIPE_TAIL(*inode);
-        PIPE_TAIL(*inode) += chars;
-        PIPE_TAIL(*inode) &= (PAGE_SIZE - 1);
-        while (chars-- > 0)
-            put_fs_byte(((char *)inode->i_size)[size++], buf++);
-    }
-    wake_up(& PIPE_WRITE_WAIT(*inode));
-    return read;
+	if (!(filp->f_flags & O_NONBLOCK))
+		while (!PIPE_SIZE(*inode)) {
+			wake_up(& PIPE_WRITE_WAIT(*inode));
+			if (inode->i_count != 2) /* are there any writers? */
+				return 0;
+			if (current->signal & ~current->blocked)
+				return -ERESTARTSYS;
+			interruptible_sleep_on(& PIPE_READ_WAIT(*inode));
+		}
+	while (count>0 && (size = PIPE_SIZE(*inode))) {
+		chars = PAGE_SIZE-PIPE_TAIL(*inode);
+		if (chars > count)
+			chars = count;
+		if (chars > size)
+			chars = size;
+		count -= chars;
+		read += chars;
+		size = PIPE_TAIL(*inode);
+		PIPE_TAIL(*inode) += chars;
+		PIPE_TAIL(*inode) &= (PAGE_SIZE-1);
+		while (chars-->0)
+			put_fs_byte(((char *)inode->i_size)[size++],buf++);
+	}
+	wake_up(& PIPE_WRITE_WAIT(*inode));
+	return read;
 }
 
-int write_pipe(struct m_inode *inode, char *buf, int count)
+int pipe_write(struct inode *inode, struct file *filp, char *buf, int count)
 {
-    int chars, size, written = 0;
+	int chars, size, written = 0;
 
-    while (count > 0) {
-        while (!(size = (PAGE_SIZE - 1) - PIPE_SIZE(*inode))) {
-            wake_up(&PIPE_READ_WAIT(*inode));
-            if (inode->i_count != 2) { /* no readers */
-                current->signal |= (1 << (SIGPIPE - 1));
-                return written ? written : -1;
-            }
-            sleep_on(&PIPE_WRITE_WAIT(*inode));
-        }
-        chars = PAGE_SIZE - PIPE_HEAD(*inode);
-        if (chars > count)
-            chars = count;
-        if (chars > size)
-            chars = size;
-        count -= chars;
-        written += chars;
-        size = PIPE_HEAD(*inode);
-        PIPE_HEAD(*inode) += chars;
-        PIPE_HEAD(*inode) &= (PAGE_SIZE - 1);
-        while (chars-- > 0)
-            ((char *)inode->i_size)[size++] = get_fs_byte(buf++);
-    }
-    wake_up(&PIPE_READ_WAIT(*inode));
-    return written;
+	while (count>0) {
+		while (!(size=(PAGE_SIZE-1)-PIPE_SIZE(*inode))) {
+			wake_up(& PIPE_READ_WAIT(*inode));
+			if (inode->i_count != 2) { /* no readers */
+				current->signal |= (1<<(SIGPIPE-1));
+				return written?written:-EINTR;
+			}
+			if (current->signal & ~current->blocked)
+				return written?written:-EINTR;
+			interruptible_sleep_on(&PIPE_WRITE_WAIT(*inode));
+		}
+		chars = PAGE_SIZE-PIPE_HEAD(*inode);
+		if (chars > count)
+			chars = count;
+		if (chars > size)
+			chars = size;
+		count -= chars;
+		written += chars;
+		size = PIPE_HEAD(*inode);
+		PIPE_HEAD(*inode) += chars;
+		PIPE_HEAD(*inode) &= (PAGE_SIZE-1);
+		while (chars-->0)
+			((char *)inode->i_size)[size++]=get_fs_byte(buf++);
+	}
+	wake_up(& PIPE_READ_WAIT(*inode));
+	return written;
 }
 
 int sys_pipe(unsigned long *fildes)
 {
-    struct m_inode *inode;
+    struct inode *inode;
     struct file *f[2];
     int fd[2];
     int i, j;
@@ -114,7 +117,7 @@ int sys_pipe(unsigned long *fildes)
     return 0;
 }
 
-int pipe_ioctl(struct m_inode *pino, int cmd, int arg)
+int pipe_ioctl(struct inode *pino, int cmd, int arg)
 {
     switch (cmd) {
     case FIONREAD:

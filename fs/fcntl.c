@@ -66,14 +66,16 @@ int sys_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg)
     case F_GETLK:
     case F_SETLK:
     case F_SETLKW:
-        return -1;
+        return -ENOSYS;
     default:
-        return -1;
+        return -EINVAL;
     }
 }
 
 int sys_dup2(unsigned int oldfd, unsigned int newfd)
 {
+    if (newfd == oldfd)
+        return newfd;
     sys_close(newfd);
     return dupfd(oldfd, newfd);
 }

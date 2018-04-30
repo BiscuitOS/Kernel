@@ -53,7 +53,6 @@ char printbuf[1024];
 #define CON_COLS       (((*(unsigned short *)0x9000e) & 0xff00) >> 8)
 #define DRIVE_INFO       (*(struct drive_info *)0x90080)
 #define ORIG_ROOT_DEV    (*(unsigned short *)0x901FC)
-#define ORIG_SWAP_DEV    (*(unsigned short *)0x901FA)
 
 /*
  * Yeah, yeah, it's ugly, but I cannot find how to do this correctly
@@ -77,6 +76,9 @@ static long memory_end;
 static long buffer_memory_end;
 static long main_memory_start;
 static char term[32];
+
+//static char *argv_init[] = { "/bin/init", NULL };
+static char *envp_init[] = { "HOME=/", NULL, NULL };
 
 static char *argv_rc[] = { "/bin/sh", NULL };
 static char *envp_rc[] = { "HOME=/", NULL, NULL };
@@ -139,19 +141,21 @@ static void memory_detect(void)
     memory_end &= 0xFFFFF000;
 
     /* Current version only support litter than 16Mb */
-    if (memory_end > 16 << MB_SHIFT)
+    if (memory_end >= 16 << MB_SHIFT)
         memory_end = 16 << MB_SHIFT;
-    if (memory_end > 12 << MB_SHIFT)
+    if (memory_end >= 12 << MB_SHIFT)
         buffer_memory_end = 4 << MB_SHIFT;
-    else if (memory_end > 6 << MB_SHIFT)
+    else if (memory_end >= 6 << MB_SHIFT)
         buffer_memory_end = 2 << MB_SHIFT;
+    else if (memory_end >= 4 << MB_SHIFT)
+        buffer_memory_end = 3 << MB_SHIFT;
     else
         buffer_memory_end = 1 << MB_SHIFT;
 
     main_memory_start = buffer_memory_end;
 }
 
-int main(void)
+int start_kernel(void)
 {
     /*
      * Interrupts are still disabled. Do necessary setups, then
@@ -161,10 +165,10 @@ int main(void)
     debug_on_kernel_early();
 #endif
     ROOT_DEV = ORIG_ROOT_DEV;
-    SWAP_DEV = ORIG_SWAP_DEV;
     sprintf(term, "TERM=con%dx%d", CON_COLS, CON_ROWS);
     envp[1] = term;
     envp_rc[1] = term;
+    envp_init[1] = term;
     drive_info = DRIVE_INFO;
     memory_detect();
     mem_init(main_memory_start, memory_end);
@@ -229,6 +233,9 @@ void init(void)
 #ifdef CONFIG_DEBUG_USERLAND_SYSCALL
     debug_on_userland_syscall();
 #endif
+//    execve("/bin/init", argv_init, envp_init);
+    /* if this fails, fall through to original stuff */
+
     if (!(pid = fork())) {
         close(0);
         if (open("/etc/rc", O_RDONLY, 0))

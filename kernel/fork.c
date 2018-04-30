@@ -64,8 +64,12 @@ int copy_mem(int nr, struct task_struct *p)
     data_limit = get_limit(0x17); /* Obtain Data segment from LDT[2] */
     old_code_base = get_base(current->ldt[1]); /* Current CODE Segment */
     old_data_base = get_base(current->ldt[2]); /* Current DATA Segment */
-    if (old_data_base != old_code_base)
+    if (old_data_base != old_code_base) {
+        printk("ldt[0]: %08x %08x\n", current->ldt[0].a, current->ldt[0].b);
+        printk("ldt[1]: %08x %08x\n", current->ldt[1].a, current->ldt[1].b);
+        printk("ldt[2]: %08x %08x\n", current->ldt[2].a, current->ldt[2].b);
         panic("We don't support separate I&D");
+    }
     if (data_limit < code_limit)
         panic("Bad data_limit");
     new_data_base = new_code_base = nr * TASK_SIZE;
@@ -84,18 +88,23 @@ int copy_mem(int nr, struct task_struct *p)
  * information (task[nr]) and sets up the necessary registers. It
  * also copies the data segment in it's entriety.
  */
-int copy_process(int nr, long ebp, long edi, long esi, long gs, long none,
-		long ebx, long ecx, long edx, long orig_eax,
-		long fs, long es, long ds,
-		long eip, long cs, long eflags, long esp, long ss)
+int sys_fork(long ebx,long ecx,long edx,
+		long esi, long edi, long ebp, long eax, long ds,
+		long es, long fs, long gs, long orig_eax,
+		long eip,long cs,long eflags,long esp,long ss)
 {
     struct task_struct *p;
-    int i;
+    int i, nr;
     struct file *f;
 
     p = (struct task_struct *) get_free_page();
     if (!p)
         return -EAGAIN;
+    nr = find_empty_process();
+    if (nr < 0) {
+        free_page((unsigned long)p);
+        return nr;
+    }
     task[nr] = p;
 
     /*
@@ -162,5 +171,5 @@ int copy_process(int nr, long ebp, long edi, long esi, long gs, long none,
         p->p_osptr->p_ysptr = p;
     current->p_cptr = p;
     p->state = TASK_RUNNING;  /* do this last, just in case */
-    return last_pid;
+    return p->pid;
 }

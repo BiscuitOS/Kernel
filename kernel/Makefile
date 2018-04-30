@@ -11,6 +11,7 @@ obj-y += fork.o
 obj-y += exit.o
 obj-y += sys.o
 obj-y += math/
+obj-y += ptrace.o
 
 $(obj)/%.o: $(obj)/%.s FORCE
 	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<

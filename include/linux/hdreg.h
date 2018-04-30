@@ -51,17 +51,19 @@
 #define BBD_ERR        0x80	/* ? */
 #define HD_NO_ERR	   MARK_ERR /* Used in HD_ERROR status check */
 
+#define EXTENDED_PARTITION 5
+
 struct partition {
-    unsigned char boot_ind;   /* 0x80 - active (unsed) */
-    unsigned char head;
-    unsigned char sector;
-    unsigned char cyl;
-    unsigned char sys_ind;
-    unsigned char end_head;
-    unsigned char end_sector;
-    unsigned char end_cyl;
-    unsigned int start_sect;    /* starting sector counting from 0 */
-    unsigned int nr_sects;      /* nr of sectors in partition */
+	unsigned char boot_ind;		/* 0x80 - active */
+	unsigned char head;		/* starting head */
+	unsigned char sector;		/* starting sector */
+	unsigned char cyl;		/* starting cylinder */
+	unsigned char sys_ind;		/* What partition type */
+	unsigned char end_head;		/* end head */
+	unsigned char end_sector;	/* end sector */
+	unsigned char end_cyl;		/* end cylinder */
+	unsigned int start_sect;	/* starting sector counting from 0 */
+	unsigned int nr_sects;		/* nr of sectors in partition */
 };
 
 #endif

@@ -15,11 +15,13 @@
 #include <linux/kernel.h>
 #include <linux/sys.h>
 #include <linux/fdreg.h>
+#include <linux/timer.h>
 
 #include <asm/system.h>
 #include <asm/segment.h>
 #include <asm/io.h>
 
+#include <errno.h>
 #include <signal.h>
 
 #define _S(nr)  (1 << ((nr)-1))
@@ -55,18 +57,19 @@ int jiffies_offset = 0;		/* # clock ticks to add to get "true
 struct task_struct *current = &(init_task.task);
 struct task_struct *last_task_used_math = NULL;
 
+unsigned long timer_active = 0;
+struct timer_struct timer_table[32];
+
 struct task_struct *task[NR_TASKS] = { &(init_task.task), };
 
 extern int timer_interrupt(void);
 extern int system_call(void);
 
 /*
- * schedule() is the scheduler function. This is GOOD CODE!
- * There probably won't be any reason to change this, as it should
- * work well in all circumstances (ie gives IO-bound processes good
- * response etc).
- * The one thing you might take a look at is the signal-handler
- * here.
+ * 'schedule()' is the scheduler function. It's a very simple and nice
+ * scheduler: it's not perfect, but certainly works for most things.
+ * The one thing you might take a look at is the signal-handler code here.
+ *
  * NOTE! Task 0 is the 'idle' task, which gets called when no other
  * tasks can run. It can not be killed, and it cannot sleep.
  * The information in task[0] is never used.
@@ -91,7 +94,7 @@ void schedule(void)
                 (*p)->signal |= (1 << (SIGALRM - 1));
                 (*p)->alarm = 0;
             }
-            if (((*p)->signal & ~(_BLOCKABLE & (*p)->blocked)) &&
+            if (((*p)->signal & ~(*p)->blocked) &&
                  (*p)->state==TASK_INTERRUPTIBLE)
                 (*p)->state=TASK_RUNNING;
             }
@@ -122,26 +125,28 @@ void schedule(void)
 
 static inline void __sleep_on(struct task_struct **p, int state)
 {
-    struct task_struct *tmp;
+	struct task_struct *tmp;
+	unsigned int flags;
 
-    if (!p)
-        return;
-    if (current == &(init_task.task))
-        panic("task[0] trying to sleep");
-    tmp = *p;
-    *p = current;
-    current->state = state;
-repeat:
-    schedule();
-    if (*p && *p != current) {
-        (**p).state = 0;
-        current->state = TASK_UNINTERRUPTIBLE;
-        goto repeat;
-    }
-    if (!*p)
-        printk("Warning: *P = NULL\n\r");
-    if ((*p = tmp) != NULL)
-        tmp->state = 0;
+	if (!p)
+		return;
+	if (current == &(init_task.task))
+		panic("task[0] trying to sleep");
+	__asm__("pushfl ; popl %0":"=r" (flags));
+	tmp = *p;
+	*p = current;
+	current->state = state;
+/* make sure interrupts are enabled: there should be no more races here */
+	sti();
+repeat:	schedule();
+	if (*p && *p != current) {
+		current->state = TASK_UNINTERRUPTIBLE;
+		(**p).state = 0;
+		goto repeat;
+	}
+	if ((*p = tmp))
+		tmp->state=0;
+	__asm__("pushl %0 ; popfl"::"r" (flags));
 }
 
 void interruptible_sleep_on(struct task_struct **p)
@@ -329,50 +334,42 @@ void do_floppy_timer(void)
 
 void do_timer(long cpl)
 {
-    static int blanked = 0;
+	unsigned long mask;
+	struct timer_struct *tp = timer_table+0;
 
-    if (blankcount || !blankinterval) {
-        if (blanked)
-            unblank_screen();
-        if (blankcount)
-            blankcount--;
-            blanked = 0;
-    } else if (!blanked) {
-        blank_screen();
-        blanked = 1;
-    }
-    if (hd_timeout)
-        if (!--hd_timeout)
-            hd_times_out();
+	for (mask = 1 ; mask ; tp++,mask += mask) {
+		if (mask > timer_active)
+			break;
+		if (!(mask & timer_active))
+			continue;
+		if (tp->expires > jiffies)
+			continue;
+		timer_active &= ~mask;
+		tp->fn();
+	}
 
-    if (beepcount)
-        if (!--beepcount)
-            sysbeepstop();
+	if (cpl)
+		current->utime++;
+	else
+		current->stime++;
 
-    if (cpl)
-        current->utime++;
-    else
-        current->stime++;
-
-    if (next_timer) {
-        next_timer->jiffies--;
-        while (next_timer && next_timer->jiffies <= 0) {
-            void (*fn)(void);
-
-            fn = next_timer->fn;
-            next_timer->fn = NULL;
-            next_timer = next_timer->next;
-            (fn)();
-        }
-    }
-    if (current_DOR & 0xf0)
-        do_floppy_timer();
-    if ((--current->counter) > 0)
-        return;
-    current->counter = 0;
-    if (!cpl)
-        return;
-    schedule();
+	if (next_timer) {
+		next_timer->jiffies--;
+		while (next_timer && next_timer->jiffies <= 0) {
+			void (*fn)(void);
+			
+			fn = next_timer->fn;
+			next_timer->fn = NULL;
+			next_timer = next_timer->next;
+			(fn)();
+		}
+	}
+	if (current_DOR & 0xf0)
+		do_floppy_timer();
+	if ((--current->counter)>0) return;
+	current->counter=0;
+	if (!cpl) return;
+	schedule();
 }
 
 void show_task(int nr, struct task_struct *p)
@@ -426,16 +423,28 @@ int sys_alarm(long seconds)
 
 int sys_pause(void)
 {
-    current->state = TASK_INTERRUPTIBLE;
-    schedule();
-    return 0;
+	unsigned long old_blocked;
+	unsigned long mask;
+	struct sigaction * sa = current->sigaction;
+
+	old_blocked = current->blocked;
+	for (mask=1 ; mask ; sa++,mask += mask)
+		if (sa->sa_handler == SIG_IGN)
+			current->blocked |= mask;
+	current->state = TASK_INTERRUPTIBLE;
+	schedule();
+	current->blocked = old_blocked;
+	return -EINTR;
 }
 
 int sys_nice(long increment)
 {
-    if (current->priority - increment > 0)
-        current->priority -= increment;
-    return 0;
+	if (increment < 0 && !suser())
+		return -EPERM;
+	if (increment > current->priority)
+		increment = current->priority-1;
+	current->priority -= increment;
+	return 0;
 }
 
 int sys_getgid(void)
