@@ -52,4 +52,6 @@ extern unsigned char mem_map [ PAGING_PAGES ];
 #define SWAP_ROOT       0x0
 #define SWAP_ID         "SWAPSPACE2"
 
+extern void un_wp_page(unsigned long *table_entry);
+
 #endif

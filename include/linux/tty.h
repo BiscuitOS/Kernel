@@ -68,22 +68,45 @@ struct tty_struct {
 	struct tty_queue *secondary;
 	};
 
-#define TTY_WRITE(tty) \
+/*
+ * so that interrupts won't be able to mess up the
+ * queues, copy_to_cooked must be atomic with repect
+ * to itself, as must tty->write.
+ */
+#define TTY_WRITE_BUSY 1
+#define TTY_READ_BUSY 2
+
+#define TTY_WRITE_FLUSH(tty) \
 do { \
 	cli(); \
-	if (!(tty)->busy) { \
-		(tty)->busy = 1; \
+	if (!EMPTY((tty)->write_q) && !(TTY_WRITE_BUSY & (tty)->busy)) { \
+		(tty)->busy |= TTY_WRITE_BUSY; \
 		sti(); \
 		(tty)->write((tty)); \
-		(tty)->busy = 0; \
-	} else \
+		cli(); \
+		(tty)->busy &= ~TTY_WRITE_BUSY; \
+	} \
+	sti(); \
+} while (0)
+
+#define TTY_READ_FLUSH(tty) \
+do { \
+	cli(); \
+	if (!EMPTY((tty)->read_q) && !(TTY_READ_BUSY & (tty)->busy)) { \
+		(tty)->busy |= TTY_READ_BUSY; \
 		sti(); \
+		copy_to_cooked((tty)); \
+		cli(); \
+		(tty)->busy &= ~TTY_READ_BUSY; \
+	} \
+	sti(); \
 } while (0)
 
 extern struct tty_struct tty_table[];
 extern int fg_console;
 extern unsigned long video_num_columns;
 extern unsigned long video_num_lines;
+
 
 #define TTY_TABLE(nr) \
 (tty_table + ((nr) ? (((nr) < 64)? (nr)-1:(nr))	: fg_console))
@@ -107,6 +130,7 @@ void con_write(struct tty_struct * tty);
 void rs_write(struct tty_struct * tty);
 void mpty_write(struct tty_struct * tty);
 void spty_write(struct tty_struct * tty);
+
 extern void serial_open(unsigned int line);
 
 void copy_to_cooked(struct tty_struct * tty);
@@ -114,3 +138,4 @@ void copy_to_cooked(struct tty_struct * tty);
 void update_screen(int new_console);
 
 #endif
+

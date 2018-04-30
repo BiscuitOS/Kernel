@@ -183,9 +183,11 @@ void sched_init(void)
 
 static struct timer_list {
 	long jiffies;
-	void (*fn) (void);
-	struct timer_list *next;
-} timer_list[TIME_REQUESTS], *next_timer = NULL;
+	void (*fn)();
+	struct timer_list * next;
+} timer_list[TIME_REQUESTS] = { { 0, NULL, NULL }, };
+
+static struct timer_list * next_timer = NULL;
 
 void add_timer(long jiffies, void (*fn) (void))
 {
@@ -369,12 +371,21 @@ void show_task(int nr, struct task_struct *p)
 
 void show_state(void)
 {
-    int i;
+	static int lock = 0;
+	int i;
 
-    printk("\rTask-info:\n\r");
-    for (i = 0; i < NR_TASKS; i++)
-        if (task[i])
-            show_task(i, task[i]);
+	cli();
+	if (lock) {
+		sti();
+		return;
+	}
+	lock = 1;
+	sti();
+	printk("\rTask-info:\n\r");
+	for (i=0 ; i<NR_TASKS ; i++)
+		if (task[i])
+			show_task(i,task[i]);
+	lock = 0;
 }
 
 int sys_getpid(void)

@@ -47,7 +47,7 @@ struct info {
 #define CS (*(unsigned short *) &(info->___cs))
 #define SS (*(unsigned short *) &(info->___ss))
 
-void __math_abort(struct info *, unsigned int);
+extern void __math_abort(struct info * info, unsigned int signal);
 
 #define math_abort(x,y) \
 (((void (*)(struct info *,unsigned int)) __math_abort)((x),(y)))

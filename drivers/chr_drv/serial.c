@@ -28,22 +28,22 @@ extern void rs2_interrupt(void);
 
 static void com1_timer(void)
 {
-	copy_to_cooked(tty_table+64);
+	TTY_READ_FLUSH(tty_table+64);
 }
 
 static void com2_timer(void)
 {
-	copy_to_cooked(tty_table+65);
+	TTY_READ_FLUSH(tty_table+65);
 }
 
 static void com3_timer(void)
 {
-	copy_to_cooked(tty_table+66);
+	TTY_READ_FLUSH(tty_table+66);
 }
 
 static void com4_timer(void)
 {
-	copy_to_cooked(tty_table+67);
+	TTY_READ_FLUSH(tty_table+67);
 }
 
 

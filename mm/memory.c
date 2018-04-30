@@ -143,6 +143,7 @@ int copy_page_tables(unsigned long from, unsigned long to, long size)
 			if (!(1 & this_page)) {
 				if (!(new_page = get_free_page()))
 					return -1;
+				++current->rss;
 				read_swap_page(this_page>>1, (char *) new_page);
 				*to_page_table = this_page;
 				*from_page_table = new_page | (PAGE_DIRTY | 7);
@@ -387,7 +388,7 @@ void do_no_page(unsigned long error_code, unsigned long address,
 	int block,i;
 	struct inode * inode;
 
-	/* Trashing ? Make it interruptible, but don't penalize otherwise */
+	/* Thashing ? Make it interruptible, but don't penalize otherwise */
 	for (i = 0; i < CHECK_LAST_NR; i++)
 		if ((address & 0xfffff000) == last_pages[i]) {
 			current->counter = 0;
@@ -405,6 +406,7 @@ void do_no_page(unsigned long error_code, unsigned long address,
 		printk("Bad things happen: nonexistent page error in do_no_page\n\r");
 		do_exit(SIGSEGV);
 	}
+	++tsk->rss;
 	page = *(unsigned long *) ((address >> 20) & 0xffc);
 /* check the page directory: make a page dir entry if no such exists */
 	if (page & 1) {
@@ -412,6 +414,7 @@ void do_no_page(unsigned long error_code, unsigned long address,
 		page += (address >> 10) & 0xffc;
 		tmp = *(unsigned long *) page;
 		if (tmp && !(1 & tmp)) {
+			++tsk->maj_flt;
 			swap_in((unsigned long *) page);
 			return;
 		}
@@ -436,12 +439,19 @@ void do_no_page(unsigned long error_code, unsigned long address,
 		block = 0;
 	}
 	if (!inode) {
+		++tsk->min_flt;
+		if (tmp > tsk->brk && tsk == current && 
+			LIBRARY_OFFSET - tmp > tsk->rlim[RLIMIT_STACK].rlim_max)
+				do_exit(SIGSEGV);
 		get_empty_page(address);
 		return;
 	}
 	if (tsk == current)
-	if (share_page(inode,tmp))
-		return;
+		if (share_page(inode,tmp)) {
+			++tsk->min_flt;
+			return;
+		}
+	++tsk->maj_flt;
 	if (!(page = get_free_page()))
 		oom();
 /* remember that 1 block is used for header */
@@ -518,6 +528,7 @@ void do_wp_page(unsigned long error_code, unsigned long address)
 		printk("Bad things happen: page error in do_wp_page\n\r");
 		do_exit(SIGSEGV);
 	}
+	++current->min_flt;
 	un_wp_page((unsigned long *)
 		(((address>>10) & 0xffc) + (0xfffff000 &
 		*((unsigned long *) ((address>>20) &0xffc)))));
@@ -528,6 +539,15 @@ void show_mem(void)
     int i, j, k, free = 0, total = 0;
     int shared = 0;
     unsigned long *pg_tbl;
+    static int lock = 0;
+
+    cli();
+    if (lock) {
+        sti();
+        return;
+    }
+    lock = 1;
+    sti();
 
     printk("Mem-info:\n\r");
     for(i = 0 ; i < PAGING_PAGES ; i++) {
@@ -570,6 +590,7 @@ void show_mem(void)
         }
     }
     printk("Memory found: %d (%d)\n\r", free - shared, total);
+    lock = 0;
 }
 
 void write_verify(unsigned long address)

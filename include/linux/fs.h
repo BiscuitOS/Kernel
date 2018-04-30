@@ -7,6 +7,7 @@
 #define _FS_H
 
 #include <sys/types.h>
+#include <sys/dirent.h>
 
 /* devices are as follows: (same as minix, so we can use the minix
  * file system. These are major numbers.)
@@ -141,12 +142,15 @@ struct super_block {
 	unsigned char s_lock;
 	unsigned char s_rd_only;
 	unsigned char s_dirt;
+	/* TUBE */
+	struct super_operations *s_op;
 };
 
 struct file_operations {
 	int (*lseek) (struct inode *, struct file *, off_t, int);
 	int (*read) (struct inode *, struct file *, char *, int);
 	int (*write) (struct inode *, struct file *, char *, int);
+	int (*readdir) (struct inode *, struct file *, struct dirent *);
 };
 
 struct inode_operations {
@@ -163,12 +167,28 @@ struct inode_operations {
 	int (*open) (struct inode *, struct file *);
 	void (*release) (struct inode *, struct file *);
 	struct inode * (*follow_link) (struct inode *, struct inode *);
+	int (*bmap) (struct inode *,int);
+	void (*truncate) (struct inode *);
+	/* added by entropy */
+	void (*write_inode)(struct inode *inode);
+	void (*put_inode)(struct inode *inode);
 };
+
+struct super_operations {
+	void (*read_inode)(struct inode *inode);
+	void (*put_super)(struct super_block *sb);
+};
+
+struct file_system_type {
+	struct super_block *(*read_super)(struct super_block *sb,void *mode);
+	char *name;
+};
+
+extern struct file_system_type *get_fs_type(char *name);
 
 extern struct inode inode_table[NR_INODE];
 extern struct file file_table[NR_FILE];
 extern struct super_block super_block[NR_SUPER];
-extern struct buffer_head * start_buffer;
 extern int nr_buffers;
 
 extern void check_disk_change(int dev);
@@ -205,6 +225,7 @@ extern void put_super(int dev);
 extern void init_swapping(void);
 
 extern void mount_root(void);
+extern void free_super(struct super_block * sb);
 
 extern int minix_file_read(struct inode *, struct file *, char *, int);
 extern int pipe_read(struct inode *, struct file *, char *, int);
@@ -216,4 +237,8 @@ extern int pipe_write(struct inode *, struct file *, char *, int);
 extern int char_write(struct inode *, struct file *, char *, int);
 extern int block_write(struct inode *, struct file *, char *, int);
 
+extern int permission(struct inode * inode,int mask);
+extern struct inode * _namei(const char * filename, struct inode * base,
+	int follow_links);
+extern void lock_super(struct super_block * sb);
 #endif

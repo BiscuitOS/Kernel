@@ -11,6 +11,7 @@
 #
 #	bootsect.s		(C) 1991 Linus Torvalds
 #       modified by Drew Eckhardt
+#       modified by Bruce Evans (bde)
 #
 # bootsect.s is loaded at 0x7c00 by the bios-startup routines, and moves
 # iself out of the way to address 0x90000, and jump there.
@@ -51,26 +52,6 @@
 	.equ SYSSEG, 0x1000     # system loaded at 0x10000 (65536).
 	.equ ENDSEG, SYSSEG + SYSSIZE # where to stop loading
 
-# ROOT_DEV: rootfs
-# Device number of Rootfs. define as:
-# Device number = major * 256 + minor
-# dev_no = (major << 8) + minor
-# Major device number:
-# Memory   : 1
-# floppy   : 2
-# Disk     : 3
-# ttyx     : 4
-# tty      : 5
-# parallel : 6
-# non-pipo : 7
-# 0x300    : /dev/hd0 - The first hard disk
-# 0x301    : /dev/hd1 - The first partition on first hard disk.
-# 0x302    : /dev/hd2 - The second partition on first hard disk.
-# ...
-# 0x304    : /dev/hd4 - The second hard disk
-# 0x305    : /dev/hd5 - The first partition on second hard disk.
-# 0x306    : /dev/hd6 - The second partition on second hard disk.
-# ROOT_DEV = 0 & SWAP_DEV are now written by "build"
 	.equ	ROOT_DEV, 0x301
 	.equ	SWAP_DEV, 0x302
 
@@ -91,7 +72,7 @@ _start:
 	ljmp	$INITSEG, $go
 go:
 	mov	%cs, %ax
-	mov	$0xfef4, %dx
+	mov	$0x3FF4, %dx
 	mov	%ax, %ds
 	mov	%ax, %es
 	push	%ax

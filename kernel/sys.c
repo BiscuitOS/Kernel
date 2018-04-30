@@ -350,30 +350,34 @@ int sys_setrlimit(int resource, struct rlimit *rlim)
  */
 int sys_getrusage(int who, struct rusage *ru)
 {
-    struct rusage r;
-    unsigned long *lp, *lpend, *dest;
+	struct rusage r;
+	unsigned long	*lp, *lpend, *dest;
 
-    if (who != RUSAGE_SELF && who != RUSAGE_CHILDREN)
-        return -EINVAL;
-    verify_area(ru, sizeof *ru);
-    memset((char *) &r, 0, sizeof(r));
-    if (who == RUSAGE_SELF) {
-        r.ru_utime.tv_sec  = CT_TO_SECS(current->utime);
-        r.ru_utime.tv_usec = CT_TO_USECS(current->utime);
-        r.ru_stime.tv_sec  = CT_TO_SECS(current->stime);
-        r.ru_stime.tv_usec = CT_TO_USECS(current->stime);
-    } else {
-        r.ru_utime.tv_sec  = CT_TO_SECS(current->cutime);
-        r.ru_utime.tv_usec = CT_TO_USECS(current->cutime);
-        r.ru_stime.tv_sec  = CT_TO_SECS(current->cstime);
-        r.ru_stime.tv_usec = CT_TO_USECS(current->cstime);
-    }
-    lp = (unsigned long *) &r;
-    lpend = (unsigned long *) (&r+1);
-    dest = (unsigned long *) ru;
-    for (; lp < lpend; lp++, dest++) 
-        put_fs_long(*lp, dest);
-    return 0;
+	if (who != RUSAGE_SELF && who != RUSAGE_CHILDREN)
+		return -EINVAL;
+	verify_area(ru, sizeof *ru);
+	memset((char *) &r, 0, sizeof(r));
+	if (who == RUSAGE_SELF) {
+		r.ru_utime.tv_sec = CT_TO_SECS(current->utime);
+		r.ru_utime.tv_usec = CT_TO_USECS(current->utime);
+		r.ru_stime.tv_sec = CT_TO_SECS(current->stime);
+		r.ru_stime.tv_usec = CT_TO_USECS(current->stime);
+		r.ru_minflt = current->min_flt;
+		r.ru_majflt = current->maj_flt;
+	} else {
+		r.ru_utime.tv_sec = CT_TO_SECS(current->cutime);
+		r.ru_utime.tv_usec = CT_TO_USECS(current->cutime);
+		r.ru_stime.tv_sec = CT_TO_SECS(current->cstime);
+		r.ru_stime.tv_usec = CT_TO_USECS(current->cstime);
+		r.ru_minflt = current->cmin_flt;
+		r.ru_majflt = current->cmaj_flt;
+	}
+	lp = (unsigned long *) &r;
+	lpend = (unsigned long *) (&r+1);
+	dest = (unsigned long *) ru;
+	for (; lp < lpend; lp++, dest++) 
+		put_fs_long(*lp, dest);
+	return(0);
 }
 
 int sys_gettimeofday(struct timeval *tv, struct timezone *tz)

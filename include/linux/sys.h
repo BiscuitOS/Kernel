@@ -90,6 +90,7 @@ extern int sys_readlink();
 extern int sys_uselib();
 extern int sys_swapon();
 extern int sys_reboot();
+extern int sys_readdir();
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN0
 extern int sys_d_open(void); 
 #endif
@@ -382,6 +383,7 @@ sys_readlink,
 sys_uselib,
 sys_swapon,
 sys_reboot,
+sys_readdir,
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN0
 sys_d_open,  /* Open file/directory */
 #endif

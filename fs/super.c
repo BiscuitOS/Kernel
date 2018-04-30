@@ -17,6 +17,7 @@
 #include <asm/system.h>
 
 #include <errno.h>
+#include <string.h>
 
 /* set_bit uses setb, as gas doesn't recognize sets */
 #define set_bit(bitnr, addr) ({ \
@@ -26,12 +27,32 @@ __res; })
 
 /* this is initialized in init/main.c */
 int ROOT_DEV = 0;
+
+/* Move into include file later */
+
+static struct file_system_type file_systems[] = {
+	{minix_read_super,"minix"},
+	{NULL,NULL}
+};
+
+/* end of include file */
+
+struct file_system_type *get_fs_type(char *name)
+{
+	int a;
+	
+	for(a = 0 ; file_systems[a].read_super ; a++)
+		if (!strcmp(name,file_systems[a].name))
+			return(&file_systems[a]);
+	return(NULL);
+}
+
 struct super_block super_block[NR_SUPER];
 
 int sync_dev(int dev);
 void wait_for_keypress(void);
 
-static void wait_on_super(struct super_block *sb)
+void wait_on_super(struct super_block *sb)
 {
     cli();
     while (sb->s_lock)
@@ -58,7 +79,7 @@ struct super_block *get_super(int dev)
     return NULL;
 }
 
-static void lock_super(struct super_block *sb)
+void lock_super(struct super_block *sb)
 {
     cli();
     while (sb->s_lock)
@@ -67,7 +88,7 @@ static void lock_super(struct super_block *sb)
     sti();
 }
 
-static void free_super(struct super_block *sb)
+void free_super(struct super_block *sb)
 {
     cli();
     sb->s_lock = 0;
@@ -75,97 +96,63 @@ static void free_super(struct super_block *sb)
     sti();
 }
 
-static struct super_block *read_super(int dev)
+static struct super_block *read_super(int dev,char *name,void *data)
 {
-    struct super_block * s;
-    struct buffer_head * bh;
-    int i,block;
+	struct super_block * s;
+	struct file_system_type *type;
 
-    if (!dev)
-        return NULL;
-    check_disk_change(dev);
-    if ((s = get_super(dev)))
-        return s;
-    for (s = 0 + super_block; ; s++) {
-        if (s >= NR_SUPER + super_block)
-            return NULL;
-        if (!s->s_dev)
-            break;
-    }
-    s->s_dev = dev;
-    s->s_mounted = NULL;
-    s->s_covered = NULL;
-    s->s_time = 0;
-    s->s_rd_only = 0;
-    s->s_dirt = 0;
-    lock_super(s);
-    if (!(bh = bread(dev, 1))) {
-       s->s_dev=0;
-       free_super(s);
-       return NULL;
-    }
-    *((struct minix_super_block *) s) =
-             *((struct minix_super_block *) bh->b_data);
-    brelse(bh);
-    if ((s->s_magic != MINIX_SUPER_MAGIC) &&
-        (s->s_magic != MINIX_SUPER_MAGIC_V1)) {
-		s->s_dev = 0;
-		free_super(s);
+	if (!dev)
+		return NULL;
+	check_disk_change(dev);
+	if ((s = get_super(dev)))
+		return s;
+	if (!(type=get_fs_type(name))) {
+		printk("get fs type failed %s\n",name);
 		return NULL;
 	}
-	for (i=0;i < MINIX_I_MAP_SLOTS;i++)
-		s->s_imap[i] = NULL;
-	for (i=0;i < MINIX_Z_MAP_SLOTS;i++)
-		s->s_zmap[i] = NULL;
-	block=2;
-	for (i=0 ; i < s->s_imap_blocks ; i++)
-		if ((s->s_imap[i]=bread(dev,block)))
-			block++;
-		else
+	for (s = 0+super_block ;; s++) {
+		if (s >= NR_SUPER+super_block)
+			return NULL;
+		if (!s->s_dev)
 			break;
-	for (i=0 ; i < s->s_zmap_blocks ; i++)
-		if ((s->s_zmap[i]=bread(dev,block)))
-			block++;
-		else
-			break;
-	if (block != 2+s->s_imap_blocks+s->s_zmap_blocks) {
-		for(i=0;i<MINIX_I_MAP_SLOTS;i++)
-			brelse(s->s_imap[i]);
-		for(i=0;i<MINIX_Z_MAP_SLOTS;i++)
-			brelse(s->s_zmap[i]);
-		s->s_dev=0;
-		free_super(s);
-		return NULL;
 	}
-	s->s_imap[0]->b_data[0] |= 1;
-	s->s_zmap[0]->b_data[0] |= 1;
-	free_super(s);
-	return s;
+	s->s_dev = dev;
+	if (!type->read_super(s,data))
+		return(NULL);
+	s->s_dev = dev;
+	s->s_covered = NULL;
+	s->s_time = 0;
+	s->s_rd_only = 0;
+	s->s_dirt = 0;
+	return(s);
 }
 
 void mount_root(void)
 {
-    int i, free;
-    struct super_block * p;
-    struct inode * mi;
+	int i,free;
+	struct super_block * p;
+	struct inode * mi;
 
-    if (32 != sizeof (struct minix_inode))
-        panic("bad i-node size");
-    for(i = 0; i < NR_FILE; i++)
-        file_table[i].f_count=0;
-    if (MAJOR(ROOT_DEV) == 2) {
-        printk("Insert root floppy and press ENTER");
-        wait_for_keypress();
-    }
-    for(p = &super_block[0]; p < &super_block[NR_SUPER]; p++) {
-        p->s_dev = 0;
-        p->s_lock = 0;
-        p->s_wait = NULL;
-    }
-    if (!(p = read_super(ROOT_DEV)))
-        panic("Unable to mount root");
-    if (!(mi = iget(ROOT_DEV, MINIX_ROOT_INO)))
-        panic("Unable to read root i-node");
+	if (32 != sizeof (struct minix_inode))
+		panic("bad i-node size");
+	for(i=0;i<NR_FILE;i++)
+		file_table[i].f_count=0;
+	if (MAJOR(ROOT_DEV) == 2) {
+		printk("Insert root floppy and press ENTER");
+		wait_for_keypress();
+	}
+	for(p = &super_block[0] ; p < &super_block[NR_SUPER] ; p++) {
+		p->s_dev = 0;
+		p->s_lock = 0;
+		p->s_wait = NULL;
+	}
+	if (!(p=read_super(ROOT_DEV,"minix",NULL)))
+		panic("Unable to mount root");
+ 	/*wait_for_keypress();
+	if (!(mi=iget(ROOT_DEV,MINIX_ROOT_INO)))
+		panic("Unable to read root i-node");
+	wait_for_keypress();*/
+	mi=p->s_mounted;
 	mi->i_count += 3 ;	/* NOTE! it is logically used 4 times, not 1 */
 	p->s_mounted = p->s_covered = mi;
 	current->pwd = mi;
@@ -187,7 +174,6 @@ void mount_root(void)
 void put_super(int dev)
 {
 	struct super_block * sb;
-	int i;
 
 	if (dev == ROOT_DEV) {
 		printk("root diskette changed: prepare for armageddon\n\r");
@@ -199,14 +185,8 @@ void put_super(int dev)
 		printk("Mounted disk changed - tssk, tssk\n\r");
 		return;
 	}
-	lock_super(sb);
-	sb->s_dev = 0;
-	for(i=0;i<MINIX_I_MAP_SLOTS;i++)
-		brelse(sb->s_imap[i]);
-	for(i=0;i<MINIX_Z_MAP_SLOTS;i++)
-		brelse(sb->s_zmap[i]);
-	free_super(sb);
-	return;
+	if (sb->s_op && sb->s_op->put_super)
+		sb->s_op->put_super(sb);
 }
 
 int sys_mount(char *dev_name, char *dir_name, int rw_flag)
@@ -233,7 +213,11 @@ int sys_mount(char *dev_name, char *dir_name, int rw_flag)
 		iput(dir_i);
 		return -EPERM;
 	}
-	if (!(sb=read_super(dev))) {
+	if (dir_i->i_mount) {
+		iput(dir_i);
+		return -EPERM;
+	}
+	if (!(sb=read_super(dev,"minix",NULL))) {
 		iput(dir_i);
 		return -EBUSY;
 	}
@@ -241,18 +225,10 @@ int sys_mount(char *dev_name, char *dir_name, int rw_flag)
 		iput(dir_i);
 		return -EBUSY;
 	}
-	if (dir_i->i_mount) {
-		iput(dir_i);
-		return -EPERM;
-	}
-	if (!(sb->s_mounted = iget(dev,MINIX_ROOT_INO))) {
-		iput(dir_i);
-		return -EPERM;
-	}
-	sb->s_covered=dir_i;
-	dir_i->i_mount=1;
-	dir_i->i_dirt=1;		/* NOTE! we don't iput(dir_i) */
-	return 0;			/* we do that in umount */
+	sb->s_covered = dir_i;
+	dir_i->i_mount = 1;
+	dir_i->i_dirt = 1;		/* NOTE! we don't iput(dir_i) */
+	return 0;
 }
 
 int sys_umount(char *dev_name)

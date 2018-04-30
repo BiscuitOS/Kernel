@@ -246,6 +246,22 @@ empty_8042:
 	jnz	empty_8042	# yes - loop
 	ret
 
+getkey:
+	in	$0x60, %al	# Quick and dirty...
+	.word	0x00eb,0x00eb	# jmp $+2, jmp $+2
+	mov	%al,%bl
+	in	$0x61, %al
+	.word	0x00eb,0x00eb
+	mov	%ah, %al
+	or	$0x80, %al
+	out	%al, $0x61
+	.word	0x00eb,0x00eb
+	mov	%ah, %al
+	out	%al, $0x61
+	.word	0x00eb,0x00eb
+	mov	%bl, %al
+	ret
+
 # Routine trying to recognize type of SVGA-board present (if any)
 # and if it recognize one gives the choices of resolution it offsets.
 # If one is found the resolution chosen is given by al,ah (row, cols).
@@ -265,8 +281,8 @@ flush:
 	jb	nokey
 	jmp	flush
 nokey:
+	call	getkey
 # I don't care press buttom, so skip this routine.
-#	in	$0x60, %al
 #	cmp	$0x82, %al
 #	jb	nokey
 #	cmp	$0xe0, %al
@@ -535,7 +551,7 @@ tbl:
 	pop	%si
 	add	$0x80, %cl
 nonum:
-	in	$0x60, %al	# Quick and dirty ...
+	call	getkey
 	cmp	$0x82, %al
 	jb	nonum
 	cmp	$0x8b, %al

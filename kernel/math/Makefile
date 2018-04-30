@@ -1,4 +1,4 @@
-obj-y += math_emulate.o
+obj-y += emulate.o
 obj-y += add.o
 obj-y += compare.o
 obj-y += convert.o
