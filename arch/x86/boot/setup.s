@@ -54,6 +54,11 @@ _start:
 	int	$0x15
 	mov	%ax, %ds:2
 
+# set the keyboard repeat rate to the max
+	mov	$0x0305, %ax
+	mov	$0x0000, %bx
+	int	$0x16
+
 # Get video-card data:
 	mov	$0x0f, %ah
 	int	$0x10
@@ -556,8 +561,24 @@ nozero:
 	pop	%ds
 	ret
 novid7:
-	pop	%ds	# Here could be code to support standard 80x50, 80x30
-	mov	$0x5019, %ax
+	mov	$0x1112, %ax
+	mov	$0x0, %bl
+	int	$0x10		# use 8x8 font set (50 lines on VGA)
+
+	mov	$0x1200, %ax
+	mov	$0x20, %bl
+	int	$0x10		# use alternate print screen
+
+	mov	$0x1201, %ax
+	mov	$0x34, %bl
+	int	$0x10		# turn off cursor emulation
+
+	mov	$0x01, %ah
+	mov	$0x0607, %cx
+	int	$0x10		# turn on cursor (scan lines 6 to 7)
+
+	pop	%ds
+	mov	$0x5032, %ax	# return 80x50
 	ret
 
 # Routine that 'tabs' to next col

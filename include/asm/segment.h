@@ -65,4 +65,37 @@ static inline void set_fs(unsigned long val)
 {
 	__asm__("mov %0,%%fs"::"r" ((unsigned short) val));
 }
+
+static inline void memcpy_tofs(void * to, void * from, unsigned long n)
+{
+__asm__("cld\n\t"
+	"push %%es\n\t"
+	"push %%fs\n\t"
+	"pop %%es\n\t"
+	"testb $1,%%cl\n\t"
+	"je 1f\n\t"
+	"movsb\n"
+	"1:\ttestb $2,%%cl\n\t"
+	"je 2f\n\t"
+	"movsw\n"
+	"2:\tshrl $2,%%ecx\n\t"
+	"rep ; movsl\n\t"
+	"pop %%es"
+	::"c" (n),"D" ((long) to),"S" ((long) from));
+}
+
+static inline void memcpy_fromfs(void * to, void * from, unsigned long n)
+{
+__asm__("cld\n\t"
+	"testb $1,%%cl\n\t"
+	"je 1f\n\t"
+	"fs ; movsb\n"
+	"1:\ttestb $2,%%cl\n\t"
+	"je 2f\n\t"
+	"fs ; movsw\n"
+	"2:\tshrl $2,%%ecx\n\t"
+	"rep ; fs ; movsl"
+	::"c" (n),"D" ((long) to),"S" ((long) from));
+}
+
 #endif

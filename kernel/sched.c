@@ -125,44 +125,28 @@ void schedule(void)
 
 static inline void __sleep_on(struct task_struct **p, int state)
 {
-	struct task_struct *tmp;
 	unsigned int flags;
 
 	if (!p)
 		return;
-	if (current == &(init_task.task))
+	if (current == task[0])
 		panic("task[0] trying to sleep");
 	__asm__("pushfl ; popl %0":"=r" (flags));
-	tmp = *p;
+	current->next_wait = *p;
+	task[0]->next_wait = NULL;
 	*p = current;
 	current->state = state;
-/* make sure interrupts are enabled: there should be no more races here */
 	sti();
-repeat:	schedule();
-	if (*p && *p != current) {
-		current->state = TASK_UNINTERRUPTIBLE;
-		(**p).state = 0;
-		goto repeat;
-	}
-	if ((*p = tmp))
-		tmp->state=0;
+	schedule();
+	if (current->next_wait != task[0])
+		wake_up(p);
+	current->next_wait = NULL;
 	__asm__("pushl %0 ; popfl"::"r" (flags));
 }
 
 void interruptible_sleep_on(struct task_struct **p)
 {
     __sleep_on(p, TASK_INTERRUPTIBLE);
-}
-
-void wake_up(struct task_struct **p)
-{
-    if (p && *p) {
-        if ((**p).state == TASK_STOPPED)
-            printk("wake_up: TASK_STOPPED");
-        if ((**p).state == TASK_ZOMBIE)
-            printk("wake_up: TASK_ZOMBIE");
-        (**p).state=0;
-    }
 }
 
 void sched_init(void)
@@ -277,14 +261,6 @@ int ticks_to_floppy_on(unsigned int nr)
 	}
 	sti();
 	return mon_timer[nr];
-}
-
-void floppy_on(unsigned int nr)
-{
-	cli();
-	while (ticks_to_floppy_on(nr))
-		sleep_on(nr + wait_motor);
-	sti();
 }
 
 void floppy_off(unsigned int nr)
@@ -435,6 +411,27 @@ int sys_pause(void)
 	schedule();
 	current->blocked = old_blocked;
 	return -EINTR;
+}
+
+void wake_up(struct task_struct **p)
+{
+	struct task_struct * wakeup_ptr, * tmp;
+
+	if (p && *p) {
+		wakeup_ptr = *p;
+		*p = NULL;
+		while (wakeup_ptr && wakeup_ptr != task[0]) {
+			if (wakeup_ptr->state == TASK_STOPPED)
+				printk("wake_up: TASK_STOPPED\n");
+			else if (wakeup_ptr->state == TASK_ZOMBIE)
+				printk("wake_up: TASK_ZOMBIE\n");
+			else
+				wakeup_ptr->state = TASK_RUNNING;
+			tmp = wakeup_ptr->next_wait;
+			wakeup_ptr->next_wait = task[0];
+			wakeup_ptr = tmp;
+		}
+	}
 }
 
 int sys_nice(long increment)

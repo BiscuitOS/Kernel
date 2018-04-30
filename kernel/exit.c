@@ -309,7 +309,8 @@ void do_exit(long code)
 		kill_pg(current->pgrp,SIGCONT,1);
 	}
 	/* Let father know we died */
-        send_sig (SIGCHLD, current->p_pptr, 1);	
+	send_sig (SIGCHLD, current->p_pptr, 1);
+	
 	/*
 	 * This loop does two things:
 	 * 
@@ -320,7 +321,7 @@ void do_exit(long code)
 	 */
 	if ((p = current->p_cptr)) {
 		while (1) {
-			p->flags &= ~PF_PTRACED;
+		        p->flags &= ~PF_PTRACED;
 			p->p_pptr = task[1];
 			if (p->state == TASK_ZOMBIE)
 				task[1]->signal |= (1<<(SIGCHLD-1));
@@ -358,9 +359,9 @@ void do_exit(long code)
 
 		if (current->tty >= 0) {
 			tty = TTY_TABLE(current->tty);
-			if (tty->pgrp>0)
+			if (tty->pgrp > 0)
 				kill_pg(tty->pgrp, SIGHUP, 1);
-			tty->pgrp = 0;
+			tty->pgrp = -1;
 			tty->session = 0;
 		}
 	 	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p)
@@ -377,8 +378,8 @@ void do_exit(long code)
 
 int sys_exit(int error_code)
 {
-    do_exit((error_code & 0xff) << 8);
-    return 0;
+	do_exit((error_code&0xff)<<8);
+	return 0;
 }
 
 int sys_waitpid(pid_t pid,unsigned long * stat_addr, int options)
@@ -409,7 +410,7 @@ repeat:
 					continue;
 				if (stat_addr)
 					put_fs_long((p->exit_code << 8) | 0x7f,
-					stat_addr);
+						stat_addr);
 				p->exit_code = 0;
 				return p->pid;
 			case TASK_ZOMBIE:

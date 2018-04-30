@@ -10,6 +10,9 @@
  * sleep. Special care is recommended.
  * 
  *  modified by Drew Eckhardt to check nr of hd's from the CMOS.
+ *
+ *  Thanks to Branko Lankester, lankeste@fwi.uva.nl, who found a bug
+ *  in the early extended-partition checks and added DM partitions
  */
 
 #include <asm/io.h>
@@ -51,14 +54,15 @@ repeat:              \
         panic(": block not locked");       \
     }
 
-#define CMOS_READ(addr) ({\
-    outb_p(0x80|addr,0x70);\
-    inb_p(0x71);\
-})
+static inline unsigned char CMOS_READ(unsigned char addr)
+{
+	outb_p(0x80|addr,0x70);
+	return inb_p(0x71);
+}
 
 extern void rd_load(void);
 static int recalibrate = 0;
-static int reset = 0;
+static int reset = 1;
 extern void hd_interrupt(void);
 static void do_hd_request(void);
 static void recal_intr(void);
@@ -112,22 +116,40 @@ static void check_partition(unsigned int dev)
     struct partition *p;
 
     if (!(bh = bread(dev, 0))) {
-        printk("Unable to read partition table of device %04x\n",dev);
-        return;
+       printk("Unable to read partition table of device %04x\n", dev);
+       return;
     }
     minor = current_minor;
-    if (*(unsigned short *)(bh->b_data + 510) == 0xAA55) {
+    if (*(unsigned short *) (bh->b_data + 510) == 0xAA55) {
         p = 0x1BE + (void *)bh->b_data;
-        for (i = 0 ; i < 4 ; i++, p++) {
+        for (i = 0; i < 4; i++, p++) {
+            if (!(hd[i + minor].nr_sects = p->nr_sects))
+                continue;
             hd[i + minor].start_sect = p->start_sect;
-            hd[i + minor].nr_sects = p->nr_sects;
+            if ((current_minor & 0x3f) >= 60)
+                continue;
+            if (p->sys_ind == EXTENDED_PARTITION) {
+                current_minor += 4;
+                check_partition(0x0300 | (i+minor));
+            }
         }
-        if (p->nr_sects && p->sys_ind == EXTENDED_PARTITION) {
-            current_minor += 4;
-            check_partition(i + minor);
+        /*
+         * check for Disk Manager partition table
+         */
+        if (*(unsigned short *)(bh->b_data + 0xfc) == 0x55AA) {
+            p = 0x1BE + (void *)bh->b_data;
+            for (i = 4; i < 16; i++) {
+                p--;
+                if ((current_minor & 0x3f) >= 60)
+                    break;
+                if (!(hd[current_minor + 4].start_sect = p->start_sect))
+                    continue;
+                hd[current_minor + 4].nr_sects = p->nr_sects;
+                current_minor++;
+            }
         }
     } else
-        printk("Bad partition table on dev %04x\n",dev);
+        printk("Bad partition table on dev %04x\n", dev);
     brelse(bh);
 }
 
@@ -240,6 +262,8 @@ static void bad_rw_intr(void)
 		end_request(0);
 	if (CURRENT->errors > MAX_ERRORS / 2)
 		reset = 1;
+	else
+		recalibrate = 1;
 }
 
 static void recal_intr(void)
@@ -293,106 +317,103 @@ static void write_intr(void)
 
 static void hd_times_out(void)
 {
-    if (!CURRENT)
-        return;
-    printk("HD timeout");
-    if (++CURRENT->errors >= MAX_ERRORS)
-        end_request(0);
-    do_hd = (NULL);
-    reset = 1;
-    do_hd_request();
+	do_hd = NULL;
+	reset = 1;
+	if (!CURRENT)
+		return;
+	printk("HD timeout");
+	if (++CURRENT->errors >= MAX_ERRORS)
+		end_request(0);
+	do_hd_request();
 }
 
 static void read_intr(void)
 {
-    if (win_result()) {
-        bad_rw_intr();
-        do_hd_request();
-        return;
-    }
-    port_read(HD_DATA, CURRENT->buffer, 256);
-    CURRENT->errors = 0;
-    CURRENT->buffer += 512;
-    CURRENT->sector++;
-
-    if (--CURRENT->nr_sectors) {
-        do_hd = &read_intr;
-        return;
-    }
-    end_request(1);
-    do_hd_request();
+	do_hd = &read_intr;
+	if (win_result()) {
+		do_hd = NULL;
+		bad_rw_intr();
+		do_hd_request();
+		return;
+	}
+	port_read(HD_DATA,CURRENT->buffer,256);
+	CURRENT->errors = 0;
+	CURRENT->buffer += 512;
+	CURRENT->sector++;
+	if (--CURRENT->nr_sectors)
+		return;
+	do_hd = NULL;
+	end_request(1);
+	do_hd_request();
 }
 
 void do_hd_request(void)
 {
-    int i, r;
-    unsigned int block, dev;
-    unsigned int sec, head, cyl;
-    unsigned int nsect;
+	int i,r;
+	unsigned int block,dev;
+	unsigned int sec,head,cyl;
+	unsigned int nsect;
 
 repeat:
-    if (!CURRENT)
-        return;
-    if (MAJOR(CURRENT->dev) != MAJOR_NR)
-        panic(DEVICE_NAME ": request list destroyed");
-    if (CURRENT->bh) {
-        if (!CURRENT->bh->b_lock)
-            panic(DEVICE_NAME ": block not locked");
-    }
+	if (!CURRENT)
+		return;
+	if (MAJOR(CURRENT->dev) != MAJOR_NR)
+		panic(DEVICE_NAME ": request list destroyed");
+	if (CURRENT->bh) {
+		if (!CURRENT->bh->b_lock)
+		panic(DEVICE_NAME ": block not locked");
+	}
 
-    dev = MINOR(CURRENT->dev);
-    block = CURRENT->sector;
-
-    if (dev >= (NR_HD << 6) || block + 2 > hd[dev].nr_sects) {
-        end_request(0);
-        goto repeat;
-    }
-    block += hd[dev].start_sect;
-    dev >>= 6;
-    sec = block % hd_info[dev].sect;
-    block /= hd_info[dev].sect;
-    head = block % hd_info[dev].head;
-    cyl = block / hd_info[dev].head;
-    sec++;
-    nsect = CURRENT->nr_sectors;
-    if (reset) {
-        recalibrate = 1;
-        reset_hd();
-        return;
-    }
-
-    if (recalibrate) {
-        recalibrate = 0;
-        hd_out(dev, hd_info[CURRENT_DEV].sect, 0, 0, 0,
-                    WIN_RESTORE, &recal_intr);
-        if (reset)
-            goto repeat;
-        return;
-    }
-
-    if (CURRENT->cmd == WRITE) {
-        hd_out(dev, nsect, sec, head, cyl, WIN_WRITE, &write_intr);
-        if (reset)
-            goto repeat;
-        for (i = 0; i < 10000 && !(r = inb_p(HD_STATUS) & DRQ_STAT); i++)
-            /* nothing */ ;
-        if (!r) {
-            bad_rw_intr();
-            goto repeat;
-        }
-        port_write(HD_DATA, CURRENT->buffer, 256);
-    } else if (CURRENT->cmd == READ) {
-        hd_out(dev, nsect, sec, head, cyl, WIN_READ, &read_intr);
-        if (reset)
-            goto repeat;
-    } else
-        panic("unknow hd-command");
+	dev = MINOR(CURRENT->dev);
+	block = CURRENT->sector;
+	nsect = CURRENT->nr_sectors;
+	if (dev >= (NR_HD<<6) || block+nsect > hd[dev].nr_sects) {
+		end_request(0);
+		goto repeat;
+	}
+	block += hd[dev].start_sect;
+	dev >>= 6;
+	sec = block % hd_info[dev].sect;
+	block /= hd_info[dev].sect;
+	head = block % hd_info[dev].head;
+	cyl = block / hd_info[dev].head;
+	sec++;
+	if (reset) {
+		recalibrate = 1;
+		reset_hd();
+		return;
+	}
+	if (recalibrate) {
+		recalibrate = 0;
+		hd_out(dev,hd_info[dev].sect,0,0,0,
+			WIN_RESTORE,&recal_intr);
+		if (reset)
+			goto repeat;
+		return;
+	}	
+	if (CURRENT->cmd == WRITE) {
+		hd_out(dev,nsect,sec,head,cyl,WIN_WRITE,&write_intr);
+		if (reset)
+			goto repeat;
+		for(i=0 ; i<10000 && !(r=inb_p(HD_STATUS)&DRQ_STAT) ; i++)
+			/* nothing */ ;
+		if (!r) {
+			bad_rw_intr();
+			goto repeat;
+		}
+		port_write(HD_DATA,CURRENT->buffer,256);
+	} else if (CURRENT->cmd == READ) {
+		hd_out(dev,nsect,sec,head,cyl,WIN_READ,&read_intr);
+		if (reset)
+			goto repeat;
+	} else
+		panic("unknown hd-command");
 }
 
 void hd_init(void)
 {
     blk_dev[MAJOR_NR].request_fn = do_hd_request;
-    set_trap_gate(0x2E, &hd_interrupt);
+    set_intr_gate(0x2E, &hd_interrupt);
     outb_p(inb_p(0x21) & 0xfb, 0x21);
     outb(inb_p(0xA1) & 0xbf, 0xA1);
     timer_table[HD_TIMER].fn = hd_times_out;

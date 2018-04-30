@@ -77,7 +77,7 @@ static long buffer_memory_end;
 static long main_memory_start;
 static char term[32];
 
-//static char *argv_init[] = { "/bin/init", NULL };
+static char *argv_init[] = { "/bin/init", NULL };
 static char *envp_init[] = { "HOME=/", NULL, NULL };
 
 static char *argv_rc[] = { "/bin/sh", NULL };
@@ -233,6 +233,7 @@ void init(void)
 #ifdef CONFIG_DEBUG_USERLAND_SYSCALL
     debug_on_userland_syscall();
 #endif
+    execve("/etc/init", argv_init, envp_init);
 //    execve("/bin/init", argv_init, envp_init);
     /* if this fails, fall through to original stuff */
 
