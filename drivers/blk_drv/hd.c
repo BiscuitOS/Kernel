@@ -1,8 +1,9 @@
 /*
- * hd.c
+ *  linux/kernel/hd.c
  *
- * (C) 1991 Linus Torvalds
+ *  (C) 1991  Linus Torvalds
  */
+
 /*
  * This is the low-level hd interrupt support. It traverses the
  * request-list, using interrupts to jump between functions. As
@@ -14,67 +15,21 @@
  *  Thanks to Branko Lankester, lankeste@fwi.uva.nl, who found a bug
  *  in the early extended-partition checks and added DM partitions
  */
-#include <linux/head.h>
-#include <linux/fs.h>
+
+#include <errno.h>
+
 #include <linux/config.h>
-#include <linux/hdreg.h>
-#include <linux/kernel.h>
 #include <linux/sched.h>
 #include <linux/timer.h>
-
+#include <linux/fs.h>
+#include <linux/kernel.h>
+#include <linux/hdreg.h>
 #include <asm/system.h>
 #include <asm/io.h>
 #include <asm/segment.h>
 
-#include <linux/blk.h>
-
-#ifdef CONFIG_DEBUG_USERLAND
-#include <test/debug.h>
-#endif
-
-#include <errno.h>
-
-/* Max read/write errors/sector */
-#define MAX_ERRORS          7
-#define MAX_HD              2
-
-#define MAJOR_NR            3
-#define DEVICE_NAME         "harddisk"
-#define DEVICE_NR(device)   (MINOR(device) / 5)
-
-#define CURRENT             (blk_dev[MAJOR_NR].current_request)
-#define CURRENT_DEV         DEVICE_NR(CURRENT->dev)
-
-/* harddisk: timeout is 6 seconds.. */
-#define TIMEOUT_VALUE 600
-#define DEVICE_TIMEOUT 1
-
-#ifdef DEVICE_TIMEOUT
-#define SET_TIMER \
-((timer_table[DEVICE_TIMEOUT].expires = jiffies + TIMEOUT_VALUE), \
-(timer_active |= 1<<DEVICE_TIMEOUT))
-
-#define CLEAR_TIMER \
-timer_active &= ~(1<<DEVICE_TIMEOUT)
-
-#define SET_INTR(x) \
-if (do_hd = (x)) \
-	SET_TIMER; \
-else \
-	CLEAR_TIMER;
-#else
-#define SET_INTR(x) (do_hd = (x))
-#endif
-
-#define INIT_REQUEST \
-repeat:              \
-    if (!CURRENT)    \
-        return;      \
-    if (MAJOR(CURRENT->dev) != MAJOR_NR)  \
-        panic(": request list destroyed"); \
-    if (CURRENT->bh) {     \
-        panic(": block not locked");       \
-    }
+#define MAJOR_NR 3
+#include "blk.h"
 
 static inline unsigned char CMOS_READ(unsigned char addr)
 {
@@ -82,52 +37,51 @@ static inline unsigned char CMOS_READ(unsigned char addr)
 	return inb_p(0x71);
 }
 
-extern void rd_load(void);
-static int recalibrate = 0;
-static int reset = 0;
-extern void hd_interrupt(void);
-static void do_hd_request(void);
+#define	HD_DELAY	0
+
+/* Max read/write errors/sector */
+#define MAX_ERRORS	7
+#define MAX_HD		2
+
 static void recal_intr(void);
 static void bad_rw_intr(void);
-extern int *blk_size[];
 
-int hd_timeout = 0;
+static int recalibrate = 0;
+static int reset = 0;
+
+#if (HD_DELAY > 0)
+unsigned long last_req, read_timer();
+#endif
+
 /*
- * This struct define the HD's and their types.
+ *  This struct defines the HD's and their types.
  */
 struct hd_i_struct {
-    unsigned int head;
-    unsigned int sect;
-    unsigned int cyl;
-    unsigned int wpcom;
-    unsigned int lzone;
-    unsigned int ctl;
-};
-
-void (*do_hd)(void) = NULL;
-
-#ifdef CONFIG_HD_TYPE
+	unsigned int head,sect,cyl,wpcom,lzone,ctl;
+	};
+#ifdef HD_TYPE
 struct hd_i_struct hd_info[] = { HD_TYPE };
-
-#define NR_HD ((sizeof(hd_info)) / (sizeof(struct hd_i_struct)))
+#define NR_HD ((sizeof (hd_info))/(sizeof (struct hd_i_struct)))
 #else
-struct hd_i_struct hd_info[] = { {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0} };
-
+struct hd_i_struct hd_info[] = { {0,0,0,0,0,0},{0,0,0,0,0,0} };
 static int NR_HD = 0;
 #endif
 
 static struct hd_struct {
 	long start_sect;
 	long nr_sects;
-} hd[MAX_HD << 6] = { { 0, 0 },};
+} hd[MAX_HD<<6]={{0,0},};
 
-static int hd_sizes[MAX_HD << 6] = {0, };
+static int hd_sizes[MAX_HD<<6] = {0, };
 
-#define port_read(port, buf, nr) \
-	__asm__("cld;rep;insw":: "d" (port),"D" (buf),"c" (nr))
+#define port_read(port,buf,nr) \
+__asm__("cld;rep;insw"::"d" (port),"D" (buf),"c" (nr))
 
-#define port_write(port, buf, nr) \
-	__asm__("cld;rep;outsw":: "d" (port),"S" (buf),"c" (nr))
+#define port_write(port,buf,nr) \
+__asm__("cld;rep;outsw"::"d" (port),"S" (buf),"c" (nr))
+
+extern void hd_interrupt(void);
+extern void rd_load(void);
 
 static unsigned int current_minor;
 
@@ -177,7 +131,7 @@ static void extended_partition(unsigned int dev)
 			       current_minor, hd[current_minor].start_sect, 
 			       hd[current_minor].nr_sects,
 			       hd[current_minor].start_sect + 
-			       hd[current_minor].nr_sects);
+			       hd[current_minor].nr_sects - 1);
 			current_minor++;
 			p++;
 		/*
@@ -201,7 +155,6 @@ done:
 	brelse(bh);
 }
 
-
 static void check_partition(unsigned int dev)
 {
 	int i, minor = current_minor;
@@ -224,7 +177,7 @@ static void check_partition(unsigned int dev)
 			hd[minor].start_sect = first_sector + p->start_sect;
 			printk(" part %d start %d size %d end %d \n\r", i, 
 			       hd[minor].start_sect, hd[minor].nr_sects, 
-			       hd[minor].start_sect + hd[minor].nr_sects);
+			       hd[minor].start_sect + hd[minor].nr_sects - 1);
 			if ((current_minor & 0x3f) >= 60)
 				continue;
 			if (p->sys_ind == EXTENDED_PARTITION) {
@@ -249,7 +202,7 @@ static void check_partition(unsigned int dev)
 				       hd[current_minor].start_sect, 
 				       hd[current_minor].nr_sects,
 				       hd[current_minor].start_sect + 
-				       hd[current_minor].nr_sects);
+				       hd[current_minor].nr_sects - 1);
 			}
 		}
 	} else
@@ -257,45 +210,93 @@ static void check_partition(unsigned int dev)
 	brelse(bh);
 }
 
-static inline void unlock_buffer(struct buffer_head *bh)
+/* This may be used only once, enforced by 'static int callable' */
+int sys_setup(void * BIOS)
 {
-	if (!bh->b_lock)
-		printk(": free buffer being unlocked\n");
-	bh->b_lock = 0;
-	wake_up(&bh->b_wait);
-}
+	static int callable = 1;
+	int i,drive;
+	unsigned char cmos_disks;
 
-static inline void end_request(int uptodate)
-{
-	if (CURRENT->bh) {
-		CURRENT->bh->b_uptodate = uptodate;
-		unlock_buffer(CURRENT->bh);
+	if (!callable)
+		return -1;
+	callable = 0;
+#ifndef HD_TYPE
+	for (drive=0 ; drive<2 ; drive++) {
+		hd_info[drive].cyl = *(unsigned short *) BIOS;
+		hd_info[drive].head = *(unsigned char *) (2+BIOS);
+		hd_info[drive].wpcom = *(unsigned short *) (5+BIOS);
+		hd_info[drive].ctl = *(unsigned char *) (8+BIOS);
+		hd_info[drive].lzone = *(unsigned short *) (12+BIOS);
+		hd_info[drive].sect = *(unsigned char *) (14+BIOS);
+		BIOS += 16;
 	}
-	if (!uptodate) {
-		printk(" I/O error\n\r");
-		printk("dev %04x, block %d\n\r", CURRENT->dev,
-		       CURRENT->bh->b_blocknr);
+
+	/*
+		We querry CMOS about hard disks : it could be that 
+		we have a SCSI/ESDI/etc controller that is BIOS
+		compatable with ST-506, and thus showing up in our
+		BIOS table, but not register compatable, and therefore
+		not present in CMOS.
+
+		Furthurmore, we will assume that our ST-506 drives
+		<if any> are the primary drives in the system, and 
+		the ones reflected as drive 1 or 2.
+
+		The first drive is stored in the high nibble of CMOS
+		byte 0x12, the second in the low nibble.  This will be
+		either a 4 bit drive type or 0xf indicating use byte 0x19 
+		for an 8 bit type, drive 1, 0x1a for drive 2 in CMOS.
+
+		Needless to say, a non-zero value means we have 
+		an AT controller hard disk for that drive.
+
+		
+	*/
+
+	if ((cmos_disks = CMOS_READ(0x12)) & 0xf0)
+		if (cmos_disks & 0x0f)
+			NR_HD = 2;
+		else
+			NR_HD = 1;
+	else
+		NR_HD = 0;
+#endif
+	for (i = 0 ; i < (MAX_HD<<6) ; i++) {
+		hd[i].start_sect = 0;
+		hd[i].nr_sects = 0;
 	}
-	wake_up(&CURRENT->waiting);
-	wake_up(&wait_for_request);
-	CURRENT->dev = -1;
-	CURRENT = CURRENT->next;
+	for (i = 0 ; i < NR_HD ; i++)
+		hd[i<<6].nr_sects = hd_info[i].head*
+				hd_info[i].sect*hd_info[i].cyl;
+	for (drive=0 ; drive<NR_HD ; drive++) {
+		current_minor = 1+(drive<<6);
+		check_partition(0x0300+(drive<<6));
+	}
+	for (i=0 ; i<(MAX_HD<<6) ; i++)
+		hd_sizes[i] = hd[i].nr_sects>>1 ;
+	blk_size[MAJOR_NR] = hd_sizes;
+	if (NR_HD)
+		printk("Partition table%s ok.\n\r",(NR_HD>1)?"s":"");
+	rd_load();
+	mount_root();
+	return (0);
 }
 
-static int drive_busy(void)
+#if (HD_DELAY > 0)
+unsigned long read_timer(void)
 {
-    unsigned int i;
-    unsigned char c;
+	unsigned long t;
+	int i;
 
-    for (i = 0; i < 500000; i++) {
-        c = inb_p(HD_STATUS);
-        c &= (BUSY_STAT | READY_STAT | SEEK_STAT);
-        if (c == (READY_STAT | SEEK_STAT))
-            return 0;
-    }
-    printk("HD controller times out, c=%02x\n\r", c);
-    return 1;
+	cli();
+    	outb_p(0xc2, 0x43);
+	t = jiffies * 11931 + (inb_p(0x40) & 0x80 ? 5966 : 11932);
+	i = inb_p(0x40);
+	i |= inb(0x40) << 8;
+	sti();
+	return(t - i / 2);
 }
+#endif
 
 static int controller_ready(void)
 {
@@ -309,67 +310,203 @@ static int controller_ready(void)
 	return (retries);
 }
 
-static void hd_out(unsigned int drive, unsigned int nsect, unsigned int sect,
-		   unsigned int head, unsigned int cyl, unsigned int cmd,
-		   void (*intr_addr) (void))
+static int win_result(void)
+{
+	int i=inb_p(HD_STATUS);
+
+	if ((i & (BUSY_STAT | READY_STAT | WRERR_STAT | SEEK_STAT | ERR_STAT))
+		== (READY_STAT | SEEK_STAT))
+		return(0); /* ok */
+	if (i&1)
+		i=inb(HD_ERROR);
+	return (1);
+}
+
+static void hd_out(unsigned int drive,unsigned int nsect,unsigned int sect,
+		unsigned int head,unsigned int cyl,unsigned int cmd,
+		void (*intr_addr)(void))
 {
 	unsigned short port;
 
 	if (drive>1 || head>15)
 		panic("Trying to write bad sector");
+#if (HD_DELAY > 0)
+	while (read_timer() - last_req < HD_DELAY)
+		/* nothing */;
+#endif
 	if (reset || !controller_ready()) {
 		reset = 1;
 		return;
 	}
-    do_hd = intr_addr;
-    outb_p(hd_info[drive].ctl, HD_CMD);
-    port = HD_DATA;
-    outb_p(hd_info[drive].wpcom >> 2, ++port);
-    outb_p(nsect, ++port);
-    outb_p(sect, ++port);
-    outb_p(cyl, ++port);
-    outb_p(cyl >> 8, ++port);
-    outb_p(0xA0 | (drive << 4) | head, ++port);
-    outb(cmd, ++port);
+	SET_INTR(intr_addr);
+	outb_p(hd_info[drive].ctl,HD_CMD);
+	port=HD_DATA;
+	outb_p(hd_info[drive].wpcom>>2,++port);
+	outb_p(nsect,++port);
+	outb_p(sect,++port);
+	outb_p(cyl,++port);
+	outb_p(cyl>>8,++port);
+	outb_p(0xA0|(drive<<4)|head,++port);
+	outb_p(cmd,++port);
+}
+
+static int drive_busy(void)
+{
+	unsigned int i;
+	unsigned char c;
+
+	for (i = 0; i < 500000 ; i++) {
+		c = inb_p(HD_STATUS);
+		c &= (BUSY_STAT | READY_STAT | SEEK_STAT);
+		if (c == (READY_STAT | SEEK_STAT))
+			return 0;
+	}
+	printk("HD controller times out, c=%02x\n\r",c);
+	return(1);
 }
 
 static void reset_controller(void)
 {
-	int i;
+	int	i;
 
-	outb(4, HD_CMD);
-	for (i = 0; i < 1000; i++)
-		nop();
-
-	outb(hd_info[0].ctl & 0x0f, HD_CMD);
+	printk("HD-controller reset\r\n");
+	outb(4,HD_CMD);
+	for(i = 0; i < 1000; i++) nop();
+	outb(hd_info[0].ctl & 0x0f ,HD_CMD);
 	if (drive_busy())
 		printk("HD-controller still busy\n\r");
 	if ((i = inb(HD_ERROR)) != 1)
-		printk("HD-controller reset failed: %02x\n\r", i);
+		printk("HD-controller reset failed: %02x\n\r",i);
 }
 
-static int win_result(void)
+static void reset_hd(void)
 {
-    int i = inb_p(HD_STATUS);
+	static int i;
 
-    if ((i & (BUSY_STAT | READY_STAT | WRERR_STAT | SEEK_STAT | ERR_STAT)) 
-          == (READY_STAT | SEEK_STAT))
-        return (0);	/* ok */
-    if (i & 1)
-        i = inb(HD_ERROR);
-    return 1;
+repeat:
+	if (reset) {
+		reset = 0;
+		i = -1;
+		reset_controller();
+	} else if (win_result()) {
+		bad_rw_intr();
+		if (reset)
+			goto repeat;
+	}
+	i++;
+	if (i < NR_HD) {
+		hd_out(i,hd_info[i].sect,hd_info[i].sect,hd_info[i].head-1,
+			hd_info[i].cyl,WIN_SPECIFY,&reset_hd);
+		if (reset)
+			goto repeat;
+	} else
+		do_hd_request();
+}
+
+/*
+ * Ok, don't know what to do with the unexpected interrupts: on some machines
+ * doing a reset and a retry seems to result in an eternal loop. Right now I
+ * ignore it, and just set the timeout.
+ */
+void unexpected_hd_interrupt(void)
+{
+	printk("Unexpected HD interrupt\n\r");
+	SET_TIMER;
+#if 0
+	reset = 1;
+	do_hd_request();
+#endif
 }
 
 static void bad_rw_intr(void)
 {
 	if (!CURRENT)
-		return; 
-	if (++CURRENT->errors >= MAX_ERRORS)
-		end_request(0);
-	if (CURRENT->errors > MAX_ERRORS / 2)
+		return;
+	if (++CURRENT->errors >= MAX_ERRORS) {
+		if (CURRENT->bh && CURRENT->nr_sectors > 2) {
+			CURRENT->nr_sectors &= ~1;
+		} else
+			;//end_request(0);
+	}
+	if (CURRENT->errors > MAX_ERRORS/2)
 		reset = 1;
 	else
 		recalibrate = 1;
+}
+
+#define STAT_MASK (BUSY_STAT | READY_STAT | WRERR_STAT | SEEK_STAT | ERR_STAT)
+#define STAT_OK (READY_STAT | SEEK_STAT)
+
+static void read_intr(void)
+{
+	int i;
+
+	i = (unsigned) inb_p(HD_STATUS);
+	if (!(i & DRQ_STAT))
+		goto bad_read;
+	if ((i & STAT_MASK) != STAT_OK)
+		goto bad_read;
+	port_read(HD_DATA,CURRENT->buffer,256);
+	i = (unsigned) inb_p(HD_STATUS);
+	if (!(i & BUSY_STAT))
+		if ((i & STAT_MASK) != STAT_OK)
+			goto bad_read;
+	CURRENT->errors = 0;
+	if (CURRENT->bh && (CURRENT->nr_sectors&1) && CURRENT->nr_sectors > 2)
+		;//next_buffer(1);
+	else
+		CURRENT->buffer += 512;
+	CURRENT->sector++;
+	if (--CURRENT->nr_sectors) {
+		SET_INTR(&read_intr);
+		return;
+	}
+	;//end_request(1);
+#if (HD_DELAY > 0)
+	last_req = read_timer();
+#endif
+	do_hd_request();
+	return;
+bad_read:
+	if (i & ERR_STAT)
+		i = (unsigned) inb(HD_ERROR);
+	bad_rw_intr();
+	do_hd_request();
+	return;
+}
+
+static void write_intr(void)
+{
+	int i;
+
+	i = (unsigned) inb_p(HD_STATUS);
+	if ((i & STAT_MASK) != STAT_OK)
+		goto bad_write;
+	if (CURRENT->nr_sectors < 2) {
+		;//end_request(1);
+#if (HD_DELAY > 0)
+		last_req = read_timer();
+#endif
+		do_hd_request();
+		return;
+	}
+	if (!(i & DRQ_STAT))
+		goto bad_write;
+	CURRENT->sector++;
+	CURRENT->nr_sectors--;
+	if (CURRENT->bh && !(CURRENT->nr_sectors & 1))
+		;//next_buffer(1);
+	else
+		CURRENT->buffer += 512;
+	SET_INTR(&write_intr);
+	port_write(HD_DATA,CURRENT->buffer,256);
+	return;
+bad_write:
+	if (i & ERR_STAT)
+		i = (unsigned) inb(HD_ERROR);
+	bad_rw_intr();
+	do_hd_request();
+	return;
 }
 
 static void recal_intr(void)
@@ -379,82 +516,25 @@ static void recal_intr(void)
 	do_hd_request();
 }
 
-static void reset_hd(void)
-{
-    static int i;
-
-repeat:
-    if (reset) {
-        reset = 0;
-        i = -1;
-        reset_controller();
-    } else if (win_result()) {
-        bad_rw_intr();
-        if (reset)
-            goto repeat;
-    }
-    i++;
-    if (i < NR_HD) {
-        hd_out(i, hd_info[i].sect, hd_info[i].sect, hd_info[i].head - 1,
-                  hd_info[i].cyl, WIN_SPECIFY, &reset_hd);
-        if (reset)
-            goto repeat;
-    } else
-        do_hd_request();
-}
-
-static void write_intr(void)
-{
-	if (win_result()) {
-		bad_rw_intr();
-		do_hd_request();
-		return;
-	}
-	if (--CURRENT->nr_sectors) {
-		CURRENT->sector++;
-		CURRENT->buffer += 512;
-		do_hd = &write_intr;
-		port_write(HD_DATA, CURRENT->buffer, 256);
-		return;
-	}
-	end_request(1);
-	do_hd_request();
-}
-
 /*
  * This is another of the error-routines I don't know what to do with. The
  * best idea seems to just set reset, and start all over again.
  */
 static void hd_times_out(void)
-{
+{	
 	do_hd = NULL;
 	reset = 1;
 	if (!CURRENT)
 		return;
 	printk("HD timeout\n\r");
 	cli();
-	if (++CURRENT->errors >= MAX_ERRORS)
-		end_request(0);
-	do_hd_request();
-}
-
-static void read_intr(void)
-{
-	do_hd = &read_intr;
-	if (win_result()) {
-		do_hd = NULL;
-		bad_rw_intr();
-		do_hd_request();
-		return;
+	if (++CURRENT->errors >= MAX_ERRORS) {
+		if (CURRENT->bh && CURRENT->nr_sectors > 2) {
+			CURRENT->nr_sectors &= ~1;
+			;//next_buffer(0);
+		} else
+			;//end_request(0);
 	}
-	port_read(HD_DATA,CURRENT->buffer,256);
-	CURRENT->errors = 0;
-	CURRENT->buffer += 512;
-	CURRENT->sector++;
-	if (--CURRENT->nr_sectors)
-		return;
-	do_hd = NULL;
-	end_request(1);
 	do_hd_request();
 }
 
@@ -465,21 +545,12 @@ static void do_hd_request(void)
 	unsigned int sec,head,cyl;
 	unsigned int nsect;
 
-repeat:
-	if (!CURRENT)
-		return;
-	if (MAJOR(CURRENT->dev) != MAJOR_NR)
-		panic(DEVICE_NAME ": request list destroyed");
-	if (CURRENT->bh) {
-		if (!CURRENT->bh->b_lock)
-		panic(DEVICE_NAME ": block not locked");
-	}
-
+	INIT_REQUEST;
 	dev = MINOR(CURRENT->dev);
 	block = CURRENT->sector;
 	nsect = CURRENT->nr_sectors;
 	if (dev >= (NR_HD<<6) || block+nsect > hd[dev].nr_sects) {
-		end_request(0);
+		;//end_request(0);
 		goto repeat;
 	}
 	block += hd[dev].start_sect;
@@ -496,8 +567,7 @@ repeat:
 	}
 	if (recalibrate) {
 		recalibrate = 0;
-		hd_out(dev,hd_info[dev].sect,0,0,0,
-			WIN_RESTORE,&recal_intr);
+		hd_out(dev,hd_info[dev].sect,0,0,0,WIN_RESTORE,&recal_intr);
 		if (reset)
 			goto repeat;
 		return;
@@ -521,111 +591,20 @@ repeat:
 		panic("unknown hd-command");
 }
 
-void hd_init(void)
-{
-    blk_dev[MAJOR_NR].request_fn = do_hd_request;
-    set_intr_gate(0x2E, &hd_interrupt);
-    outb_p(inb_p(0x21) & 0xfb, 0x21);
-    outb(inb_p(0xA1) & 0xbf, 0xA1);
-    timer_table[HD_TIMER].fn = hd_times_out;
-}
-
-/* This may be used only once, enforced by 'static int callable' */
-int sys_setup(void *BIOS)
-{
-    static int callable = 1;
-    int i, drive;
-    unsigned char cmos_disks;
-
-    if (!callable)
-        return -1;
-    callable = 0;
-#ifndef CONFIG_HD_TYPE
-    for (drive = 0; drive < 2; drive++) {
-        hd_info[drive].cyl    = *(unsigned short *)BIOS;
-        hd_info[drive].head   = *(unsigned char *)(2 + BIOS);
-        hd_info[drive].wpcom  = *(unsigned short *)(5 + BIOS);
-        hd_info[drive].ctl    = *(unsigned char *)(8 + BIOS);
-        hd_info[drive].lzone  = *(unsigned short *)(12 + BIOS);
-        hd_info[drive].sect   = *(unsigned char *)(14 + BIOS);
-        BIOS += 16;
-    }
-    /*
-     * We querry CMOS about hard disks: it could be that
-     * we have a SCSI/ESDI/etc controller that is BIOS
-     * compatable with ST-506, and thus showing up in our
-     * BIOS table, but not register compatable, and therefore
-     * not present in CMOS.
-     *
-     * Furthurmore, we will assume that our ST_506 drives
-     * <if any> are the primary dirves in the system, and
-     * the ones reflected as drive 1 or 2.
-     *
-     * The first drive is stored in the high nibble of CMOS
-     * byte 0x12, the second in the low nibble. This will be
-     * either a 4 bit drive type or 0xf indicating use byte 0x19
-     * for an 8 bit type, dirve 1, 0x1a drive 2 in CMOS.
-     *
-     * Needless to say, a non-zero value means we have
-     * an AT controller hard disk for that drive.
-     */
-    if ((cmos_disks = CMOS_READ(0x12)) & 0xf0)
-        if (cmos_disks & 0x0f)
-            NR_HD = 2;
-        else
-            NR_HD = 1;
-    else
-        NR_HD = 0;
-#endif
-    for (i = 0; i < (MAX_HD << 6); i++) {
-        hd[i].start_sect = 0;
-        hd[i].nr_sects = 0;
-    }
-    for (i = 0 ; i < NR_HD ; i++)
-        hd[i<<6].nr_sects = hd_info[i].head*
-                            hd_info[i].sect*hd_info[i].cyl;
-    for (drive = 0; drive < NR_HD; drive++) {
-        current_minor = 1 + (drive << 6);
-        check_partition(0x0300 + (drive << 6));
-    }
-    for (i = 0; i < (MAX_HD << 6); i++)
-        hd_sizes[i] = hd[i].nr_sects >> 1;
-    blk_size[MAJOR_NR] = hd_sizes;
-    if (NR_HD)
-        printk("Partition table%s ok.\n\r", (NR_HD > 1) ? "s" : "");
-#ifdef CONFIG_RAMDISK
-    rd_load();
-#endif
-    mount_root();
-#ifdef CONFIG_DEBUG_USERLAND
-    debug_kernel_on_userland();
-#endif
-    return 0;
-}
-
-/*
- * Ok, don't know what to do with the unexpected interrupts: on some machines
- * doing a reset and a retry seems to result in an eternal loop. Right now I
- * ignore it, and just set the timeout.
- */
-void unexpected_hd_interrupt(void)
-{
-    printk("Unexpected HD interrupt\n\r");
-    SET_TIMER;
-}
-
-int hd_ioctl(int dev, int cmd, int arg)
+static int hd_ioctl(struct inode * inode, struct file * file,
+	unsigned int cmd, unsigned int arg)
 {
 	struct hd_geometry *loc = (void *) arg;
+	int dev;
 
-	if (!loc)
+	if (!loc || !inode)
 		return -EINVAL;
-	dev = MINOR(dev) >> 6;
+	dev = MINOR(inode->i_rdev) >> 6;
 	if (dev >= NR_HD)
 		return -EINVAL;
-
 	switch (cmd) {
 		case HDIO_REQ:
+			verify_area(loc, sizeof(*loc));
 			put_fs_byte(hd_info[dev].head,
 				(char *) &loc->heads);
 			put_fs_byte(hd_info[dev].sect,
@@ -636,4 +615,34 @@ int hd_ioctl(int dev, int cmd, int arg)
 		default:
 			return -EINVAL;
 	}
+}
+
+/*
+ * Releasing a block device means we sync() it, so that it can safely
+ * be forgotten about...
+ */
+static void hd_release(struct inode * inode, struct file * file)
+{
+	sync_dev(inode->i_rdev);
+}
+
+static struct file_operations hd_fops = {
+	NULL,			/* lseek - default */
+	block_read,		/* read - general block-dev read */
+	block_write,		/* write - general block-dev write */
+	NULL,			/* readdir - bad */
+	NULL,			/* select */
+	hd_ioctl,		/* ioctl */
+	NULL,			/* no special open code */
+	hd_release		/* release */
+};
+
+void hd_init(void)
+{
+	blk_dev[MAJOR_NR].request_fn = DEVICE_REQUEST;
+	blkdev_fops[MAJOR_NR] = &hd_fops;
+	set_intr_gate(0x2E,&hd_interrupt);
+	outb_p(inb_p(0x21)&0xfb,0x21);
+	outb(inb_p(0xA1)&0xbf,0xA1);
+	timer_table[HD_TIMER].fn = hd_times_out;
 }

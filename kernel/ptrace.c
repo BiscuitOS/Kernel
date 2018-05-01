@@ -29,7 +29,7 @@
  */
 #define MAGICNUMBER 68
 
-void do_no_page(unsigned long, unsigned long, struct task_struct *);
+void do_no_page(unsigned long, unsigned long, struct task_struct *, unsigned long);
 void write_verify(unsigned long);
 
 /* change a pid into a task struct. */
@@ -102,7 +102,7 @@ repeat:
 		page = *((unsigned long *) page);
 	}
 	if (!(page & PAGE_PRESENT)) {
-		do_no_page(0,addr,tsk);
+		do_no_page(0,addr,tsk, 0);
 		goto repeat;
 	}
 	page &= 0xfffff000;
@@ -130,7 +130,7 @@ repeat:
 		page = *((unsigned long *) page);
 	}
 	if (!(page & PAGE_PRESENT)) {
-		do_no_page(0,addr,tsk);
+		do_no_page(0,addr,tsk, 0);
 		goto repeat;
 	}
 	if (!(page & PAGE_RW)) {
@@ -222,17 +222,10 @@ static int write_long(struct task_struct * tsk, unsigned long addr,
 }
 
 /* Perform ptrace(request, pid, addr, data) syscall */
-int sys_ptrace(unsigned long *buffer)
+int sys_ptrace(long request, long pid, long addr, long data)
 {
-	long request, pid, data;
-	long addr;
 	struct task_struct *child;
 	int childno;
-
-	request = get_fs_long(buffer++);
-	pid = get_fs_long(buffer++);
-	addr = get_fs_long(buffer++); /* assume long = void * */
-	data = get_fs_long(buffer++);
 
 	if (request == 0) {
 		/* set the ptrace bit in the proccess flags. */

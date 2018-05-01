@@ -91,6 +91,20 @@ extern int sys_uselib();
 extern int sys_swapon();
 extern int sys_reboot();
 extern int sys_readdir();
+extern int sys_mmap();
+extern int sys_munmap();
+extern int sys_truncate();
+extern int sys_ftruncate();
+extern int sys_fchmod();
+extern int sys_fchown();
+extern int sys_getpriority();
+extern int sys_setpriority();
+extern int sys_profil();
+extern int sys_statfs();
+extern int sys_fstatfs();
+extern int sys_ioperm();
+extern int sys_socketcall();
+extern int sys_syslog();
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN0
 extern int sys_d_open(void); 
 #endif
@@ -384,6 +398,20 @@ sys_uselib,
 sys_swapon,
 sys_reboot,
 sys_readdir,
+sys_mmap,
+sys_munmap,
+sys_truncate,
+sys_ftruncate,
+sys_fchmod,
+sys_fchown,
+sys_getpriority,
+sys_setpriority,
+sys_profil,
+sys_statfs,
+sys_fstatfs,
+sys_ioperm,
+sys_socketcall,
+sys_syslog,
 #ifdef CONFIG_DEBUG_SYSCALL_OPEN0
 sys_d_open,  /* Open file/directory */
 #endif

@@ -20,6 +20,8 @@
 #include <asm/io.h>
 #include <asm/system.h>
 
+#include <linux/config_rel.h>
+
 #ifdef CONFIG_TESTCASE
 #include <test/debug.h>
 #endif
@@ -42,6 +44,17 @@ inline _syscall0(int, fork)
 inline _syscall1(int, setup, void *, BIOS)
 inline _syscall0(int, pause)
 inline _syscall0(int, sync)
+inline _syscall0(pid_t,setsid)
+inline _syscall3(int,write,int,fd,const char *,buf,off_t,count)
+inline _syscall1(int,dup,int,fd)
+inline _syscall3(int,execve,const char *,file,char **,argv,char **,envp)
+inline _syscall1(int,close,int,fd)
+inline _syscall3(pid_t,waitpid,pid_t,pid,int *,wait_stat,int,options)
+
+inline pid_t wait(int * wait_stat)
+{
+	return waitpid(-1,wait_stat,0);
+}
 
 char printbuf[1024];
 
@@ -91,9 +104,14 @@ extern int vsprintf(char *buf, const char *fmt, va_list args);
 extern void mem_init(long, long);
 extern void blk_dev_init(void);
 extern void chr_dev_init(void);
+extern void sock_init(void);
 extern void hd_init(void);
 extern void floppy_init(void);
 extern long kernel_mktime(struct tm *);
+
+#ifdef CONFIG_SCSI
+extern void scsi_dev_init(void);
+#endif
 
 static int sprintf(char *str, const char *fmt, ...)
 {
@@ -173,11 +191,11 @@ int start_kernel(void)
     memory_detect();
     mem_init(main_memory_start, memory_end);
     trap_init();
-    blk_dev_init();
-    chr_dev_init();
-    tty_init();
-    time_init();
     sched_init();
+    chr_dev_init();
+    blk_dev_init();
+    time_init();
+    printk("Linux version " UTS_RELEASE " " __DATE__ " " __TIME__ "\n");
     buffer_init(buffer_memory_end);
 #ifdef CONFIG_HARDDISK
     hd_init();
@@ -185,7 +203,11 @@ int start_kernel(void)
 #ifdef CONFIG_FLOPPY
     floppy_init();
 #endif
+    sock_init();
     sti();
+#ifdef CONFIG_SCSI
+	scsi_dev_init();
+#endif
 #ifdef CONFIG_DEBUG_KERNEL_LATER
     debug_on_kernel_later();
 #endif

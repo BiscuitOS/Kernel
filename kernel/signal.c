@@ -12,7 +12,6 @@
 #include <linux/kernel.h>
 #include <sys/wait.h>
 
-int send_sig(int, struct task_struct *, int);
 extern int sys_waitpid(pid_t pid,unsigned long * stat_addr, int options);
 
 /*

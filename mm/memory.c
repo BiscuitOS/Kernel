@@ -164,6 +164,159 @@ int copy_page_tables(unsigned long from, unsigned long to, long size)
 }
 
 /*
+ * a more complete version of free_page_tables which performs with page
+ * granularity.
+ */
+int
+unmap_page_range(unsigned long from, unsigned long size)
+{
+	unsigned long page, page_dir;
+	unsigned long *page_table, *dir;
+	unsigned long poff, pcnt, pc;
+
+	if (from & 0xfff)
+		panic("unmap_page_range called with wrong alignment");
+	if (!from)
+		panic("unmap_page_range trying to free swapper memory space");
+	size = (size + 0xfff) >> 12;
+	dir = (unsigned long *) ((from >> 20) & 0xffc); /* _pg_dir = 0 */
+	poff = (from >> 12) & 0x3ff;
+	if ((pcnt = 1024 - poff) > size)
+		pcnt = size;
+
+	for ( ; size > 0; ++dir, size -= pcnt,
+	     pcnt = (size > 1024 ? 1024 : size)) {
+		if (!(page_dir = *dir))	{
+			poff = 0;
+			continue;
+		}
+		if (!(page_dir & 1)) {
+			printk("unmap_page_range: bad page directory.");
+			continue;
+		}
+		page_table = (unsigned long *)(0xfffff000 & page_dir);
+		if (poff) {
+			page_table += poff;
+			poff = 0;
+		}
+		for (pc = pcnt; pc--; page_table++) {
+			if ((page = *page_table)) {
+				--current->rss;
+				*page_table = 0;
+				if (1 & page)
+					free_page(0xfffff000 & page);
+				else
+					swap_free(page >> 1);
+			}
+		}
+		if (pcnt == 1024) {
+			free_page(0xfffff000 & page_dir);
+			*dir = 0;
+		}
+	}
+	invalidate();
+	for (page = 0; page < CHECK_LAST_NR ; page++)
+		last_pages[page] = 0;
+	return 0;
+}
+
+/*
+ * maps a range of physical memory into the requested pages. the old
+ * mappings are removed. any references to nonexistent pages results
+ * in null mappings (currently treated as "copy-on-access")
+ *
+ * permiss is encoded as cxwr (copy,exec,write,read) where copy modifies
+ * the behavior of write to be copy-on-write.
+ *
+ * due to current limitations, we actually have the following
+ *		on		off
+ * read:	yes		yes
+ * write/copy:	yes/copy	copy/copy
+ * exec:	yes		yes
+ */
+int
+remap_page_range(unsigned long from, unsigned long to, unsigned long size,
+		 int permiss)
+{
+	unsigned long *page_table, *dir;
+	unsigned long poff, pcnt;
+
+	if ((from & 0xfff) || (to & 0xfff))
+		panic("remap_page_range called with wrong alignment");
+	dir = (unsigned long *) ((from >> 20) & 0xffc); /* _pg_dir = 0 */
+	size = (size + 0xfff) >> 12;
+	poff = (from >> 12) & 0x3ff;
+	if ((pcnt = 1024 - poff) > size)
+		pcnt = size;
+
+	while (size > 0) {
+		if (!(1 & *dir)) {
+			if (!(page_table = (unsigned long *)get_free_page())) {
+				invalidate();
+				return -1;
+			}
+			*dir++ = ((unsigned long) page_table) | 7;
+		}
+		else
+			page_table = (unsigned long *)(0xfffff000 & *dir++);
+		if (poff) {
+			page_table += poff;
+			poff = 0;
+		}
+
+		for (size -= pcnt; pcnt-- ;) {
+			int mask;
+
+			mask = 4;
+			if (permiss & 1)
+				mask |= 1;
+			if (permiss & 2) {
+				if (permiss & 8)
+					mask |= 1;
+				else
+					mask |= 3;
+			}
+			if (permiss & 4)
+				mask |= 1;
+
+			if (*page_table) {
+				--current->rss;
+				if (1 & *page_table)
+					free_page(0xfffff000 & *page_table);
+				else
+					swap_free(*page_table >> 1);
+			}
+
+			/*
+			 * i'm not sure of the second cond here. should we
+			 * report failure?
+			 * the first condition should return an invalid access
+			 * when the page is referenced. current assumptions
+			 * cause it to be treated as demand allocation.
+			 */
+			if (mask == 4 || to >= HIGH_MEMORY)
+				*page_table++ = 0;	/* not present */
+			else {
+				++current->rss;
+				*page_table++ = (to | mask);
+				if (to > LOW_MEM) {
+					unsigned long frame;
+					frame = to - LOW_MEM;
+					frame >>= 12;
+					mem_map[frame]++;
+				}
+			}
+			to += PAGE_SIZE;
+		}
+		pcnt = (size > 1024 ? 1024 : size);
+	}
+	invalidate();
+	for (to = 0; to < CHECK_LAST_NR ; to++)
+		last_pages[to] = 0;
+	return 0;
+}
+
+/*
  * This function frees a continuos block of page talbes, as needed
  * by 'exit()'. As does copy_page_tables(). This handles only 4Mb blocks.
  */
@@ -223,7 +376,7 @@ static unsigned long put_page(unsigned long page, unsigned long address)
 		return 0;
 	}
 	if (mem_map[(page-LOW_MEM)>>12] != 1) {
-		printk("mem_map disagrees with %p at %p\n",page,address);
+		printk("put_page disagrees with %p at %p\n",page,address);
 		return 0;
 	}
 	page_table = (unsigned long *) ((address>>20) & 0xffc);
@@ -357,6 +510,7 @@ static int try_to_share(unsigned long address, struct task_struct *p)
 static int share_page(struct inode *inode, unsigned long address)
 {
     struct task_struct ** p;
+    int i;
 
     if (inode->i_count < 2 || !inode)
         return 0;
@@ -369,8 +523,11 @@ static int share_page(struct inode *inode, unsigned long address)
             if (inode != (*p)->executable)
                 continue;
         } else {
-            if (inode != (*p)->library)
-                continue;
+			for (i=0; i < (*p)->numlibraries; i++)
+				if (inode == (*p)->libraries[i].library)
+					break;
+			if (i >= (*p)->numlibraries)
+				continue;
         }
         if (try_to_share(address,*p))
             return 1;
@@ -378,17 +535,42 @@ static int share_page(struct inode *inode, unsigned long address)
     return 0;
 }
 
+/*
+ * fill in an empty page or directory if none exists
+ */
+static unsigned long get_empty(unsigned long * p)
+{
+	unsigned long page = 0;
+
+repeat:
+	if (1 & *p) {
+		free_page(page);
+		return *p;
+	}
+	if (*p) {
+		printk("get_empty: bad page entry \n");
+		*p = 0;
+	}
+	if (page) {
+		*p = page | 7;
+		return *p;
+	}
+	if (!(page = get_free_page()))
+		oom();
+	goto repeat;
+}
+
 void do_no_page(unsigned long error_code, unsigned long address,
-                 struct task_struct *tsk)
+                 struct task_struct *tsk, unsigned long user_esp)
 {
 	static unsigned int last_checked = 0;
 	int nr[4];
 	unsigned long tmp;
 	unsigned long page;
-	int block,i;
+	unsigned int block,i;
 	struct inode * inode;
 
-	/* Thashing ? Make it interruptible, but don't penalize otherwise */
+	/* Thrashing ? Make it interruptible, but don't penalize otherwise */
 	for (i = 0; i < CHECK_LAST_NR; i++)
 		if ((address & 0xfffff000) == last_pages[i]) {
 			current->counter = 0;
@@ -406,44 +588,50 @@ void do_no_page(unsigned long error_code, unsigned long address,
 		printk("Bad things happen: nonexistent page error in do_no_page\n\r");
 		do_exit(SIGSEGV);
 	}
+	page = get_empty((unsigned long *) ((address >> 20) & 0xffc));
+	page &= 0xfffff000;
+	page += (address >> 10) & 0xffc;
+	tmp = *(unsigned long *) page;
+	if (tmp & 1) {
+		printk("bogus do_no_page\n");
+		return;
+	}
 	++tsk->rss;
-	page = *(unsigned long *) ((address >> 20) & 0xffc);
-/* check the page directory: make a page dir entry if no such exists */
-	if (page & 1) {
-		page &= 0xfffff000;
-		page += (address >> 10) & 0xffc;
-		tmp = *(unsigned long *) page;
-		if (tmp && !(1 & tmp)) {
-			++tsk->maj_flt;
-			swap_in((unsigned long *) page);
-			return;
-		}
-	} else {
-		if (page)
-			printk("do_no_page: bad page directory\n");
-		if (!(page = get_free_page()))
-			oom();
-		page |= 7;
-		*(unsigned long *) ((address >> 20) & 0xffc) = page;
+	if (tmp) {
+		++tsk->maj_flt;
+		swap_in((unsigned long *) page);
+		return;
 	}
 	address &= 0xfffff000;
 	tmp = address - tsk->start_code;
-	if (tmp >= LIBRARY_OFFSET ) {
-		inode = tsk->library;
-		block = 1 + (tmp-LIBRARY_OFFSET) / BLOCK_SIZE;
-	} else if (tmp < tsk->end_data) {
+	inode = NULL;
+	block = 0;
+	if (tmp < tsk->end_data) {
 		inode = tsk->executable;
 		block = 1 + tmp / BLOCK_SIZE;
 	} else {
-		inode = NULL;
-		block = 0;
+		i = tsk->numlibraries;
+		while (i-- > 0) {
+			if (tmp < tsk->libraries[i].start)
+				continue;
+			block = tmp - tsk->libraries[i].start;
+			if (block >= tsk->libraries[i].length)
+				continue;
+			inode = tsk->libraries[i].library;
+			block = 1 + block / BLOCK_SIZE;
+			break;
+		}
 	}
 	if (!inode) {
 		++tsk->min_flt;
-		if (tmp > tsk->brk && tsk == current && 
-			LIBRARY_OFFSET - tmp > tsk->rlim[RLIMIT_STACK].rlim_max)
-				do_exit(SIGSEGV);
 		get_empty_page(address);
+		if (tsk != current)
+			return;
+		if (tmp >= LIBRARY_OFFSET || tmp < tsk->brk)
+			return;
+		if (tmp+8192 >= (user_esp & 0xfffff000))
+			return;
+		send_sig(SIGSEGV,tsk,1);
 		return;
 	}
 	if (tsk == current)
@@ -454,7 +642,6 @@ void do_no_page(unsigned long error_code, unsigned long address,
 	++tsk->maj_flt;
 	if (!(page = get_free_page()))
 		oom();
-/* remember that 1 block is used for header */
 	for (i=0 ; i<4 ; block++,i++)
 		nr[i] = bmap(inode,block);
 	bread_page(page,inode->i_dev,nr);
@@ -462,7 +649,7 @@ void do_no_page(unsigned long error_code, unsigned long address,
 	if (i>4095)
 		i = 0;
 	tmp = page + 4096;
-	while (i-- > 0) {
+	while (i--) {
 		tmp--;
 		*(char *)tmp = 0;
 	}
@@ -539,15 +726,6 @@ void show_mem(void)
     int i, j, k, free = 0, total = 0;
     int shared = 0;
     unsigned long *pg_tbl;
-    static int lock = 0;
-
-    cli();
-    if (lock) {
-        sti();
-        return;
-    }
-    lock = 1;
-    sti();
 
     printk("Mem-info:\n\r");
     for(i = 0 ; i < PAGING_PAGES ; i++) {
@@ -590,7 +768,6 @@ void show_mem(void)
         }
     }
     printk("Memory found: %d (%d)\n\r", free - shared, total);
-    lock = 0;
 }
 
 void write_verify(unsigned long address)
@@ -612,11 +789,16 @@ void write_verify(unsigned long address)
 void do_page_fault (unsigned long *esp, unsigned long error_code)
 {
 	unsigned long address;
-	/* get the address */
+	unsigned long user_esp;
 
-	__asm__ ("movl %%cr2,%0":"=r" (address));
+	if ((0xffff & esp[1]) == 0xf)
+		user_esp = esp[3];
+	else
+		user_esp = 0;
+	/* get the address */
+	__asm__("movl %%cr2,%0":"=r" (address));
 	if (!(error_code & 1)) {
-		do_no_page(error_code, address, current);
+		do_no_page(error_code, address, current, user_esp);
 		return;
 	} else {
 		do_wp_page(error_code, address);

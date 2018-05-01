@@ -10,13 +10,12 @@
  * to mainly kill the offending process (probably by giving it a signal,
  * but possibly by killing it outright if necessary).
  */
-#include <asm/system.h>
 #include <linux/sched.h>
 #include <linux/kernel.h>
 #include <linux/head.h>
+#include <linux/string.h>
 
-#include <string.h>
-
+#include <asm/system.h>
 #include <asm/io.h>
 #include <errno.h>
 
@@ -58,7 +57,6 @@ void parallel_interrupt(void);
 void irq13(void);
 void alignment_check(void);
 void page_exception(void);
-int  send_sig(long, struct task_struct *, int);
 
 static void die(char *str, long esp_ptr, long nr)
 {
@@ -82,7 +80,10 @@ static void die(char *str, long esp_ptr, long nr)
 	for(i=0;i<10;i++)
 		printk("%02x ",0xff & get_seg_byte(esp[1],(i+(char *)esp[0])));
 	printk("\n\r");
-	do_exit(11);		/* play segment exception */
+	if ((0xffff & esp[1]) == 0xf)
+		send_sig(SIGSEGV, current, 0);
+	else
+		do_exit(SIGSEGV);
 }
 
 void do_double_fault(long esp, long error_code)

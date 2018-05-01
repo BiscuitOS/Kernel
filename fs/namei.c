@@ -6,6 +6,7 @@
 
 #include <linux/sched.h>
 #include <linux/kernel.h>
+#include <linux/string.h>
 
 #include <asm/segment.h>
 #include <sys/stat.h>
@@ -13,7 +14,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <const.h>
-#include <string.h>
 
 /*
  * comment out this line if you want names > MINIX_NAME_LEN chars to be
@@ -204,8 +204,10 @@ int open_namei(const char *pathname, int flag, int mode,
 	}
 	inode->i_atime = CURRENT_TIME;
 	if (flag & O_TRUNC)
-		if (inode->i_op && inode->i_op->truncate)
+		if (inode->i_op && inode->i_op->truncate) {
+			inode->i_size = 0;
 			inode->i_op->truncate(inode);
+		}
 	*res_inode = inode;
 	return 0;
 }
@@ -229,10 +231,6 @@ struct inode *_namei(const char * pathname, struct inode * base,
 		inode = follow_link(base,inode);
 	else
 		iput(base);
-	if (inode) {
-		inode->i_atime=CURRENT_TIME;
-		inode->i_dirt=1;
-	}
 	return inode;
 }
 

@@ -1,2 +1,9 @@
-obj-$(CONFIG_FS_MINIX) += bitmap.o inode.o namei.o file_dev.o
-obj-$(CONFIG_FS_MINIX) += minix_op.o truncate.o
+obj-$(CONFIG_FS_MINIX) += bitmap.o
+obj-$(CONFIG_FS_MINIX) += inode.o
+obj-$(CONFIG_FS_MINIX) += namei.o
+obj-$(CONFIG_FS_MINIX) += truncate.o
+obj-$(CONFIG_FS_MINIX) += blkdev.o
+obj-$(CONFIG_FS_MINIX) += chrdev.o
+obj-$(CONFIG_FS_MINIX) += dir.o
+obj-$(CONFIG_FS_MINIX) += file.o
+obj-$(CONFIG_FS_MINIX) += symlink.o

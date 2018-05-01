@@ -1,6 +1,5 @@
 obj-y += head.o
 
-
 local_LDFLAGS += -Ttext 0
 
 -include include/config/auto.conf

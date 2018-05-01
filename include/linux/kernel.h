@@ -6,10 +6,7 @@
 void verify_area(void * addr,int count);
 void panic(const char * str);
 void do_exit(long error_code);
-int printf(const char * fmt, ...);
 int printk(const char * fmt, ...);
-void console_print(const char * str);
-int tty_write(unsigned ch,char * buf,int count);
 void * malloc(unsigned int size);
 void free_s(void * obj, int size);
 

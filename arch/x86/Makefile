@@ -20,7 +20,7 @@ KBUILD_DEFCONFIG := defconfig
 
 ifdef CONFIG_DEBUG_KERNEL
   KBUILD_CFLAGS += $(call cc-option,-g -Wall -Wunused -gdwarf-2 -g3)
-  KBUILD_AFLAGS_KERNEL += -ggdb  -am
+  KBUILD_AFLAGS_KERNEL += -ggdb -am
 endif
 
 KBUILD_AFLAGS_KERNEL += --32

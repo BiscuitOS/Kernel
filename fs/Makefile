@@ -5,7 +5,6 @@ obj-y += inode.o
 obj-y += file_table.o
 obj-y += read_write.o
 obj-y += pipe.o
-obj-y += char_dev.o
 obj-y += block_dev.o
 obj-y += namei.o
 obj-y += exec.o

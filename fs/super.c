@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 
 #include <asm/system.h>
+#include <asm/segment.h>
 
 #include <errno.h>
 #include <string.h>
@@ -189,11 +190,16 @@ void put_super(int dev)
 		sb->s_op->put_super(sb);
 }
 
-int sys_mount(char *dev_name, char *dir_name, int rw_flag)
+int sys_mount(char *dev_name, char *dir_name, char *type, int rw_flag)
 {
 	struct inode * dev_i, * dir_i;
 	struct super_block * sb;
 	int dev;
+	char tmp[100],*t;
+	int i;
+
+	if (!suser())
+		return -EPERM;
 
 	if (!(dev_i=namei(dev_name)))
 		return -ENOENT;
@@ -217,7 +223,14 @@ int sys_mount(char *dev_name, char *dir_name, int rw_flag)
 		iput(dir_i);
 		return -EPERM;
 	}
-	if (!(sb=read_super(dev,"minix",NULL))) {
+	if (type) {
+		i = 0;
+		while (i < 100 && (tmp[i] = get_fs_byte(type++)))
+			i++;
+		t = tmp;
+	} else
+		t = "minix";
+	if (!(sb=read_super(dev, t, NULL))) {
 		iput(dir_i);
 		return -EBUSY;
 	}
@@ -237,6 +250,8 @@ int sys_umount(char *dev_name)
 	struct super_block * sb;
 	int dev;
 
+	if (!suser())
+		return -EPERM;
 	if (!(inode=namei(dev_name)))
 		return -ENOENT;
 	dev = inode->i_rdev;
