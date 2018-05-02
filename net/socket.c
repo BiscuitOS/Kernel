@@ -21,7 +21,6 @@ static struct {
 	struct proto_ops *ops;
 } proto_table[] = {
 	{AF_UNIX,	"AF_UNIX",	&unix_proto_ops},
-	{ },
 };
 #define NPROTO (sizeof(proto_table) / sizeof(proto_table[0]))
 
@@ -738,27 +737,25 @@ sys_socketcall(int call, unsigned long *args)
 	}
 }
 
-void
-sock_init(void)
+void sock_init(void)
 {
-	struct socket *sock;
-	int i, ok;
+    struct socket *sock;
+    int i, ok;
 
-	for (sock = sockets; sock <= last_socket; ++sock)
-		sock->state = SS_FREE;
-	for (i = ok = 0; i < NPROTO; ++i) {
-		printk("sock_init: initializing family %d (%s)\n",
-		       proto_table[i].family, proto_table[i].name);
-		if ((*proto_table[i].ops->init)() < 0) {
-			printk("sock_init: init failed.\n",
-			       proto_table[i].family);
-			proto_table[i].family = -1;
-		}
-		else
-			++ok;
-	}
-	if (!ok)
-		printk("sock_init: warning: no protocols initialized\n");
-	return;
+    for (sock = sockets; sock <= last_socket; ++sock)
+        sock->state = SS_FREE;
+    for (i = ok = 0; i < NPROTO; ++i) {
+        printk("sock_init: initializing family %d (%s)\n",
+                proto_table[i].family, proto_table[i].name);
+        if ((*proto_table[i].ops->init)() < 0) {
+            printk("sock_init: init failed.\n",
+                    proto_table[i].family);
+            proto_table[i].family = -1;
+        } else
+            ++ok;
+    }
+    if (!ok)
+        printk("sock_init: warning: no protocols initialized\n");
+    return;
 }
 

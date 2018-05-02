@@ -107,10 +107,6 @@ extern int * blk_size[NR_BLK_DEV];
 #define DEVICE_ON(device)
 #define DEVICE_OFF(device)
 
-#elif
-/* unknown blk device */
-#error "unknown blk device"
-
 #endif
 
 #define CURRENT (blk_dev[MAJOR_NR].current_request)
@@ -142,7 +138,7 @@ if ((DEVICE_INTR = (x))) {\
 #endif
 static void (DEVICE_REQUEST)(void);
 
-extern inline void unlock_buffer(struct buffer_head * bh)
+inline void unlock_buffer(struct buffer_head * bh)
 {
 	if (!bh->b_lock)
 		printk(DEVICE_NAME ": free buffer being unlocked\n");
@@ -150,7 +146,7 @@ extern inline void unlock_buffer(struct buffer_head * bh)
 	wake_up(&bh->b_wait);
 }
 
-extern inline void next_buffer(int uptodate)
+inline void next_buffer(int uptodate)
 {
 	struct buffer_head *tmp;
 
@@ -170,7 +166,7 @@ extern inline void next_buffer(int uptodate)
 	CURRENT->errors = 0;
 }
 
-extern inline void end_request(int uptodate)
+inline void end_request(int uptodate)
 {
 	struct request * tmp;
 

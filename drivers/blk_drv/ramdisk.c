@@ -30,7 +30,7 @@ void do_rd_request(void)
 	addr = rd_start + (CURRENT->sector << 9);
 	len = CURRENT->nr_sectors << 9;
 	if ((MINOR(CURRENT->dev) != 1) || (addr+len > rd_start+rd_length)) {
-		;//end_request(0);
+		end_request(0);
 		goto repeat;
 	}
 	if (CURRENT-> cmd == WRITE) {
@@ -43,7 +43,7 @@ void do_rd_request(void)
 			      len);
 	} else
 		panic("unknown ramdisk-command");
-	;//end_request(1);
+	end_request(1);
 	goto repeat;
 }
 

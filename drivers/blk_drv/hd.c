@@ -37,7 +37,7 @@ static inline unsigned char CMOS_READ(unsigned char addr)
 	return inb_p(0x71);
 }
 
-#define	HD_DELAY	0
+#define	HD_DELAY	1
 
 /* Max read/write errors/sector */
 #define MAX_ERRORS	7
@@ -277,7 +277,9 @@ int sys_setup(void * BIOS)
 	blk_size[MAJOR_NR] = hd_sizes;
 	if (NR_HD)
 		printk("Partition table%s ok.\n\r",(NR_HD>1)?"s":"");
+#ifdef CONFIG_RAMDISK
 	rd_load();
+#endif
 	mount_root();
 	return (0);
 }
@@ -425,8 +427,9 @@ static void bad_rw_intr(void)
 	if (++CURRENT->errors >= MAX_ERRORS) {
 		if (CURRENT->bh && CURRENT->nr_sectors > 2) {
 			CURRENT->nr_sectors &= ~1;
+			next_buffer(0);
 		} else
-			;//end_request(0);
+			end_request(0);
 	}
 	if (CURRENT->errors > MAX_ERRORS/2)
 		reset = 1;
@@ -453,7 +456,7 @@ static void read_intr(void)
 			goto bad_read;
 	CURRENT->errors = 0;
 	if (CURRENT->bh && (CURRENT->nr_sectors&1) && CURRENT->nr_sectors > 2)
-		;//next_buffer(1);
+		next_buffer(1);
 	else
 		CURRENT->buffer += 512;
 	CURRENT->sector++;
@@ -461,7 +464,7 @@ static void read_intr(void)
 		SET_INTR(&read_intr);
 		return;
 	}
-	;//end_request(1);
+	end_request(1);
 #if (HD_DELAY > 0)
 	last_req = read_timer();
 #endif
@@ -483,7 +486,7 @@ static void write_intr(void)
 	if ((i & STAT_MASK) != STAT_OK)
 		goto bad_write;
 	if (CURRENT->nr_sectors < 2) {
-		;//end_request(1);
+		end_request(1);
 #if (HD_DELAY > 0)
 		last_req = read_timer();
 #endif
@@ -495,7 +498,7 @@ static void write_intr(void)
 	CURRENT->sector++;
 	CURRENT->nr_sectors--;
 	if (CURRENT->bh && !(CURRENT->nr_sectors & 1))
-		;//next_buffer(1);
+		next_buffer(1);
 	else
 		CURRENT->buffer += 512;
 	SET_INTR(&write_intr);
@@ -531,9 +534,9 @@ static void hd_times_out(void)
 	if (++CURRENT->errors >= MAX_ERRORS) {
 		if (CURRENT->bh && CURRENT->nr_sectors > 2) {
 			CURRENT->nr_sectors &= ~1;
-			;//next_buffer(0);
+			next_buffer(0);
 		} else
-			;//end_request(0);
+			end_request(0);
 	}
 	do_hd_request();
 }
@@ -550,7 +553,7 @@ static void do_hd_request(void)
 	block = CURRENT->sector;
 	nsect = CURRENT->nr_sectors;
 	if (dev >= (NR_HD<<6) || block+nsect > hd[dev].nr_sects) {
-		;//end_request(0);
+		end_request(0);
 		goto repeat;
 	}
 	block += hd[dev].start_sect;
