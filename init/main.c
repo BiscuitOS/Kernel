@@ -249,9 +249,6 @@ void init(void)
     (void)open("/dev/tty0", O_RDWR, 0);
     (void)dup(0);
     (void)dup(0);
-    printf("%d buffers = %d bytes buffer space\n\r", NR_BUFFERS,
-            NR_BUFFERS * BLOCK_SIZE);
-    printf("Free mem: %d bytes\n\r", memory_end - main_memory_start);
 #ifdef CONFIG_DEBUG_USERLAND_SYSCALL
     debug_on_userland_syscall();
 #endif
