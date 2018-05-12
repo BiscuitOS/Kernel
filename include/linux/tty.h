@@ -1,3 +1,6 @@
+#ifndef _LINUX_TTY_H
+#define _LINUX_TTY_H
+
 /*
  * 'tty.h' defines some structures used by tty_io.c and some defines.
  *
@@ -6,18 +9,54 @@
  * offsets into 'tty_queue'
  */
 
-#ifndef _TTY_H
-#define _TTY_H
+#include <linux/termios.h>
 
 #include <asm/system.h>
 
-#define MAX_CONSOLES	8
+#define NR_CONSOLES	8
 #define NR_SERIALS	4
 #define NR_PTYS		4
 
-extern int NR_CONSOLES;
+/*
+ * These are set up by the setup-routine at boot-time:
+ */
 
-#include <termios.h>
+struct screen_info {
+	unsigned char  orig_x;
+	unsigned char  orig_y;
+	unsigned char  unused1[2];
+	unsigned short orig_video_page;
+	unsigned char  orig_video_mode;
+	unsigned char  orig_video_cols;
+	unsigned short orig_video_ega_ax;
+	unsigned short orig_video_ega_bx;
+	unsigned short orig_video_ega_cx;
+	unsigned char  orig_video_lines;
+};
+
+extern struct screen_info screen_info;
+
+#define ORIG_X			(screen_info.orig_x)
+#define ORIG_Y			(screen_info.orig_y)
+#define ORIG_VIDEO_PAGE		(screen_info.orig_video_page)
+#define ORIG_VIDEO_MODE		(screen_info.orig_video_mode)
+#define ORIG_VIDEO_COLS 	(screen_info.orig_video_cols)
+#define ORIG_VIDEO_EGA_AX	(screen_info.orig_video_ega_ax)
+#define ORIG_VIDEO_EGA_BX	(screen_info.orig_video_ega_bx)
+#define ORIG_VIDEO_EGA_CX	(screen_info.orig_video_ega_cx)
+#define ORIG_VIDEO_LINES	(screen_info.orig_video_lines)
+
+#define VIDEO_TYPE_MDA		0x10	/* Monochrome Text Display	*/
+#define VIDEO_TYPE_CGA		0x11	/* CGA Display 			*/
+#define VIDEO_TYPE_EGAM		0x20	/* EGA/VGA in Monochrome Mode	*/
+#define VIDEO_TYPE_EGAC		0x21	/* EGA/VGA in Color Mode	*/
+
+/*
+ * This character is the same as _POSIX_VDISABLE: it cannot be used as
+ * a c_cc[] character, but indicates that a particular special character
+ * isn't in use (eg VINTR ahs no character etc)
+ */
+#define __DISABLED_CHAR '\0'
 
 #define TTY_BUF_SIZE 2048
 
@@ -25,9 +64,26 @@ struct tty_queue {
 	unsigned long data;
 	unsigned long head;
 	unsigned long tail;
-	struct task_struct * proc_list;
+	struct wait_queue * proc_list;
 	unsigned char buf[TTY_BUF_SIZE];
 };
+
+struct serial_struct {
+	unsigned short type;
+	unsigned short line;
+	unsigned short port;
+	unsigned short irq;
+	struct tty_struct * tty;
+};
+
+/*
+ * These are the supported serial types.
+ */
+#define PORT_UNKNOWN	0
+#define PORT_8250	1
+#define PORT_16450	2
+#define PORT_16550	3
+#define PORT_16550A	4
 
 #define IS_A_CONSOLE(min)	(((min) & 0xC0) == 0x00)
 #define IS_A_SERIAL(min)	(((min) & 0xC0) == 0x40)
@@ -44,29 +100,8 @@ struct tty_queue {
 #define FULL(a) (!LEFT(a))
 #define CHARS(a) (((a)->head-(a)->tail)&(TTY_BUF_SIZE-1))
 
-static inline void PUTCH(char c, struct tty_queue * queue)
-{
-	int head;
-
-	cli();
-	head = (queue->head + 1) & (TTY_BUF_SIZE-1);
-	if (head != queue->tail) {
-		queue->buf[queue->head] = c;
-		queue->head = head;
-	}
-	sti();
-}
-
-static inline int GETCH(struct tty_queue * queue)
-{
-	int result = -1;
-
-	if (queue->tail != queue->head) {
-		result = 0xff & queue->buf[queue->tail];
-		queue->tail = (queue->tail + 1) & (TTY_BUF_SIZE-1);
-	}
-	return result;
-}
+extern void put_tty_queue(char c, struct tty_queue * queue);
+extern int get_tty_queue(struct tty_queue * queue);
 
 #define INTR_CHAR(tty) ((tty)->termios.c_cc[VINTR])
 #define QUIT_CHAR(tty) ((tty)->termios.c_cc[VQUIT])
@@ -112,10 +147,11 @@ struct tty_struct {
 	int pgrp;
 	int session;
 	int stopped;
-	int busy;
+	int flags;
 	int count;
 	struct winsize winsize;
 	void (*write)(struct tty_struct * tty);
+	struct tty_struct *link;
 	struct tty_queue *read_q;
 	struct tty_queue *write_q;
 	struct tty_queue *secondary;
@@ -124,38 +160,45 @@ struct tty_struct {
 /*
  * so that interrupts won't be able to mess up the
  * queues, copy_to_cooked must be atomic with repect
- * to itself, as must tty->write.
+ * to itself, as must tty->write. These are the flag
+ * bit-numbers. Use the set_bit() and clear_bit()
+ * macros to make it all atomic.
  */
-#define TTY_WRITE_BUSY 1
-#define TTY_READ_BUSY 2
+#define TTY_WRITE_BUSY 0
+#define TTY_READ_BUSY 1
+#define TTY_CR_PENDING 2
 
-#define TTY_WRITE_FLUSH(tty) \
-do { \
-	cli(); \
-	if (!EMPTY((tty)->write_q) && !(TTY_WRITE_BUSY & (tty)->busy)) { \
-		(tty)->busy |= TTY_WRITE_BUSY; \
-		sti(); \
-		(tty)->write((tty)); \
-		cli(); \
-		(tty)->busy &= ~TTY_WRITE_BUSY; \
-	} \
-	sti(); \
-} while (0)
+/*
+ * These have to be done with inline assembly: that way the bit-setting
+ * is guaranteed to be atomic. Both set_bit and clear_bit return 0
+ * if the bit-setting went ok, != 0 if the bit already was set/cleared.
+ */
+static inline int set_bit(int nr,int * addr)
+{
+	char ok;
 
-#define TTY_READ_FLUSH(tty) \
-do { \
-	cli(); \
-	if (!EMPTY((tty)->read_q) && !(TTY_READ_BUSY & (tty)->busy)) { \
-		(tty)->busy |= TTY_READ_BUSY; \
-		sti(); \
-		copy_to_cooked((tty)); \
-		cli(); \
-		(tty)->busy &= ~TTY_READ_BUSY; \
-	} \
-	sti(); \
-} while (0)
+	__asm__ __volatile__("btsl %1,%2\n\tsetb %0":
+		"=q" (ok):"r" (nr),"m" (*(addr)));
+	return ok;
+}
+
+static inline int clear_bit(int nr, int * addr)
+{
+	char ok;
+
+	__asm__ __volatile__("btrl %1,%2\n\tsetnb %0":
+		"=q" (ok):"r" (nr),"m" (*(addr)));
+	return ok;
+}
+
+#define TTY_WRITE_FLUSH(tty) tty_write_flush((tty))
+#define TTY_READ_FLUSH(tty) tty_read_flush((tty))
+
+extern void tty_write_flush(struct tty_struct *);
+extern void tty_read_flush(struct tty_struct *);
 
 extern struct tty_struct tty_table[];
+extern struct serial_struct serial_table[];
 extern struct tty_struct * redirect;
 extern int fg_console;
 extern unsigned long video_num_columns;
@@ -173,29 +216,47 @@ extern unsigned long video_num_lines;
 */
 #define INIT_C_CC "\003\034\177\025\004\0\1\0\021\023\032\0\022\017\027\026\0"
 
-extern void rs_init(void);
-extern void lp_init(void);
-extern void con_init(void);
-extern void tty_init(void);
+extern long rs_init(long);
+extern long lp_init(long);
+extern long con_init(long);
+extern long tty_init(long);
 
-extern void flush(struct tty_queue * queue);
+extern void flush_input(struct tty_struct * tty);
+extern void flush_output(struct tty_struct * tty);
+extern void wait_until_sent(struct tty_struct * tty);
+extern void copy_to_cooked(struct tty_struct * tty);
 
+extern int tty_ioctl(struct inode *, struct file *, unsigned int, unsigned int);
 extern int is_orphaned_pgrp(int pgrp);
 extern int is_ignored(int sig);
 extern int tty_signal(int sig, struct tty_struct *tty);
+extern int kill_pg(int pgrp, int sig, int priv);
+
+/* tty write functions */
 
 extern void rs_write(struct tty_struct * tty);
 extern void con_write(struct tty_struct * tty);
 extern void mpty_write(struct tty_struct * tty);
 extern void spty_write(struct tty_struct * tty);
 
-extern void serial_open(unsigned int line);
+/* serial.c */
 
-void copy_to_cooked(struct tty_struct * tty);
+extern int  serial_open(unsigned int line, struct file * filp);
+extern void serial_close(unsigned int line, struct file * filp);
+extern void change_speed(unsigned int line);
+extern void send_break(unsigned int line);
+extern int get_serial_info(unsigned int, struct serial_struct *);
+extern int set_serial_info(unsigned int, struct serial_struct *);
+
+/* pty.c */
+
+extern int  pty_open(unsigned int dev, struct file * filp);
+extern void pty_close(unsigned int dev, struct file * filp);
+
+/* console.c */
 
 void update_screen(int new_console);
+void blank_screen(void);
+void unblank_screen(void);
 
-int kill_pg(int pgrp, int sig, int priv);
-   
 #endif
-

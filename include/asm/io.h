@@ -17,9 +17,11 @@ __asm__ volatile ("outb %0,%1"
 static void inline outb_p(char value, unsigned short port)
 {
 __asm__ volatile ("outb %0,%1\n\t"
+#ifdef REALLY_SLOW_IO
 		  "outb %0,$0x80\n\t"
 		  "outb %0,$0x80\n\t"
 		  "outb %0,$0x80\n\t"
+#endif
 		  "outb %0,$0x80"
 		::"a" ((char) value),"d" ((unsigned short) port));
 }
@@ -36,9 +38,11 @@ static inline unsigned char inb_p(unsigned short port)
 {
 	unsigned char _v;
 __asm__ volatile ("inb %1,%0\n\t"
+#ifdef REALLY_SLOW_IO
 		  "outb %0,$0x80\n\t"
 		  "outb %0,$0x80\n\t"
 		  "outb %0,$0x80\n\t"
+#endif
 		  "outb %0,$0x80"
 		:"=a" (_v):"d" ((unsigned short) port));
 	return _v;

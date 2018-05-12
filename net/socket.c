@@ -1,13 +1,15 @@
-#include <signal.h>
-#include <errno.h>
+#include <linux/signal.h>
+#include <linux/errno.h>
 #include <linux/sched.h>
 #include <linux/kernel.h>
+#include <linux/stat.h>
+#include <linux/socket.h>
+#include <linux/fcntl.h>
+#include <linux/termios.h>
+
 #include <asm/system.h>
 #include <asm/segment.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <termios.h>
+
 #include "kern_sock.h"
 #include "socketcall.h"
 
@@ -20,7 +22,7 @@ static struct {
 	char *name;
 	struct proto_ops *ops;
 } proto_table[] = {
-	{AF_UNIX,	"AF_UNIX",	&unix_proto_ops},
+	{ AF_UNIX,	"AF_UNIX",	&unix_proto_ops}
 };
 #define NPROTO (sizeof(proto_table) / sizeof(proto_table[0]))
 
@@ -44,8 +46,7 @@ static int sock_write(struct inode *inode, struct file *file, char *buf,
 static int sock_readdir(struct inode *inode, struct file *file,
 			struct dirent *dirent, int count);
 static void sock_close(struct inode *inode, struct file *file);
-/*static*/ int sock_select(struct inode *inode, struct file *file, int which,
-		       select_table *seltable);
+static int sock_select(struct inode *inode, struct file *file, int which, select_table *seltable);
 static int sock_ioctl(struct inode *inode, struct file *file,
 		      unsigned int cmd, unsigned int arg);
 
@@ -60,11 +61,11 @@ static struct file_operations socket_file_ops = {
 	sock_close
 };
 
-#define SOCK_INODE(S) ((struct inode *)(S)->dummy)
+#define SOCK_INODE(S) ((struct inode *)(unsigned long)((S)->dummy))
 
 static struct socket sockets[NSOCKETS];
 #define last_socket (sockets + NSOCKETS - 1)
-static struct task_struct *socket_wait_free = NULL;
+static struct wait_queue *socket_wait_free = NULL;
 
 /*
  * obtains the first available file descriptor and sets it up for use
@@ -159,29 +160,28 @@ sock_alloc(int wait)
 				 * the close system call will iput this inode
 				 * for us.
 				 */
-#if 0
-				if (!(SOCK_INODE(sock) = get_empty_inode())) {
+				//if (!(SOCK_INODE(sock) = get_empty_inode())) {
+				if (!(sock->dummy = (void *)(unsigned long)get_empty_inode())) {
 					printk("sock_alloc: no more inodes\n");
 					sock->state = SS_FREE;
 					return NULL;
 				}
-#endif
 				SOCK_INODE(sock)->i_mode = S_IFSOCK;
 				sock->wait = &SOCK_INODE(sock)->i_wait;
-				printk("sock_alloc: socket 0x%x, inode 0x%x\n",
+				PRINTK("sock_alloc: socket 0x%x, inode 0x%x\n",
 				       sock, SOCK_INODE(sock));
 				return sock;
 			}
 		sti();
 		if (!wait)
 			return NULL;
-		printk("sock_alloc: no free sockets, sleeping...\n");
+		PRINTK("sock_alloc: no free sockets, sleeping...\n");
 		interruptible_sleep_on(&socket_wait_free);
 		if (current->signal & ~current->blocked) {
-			printk("sock_alloc: sleep was interrupted\n");
+			PRINTK("sock_alloc: sleep was interrupted\n");
 			return NULL;
 		}
-		printk("sock_alloc: wakeup... trying again...\n");
+		PRINTK("sock_alloc: wakeup... trying again...\n");
 	}
 }
 
@@ -198,7 +198,7 @@ sock_release(struct socket *sock)
 	int oldstate;
 	struct socket *peersock, *nextsock;
 
-	printk("sock_release: socket 0x%x, inode 0x%x\n", sock,
+	PRINTK("sock_release: socket 0x%x, inode 0x%x\n", sock,
 	       SOCK_INODE(sock));
 	if ((oldstate = sock->state) != SS_UNCONNECTED)
 		sock->state = SS_DISCONNECTING;
@@ -225,7 +225,7 @@ sock_release(struct socket *sock)
 static int
 sock_lseek(struct inode *inode, struct file *file, off_t offset, int whence)
 {
-	printk("sock_lseek: huh?\n");
+	PRINTK("sock_lseek: huh?\n");
 	return -EBADF;
 }
 
@@ -234,7 +234,7 @@ sock_read(struct inode *inode, struct file *file, char *ubuf, int size)
 {
 	struct socket *sock;
 
-	printk("sock_read: buf=0x%x, size=%d\n", ubuf, size);
+	PRINTK("sock_read: buf=0x%x, size=%d\n", ubuf, size);
 	if (!(sock = socki_lookup(inode))) {
 		printk("sock_read: can't find socket for inode!\n");
 		return -EBADF;
@@ -249,7 +249,7 @@ sock_write(struct inode *inode, struct file *file, char *ubuf, int size)
 {
 	struct socket *sock;
 
-	printk("sock_write: buf=0x%x, size=%d\n", ubuf, size);
+	PRINTK("sock_write: buf=0x%x, size=%d\n", ubuf, size);
 	if (!(sock = socki_lookup(inode))) {
 		printk("sock_write: can't find socket for inode!\n");
 		return -EBADF;
@@ -263,7 +263,7 @@ static int
 sock_readdir(struct inode *inode, struct file *file, struct dirent *dirent,
 	     int count)
 {
-	printk("sock_readdir: huh?\n");
+	PRINTK("sock_readdir: huh?\n");
 	return -EBADF;
 }
 
@@ -273,7 +273,7 @@ sock_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 {
 	struct socket *sock;
 
-	printk("sock_ioctl: inode=0x%x cmd=0x%x arg=%d\n", inode, cmd, arg);
+	PRINTK("sock_ioctl: inode=0x%x cmd=0x%x arg=%d\n", inode, cmd, arg);
 	if (!(sock = socki_lookup(inode))) {
 		printk("sock_ioctl: can't find socket for inode!\n");
 		return -EBADF;
@@ -291,37 +291,41 @@ sock_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 	return sock->ops->ioctl(sock, cmd, arg);
 }
 
-/*static*/ int
-sock_select(struct inode *inode, struct file *file, int which,
-	    select_table *seltable)
+static int
+sock_select(struct inode *inode, struct file *file, int sel_type, select_table * wait)
 {
 	struct socket *sock;
 
-	printk("sock_select: inode = 0x%x, kind = %s\n", inode,
-	       (which == SEL_IN) ? "in" :
-	       (which == SEL_OUT) ? "out" : "ex");
+	PRINTK("sock_select: inode = 0x%x, kind = %s\n", inode,
+	       (sel_type == SEL_IN) ? "in" :
+	       (sel_type == SEL_OUT) ? "out" : "ex");
 	if (!(sock = socki_lookup(inode))) {
-		printk("sock_write: can't find socket for inode!\n");
-		return -EBADF;
+		printk("sock_select: can't find socket for inode!\n");
+		return 0;
 	}
 
 	/*
 	 * handle server sockets specially
 	 */
 	if (sock->flags & SO_ACCEPTCON) {
-		if (which == SEL_IN) {
-			printk("sock_select: %sconnections pending\n",
+		if (sel_type == SEL_IN) {
+			PRINTK("sock_select: %sconnections pending\n",
 			       sock->iconn ? "" : "no ");
+			if (sock->iconn)
+				return 1;
+			select_wait(&inode->i_wait, wait);
 			return sock->iconn ? 1 : 0;
 		}
-		printk("sock_select: nothing else for server socket\n");
+		PRINTK("sock_select: nothing else for server socket\n");
+		select_wait(&inode->i_wait, wait);
 		return 0;
 	}
-
 	/*
 	 * we can't return errors to select, so its either yes or no.
 	 */
-	return sock->ops->select(sock, which) ? 1 : 0;
+	if (sock->ops && sock->ops->select)
+		return sock->ops->select(sock, sel_type, wait);
+	return 0;
 }
 
 void
@@ -329,7 +333,7 @@ sock_close(struct inode *inode, struct file *file)
 {
 	struct socket *sock;
 
-	printk("sock_close: inode=0x%x (cnt=%d)\n", inode, inode->i_count);
+	PRINTK("sock_close: inode=0x%x (cnt=%d)\n", inode, inode->i_count);
 	/*
 	 * it's possible the inode is NULL if we're closing an unfinished
 	 * socket.
@@ -348,10 +352,10 @@ sock_awaitconn(struct socket *mysock, struct socket *servsock)
 {
 	struct socket *last;
 
-	printk("sock_awaitconn: trying to connect socket 0x%x to 0x%x\n",
+	PRINTK("sock_awaitconn: trying to connect socket 0x%x to 0x%x\n",
 	       mysock, servsock);
 	if (!(servsock->flags & SO_ACCEPTCON)) {
-		printk("sock_awaitconn: server not accepting connections\n");
+		PRINTK("sock_awaitconn: server not accepting connections\n");
 		return -EINVAL;
 	}
 
@@ -414,7 +418,7 @@ sock_socket(int family, int type, int protocol)
 	struct socket *sock;
 	struct proto_ops *ops;
 
-	printk("sys_socket: family = %d (%s), type = %d, protocol = %d\n",
+	PRINTK("sys_socket: family = %d (%s), type = %d, protocol = %d\n",
 	       family, family_name(family), type, protocol);
 
 	/*
@@ -424,7 +428,7 @@ sock_socket(int family, int type, int protocol)
 		if (proto_table[i].family == family)
 			break;
 	if (i == NPROTO) {
-		printk("sys_socket: family not found\n");
+		PRINTK("sys_socket: family not found\n");
 		return -EINVAL;
 	}
 	ops = proto_table[i].ops;
@@ -471,7 +475,7 @@ sock_socketpair(int family, int type, int protocol, int usockvec[2])
 	int fd1, fd2, i;
 	struct socket *sock1, *sock2;
 
-	printk("sys_socketpair: family = %d, type = %d, protocol = %d\n",
+	PRINTK("sys_socketpair: family = %d, type = %d, protocol = %d\n",
 	       family, type, protocol);
 
 	/*
@@ -521,11 +525,11 @@ sock_bind(int fd, struct sockaddr *umyaddr, int addrlen)
 	struct socket *sock;
 	int i;
 
-	printk("sys_bind: fd = %d\n", fd);
+	PRINTK("sys_bind: fd = %d\n", fd);
 	if (!(sock = sockfd_lookup(fd, NULL)))
 		return -EBADF;
 	if ((i = sock->ops->bind(sock, umyaddr, addrlen)) < 0) {
-		printk("sys_bind: bind failed\n");
+		PRINTK("sys_bind: bind failed\n");
 		return i;
 	}
 	return 0;
@@ -541,15 +545,15 @@ sock_listen(int fd, int backlog)
 {
 	struct socket *sock;
 
-	printk("sys_listen: fd = %d\n", fd);
+	PRINTK("sys_listen: fd = %d\n", fd);
 	if (!(sock = sockfd_lookup(fd, NULL)))
 		return -EBADF;
 	if (sock->state != SS_UNCONNECTED) {
-		printk("sys_listen: socket isn't unconnected\n");
+		PRINTK("sys_listen: socket isn't unconnected\n");
 		return -EINVAL;
 	}
 	if (sock->flags & SO_ACCEPTCON) {
-		printk("sys_listen: socket already accepting connections!\n");
+		PRINTK("sys_listen: socket already accepting connections!\n");
 		return -EINVAL;
 	}
 	sock->flags |= SO_ACCEPTCON;
@@ -567,15 +571,15 @@ sock_accept(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen)
 	struct socket *sock, *clientsock, *newsock;
 	int i;
 
-	printk("sys_accept: fd = %d\n", fd);
+	PRINTK("sys_accept: fd = %d\n", fd);
 	if (!(sock = sockfd_lookup(fd, &file)))
 		return -EBADF;
 	if (sock->state != SS_UNCONNECTED) {
-		printk("sys_accept: socket isn't unconnected\n");
+		PRINTK("sys_accept: socket isn't unconnected\n");
 		return -EINVAL;
 	}
 	if (!(sock->flags & SO_ACCEPTCON)) {
-		printk("sys_accept: socket not accepting connections!\n");
+		PRINTK("sys_accept: socket not accepting connections!\n");
 		return -EINVAL;
 	}
 
@@ -588,8 +592,8 @@ sock_accept(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen)
 			return -EAGAIN;
 		interruptible_sleep_on(sock->wait);
 		if (current->signal & ~current->blocked) {
-			printk("sys_accept: sleep was interrupted\n");
-			return -EINTR;
+			PRINTK("sys_accept: sleep was interrupted\n");
+			return -ERESTARTSYS;
 		}
 	}
 
@@ -620,7 +624,7 @@ sock_accept(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen)
 	clientsock->state = SS_CONNECTED;
 	newsock->state = SS_CONNECTED;
 	newsock->ops->accept(sock, newsock);
-	printk("sys_accept: connected socket 0x%x via 0x%x to 0x%x\n",
+	PRINTK("sys_accept: connected socket 0x%x via 0x%x to 0x%x\n",
 	       sock, newsock, clientsock);
 	if (upeer_sockaddr)
 		newsock->ops->getname(newsock, upeer_sockaddr,
@@ -639,15 +643,15 @@ sock_connect(int fd, struct sockaddr *uservaddr, int addrlen)
 	struct socket *sock;
 	int i;
 
-	printk("sys_connect: fd = %d\n", fd);
+	PRINTK("sys_connect: fd = %d\n", fd);
 	if (!(sock = sockfd_lookup(fd, NULL)))
 		return -EBADF;
 	if (sock->state != SS_UNCONNECTED) {
-		printk("sys_connect: socket not unconnected\n");
+		PRINTK("sys_connect: socket not unconnected\n");
 		return -EINVAL;
 	}
 	if ((i = sock->ops->connect(sock, uservaddr, addrlen)) < 0) {
-		printk("sys_connect: connect failed\n");
+		PRINTK("sys_connect: connect failed\n");
 		return i;
 	}
 	return 0;
@@ -658,7 +662,7 @@ sock_getsockname(int fd, struct sockaddr *usockaddr, int *usockaddr_len)
 {
 	struct socket *sock;
 
-	printk("sys_getsockname: fd = %d\n", fd);
+	PRINTK("sys_getsockname: fd = %d\n", fd);
 	if (!(sock = sockfd_lookup(fd, NULL)))
 		return -EBADF;
 	return sock->ops->getname(sock, usockaddr, usockaddr_len, 0);
@@ -669,7 +673,7 @@ sock_getpeername(int fd, struct sockaddr *usockaddr, int *usockaddr_len)
 {
 	struct socket *sock;
 
-	printk("sys_getpeername: fd = %d\n", fd);
+	PRINTK("sys_getpeername: fd = %d\n", fd);
 	if (!(sock = sockfd_lookup(fd, NULL)))
 		return -EBADF;
 	return sock->ops->getname(sock, usockaddr, usockaddr_len, 1);
@@ -737,25 +741,26 @@ sys_socketcall(int call, unsigned long *args)
 	}
 }
 
-void sock_init(void)
+void
+sock_init(void)
 {
-    struct socket *sock;
-    int i, ok;
+	struct socket *sock;
+	int i, ok;
 
-    for (sock = sockets; sock <= last_socket; ++sock)
-        sock->state = SS_FREE;
-    for (i = ok = 0; i < NPROTO; ++i) {
-        printk("sock_init: initializing family %d (%s)\n",
-                proto_table[i].family, proto_table[i].name);
-        if ((*proto_table[i].ops->init)() < 0) {
-            printk("sock_init: init failed.\n",
-                    proto_table[i].family);
-            proto_table[i].family = -1;
-        } else
-            ++ok;
-    }
-    if (!ok)
-        printk("sock_init: warning: no protocols initialized\n");
-    return;
+	for (sock = sockets; sock <= last_socket; ++sock)
+		sock->state = SS_FREE;
+	for (i = ok = 0; i < NPROTO; ++i) {
+		printk("sock_init: initializing family %d (%s)\n",
+		       proto_table[i].family, proto_table[i].name);
+		if ((*proto_table[i].ops->init)() < 0) {
+			printk("sock_init: init failed.\n",
+			       proto_table[i].family);
+			proto_table[i].family = -1;
+		}
+		else
+			++ok;
+	}
+	if (!ok)
+		printk("sock_init: warning: no protocols initialized\n");
+	return;
 }
-

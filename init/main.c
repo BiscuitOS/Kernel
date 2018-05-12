@@ -1,26 +1,22 @@
 /*
  *  linux/init/main.c
  *
- *  (C) 1991  Linus Torvalds
+ *  Copyright (C) 1991, 1992  Linus Torvalds
  */
 
-#define __LIBRARY__
-#include <time.h>
-#include <unistd.h>
-#include <errno.h>
 #include <stdarg.h>
-#include <fcntl.h>
+#include <time.h>
 
-#include <linux/kernel.h>
-#include <linux/fs.h>
+#include <asm/system.h>
+#include <asm/io.h>
+
+#include <linux/types.h>
+#include <linux/fcntl.h>
+#include <linux/config.h>
 #include <linux/sched.h>
 #include <linux/tty.h>
-#include <linux/mm.h>
-
-#include <asm/io.h>
-#include <asm/system.h>
-
-#include <linux/config_rel.h>
+#include <linux/head.h>
+#include <linux/unistd.h>
 
 #ifdef CONFIG_TESTCASE
 #include <test/debug.h>
@@ -47,9 +43,11 @@ inline _syscall0(int, sync)
 inline _syscall0(pid_t,setsid)
 inline _syscall3(int,write,int,fd,const char *,buf,off_t,count)
 inline _syscall1(int,dup,int,fd)
+inline _syscall3(int,open,const char *,file,int,flag,int,mode)
 inline _syscall3(int,execve,const char *,file,char **,argv,char **,envp)
 inline _syscall1(int,close,int,fd)
 inline _syscall3(pid_t,waitpid,pid_t,pid,int *,wait_stat,int,options)
+extern void _exit(int exit_code);
 
 inline pid_t wait(int * wait_stat)
 {
@@ -62,8 +60,7 @@ char printbuf[1024];
  * This is set up by the setup-routine at boot-time
  */
 #define EXT_MEM_K        (*(unsigned short *)0x90002)
-#define CON_ROWS        ((*(unsigned short *)0x9000e) & 0xff)
-#define CON_COLS       (((*(unsigned short *)0x9000e) & 0xff00) >> 8)
+#define SCREEN_INFO      (*(struct screen_info *)0x90000)
 #define DRIVE_INFO       (*(struct drive_info *)0x90080)
 #define ORIG_ROOT_DEV    (*(unsigned short *)0x901FC)
 
@@ -83,11 +80,11 @@ char printbuf[1024];
 struct drive_info {
 	char dummy[32];
 } drive_info;
+struct screen_info screen_info;
 
 const char *command_line = "loglevel=8 console=ttyS0,115200";
-static long memory_end;
-static long buffer_memory_end;
-static long main_memory_start;
+static unsigned long memory_start = 0;
+static unsigned long memory_end = 0;
 static char term[32];
 
 static char *argv_init[] = { "/bin/init", NULL };
@@ -101,9 +98,9 @@ static char *envp[] = { "HOME=/usr/root", NULL, NULL };
 
 extern void init(void);
 extern int vsprintf(char *buf, const char *fmt, va_list args);
-extern void mem_init(long, long);
-extern void blk_dev_init(void);
-extern void chr_dev_init(void);
+extern void init_IRQ(void);
+extern long blk_dev_init(long, long);
+extern long chr_dev_init(long, long);
 extern void sock_init(void);
 extern void hd_init(void);
 extern void floppy_init(void);
@@ -150,29 +147,6 @@ static void time_init(void)
     startup_time = kernel_mktime(&time);
 }
 
-/*
- * Detect memory from setup-routine.
- */
-static void memory_detect(void)
-{
-    memory_end = (1 << MB_SHIFT) + (EXT_MEM_K << KB_SHIFT);
-    memory_end &= 0xFFFFF000;
-
-    /* Current version only support litter than 16Mb */
-    if (memory_end >= 16 << MB_SHIFT)
-        memory_end = 16 << MB_SHIFT;
-    if (memory_end >= 12 << MB_SHIFT)
-        buffer_memory_end = 4 << MB_SHIFT;
-    else if (memory_end >= 6 << MB_SHIFT)
-        buffer_memory_end = 2 << MB_SHIFT;
-    else if (memory_end >= 4 << MB_SHIFT)
-        buffer_memory_end = 3 << MB_SHIFT;
-    else
-        buffer_memory_end = 1 << MB_SHIFT;
-
-    main_memory_start = buffer_memory_end;
-}
-
 int start_kernel(void)
 {
     /*
@@ -183,20 +157,26 @@ int start_kernel(void)
     debug_on_kernel_early();
 #endif
     ROOT_DEV = ORIG_ROOT_DEV;
-    sprintf(term, "TERM=con%dx%d", CON_COLS, CON_ROWS);
+    drive_info = DRIVE_INFO;
+    screen_info = SCREEN_INFO;
+    sprintf(term, "TERM=con%dx%d", ORIG_VIDEO_COLS, ORIG_VIDEO_LINES);
     envp[1] = term;
     envp_rc[1] = term;
     envp_init[1] = term;
-    drive_info = DRIVE_INFO;
-    memory_detect();
-    mem_init(main_memory_start, memory_end);
+    memory_end = (1<<20) + (EXT_MEM_K<<10);
+    memory_end &= 0xfffff000;
+    if (memory_end > 16*1024*1024)
+        memory_end = 16*1024*1024;
+    memory_start = 1024*1024;
     trap_init();
+    init_IRQ();
     sched_init();
-    chr_dev_init();
-    blk_dev_init();
+    memory_start = chr_dev_init(memory_start,memory_end);
+    memory_start = blk_dev_init(memory_start,memory_end);
+    memory_start = mem_init(memory_start,memory_end);
+    buffer_init();
     time_init();
     printk("Linux version " UTS_RELEASE " " __DATE__ " " __TIME__ "\n");
-    buffer_init(buffer_memory_end);
 #ifdef CONFIG_HARDDISK
     hd_init();
 #endif
@@ -205,8 +185,8 @@ int start_kernel(void)
 #endif
     sock_init();
     sti();
-#ifdef CONFIG_SCSI
-	scsi_dev_init();
+#ifdef CONFIG_SCSIS
+    scsi_dev_init();
 #endif
 #ifdef CONFIG_DEBUG_KERNEL_LATER
     debug_on_kernel_later();
@@ -220,14 +200,16 @@ int start_kernel(void)
         init();
     }
 /*
- * NOTE! For any other task 'pause()' would mean we have to get a
- * signal to awaken, but task0 is the sole exception (see 'schedule()')
- * as task 0 gets activated at every idle moment (when no other tasks
- * can run). For task0 'pause()' just means we go check if some other
- * task can run, and if not we return here.
+ * task[0] is meant to be used as an "idle" task: it may not sleep, but
+ * it might do some general things like count free pages or it could be
+ * used to implement a reasonable LRU algorithm for the paging routines:
+ * anything that can be useful, but shouldn't take time from the real
+ * processes.
+ *
+ * Right now task[0] just does a infinite loop in user mode.
  */
     for (;;)
-        pause();
+        /* nothing */;
 }
 
 int printf(const char *fmt, ...)

@@ -1,0 +1,25 @@
+#
+# MS-DOS
+#
+
+menu "MS-DOS/FAT Filesystem"
+
+config FS_MSDOS
+	bool "MS-DOS/FAT Filesystem"
+	help
+	  File Allocation Table (FAT) is a computer file system
+	  architecture and a family of industry-standard file 
+	  systems utilizing it. The FAT file system is a continuing
+	  standard which borrows source code from the original, 
+	  legacy file system and proves to be simple and robust.
+	  It offers useful performance even in lightweight 
+	  implementations, but cannot deliver the same performance,
+	  reliability and scalability as some modern file systems.
+	  It is, however, supported for compatibility reasons by 
+	  nearly all currently developed operating systems for 
+	  personal computers and many mobile devices and embedded 
+	  systems, and thus is a well-suited format for data exchange
+	  between computers and devices of almost any type and age 
+	  from 1981 up to the present.
+
+endmenu # "File systems"

@@ -1,18 +1,18 @@
 /*
- * linux/fs/minix/symlink.c
+ *  linux/fs/minix/symlink.c
  *
- * minix symlink handling code
+ *  Copyright (C) 1991, 1992  Linus Torvalds
+ *
+ *  minix symlink handling code
  */
-
-#include <errno.h>
-
-#include <sys/stat.h>
 
 #include <asm/segment.h>
 
+#include <linux/errno.h>
 #include <linux/sched.h>
 #include <linux/fs.h>
 #include <linux/minix_fs.h>
+#include <linux/stat.h>
 
 static int minix_readlink(struct inode *, char *, int);
 static struct inode * minix_follow_link(struct inode *, struct inode *);
@@ -56,7 +56,7 @@ static struct inode * minix_follow_link(struct inode * dir, struct inode * inode
 	}
 	__asm__("mov %%fs,%0":"=r" (fs));
 	if ((current->link_count > 5) || !inode->i_data[0] ||
-	   !(bh = bread(inode->i_dev, inode->i_data[0]))) {
+	   !(bh = bread(inode->i_dev, inode->i_data[0], BLOCK_SIZE))) {
 		iput(dir);
 		iput(inode);
 		return NULL;
@@ -84,7 +84,7 @@ static int minix_readlink(struct inode * inode, char * buffer, int buflen)
 	if (buflen > 1023)
 		buflen = 1023;
 	if (inode->i_data[0])
-		bh = bread(inode->i_dev, inode->i_data[0]);
+		bh = bread(inode->i_dev, inode->i_data[0], BLOCK_SIZE);
 	else
 		bh = NULL;
 	iput(inode);

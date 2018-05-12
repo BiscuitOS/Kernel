@@ -1,31 +1,29 @@
 /*
  *  kernel/chr_drv/vt.c
  *
- *  (C) 1992 obz under the linux copyright
+ *  Copyright (C) 1992 obz under the linux copyright
  */
 
-#include <errno.h>
-
-#include <sys/types.h>
-#include <sys/kd.h>
-#include <sys/vt.h>
+#include <linux/types.h>
+#include <linux/errno.h>
+#include <linux/sched.h>
+#include <linux/tty.h>
+#include <linux/timer.h>
+#include <linux/kernel.h>
 
 #include <asm/io.h>
 #include <asm/segment.h>
 
-#include <linux/sched.h>
-#include <linux/tty.h>
-#include <linux/kernel.h>
-
 #include "vt_kern.h"
+#include <sys/kd.h>
+#include <sys/vt.h>
 
 /*
  * console (vt and kd) routines, as defined by usl svr4 manual
  */
 
-struct vt_cons vt_cons[MAX_CONSOLES];
+struct vt_cons vt_cons[NR_CONSOLES];
 
-extern int NR_CONSOLES;
 extern unsigned char kleds;
 extern unsigned char kraw;
 extern unsigned char ke0;
@@ -121,7 +119,17 @@ vt_ioctl(struct tty_struct *tty, int dev, int cmd, int arg)
 		default:
 			return -EINVAL;
 		}
-		vt_cons[console].vt_mode = arg;
+		if (vt_cons[console].vt_mode == (unsigned char) arg)
+			return 0;
+		vt_cons[console].vt_mode = (unsigned char) arg;
+		if (console != fg_console)
+			return 0;
+		if (arg == KD_TEXT)
+			unblank_screen();
+		else {
+			timer_active &= 1<<BLANK_TIMER;
+			blank_screen();
+		}
 		return 0;
 	case KDGETMODE:
 		verify_area((void *) arg, sizeof(unsigned long));
@@ -154,8 +162,7 @@ vt_ioctl(struct tty_struct *tty, int dev, int cmd, int arg)
 		}
 		else
 			return -EINVAL;
-		flush(tty->read_q);
-		flush(tty->secondary);
+		flush_input(tty);
 		return 0;
 	case KDGKBMODE:
 		verify_area((void *) arg, sizeof(unsigned long));
@@ -171,7 +178,7 @@ vt_ioctl(struct tty_struct *tty, int dev, int cmd, int arg)
 		put_fs_byte((((ucval & 1) ? LED_SCR : 0) |
 			     ((ucval & 2) ? LED_NUM : 0) |
 			     ((ucval & 4) ? LED_CAP : 0)),
-		              (char *)arg);
+			    (char *) arg);
 		return 0;
 	case KDSETLED:
 		if (arg & ~7)

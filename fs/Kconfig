@@ -6,4 +6,8 @@ menu "File systems"
 
 source "fs/minix/Kconfig"
 
+source "fs/ext/Kconfig"
+
+source "fs/msdos/Kconfig"
+
 endmenu # "File systems"

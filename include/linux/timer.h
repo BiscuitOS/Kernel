@@ -1,5 +1,5 @@
-#ifndef _TIMER_H
-#define _TIMER_H
+#ifndef _LINUX_TIMER_H
+#define _LINUX_TIMER_H
 
 /*
  * DON'T CHANGE THESE!! Most of them are hardcoded into some assembly language
@@ -26,6 +26,7 @@
 
 #define BLANK_TIMER	0
 #define BEEP_TIMER	1
+
 #define SER1_TIMER	2
 #define SER2_TIMER	3
 #define SER3_TIMER	4

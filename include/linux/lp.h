@@ -1,10 +1,14 @@
+#ifndef _LINUX_LP_H
+#define _LINUX_LP_H
+
 /*
 $Header: /usr/src/linux/include/linux/lp.h,v 1.2 1992/01/21 23:59:24 james_r_wiegand Exp james_r_wiegand $
 */
 
-#include <errno.h>
+#include <linux/errno.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
+
 #include <asm/io.h>
 #include <asm/segment.h>
 
@@ -37,9 +41,6 @@ $Header: /usr/src/linux/include/linux/lp.h,v 1.2 1992/01/21 23:59:24 james_r_wie
 since we are dealing with a horribly slow device
 I don't see the need for a queue
 */
-#ifndef __LP_C__
-	extern
-#endif
 struct lp_struct {
 	int base;
 	int flags;
@@ -52,9 +53,6 @@ struct lp_struct {
  * please let me know if you have different equipment
  * if you have more than 3 printers, remember to increase LP_NO
  */
-#ifndef __LP_C__
-	extern
-#endif   
 struct lp_struct lp_table[] = {
 	{ 0x3bc, 0, },
 	{ 0x378, 0, },
@@ -100,4 +98,6 @@ struct lp_struct lp_table[] = {
  * function prototypes
  */
 
-extern void lp_init(void);
+extern long lp_init(long);
+
+#endif

@@ -1,39 +1,32 @@
 /*
- * linux/kernel/sys.c
+ *  linux/kernel/sys.c
  *
- * (C) 1991 Linus Torvalds
+ *  Copyright (C) 1991, 1992  Linus Torvalds
  */
 
+#include <linux/errno.h>
 #include <linux/sched.h>
-#include <linux/kernel.h>
 #include <linux/tty.h>
+#include <linux/kernel.h>
 #include <linux/config.h>
+#include <linux/times.h>
+#include <linux/utsname.h>
+#include <linux/param.h>
+#include <linux/resource.h>
 #include <linux/string.h>
 
-#include <sys/times.h>
-#include <sys/utsname.h>
-
 #include <asm/segment.h>
-
-#include <sys/param.h>
-#include <sys/resource.h>
-#include <errno.h>
 
 /*
  * this indicates wether you can reboot with ctrl-alt-del: the deault is yes
  */
 static int C_A_D = 1;
 
-extern void hard_reset_now(void);
 /* 
  * The timezone where the local system is located.  Used as a default by some
  * programs who obtain this value by using gettimeofday.
  */
 struct timezone sys_tz = { 0, 0};
-
-static struct utsname thisname = {
-    UTS_SYSNAME, UTS_NODENAME, UTS_RELEASE, UTS_VERSION, UTS_MACHINE
-};
 
 extern int session_of_pgrp(int pgrp);
 
@@ -110,21 +103,153 @@ int sys_profil()
 	return -ENOSYS;
 }
 
-int sys_time(long *tloc)
+int sys_ftime()
 {
-    int i;
-
-    i = CURRENT_TIME;
-    if (tloc) {
-        verify_area(tloc, 4);
-        put_fs_long(i, (unsigned long *)tloc);
-    }
-    return i;
+	return -ENOSYS;
 }
 
-int sys_break(void)
+int sys_break()
 {
-    return -ENOSYS;
+	return -ENOSYS;
+}
+
+int sys_stty()
+{
+	return -ENOSYS;
+}
+
+int sys_gtty()
+{
+	return -ENOSYS;
+}
+
+int sys_prof()
+{
+	return -ENOSYS;
+}
+
+extern void hard_reset_now(void);
+
+/*
+ * Reboot system call: for obvious reasons only root may call it,
+ * and even root needs to set up some magic numbers in the registers
+ * so that some mistake won't make this reboot the whole machine.
+ * You can also set the meaning of the ctrl-alt-del-key here.
+ *
+ * reboot doesn't sync: do that yourself before calling this.
+ */
+int sys_reboot(int magic, int magic_too, int flag)
+{
+	if (!suser())
+		return -EPERM;
+	if (magic != 0xfee1dead || magic_too != 672274793)
+		return -EINVAL;
+	if (flag == 0x01234567)
+		hard_reset_now();
+	else if (flag == 0x89ABCDEF)
+		C_A_D = 1;
+	else if (!flag)
+		C_A_D = 0;
+	else
+		return -EINVAL;
+	return (0);
+}
+
+/*
+ * This function gets called by ctrl-alt-del - ie the keyboard interrupt.
+ * As it's called within an interrupt, it may NOT sync: the only choice
+ * is wether to reboot at once, or just ignore the ctrl-alt-del.
+ */
+void ctrl_alt_del(void)
+{
+	if (C_A_D)
+		hard_reset_now();
+	else
+		send_sig(SIGINT,task[1],1);
+}
+	
+
+/*
+ * This is done BSD-style, with no consideration of the saved gid, except
+ * that if you set the effective gid, it sets the saved gid too.  This 
+ * makes it possible for a setgid program to completely drop its privileges,
+ * which is often a useful assertion to make when you are doing a security
+ * audit over a program.
+ *
+ * The general idea is that a program which uses just setregid() will be
+ * 100% compatible with BSD.  A program which uses just setgid() will be
+ * 100% compatible with POSIX w/ Saved ID's. 
+ */
+int sys_setregid(int rgid, int egid)
+{
+	if (rgid >= 0) {
+		if ((current->gid == rgid) || 
+		    suser())
+			current->gid = rgid;
+		else
+			return(-EPERM);
+	}
+	if (egid >= 0) {
+		if ((current->gid == egid) ||
+		    (current->egid == egid) ||
+		    suser()) {
+			current->egid = egid;
+			current->sgid = egid;
+		} else
+			return(-EPERM);
+	}
+	return 0;
+}
+
+/*
+ * setgid() is implemeneted like SysV w/ SAVED_IDS 
+ */
+int sys_setgid(int gid)
+{
+	if (suser())
+		current->gid = current->egid = current->sgid = gid;
+	else if ((gid == current->gid) || (gid == current->sgid))
+		current->egid = gid;
+	else
+		return -EPERM;
+	return 0;
+}
+
+int sys_acct()
+{
+	return -ENOSYS;
+}
+
+int sys_phys()
+{
+	return -ENOSYS;
+}
+
+int sys_lock()
+{
+	return -ENOSYS;
+}
+
+int sys_mpx()
+{
+	return -ENOSYS;
+}
+
+int sys_ulimit()
+{
+	return -ENOSYS;
+}
+
+int sys_time(long * tloc)
+{
+	int i;
+
+	i = CURRENT_TIME;
+	if (tloc) {
+		verify_area(tloc,4);
+		put_fs_long(i,(unsigned long *)tloc);
+	}
+	return i;
 }
 
 /*
@@ -142,28 +267,28 @@ int sys_break(void)
  */
 int sys_setreuid(int ruid, int euid)
 {
-    int old_ruid = current->uid;
-
-    if (ruid > 0) {
-        if ((current->euid == ruid) ||
-            (old_ruid == ruid) ||
-            suser())
-            current->uid = ruid;
-        else
-            return -EPERM;
-    }
-    if (euid > 0) {
-        if ((old_ruid == euid) ||
-            (current->euid == euid) ||
-            suser()) {
-            current->euid = euid;
-            current->suid = euid;
-        } else {
-            current->uid = old_ruid;
-            return -EPERM;
-        }
-    }
-    return 0;
+	int old_ruid = current->uid;
+	
+	if (ruid >= 0) {
+		if ((current->euid==ruid) ||
+		    (old_ruid == ruid) ||
+		    suser())
+			current->uid = ruid;
+		else
+			return(-EPERM);
+	}
+	if (euid >= 0) {
+		if ((old_ruid == euid) ||
+		    (current->euid == euid) ||
+		    suser()) {
+			current->euid = euid;
+			current->suid = euid;
+		} else {
+			current->uid = old_ruid;
+			return(-EPERM);
+		}
+	}
+	return 0;
 }
 
 /*
@@ -179,92 +304,46 @@ int sys_setreuid(int ruid, int euid)
  */
 int sys_setuid(int uid)
 {
-    if (suser())
-        current->uid = current->euid = current->suid = uid;
-    else if ((uid == current->uid) || (uid == current->suid))
-        current->euid = uid;
-    else
-        return -EPERM;
-    return 0;
+	if (suser())
+		current->uid = current->euid = current->suid = uid;
+	else if ((uid == current->uid) || (uid == current->suid))
+		current->euid = uid;
+	else
+		return -EPERM;
+	return(0);
 }
 
-int sys_stime(long *tptr)
+int sys_stime(long * tptr)
 {
-    if (!suser())
-        return -EPERM;
-    startup_time = get_fs_long((unsigned long *)tptr) - jiffies / HZ;
-    jiffies_offset = 0;
-    return 0;
+	if (!suser())
+		return -EPERM;
+	startup_time = get_fs_long((unsigned long *)tptr) - jiffies/HZ;
+	jiffies_offset = 0;
+	return 0;
 }
 
-int sys_times(struct tms *tbuf)
+int sys_times(struct tms * tbuf)
 {
-    if (tbuf) {
-        verify_area(tbuf, sizeof(*tbuf));
-        put_fs_long(current->utime, (unsigned long *)&tbuf->tms_utime);
-        put_fs_long(current->stime, (unsigned long *)&tbuf->tms_stime);
-        put_fs_long(current->cutime, (unsigned long *)&tbuf->tms_cutime);
-        put_fs_long(current->cstime, (unsigned long *)&tbuf->tms_cstime);
-    }
-    return jiffies;
+	if (tbuf) {
+		verify_area(tbuf,sizeof *tbuf);
+		put_fs_long(current->utime,(unsigned long *)&tbuf->tms_utime);
+		put_fs_long(current->stime,(unsigned long *)&tbuf->tms_stime);
+		put_fs_long(current->cutime,(unsigned long *)&tbuf->tms_cutime);
+		put_fs_long(current->cstime,(unsigned long *)&tbuf->tms_cstime);
+	}
+	return jiffies;
 }
 
 int sys_brk(unsigned long end_data_seg)
 {
-    if (end_data_seg >= current->end_code &&
-        end_data_seg <  current->start_stack - 16384)
-        current->brk = end_data_seg;
-    return current->brk;
+	if (end_data_seg >= current->end_code &&
+	    end_data_seg < current->start_stack - 16384)
+		current->brk = end_data_seg;
+	return current->brk;
 }
 
 /*
- * This is done BSD-style, with no consideration of the saved gid, except
- * that if you set the effective gid, it sets the saved gid too.  This 
- * makes it possible for a setgid program to completely drop its privileges,
- * which is often a useful assertion to make when you are doing a security
- * audit over a program.
- *
- * The general idea is that a program which uses just setregid() will be
- * 100% compatible with BSD.  A program which uses just setgid() will be
- * 100% compatible with POSIX w/ Saved ID's. 
- */
-int sys_setregid(int rgid, int egid)
-{
-    if (rgid > 0) {
-        if ((current->gid == rgid) ||
-             suser())
-            current->gid = rgid;
-        else
-            return -EPERM;
-    }
-    if (egid > 0) {
-        if ((current->gid == egid) ||
-            (current->egid == egid) ||
-             suser()) {
-            current->egid = egid;
-            current->sgid = egid;
-        } else
-            return -EPERM;
-    }
-    return 0;
-}
-
-/*
- * setgid() is implemeneted like SysV w/ SAVED_IDS 
- */
-int sys_setgid(int gid)
-{
-    if (suser())
-        current->gid = current->egid = current->sgid = gid;
-    else if ((gid == current->gid) || (gid == current->sgid))
-        current->egid = gid;
-    else
-        return -EPERM;
-    return 0;
-}
-
-/*
- * This need some heave checking ...
+ * This needs some heave checking ...
  * I just haven't get the stomach for it. I also don't fully
  * understand sessions/pgrp etc. Let somebody who does explain it.
  *
@@ -274,28 +353,43 @@ int sys_setgid(int gid)
  */
 int sys_setpgid(int pid, int pgid)
 {
-    int i;
+	int i; 
 
-    if (!pid)
-        pid = current->pid;
-    if (!pgid)
-        pgid = current->pid;
-    if (pgid < 0)
-        return -EINVAL;
-    for (i = 0; i < NR_TASKS; i++)
-        if (task[i] && (task[i]->pid == pid) &&
-          ((task[i]->p_pptr == current) || 
-           (task[i] == current))) {
-            if (task[i]->leader)
-                return -EPERM;
-            if ((task[i]->session != current->session) ||
-               ((pgid != pid) && 
-                (session_of_pgrp(pgid) != current->session)))
-                return -EPERM;
-            task[i]->pgrp = pgid;
-            return 0;
-        }
-    return -ESRCH;
+	if (!pid)
+		pid = current->pid;
+	if (!pgid)
+		pgid = current->pid;
+	if (pgid < 0)
+		return -EINVAL;
+	for (i=0 ; i<NR_TASKS ; i++)
+		if (task[i] && (task[i]->pid == pid) &&
+		    ((task[i]->p_pptr == current) || 
+		     (task[i] == current))) {
+			if (task[i]->leader)
+				return -EPERM;
+			if ((task[i]->session != current->session) ||
+			    ((pgid != pid) && 
+			     (session_of_pgrp(pgid) != current->session)))
+				return -EPERM;
+			task[i]->pgrp = pgid;
+			return 0;
+		}
+	return -ESRCH;
+}
+
+int sys_getpgrp(void)
+{
+	return current->pgrp;
+}
+
+int sys_setsid(void)
+{
+	if (current->leader && !suser())
+		return -EPERM;
+	current->leader = 1;
+	current->session = current->pgrp = current->pid;
+	current->tty = -1;
+	return current->pgrp;
 }
 
 /*
@@ -303,64 +397,83 @@ int sys_setpgid(int pid, int pgid)
  */
 int sys_getgroups(int gidsetsize, gid_t *grouplist)
 {
-    int i;
+	int	i;
 
-    if (gidsetsize)
-        verify_area(grouplist, sizeof(gid_t) * gidsetsize);
+	if (gidsetsize)
+		verify_area(grouplist, sizeof(gid_t) * gidsetsize);
 
-    for (i = 0; (i < NGROUPS) && (current->groups[i] != NOGROUP);
-         i++, grouplist++) {
-        if (gidsetsize) {
-            if (i >= gidsetsize)
-                return -EINVAL;
-            put_fs_word(current->groups[i], (short *) grouplist);
-        }
-    }
-    return i;
+	for (i = 0; (i < NGROUPS) && (current->groups[i] != NOGROUP);
+	     i++, grouplist++) {
+		if (gidsetsize) {
+			if (i >= gidsetsize)
+				return -EINVAL;
+			put_fs_word(current->groups[i], (short *) grouplist);
+		}
+	}
+	return(i);
 }
 
 int sys_setgroups(int gidsetsize, gid_t *grouplist)
 {
-    int i;
+	int	i;
 
-    if (!suser())
-        return -EPERM;
-    if (gidsetsize > NGROUPS)
-        return -EINVAL;
-    for (i = 0; i < gidsetsize; i++, grouplist++) {
-        current->groups[i] = get_fs_word((unsigned short *) grouplist);
-    }
-    if (i < NGROUPS)
-        current->groups[i] = NOGROUP;
-    return 0;
+	if (!suser())
+		return -EPERM;
+	if (gidsetsize > NGROUPS)
+		return -EINVAL;
+	for (i = 0; i < gidsetsize; i++, grouplist++) {
+		current->groups[i] = get_fs_word((unsigned short *) grouplist);
+	}
+	if (i < NGROUPS)
+		current->groups[i] = NOGROUP;
+	return 0;
 }
 
 int in_group_p(gid_t grp)
 {
-    int i;
+	int	i;
 
-    if (grp == current->egid)
-        return 1;
+	if (grp == current->egid)
+		return 1;
 
-    for (i = 0; i < NGROUPS; i++) {
-        if (current->groups[i] == NOGROUP)
-            break;
-        if (current->groups[i] == grp)
-            return 1;
-    }
-    return 0;
+	for (i = 0; i < NGROUPS; i++) {
+		if (current->groups[i] == NOGROUP)
+			break;
+		if (current->groups[i] == grp)
+			return 1;
+	}
+	return 0;
 }
 
-int sys_uname(struct utsname *name)
-{
-    int i;
+static struct new_utsname thisname = {
+	UTS_SYSNAME, UTS_NODENAME, UTS_RELEASE, UTS_VERSION, UTS_MACHINE
+};
 
-    if (!name)
-        return -EINVAL;
-    verify_area(name, sizeof(*name));
-    for (i = 0; i < sizeof(*name); i++)
-        put_fs_byte(((char *)&thisname)[i], i + (char *)name);
-    return 0;
+int sys_newuname(struct new_utsname * name)
+{
+	if (!name)
+		return -EFAULT;
+	verify_area(name, sizeof *name);
+	memcpy_tofs(name,&thisname,sizeof *name);
+	return 0;
+}
+
+int sys_uname(struct old_utsname * name)
+{
+	if (!name)
+		return -EINVAL;
+	verify_area(name,sizeof *name);
+	memcpy_tofs(&name->sysname,&thisname.sysname,__OLD_UTS_LEN);
+	put_fs_byte(0,name->sysname+__OLD_UTS_LEN);
+	memcpy_tofs(&name->nodename,&thisname.nodename,__OLD_UTS_LEN);
+	put_fs_byte(0,name->nodename+__OLD_UTS_LEN);
+	memcpy_tofs(&name->release,&thisname.release,__OLD_UTS_LEN);
+	put_fs_byte(0,name->release+__OLD_UTS_LEN);
+	memcpy_tofs(&name->version,&thisname.version,__OLD_UTS_LEN);
+	put_fs_byte(0,name->version+__OLD_UTS_LEN);
+	memcpy_tofs(&name->machine,&thisname.machine,__OLD_UTS_LEN);
+	put_fs_byte(0,name->machine+__OLD_UTS_LEN);
+	return 0;
 }
 
 /*
@@ -368,49 +481,47 @@ int sys_uname(struct utsname *name)
  */
 int sys_sethostname(char *name, int len)
 {
-    int i;
-
-    if (!suser())
-        return -EPERM;
-    if (len > MAXHOSTNAMELEN)
-        return -EINVAL;
-    for (i=0; i < len; i++) {
-        if ((thisname.nodename[i] = get_fs_byte(name+i)) == 0)
-            break;
-    }
-    if (thisname.nodename[i]) {
-        thisname.nodename[i>MAXHOSTNAMELEN ? MAXHOSTNAMELEN : i] = 0;
-    }
-    return 0;
+	int	i;
+	
+	if (!suser())
+		return -EPERM;
+	if (len > __NEW_UTS_LEN)
+		return -EINVAL;
+	for (i=0; i < len; i++) {
+		if ((thisname.nodename[i] = get_fs_byte(name+i)) == 0)
+			return 0;
+	}
+	thisname.nodename[i] = 0;
+	return 0;
 }
 
 int sys_getrlimit(int resource, struct rlimit *rlim)
 {
-    if (resource >= RLIM_NLIMITS)
-        return -EINVAL;
-    verify_area(rlim, sizeof(*rlim));
-    put_fs_long(current->rlim[resource].rlim_cur, 
-               (unsigned long *) rlim);
-    put_fs_long(current->rlim[resource].rlim_max, 
-              ((unsigned long *) rlim) + 1);
-    return 0;	
+	if (resource >= RLIM_NLIMITS)
+		return -EINVAL;
+	verify_area(rlim,sizeof *rlim);
+	put_fs_long(current->rlim[resource].rlim_cur, 
+		    (unsigned long *) rlim);
+	put_fs_long(current->rlim[resource].rlim_max, 
+		    ((unsigned long *) rlim)+1);
+	return 0;	
 }
 
 int sys_setrlimit(int resource, struct rlimit *rlim)
 {
-    struct rlimit new, *old;
+	struct rlimit new, *old;
 
-    if (resource >= RLIM_NLIMITS)
-        return -EINVAL;
-    old = current->rlim + resource;
-    new.rlim_cur = get_fs_long((unsigned long *) rlim);
-    new.rlim_max = get_fs_long(((unsigned long *) rlim)+1);
-    if (((new.rlim_cur > old->rlim_max) ||
-         (new.rlim_max > old->rlim_max)) &&
-         !suser())
-        return -EPERM;
-    *old = new;
-    return 0;
+	if (resource >= RLIM_NLIMITS)
+		return -EINVAL;
+	old = current->rlim + resource;
+	new.rlim_cur = get_fs_long((unsigned long *) rlim);
+	new.rlim_max = get_fs_long(((unsigned long *) rlim)+1);
+	if (((new.rlim_cur > old->rlim_max) ||
+	     (new.rlim_max > old->rlim_max)) &&
+	    !suser())
+		return -EPERM;
+	*old = new;
+	return 0;
 }
 
 /*
@@ -455,19 +566,19 @@ int sys_getrusage(int who, struct rusage *ru)
 
 int sys_gettimeofday(struct timeval *tv, struct timezone *tz)
 {
-    if (tv) {
-        verify_area(tv, sizeof *tv);
-        put_fs_long(startup_time + CT_TO_SECS(jiffies + jiffies_offset),
-                   (unsigned long *) tv);
-        put_fs_long(CT_TO_USECS(jiffies + jiffies_offset), 
-                  ((unsigned long *) tv) + 1);
-    }
-    if (tz) {
-        verify_area(tz, sizeof *tz);
-        put_fs_long(sys_tz.tz_minuteswest, (unsigned long *) tz);
-        put_fs_long(sys_tz.tz_dsttime, ((unsigned long *) tz) + 1);
-    }
-    return 0;
+	if (tv) {
+		verify_area(tv, sizeof *tv);
+		put_fs_long(startup_time + CT_TO_SECS(jiffies+jiffies_offset),
+			    (unsigned long *) tv);
+		put_fs_long(CT_TO_USECS(jiffies+jiffies_offset), 
+			    ((unsigned long *) tv)+1);
+	}
+	if (tz) {
+		verify_area(tz, sizeof *tz);
+		put_fs_long(sys_tz.tz_minuteswest, (unsigned long *) tz);
+		put_fs_long(sys_tz.tz_dsttime, ((unsigned long *) tz)+1);
+	}
+	return 0;
 }
 
 /*
@@ -481,30 +592,30 @@ int sys_gettimeofday(struct timeval *tv, struct timezone *tz)
  */
 int sys_settimeofday(struct timeval *tv, struct timezone *tz)
 {
-    static int firsttime = 1;
-    void adjust_clock();
+	static int	firsttime = 1;
+	void 		adjust_clock();
 
-    if (!suser())
-        return -EPERM;
-    if (tz) {
-    sys_tz.tz_minuteswest = get_fs_long((unsigned long *) tz);
-    sys_tz.tz_dsttime = get_fs_long(((unsigned long *) tz) + 1);
-    if (firsttime) {
-        firsttime = 0;
-        if (!tv)
-            adjust_clock();
-        }
-    }
-    if (tv) {
-        int sec, usec;
+	if (!suser())
+		return -EPERM;
+	if (tz) {
+		sys_tz.tz_minuteswest = get_fs_long((unsigned long *) tz);
+		sys_tz.tz_dsttime = get_fs_long(((unsigned long *) tz)+1);
+		if (firsttime) {
+			firsttime = 0;
+			if (!tv)
+				adjust_clock();
+		}
+	}
+	if (tv) {
+		int sec, usec;
 
-        sec = get_fs_long((unsigned long *)tv);
-        usec = get_fs_long(((unsigned long *)tv)+1);
+		sec = get_fs_long((unsigned long *)tv);
+		usec = get_fs_long(((unsigned long *)tv)+1);
 	
-        startup_time = sec - jiffies/HZ;
-        jiffies_offset = usec * HZ / 1000000 - jiffies%HZ;
-    }
-    return 0;
+		startup_time = sec - jiffies/HZ;
+		jiffies_offset = usec * HZ / 1000000 - jiffies%HZ;
+	}
+	return 0;
 }
 
 /*
@@ -525,109 +636,13 @@ int sys_settimeofday(struct timeval *tv, struct timezone *tz)
  */
 void adjust_clock()
 {
-    startup_time += sys_tz.tz_minuteswest*60;
+	startup_time += sys_tz.tz_minuteswest*60;
 }
 
 int sys_umask(int mask)
 {
-    int old = current->umask;
+	int old = current->umask;
 
-    current->umask = mask & 0777;
-    return old;
-}
-
-int sys_setsid(void)
-{
-    if (current->leader && !suser())
-        return -EPERM;
-    current->leader = 1;
-    current->session = current->pgrp = current->pid;
-    current->tty = -1;
-    return current->pgrp;
-}
-
-/*
- * Reboot system call: for obvious reasons only root may call it,
- * and even root needs to set up some magic numbers in the registers
- * so that some mistake won't make this reboot the whole machine.
- * You can also set the meaning of the ctrl-alt-del-key here.
- *
- * reboot doesn't sync: do that yourself before calling this.
- */
-int sys_reboot(int magic, int magic_too, int flag)
-{
-	if (!suser())
-		return -EPERM;
-	if (magic != 0xfee1dead || magic_too != 672274793)
-		return -EINVAL;
-	if (flag == 0x01234567)
-		hard_reset_now();
-	else if (flag == 0x89ABCDEF)
-		C_A_D = 1;
-	else if (!flag)
-		C_A_D = 0;
-	else
-		return -EINVAL;
-	return (0);
-}
-
-/*
- * This function gets called by ctrl-alt-del - ie the keyboard interrupt.
- * As it's called within an interrupt, it may NOT sync: the only choice
- * is wether to reboot at once, or just ignore the ctrl-alt-del.
- */
-void ctrl_alt_del(void)
-{
-	if (C_A_D)
-		hard_reset_now();
-}
-
-int sys_getpgrp(void)
-{
-    return current->pgrp;
-}
-
-int sys_stty(void)
-{
-    return -ENOSYS;
-}
-
-int sys_gtty(void)
-{
-    return -ENOSYS;
-}
-
-int sys_prof(void)
-{
-    return -ENOSYS;
-}
-
-int sys_acct(void)
-{
-    return -ENOSYS;
-}
-
-int sys_phys(void)
-{
-    return -ENOSYS;
-}
-
-int sys_lock(void)
-{
-    return -ENOSYS;
-}
-
-int sys_mpx(void)
-{
-    return -ENOSYS;
-}
-
-int sys_ulimit(void)
-{
-    return -ENOSYS;
-}
-
-int sys_ftime(void)
-{
-    return -ENOSYS;
+	current->umask = mask & 0777;
+	return (old);
 }

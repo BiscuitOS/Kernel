@@ -1,0 +1,20 @@
+#
+# EXT
+#
+
+menu "ext (Extended file system)"
+
+config FS_EXT
+	bool "Extended file system (ext)"
+	help
+	  The extended file system, or ext, was implemented in April 
+	  1992 as the first file system created specifically for the 
+	  Linux kernel. It has metadata structure inspired by the 
+	  traditional Unix File System (UFS) and was designed by Rémy 
+	  Card to overcome certain limitations of the MINIX file system.
+	  It was the first implementation that used the virtual file 
+	  system (VFS), for which support was added in the Linux 
+	  kernel in version 0.96c, and it could handle file systems 
+	  up to 2 gigabytes (GB) in size.
+
+endmenu # "File systems"

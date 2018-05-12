@@ -7,3 +7,4 @@ obj-y += pty.o
 obj-y += lp.o
 obj-y += mem.o
 obj-y += vt.o
+obj-y += mouse.o

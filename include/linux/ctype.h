@@ -32,4 +32,3 @@ extern unsigned char _ctmp;
 #define toupper(c) (_ctmp=c,islower(_ctmp)?_ctmp-('a'-'A'):_ctmp)
 
 #endif
-

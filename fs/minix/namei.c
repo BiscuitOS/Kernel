@@ -1,19 +1,20 @@
 /*
  *  linux/fs/minix/namei.c
  *
- *  (C) 1991  Linus Torvalds
+ *  Copyright (C) 1991, 1992  Linus Torvalds
  */
 
 #include <linux/sched.h>
 #include <linux/minix_fs.h>
 #include <linux/kernel.h>
 #include <linux/string.h>
+#include <linux/stat.h>
+#include <linux/fcntl.h>
+#include <linux/errno.h>
+
 #include <asm/segment.h>
 
-#include <fcntl.h>
-#include <errno.h>
 #include <const.h>
-#include <sys/stat.h>
 
 /*
  * comment out this line if you want names > MINIX_NAME_LEN chars to be
@@ -76,7 +77,7 @@ static struct buffer_head * minix_find_entry(struct inode * dir,
 	entries = dir->i_size / (sizeof (struct minix_dir_entry));
 	if (!(block = dir->i_data[0]))
 		return NULL;
-	if (!(bh = bread(dir->i_dev,block)))
+	if (!(bh = bread(dir->i_dev, block, BLOCK_SIZE)))
 		return NULL;
 	i = 0;
 	de = (struct minix_dir_entry *) bh->b_data;
@@ -85,7 +86,7 @@ static struct buffer_head * minix_find_entry(struct inode * dir,
 			brelse(bh);
 			bh = NULL;
 			if (!(block = minix_bmap(dir,i/MINIX_DIR_ENTRIES_PER_BLOCK)) ||
-			    !(bh = bread(dir->i_dev,block))) {
+			    !(bh = bread(dir->i_dev, block, BLOCK_SIZE))) {
 				i += MINIX_DIR_ENTRIES_PER_BLOCK;
 				continue;
 			}
@@ -161,7 +162,7 @@ static struct buffer_head * minix_add_entry(struct inode * dir,
 		return NULL;
 	if (!(block = dir->i_data[0]))
 		return NULL;
-	if (!(bh = bread(dir->i_dev,block)))
+	if (!(bh = bread(dir->i_dev, block, BLOCK_SIZE)))
 		return NULL;
 	i = 0;
 	de = (struct minix_dir_entry *) bh->b_data;
@@ -172,7 +173,7 @@ static struct buffer_head * minix_add_entry(struct inode * dir,
 			block = minix_create_block(dir,i/MINIX_DIR_ENTRIES_PER_BLOCK);
 			if (!block)
 				return NULL;
-			if (!(bh = bread(dir->i_dev,block))) {
+			if (!(bh = bread(dir->i_dev, block, BLOCK_SIZE))) {
 				i += MINIX_DIR_ENTRIES_PER_BLOCK;
 				continue;
 			}
@@ -265,6 +266,13 @@ int minix_mknod(struct inode * dir, const char * name, int len, int mode, int rd
 		inode->i_op = &minix_chrdev_inode_operations;
 	else if (S_ISBLK(inode->i_mode))
 		inode->i_op = &minix_blkdev_inode_operations;
+	else if (S_ISFIFO(inode->i_mode)) {
+		inode->i_op = &minix_fifo_inode_operations;
+		inode->i_size = 0;
+		inode->i_pipe = 1;
+		PIPE_HEAD(*inode) = PIPE_TAIL(*inode) = 0;
+		PIPE_READERS(*inode) = PIPE_WRITERS(*inode) = 0;
+	}
 	if (S_ISBLK(mode) || S_ISCHR(mode))
 		inode->i_rdev = rdev;
 	inode->i_mtime = inode->i_atime = CURRENT_TIME;
@@ -313,7 +321,7 @@ int minix_mkdir(struct inode * dir, const char * name, int len, int mode)
 		return -ENOSPC;
 	}
 	inode->i_dirt = 1;
-	if (!(dir_block = bread(inode->i_dev,inode->i_data[0]))) {
+	if (!(dir_block = bread(inode->i_dev, inode->i_data[0], BLOCK_SIZE))) {
 		iput(dir);
 		inode->i_nlink--;
 		inode->i_dirt = 1;
@@ -360,7 +368,7 @@ static int empty_dir(struct inode * inode)
 
 	len = inode->i_size / sizeof (struct minix_dir_entry);
 	if (len<2 || !inode->i_data[0] ||
-	    !(bh=bread(inode->i_dev,inode->i_data[0]))) {
+	    !(bh=bread(inode->i_dev, inode->i_data[0], BLOCK_SIZE))) {
 	    	printk("warning - bad directory on dev %04x\n",inode->i_dev);
 		return 0;
 	}
@@ -380,7 +388,7 @@ static int empty_dir(struct inode * inode)
 				nr += MINIX_DIR_ENTRIES_PER_BLOCK;
 				continue;
 			}
-			if (!(bh=bread(inode->i_dev,block)))
+			if (!(bh=bread(inode->i_dev, block, BLOCK_SIZE)))
 				return 0;
 			de = (struct minix_dir_entry *) bh->b_data;
 		}
@@ -507,7 +515,7 @@ int minix_symlink(struct inode * dir, const char * name, int len, const char * s
 		return -ENOSPC;
 	}
 	inode->i_dirt = 1;
-	if (!(name_block = bread(inode->i_dev,inode->i_data[0]))) {
+	if (!(name_block = bread(inode->i_dev, inode->i_data[0], BLOCK_SIZE))) {
 		iput(dir);
 		inode->i_nlink--;
 		inode->i_dirt = 1;
@@ -668,6 +676,10 @@ start_up:
 		retval = 0;
 		goto end_rename;
 	}
+	if (S_ISDIR(new_inode->i_mode)) {
+		retval = -EEXIST;
+		goto end_rename;
+	}
 	if (S_ISDIR(old_inode->i_mode)) {
 		retval = -EEXIST;
 		if (new_bh)
@@ -681,7 +693,7 @@ start_up:
 		retval = -EIO;
 		if (!old_inode->i_data[0])
 			goto end_rename;
-		if (!(dir_bh = bread(old_inode->i_dev, old_inode->i_data[0])))
+		if (!(dir_bh = bread(old_inode->i_dev, old_inode->i_data[0], BLOCK_SIZE)))
 			goto end_rename;
 		if (PARENT_INO(dir_bh->b_data) != old_dir->i_ino)
 			goto end_rename;
@@ -739,7 +751,7 @@ end_rename:
 int minix_rename(struct inode * old_dir, const char * old_name, int old_len,
 	struct inode * new_dir, const char * new_name, int new_len)
 {
-	static struct task_struct * wait = NULL;
+	static struct wait_queue * wait = NULL;
 	static int lock = 0;
 	int result;
 

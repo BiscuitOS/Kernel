@@ -1,16 +1,15 @@
 /*
- *  linux/fs/chrdev.c
+ *  linux/fs/minix/chrdev.c
  *
- *  (C) 1991  Linus Torvalds
+ *  Copyright (C) 1991, 1992  Linus Torvalds
  */
 
+#include <linux/errno.h>
 #include <linux/sched.h>
 #include <linux/minix_fs.h>
 #include <linux/tty.h>
-
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/stat.h>
+#include <linux/stat.h>
+#include <linux/fcntl.h>
 
 /*
  * Called every time a minix character special file is opened
@@ -60,3 +59,4 @@ struct inode_operations minix_chrdev_inode_operations = {
 	minix_bmap,		/* bmap */
 	minix_truncate		/* truncate */
 };
+

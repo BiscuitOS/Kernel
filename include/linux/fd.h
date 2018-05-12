@@ -1,5 +1,5 @@
-#ifndef _FD_H_
-#define _FD_H
+#ifndef _LINUX_FD_H
+#define _LINUX_FD_H
 
 #define FDCLRPRM 0 /* clear user-defined parameters */
 #define FDSETPRM 1 /* set user-defined parameters for current media */
@@ -10,6 +10,7 @@
 #define FDFMTBEG 6 /* begin formatting a disk */
 #define	FDFMTTRK 7 /* format the specified track */
 #define FDFMTEND 8 /* end formatting a disk */
+#define FDSETEMSGTRESH	10	/* set fdc error reporting treshold */
 
 #define FD_FILL_BYTE 0xF6 /* format fill byte */
 
@@ -20,13 +21,20 @@
 #define FORMAT_ERROR	4	/* formatting error */
 
 struct floppy_struct {
-	unsigned int size, sect, head, track, stretch;
-	unsigned char gap,rate,spec1,fmt_gap;
-	char *name; /* used only for predefined formats */
+	unsigned int	size,		/* nr of 512-byte sectors total */
+			sect,		/* sectors per track */
+			head,		/* nr of heads */
+			track,		/* nr of tracks */
+			stretch;	/* !=0 means double track steps */
+	unsigned char	gap,		/* gap1 size */
+			rate,		/* data rate. |= 0x40 for perpendicular */
+			spec1,		/* stepping rate, head unload time */
+			fmt_gap;	/* gap2 size */
+	char 	      * name; /* used only for predefined formats */
 };
 
 struct format_descr {
-    unsigned int device,head,track;
+	unsigned int device,head,track;
 };
 
 #endif

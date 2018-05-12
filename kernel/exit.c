@@ -1,18 +1,19 @@
 /*
  *  linux/kernel/exit.c
  *
- *  (C) 1991  Linus Torvalds
+ *  Copyright (C) 1991, 1992  Linus Torvalds
  */
 
 #define DEBUG_PROC_TREE
 
-#include <errno.h>
-#include <signal.h>
-#include <sys/wait.h>
-
+#include <linux/wait.h>
+#include <linux/errno.h>
+#include <linux/signal.h>
 #include <linux/sched.h>
 #include <linux/kernel.h>
+#include <linux/mm.h>
 #include <linux/tty.h>
+
 #include <asm/segment.h>
 
 int sys_close(int fd);
@@ -22,7 +23,7 @@ int send_sig(long sig,struct task_struct * p,int priv)
 	if (!p || (sig < 0) || (sig > 32))
 		return -EINVAL;
 	if (!priv && ((sig != SIGCONT) || (current->session != p->session)) &&
-	    (current->euid != p->euid) && !suser())
+	    (current->euid != p->euid) && (current->uid != p->uid) && !suser())
 		return -EPERM;
 	if (!sig)
 		return 0;
@@ -42,7 +43,7 @@ int send_sig(long sig,struct task_struct * p,int priv)
 		/* save the signal number for wait. */
 		p->exit_code = sig;
 
-		/* we have to make sure the parent is awake. */
+		/* we have to make sure the parent process is awake. */
 		if (p->p_pptr != NULL && p->p_pptr->state == TASK_INTERRUPTIBLE)
 			p->p_pptr->state = TASK_RUNNING;
 
@@ -66,13 +67,7 @@ void release(struct task_struct * p)
 	for (i=1 ; i<NR_TASKS ; i++)
 		if (task[i] == p) {
 			task[i] = NULL;
-			/* Update links */
-			if (p->p_osptr)
-				p->p_osptr->p_ysptr = p->p_ysptr;
-			if (p->p_ysptr)
-				p->p_ysptr->p_osptr = p->p_osptr;
-			else
-				p->p_pptr->p_cptr = p->p_osptr;
+			REMOVE_LINKS(p);
 			free_page((long) p);
 			return;
 		}
@@ -284,16 +279,31 @@ static int has_stopped_jobs(int pgrp)
 	return(0);
 }
 
+static void forget_original_parent(struct task_struct * father)
+{
+	struct task_struct ** p;
+
+	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p)
+		if (*p && (*p)->p_opptr == father) {
+			if (task[1])
+				(*p)->p_opptr = task[1];
+			else
+				(*p)->p_opptr = task[0];
+		}
+}
+
 void do_exit(long code)
 {
 	struct task_struct *p;
 	int i;
 
+fake_volatile:
 	free_page_tables(get_base(current->ldt[1]),get_limit(0x0f));
 	free_page_tables(get_base(current->ldt[2]),get_limit(0x17));
 	for (i=0 ; i<NR_OPEN ; i++)
 		if (current->filp[i])
 			sys_close(i);
+	forget_original_parent(current);
 	iput(current->pwd);
 	current->pwd = NULL;
 	iput(current->root);
@@ -332,18 +342,21 @@ void do_exit(long code)
   	 * A.  Make init inherit all the child processes
 	 * B.  Check to see if any process groups have become orphaned
 	 *	as a result of our exiting, and if they have any stopped
-	 *	jons, send them a SIGUP and then a SIGCONT.  (POSIX 3.2.2.2)
+	 *	jobs, send them a SIGHUP and then a SIGCONT.  (POSIX 3.2.2.2)
 	 */
 	while ((p = current->p_cptr)) {
 		current->p_cptr = p->p_osptr;
 		p->p_ysptr = NULL;
-	        p->flags &= ~PF_PTRACED;
-		p->p_pptr = task[1];
-		p->p_osptr = task[1]->p_cptr;
-		task[1]->p_cptr->p_ysptr = p;
-		task[1]->p_cptr = p;
+		p->flags &= ~PF_PTRACED;
+		if (task[1])
+			p->p_pptr = task[1];
+		else
+			p->p_pptr = task[0];
+		p->p_osptr = p->p_pptr->p_cptr;
+		p->p_osptr->p_ysptr = p;
+		p->p_pptr->p_cptr = p;
 		if (p->state == TASK_ZOMBIE)
-			task[1]->signal |= (1<<(SIGCHLD-1));
+			send_sig(SIGCHLD,p->p_pptr,1);
 		/*
 		 * process group orphan check
 		 * Case ii: Our child is in a different pgrp 
@@ -379,6 +392,20 @@ void do_exit(long code)
 	audit_ptree();
 #endif
 	schedule();
+/*
+ * In order to get rid of the "volatile function does return" message
+ * I did this little loop that confuses gcc to think do_exit really
+ * is volatile. In fact it's schedule() that is volatile in some
+ * circumstances: when current->state = ZOMBIE, schedule() never
+ * returns.
+ *
+ * In fact the natural way to do all this is to have the label and the
+ * goto right after each other, but I put the fake_volatile label at
+ * the start of the function just in case something /really/ bad
+ * happens, and the schedule returns. This way we can try again. I'm
+ * not paranoid: it's just that everybody is out to get me.
+ */
+	goto fake_volatile;
 }
 
 int sys_exit(int error_code)
@@ -396,8 +423,9 @@ int sys_waitpid(pid_t pid,unsigned long * stat_addr, int options)
 	if (stat_addr)
 		verify_area(stat_addr,4);
 repeat:
+	current->signal &= ~(1<<(SIGCHLD-1));
 	flag=0;
-	for (p = current->p_cptr ; p ; p = p->p_osptr) {
+ 	for (p = current->p_cptr ; p ; p = p->p_osptr) {
 		if (pid>0) {
 			if (p->pid != pid)
 				continue;
@@ -427,7 +455,13 @@ repeat:
 				flag = p->pid;
 				if (stat_addr)
 					put_fs_long(p->exit_code, stat_addr);
-				release(p);
+				if (p->p_opptr != p->p_pptr) {
+					REMOVE_LINKS(p);
+					p->p_pptr = p->p_opptr;
+					SET_LINKS(p);
+					send_sig(SIGCHLD,p->p_pptr,1);
+				} else
+					release(p);
 #ifdef DEBUG_PROC_TREE
 				audit_ptree();
 #endif

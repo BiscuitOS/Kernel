@@ -1,179 +1,31 @@
 /*
- * linux/kernel/signal.c
+ *  linux/kernel/signal.c
  *
- *  (C) 1991 Linux Torvalds
+ *  Copyright (C) 1991, 1992  Linus Torvalds
  */
-#include <signal.h>
-#include <errno.h>
-
-#include <asm/segment.h>
 
 #include <linux/sched.h>
 #include <linux/kernel.h>
-#include <sys/wait.h>
+#include <linux/signal.h>
+#include <linux/errno.h>
+#include <linux/wait.h>
+#include <linux/ptrace.h>
 
-extern int sys_waitpid(pid_t pid,unsigned long * stat_addr, int options);
+#include <asm/segment.h>
 
-/*
- * Routine writes a core dump image in the current directory.
- * Currently not implemented.
- */
-int core_dump(long signr)
+extern int core_dump(long signr,struct pt_regs * regs);
+
+int sys_sgetmask()
 {
-    return(0);                      /* We didn't do a dump */
+	return current->blocked;
 }
 
-int do_signal(long signr,long ebx, long ecx, long edx,
-	      long esi, long edi, long ebp, long eax,
-	      long ds, long es, long fs, long gs,
-	      long orig_eax,
-	long eip, long cs, long eflags,
-	unsigned long * esp, long ss)
+int sys_ssetmask(int newmask)
 {
-    unsigned long sa_handler;
-    long old_eip=eip;
-    struct sigaction * sa = current->sigaction + signr - 1;
-    int longs;
+	int old=current->blocked;
 
-    unsigned long * tmp_esp;
-
-#ifdef notdef
-    printk("pid: %d, signr: %x, eax=%d, oeax = %d, int=%d\n", 
-           current->pid, signr, eax, orig_eax, 
-           sa->sa_flags & SA_INTERRUPT);
-#endif
-    if ((orig_eax != -1) &&
-       ((eax == -ERESTARTSYS) || (eax == -ERESTARTNOINTR))) {
-        if ((eax == -ERESTARTSYS) && ((sa->sa_flags & SA_INTERRUPT) ||
-             signr < SIGCONT || signr > SIGTTOU))
-            *(&eax) = -EINTR;
-        else {
-            *(&eax) = orig_eax;
-            *(&eip) = old_eip -= 2;
-        }
-    }
-    sa_handler = (unsigned long) sa->sa_handler;
-    if (sa_handler==1) {
-        /* check for SIGCHLD: it's special */
-        if (signr == SIGCHLD)
-        while (sys_waitpid(-1,NULL,WNOHANG) > 0)
-            /* nothing */;
-        return(1);   /* Ignore, see if there are more signals... */
-    }
-    if (!sa_handler) {
-        switch (signr) {
-        case SIGCONT:
-        case SIGCHLD:
-        case SIGWINCH:
-            return(1);  /* Ignore, ... */
-
-        case SIGSTOP:
-        case SIGTSTP:
-        case SIGTTIN:
-        case SIGTTOU:
-            current->state = TASK_STOPPED;
-            current->exit_code = signr;
-            if (!(current->p_pptr->sigaction[SIGCHLD - 1].sa_flags & 
-                  SA_NOCLDSTOP))
-                send_sig(SIGCHLD, current->p_pptr, 1);   
-               /* current->p_pptr->signal |= (1<<(SIGCHLD - 1)); */
-            return 1;  /* Reschedule another event */
-
-        case SIGQUIT:
-        case SIGILL:
-        case SIGTRAP:
-        case SIGIOT:
-        case SIGFPE:
-        case SIGSEGV:
-            if (core_dump(signr))
-                do_exit(signr | 0x80);
-        /* fall through */
-        default:
-            do_exit(signr);
-        }
-    }
-    /*
-     * OK, we're invoking a handler 
-     */
-    if (sa->sa_flags & SA_ONESHOT)
-        sa->sa_handler = NULL;
-    *(&eip) = sa_handler;
-    longs = (sa->sa_flags & SA_NOMASK) ? 7 : 8;
-    *(&esp) -= longs;
-    verify_area(esp, longs * 4);
-    tmp_esp = esp;
-    put_fs_long((long) sa->sa_restorer, tmp_esp++);
-    put_fs_long(signr, tmp_esp++);
-    if (!(sa->sa_flags & SA_NOMASK))
-        put_fs_long(current->blocked, tmp_esp++);
-    put_fs_long(eax, tmp_esp++);
-    put_fs_long(ecx, tmp_esp++);
-    put_fs_long(edx, tmp_esp++);
-    put_fs_long(eflags, tmp_esp++);
-    put_fs_long(old_eip, tmp_esp++);
-    current->blocked |= sa->sa_mask;
-    /* force a supervisor-mode page-in of the signal handler to reduce races */
-    __asm__("testb $0,%%fs:%0"::"m" (*(char *) sa_handler));
-    return 0;                       /* Continue, execute handler */
-}
-
-int sys_signal(int signum, long handler, long restorer)
-{
-    struct sigaction tmp;
-
-    if (signum < 1 || signum > 32 || signum == SIGKILL || signum == SIGSTOP)
-        return -EINVAL;
-    tmp.sa_handler = (void (*)(int))handler;
-    tmp.sa_mask = 0;
-    tmp.sa_flags = SA_ONESHOT | SA_NOMASK;
-    tmp.sa_restorer = (void (*)(void)) restorer;
-    handler = (long)current->sigaction[signum - 1].sa_handler;
-    current->sigaction[signum - 1] = tmp;
-    return handler;
-}
-
-static inline void get_new(char *from, char *to)
-{
-    int i;
-
-    for (i = 0; i < sizeof(struct sigaction); i++)
-        *(to++) = get_fs_byte(from++);
-}
-
-static inline void save_old(char *from, char *to)
-{
-    int i;
-
-    verify_area(to, sizeof(struct sigaction));
-    for (i = 0; i < sizeof(struct sigaction); i++) {
-        put_fs_byte(*from, to);
-        from++;
-        to++;
-    }
-}
-
-int sys_sigaction(int signum, const struct sigaction *action,
-                  struct sigaction *oldaction)
-{
-    struct sigaction tmp;
-
-    if (signum < 1 || signum > 32 || signum == SIGKILL || signum == SIGSTOP)
-        return -EINVAL;
-    tmp = current->sigaction[signum - 1];
-    get_new((char *)action,
-            (char *)(signum - 1 + current->sigaction));
-    if (oldaction)
-        save_old((char *)&tmp, (char *)oldaction);
-    if (current->sigaction[signum - 1].sa_flags & SA_NOMASK)
-        current->sigaction[signum - 1].sa_mask = 0;
-    else
-        current->sigaction[signum - 1].sa_mask |= (1 << (signum - 1));
-    return 0;
-}
-
-int sys_sgetmask(void)
-{
-    return current->blocked;
+	current->blocked = newmask & ~(1<<(SIGKILL-1)) & ~(1<<(SIGSTOP-1));
+	return old;
 }
 
 int sys_sigpending(sigset_t *set)
@@ -214,10 +66,152 @@ int sys_sigsuspend(int restart, unsigned long old_mask, unsigned long set)
     return -ERESTARTNOINTR;		/* handle the signal, and come back */
 }
 
-int sys_ssetmask(int newmask)
+static inline void save_old(char * from,char * to)
 {
-    int old = current->blocked;
+	int i;
 
-    current->blocked = newmask & ~(1 << (SIGKILL - 1)) & ~(1<<(SIGSTOP-1));
-    return old;
+	verify_area(to, sizeof(struct sigaction));
+	for (i=0 ; i< sizeof(struct sigaction) ; i++) {
+		put_fs_byte(*from,to);
+		from++;
+		to++;
+	}
+}
+
+static inline void get_new(char * from,char * to)
+{
+	int i;
+
+	for (i=0 ; i< sizeof(struct sigaction) ; i++)
+		*(to++) = get_fs_byte(from++);
+}
+
+int sys_signal(int signum, long handler, long restorer)
+{
+	struct sigaction tmp;
+
+	if (signum<1 || signum>32 || signum==SIGKILL || signum==SIGSTOP)
+		return -EINVAL;
+	tmp.sa_handler = (void (*)(int)) handler;
+	tmp.sa_mask = 0;
+	tmp.sa_flags = SA_ONESHOT | SA_NOMASK | SA_INTERRUPT;
+	tmp.sa_restorer = (void (*)(void)) restorer;
+	handler = (long) current->sigaction[signum-1].sa_handler;
+	current->sigaction[signum-1] = tmp;
+	return handler;
+}
+
+int sys_sigaction(int signum, const struct sigaction * action,
+	struct sigaction * oldaction)
+{
+	struct sigaction tmp;
+
+	if (signum<1 || signum>32 || signum==SIGKILL || signum==SIGSTOP)
+		return -EINVAL;
+	tmp = current->sigaction[signum-1];
+	get_new((char *) action,
+		(char *) (signum-1+current->sigaction));
+	if (oldaction)
+		save_old((char *) &tmp,(char *) oldaction);
+	if (current->sigaction[signum-1].sa_flags & SA_NOMASK)
+		current->sigaction[signum-1].sa_mask = 0;
+	else
+		current->sigaction[signum-1].sa_mask |= (1<<(signum-1));
+	return 0;
+}
+
+extern int sys_waitpid(pid_t pid,unsigned long * stat_addr, int options);
+
+/*
+ * Note that 'init' is a special process: it doesn't get signals it doesn't
+ * want to handle. Thus you cannot kill init even with a SIGKILL even by
+ * mistake.
+ */
+int do_signal(long signr,struct pt_regs * regs)
+{
+	unsigned long sa_handler;
+	long old_eip = regs->eip;
+	struct sigaction * sa = current->sigaction + signr - 1;
+	int longs;
+	unsigned long * tmp_esp;
+
+#ifdef notdef
+	printk("pid: %d, signr: %x, eax=%d, oeax = %d, int=%d\n", 
+		current->pid, signr, regs->eax, regs->orig_eax, 
+		sa->sa_flags & SA_INTERRUPT);
+#endif
+	sa_handler = (unsigned long) sa->sa_handler;
+	if ((regs->orig_eax != -1) &&
+	    ((regs->eax == -ERESTARTSYS) || (regs->eax == -ERESTARTNOINTR))) {
+		if ((sa_handler > 1) && (regs->eax == -ERESTARTSYS) &&
+		    (sa->sa_flags & SA_INTERRUPT))
+			regs->eax = -EINTR;
+		else {
+			regs->eax = regs->orig_eax;
+			regs->eip = old_eip -= 2;
+		}
+	}
+	if (sa_handler==1) {
+/* check for SIGCHLD: it's special */
+		if (signr == SIGCHLD)
+			while (sys_waitpid(-1,NULL,WNOHANG) > 0)
+				/* nothing */;
+		return(1);   /* Ignore, see if there are more signals... */
+	}
+	if (!sa_handler) {
+		if (current->pid == 1)
+			return 1;
+		switch (signr) {
+		case SIGCONT:
+		case SIGCHLD:
+		case SIGWINCH:
+			return(1);  /* Ignore, ... */
+
+		case SIGSTOP:
+		case SIGTSTP:
+		case SIGTTIN:
+		case SIGTTOU:
+			current->state = TASK_STOPPED;
+			current->exit_code = signr;
+			if (!(current->p_pptr->sigaction[SIGCHLD-1].sa_flags & 
+					SA_NOCLDSTOP))
+				send_sig(SIGCHLD, current->p_pptr, 1);			
+			return(1);  /* Reschedule another event */
+
+		case SIGQUIT:
+		case SIGILL:
+		case SIGTRAP:
+		case SIGIOT:
+		case SIGFPE:
+		case SIGSEGV:
+			if (core_dump(signr,regs))
+				do_exit(signr|0x80);
+			/* fall through */
+		default:
+			do_exit(signr);
+		}
+	}
+	/*
+	 * OK, we're invoking a handler 
+	 */
+	if (sa->sa_flags & SA_ONESHOT)
+		sa->sa_handler = NULL;
+	regs->eip = sa_handler;
+	longs = (sa->sa_flags & SA_NOMASK)?(7*4):(8*4);
+	regs->esp -= longs;
+	tmp_esp = (unsigned long *) regs->esp;
+	verify_area(tmp_esp,longs);
+	put_fs_long((long) sa->sa_restorer,tmp_esp++);
+	put_fs_long(signr,tmp_esp++);
+	if (!(sa->sa_flags & SA_NOMASK))
+		put_fs_long(current->blocked,tmp_esp++);
+	put_fs_long(regs->eax,tmp_esp++);
+	put_fs_long(regs->ecx,tmp_esp++);
+	put_fs_long(regs->edx,tmp_esp++);
+	put_fs_long(regs->eflags,tmp_esp++);
+	put_fs_long(old_eip,tmp_esp++);
+	current->blocked |= sa->sa_mask;
+/* force a supervisor-mode page-in of the signal handler to reduce races */
+	__asm__("testb $0,%%fs:%0"::"m" (*(char *) sa_handler));
+	return(0);		/* Continue, execute handler */
 }

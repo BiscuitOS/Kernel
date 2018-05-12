@@ -9,7 +9,7 @@
 	.equ SYSSIZE, 0x4000
 
 #
-#	bootsect.s		(C) 1991 Linus Torvalds
+#	bootsect.s		Copyright (C) 1991, 1992 Linus Torvalds
 #       modified by Drew Eckhardt
 #       modified by Bruce Evans (bde)
 #
@@ -206,6 +206,7 @@ ok_load_setup:
 	mov $0x021c, %ax        # /dev/PS0 - 1.44Mb
 	cmp $18, %bx
 	je root_defined
+	mov $0x200, %ax
 undef_root:
 	jmp undef_root
 root_defined:
@@ -215,9 +216,6 @@ root_defined:
 # after that (everything loaded), we jump to
 # the setup-routine loaded directly after
 # the bootblock:
-	mov %ax, %ax
-	mov %bx, %bx
-	mov %bx, %bx
 	ljmp $SETUPSEG, $0
 
 # This routine loads the system at address 0x10000, making sure

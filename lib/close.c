@@ -1,9 +1,10 @@
 /*
- * linux/lib/close.c
+ *  linux/lib/close.c
  *
- * (C) 1991 Linux Torvalds
+ *  Copyright (C) 1991, 1992  Linus Torvalds
  */
-#define __LIBRARY__
-#include  <unistd.h>
 
-_syscall1(int, close, int, fd)
+#define __LIBRARY__
+#include <linux/unistd.h>
+
+_syscall1(int,close,int,fd)

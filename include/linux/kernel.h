@@ -1,8 +1,10 @@
-#ifndef _KERNEL_H
-#define _KERNEL_H
+#ifndef _LINUX_KERNEL_H
+#define _LINUX_KERNEL_H
+
 /*
  * 'kernel.h' contains some often-used function prototypes etc
  */
+
 void verify_area(void * addr,int count);
 void panic(const char * str);
 void do_exit(long error_code);
@@ -20,4 +22,5 @@ void free_s(void * obj, int size);
  * permissions checks first, and check suser() last.
  */
 #define suser() (current->euid == 0)
+
 #endif

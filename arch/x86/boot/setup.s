@@ -8,7 +8,7 @@
 	.code16
 # rewrite with AT&T syntax by falcon <wuzhangjin@gmail.com> at 081012
 #
-#	setup.s		(C) 1991 Linus Torvalds
+# 	setup.s		Copyright (C) 1991, 1992 Linus Torvalds
 #
 # setup.s is responsible for getting the system data from the BIOS,
 # and putting them into the appropriate places in system memory.
@@ -26,6 +26,7 @@
 	.equ INITSEG, 0x9000	# we move boot here - out of the way
 	.equ SYSSEG, 0x1000	# system loaded at 0x10000 (65536).
 	.equ SETUPSEG, 0x9020	# this is the current segment
+	.equ NORMAL_VGA, 0xffff
 
 	.global _start, begtext, begdata, begbss, endtext, enddata, endbss
 	.text
@@ -213,9 +214,10 @@ end_move:
 	out	%al, $0xA1
 	.word	0x00eb,0x00eb
 	mov	$0xFF, %al		# mask off all interrupts for now
-	out	%al, $0x21
-	.word	0x00eb,0x00eb
 	out	%al, $0xA1
+	.word	0x00eb,0x00eb
+	mov	$0xFB, %al
+	out	%al, $0x21
 
 # well, that certainly wasn't fun :-(. Hopefully it works, and we don't
 # need no steenking BIOS anyway (except for the initial loading :-).

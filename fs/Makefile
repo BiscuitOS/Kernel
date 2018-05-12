@@ -12,4 +12,7 @@ obj-y += stat.o
 obj-y += fcntl.o
 obj-y += ioctl.o
 obj-y += select.o
+obj-y += fifo.o
 obj-$(CONFIG_FS_MINIX)  += minix/
+obj-$(CONFIG_FS_EXT)    += ext/
+obj-$(CONFIG_FS_MSDOS)  += msdos/

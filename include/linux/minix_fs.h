@@ -1,19 +1,16 @@
+#ifndef _MINIX_FS_H
+#define _MINIX_FS_H
+
 /*
  * The minix filesystem constants/structures
  */
 
-#ifndef _MINIX_FS_H
-#define _MINIX_FS_H
-
-#include <sys/types.h>
-
 #define MINIX_NAME_LEN 14
 #define MINIX_ROOT_INO 1
 
-#define MINIX_I_MAP_SLOTS        8
-#define MINIX_Z_MAP_SLOTS        8
-#define MINIX_SUPER_MAGIC        0x137F
-#define MINIX_SUPER_MAGIC_V1     0x138F
+#define MINIX_I_MAP_SLOTS 8
+#define MINIX_Z_MAP_SLOTS 8
+#define MINIX_SUPER_MAGIC 0x137F
 
 #define MINIX_INODES_PER_BLOCK ((BLOCK_SIZE)/(sizeof (struct minix_inode)))
 #define MINIX_DIR_ENTRIES_PER_BLOCK ((BLOCK_SIZE)/(sizeof (struct minix_dir_entry)))
@@ -28,6 +25,9 @@ struct minix_inode {
 	unsigned short i_zone[9];
 };
 
+/*
+ * minix super-block data on disk
+ */
 struct minix_super_block {
 	unsigned short s_ninodes;
 	unsigned short s_nzones;
@@ -61,8 +61,10 @@ extern int minix_rename(struct inode * old_dir, const char * old_name, int old_l
 	struct inode * new_dir, const char * new_name, int new_len);
 extern struct inode * minix_new_inode(int dev);
 extern void minix_free_inode(struct inode * inode);
+extern unsigned long minix_count_free_inodes(struct super_block *sb);
 extern int minix_new_block(int dev);
 extern int minix_free_block(int dev, int block);
+extern unsigned long minix_count_free_blocks(struct super_block *sb);
 
 extern int minix_create_block(struct inode *, int);
 extern int minix_bmap(struct inode *,int);
@@ -73,6 +75,7 @@ extern struct super_block *minix_read_super(struct super_block *,void *);
 extern void minix_read_inode(struct inode *);
 extern void minix_write_inode(struct inode *);
 extern void minix_put_inode(struct inode *);
+extern void minix_statfs(struct super_block *, struct statfs *);
 
 extern int minix_lseek(struct inode *, struct file *, off_t, int);
 extern int minix_read(struct inode *, struct file *, char *, int);
@@ -84,6 +87,9 @@ extern struct inode_operations minix_dir_inode_operations;
 extern struct inode_operations minix_symlink_inode_operations;
 extern struct inode_operations minix_chrdev_inode_operations;
 extern struct inode_operations minix_blkdev_inode_operations;
+extern struct inode_operations minix_fifo_inode_operations;
+
+extern struct file_operations minix_file_operations;
+extern struct file_operations minix_dir_operations;
 
 #endif
-

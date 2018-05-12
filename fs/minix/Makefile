@@ -7,3 +7,4 @@ obj-$(CONFIG_FS_MINIX) += chrdev.o
 obj-$(CONFIG_FS_MINIX) += dir.o
 obj-$(CONFIG_FS_MINIX) += file.o
 obj-$(CONFIG_FS_MINIX) += symlink.o
+obj-$(CONFIG_FS_MINIX) += fifo.o

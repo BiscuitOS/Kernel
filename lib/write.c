@@ -1,10 +1,11 @@
 /*
- * linux/lib/write.c
+ *  linux/lib/write.c
  *
- * (C) 1991 Linus Torvalds
+ *  Copyright (C) 1991, 1992  Linus Torvalds
  */
 
 #define __LIBRARY__
-#include <unistd.h>
+#include <linux/unistd.h>
+#include <linux/types.h>
 
-_syscall3(int, write, int, fd, const char *, buf, off_t, count)
+_syscall3(int,write,int,fd,const char *,buf,off_t,count)

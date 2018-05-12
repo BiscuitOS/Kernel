@@ -16,4 +16,3 @@ extern caddr_t mmap(caddr_t addr, size_t len, int prot, int flags, int fd,
 extern int munmap(caddr_t addr, size_t len);
 
 #endif /* _MMAN_H */
-

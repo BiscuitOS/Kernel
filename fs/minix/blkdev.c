@@ -1,16 +1,15 @@
 /*
- *  linux/fs/chrdev.c
+ *  linux/fs/minix/blkdev.c
  *
- *  (C) 1991  Linus Torvalds
+ *  Copyright (C) 1991, 1992  Linus Torvalds
  */
 
+#include <linux/errno.h>
 #include <linux/sched.h>
 #include <linux/minix_fs.h>
 #include <linux/tty.h>
-
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/stat.h>
+#include <linux/stat.h>
+#include <linux/fcntl.h>
 
 /*
  * Called every time a minix block special file is opened
@@ -19,7 +18,6 @@ static int blkdev_open(struct inode * inode, struct file * filp)
 {
 	int i;
 
-	check_disk_change(inode->i_rdev);
 	i = MAJOR(inode->i_rdev);
 	if (i < MAX_BLKDEV) {
 		filp->f_op = blkdev_fops[i];

@@ -26,7 +26,7 @@
 #define DEF_INITSEG	0x9000
 #define DEF_SYSSEG	0x1000
 #define DEF_SETUPSEG	0x9020
-#define DEF_SYSSIZE	0x4000
+#define DEF_SYSSIZE	0x5000
 
 /*
  * The root-device is no longer hard-coded. You can change the default
@@ -66,8 +66,10 @@
 
 #undef HD_TYPE
 
+#define CONFIG_BLK_DEV_HD
 #undef CONFIG_BLK_DEV_SD
 #undef CONFIG_BLK_DEV_ST
+
 
 /*
 	Choose supported SCSI adapters here.
@@ -80,23 +82,25 @@
 #undef CONFIG_SCSI_FUTURE_DOMAIN
 #undef CONFIG_SCSI_SEAGATE
 #undef CONFIG_SCSI_ULTRASTOR
+#undef CONFIG_SCSI_7000FASST
 
-#if defined(CONFIG_BLK_DEV_SD) || defined(CONFIG_BLK_DEV_ST)
-	#ifndef CONFIG_SCSI
-		#define CONFIG_SCSI
-	#endif
-	
-	#if !defined(CONFIG_SCSI_AHA1542) && !defined(CONFIG_SCSI_CSC) && !defined(CONFIG_SCSI_DTC) && \
-		!defined(CONFIG_SCSI_FUTURE_DOMAIN) &&  !defined(CONFIG_SCSI_SEAGATE) && !defined(CONFIG_SCSI_ULTRASTOR) 
+#if defined(CONFIG_BLK_DEV_SD) || defined(CONFIG_BLK_DEV_CD) || \
+defined(CONFIG_CHR_DEV_ST)
+#ifndef CONFIG_SCSI
+	#define CONFIG_SCSI
+#endif
 
-	#error  Error : SCSI devices enabled, but no low level drivers have been enabled.
-	#endif
+#if !defined(CONFIG_SCSI_AHA1542) && !defined(CONFIG_SCSI_CSC) && !defined(CONFIG_SCSI_DTC) && \
+		!defined(CONFIG_SCSI_FUTURE_DOMAIN) &&  !defined(CONFIG_SCSI_SEAGATE) && !defined(CONFIG_SCSI_ULTRASTOR) && \
+		!defined(CONFIG_SCSI_7000FASST)
+#error  Error : SCSI devices enabled, but no low level drivers have been enabled.
+#endif
 #endif
 
 #ifdef CONFIG_DISTRIBUTION
-	#include <linux/config.dist.h>
+#include <linux/config.dist.h>
 #else
-	#include <linux/config.site.h>
+#include <linux/config.site.h>
 #endif
 
 /*
@@ -113,4 +117,3 @@
 #endif
 
 #endif
-

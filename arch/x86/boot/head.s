@@ -1,7 +1,7 @@
 /* 
  * head.s
  *
- * Copyright (C) 1991 Linus Torvalds
+ *  Copyright (C) 1991, 1992  Linus Torvalds
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,7 +18,9 @@
 
 	.text
 	.globl idt, gdt, pg_dir, tmp_floppy_area, _floppy_track_buffer
-
+/*
+ * pg_dir is the main page directory, address 0x00000000
+ */
 pg_dir:
 	.globl startup_32
 
@@ -162,6 +164,24 @@ pg2:
 pg3:
 
 .org 0x5000
+
+/*
+ * empty_bad_page is a bogus page that will be used when out of memory,
+ * so that a process isn't accidentally killed due to a page fault when
+ * it is running in kernel mode..
+ */
+.globl empty_bad_page
+empty_bad_page:
+
+.org 0x6000
+/*
+ * empty_bad_page_table is similar to the above, but is used when the
+ * system needs a bogus page-table
+ */
+.globl empty_bad_page_table
+empty_bad_page_table:
+
+.org 0x7000
 
 /*
  * tmp_floppy_area is used by the floppy-driver when DMA cannot

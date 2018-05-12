@@ -1,14 +1,10 @@
 /*
- * linux/fs/minix/file.c
+ *  linux/fs/minix/file.c
  *
- * minix regular file handling primitives
+ *  Copyright (C) 1991, 1992 Linus Torvalds
+ *
+ *  minix regular file handling primitives
  */
-
-#include <errno.h>
-#include <fcntl.h>
-
-#include <sys/dirent.h>
-#include <sys/stat.h>
 
 #include <asm/segment.h>
 #include <asm/system.h>
@@ -16,6 +12,9 @@
 #include <linux/sched.h>
 #include <linux/minix_fs.h>
 #include <linux/kernel.h>
+#include <linux/errno.h>
+#include <linux/fcntl.h>
+#include <linux/stat.h>
 
 #define	NBUF	16
 
@@ -32,7 +31,7 @@ static int minix_file_write(struct inode *, struct file *, char *, int);
  * We have mostly NULL's here: the current defaults are ok for
  * the minix filesystem.
  */
-static struct file_operations minix_file_operations = {
+struct file_operations minix_file_operations = {
 	NULL,			/* lseek - default */
 	minix_file_read,	/* read */
 	minix_file_write,	/* write */
@@ -106,7 +105,7 @@ int minix_file_read(struct inode * inode, struct file * filp, char * buf, int co
 		if (blocks) {
 			--blocks;
 			if ((nr = minix_bmap(inode,block++))) {
-				*bhb = getblk(inode->i_dev,nr);
+				*bhb = getblk(inode->i_dev,nr,BLOCK_SIZE);
 				if (!(*bhb)->b_uptodate)
 					ll_rw_block(READ,*bhb);
 			} else
@@ -151,8 +150,10 @@ int minix_file_read(struct inode * inode, struct file * filp, char * buf, int co
 	} while (left > 0);
 	if (!read)
 		return -EIO;
-	inode->i_atime = CURRENT_TIME;
-	inode->i_dirt = 1;
+	if (!IS_RDONLY(inode)) {
+		inode->i_atime = CURRENT_TIME;
+		inode->i_dirt = 1;
+	}
 	return read;
 }
 
@@ -190,9 +191,9 @@ static int minix_file_write(struct inode * inode, struct file * filp, char * buf
 		if (c > count-written)
 			c = count-written;
 		if (c == BLOCK_SIZE)
-			bh = getblk(inode->i_dev, block);
+			bh = getblk(inode->i_dev, block, BLOCK_SIZE);
 		else
-			bh = bread(inode->i_dev,block);
+			bh = bread(inode->i_dev,block, BLOCK_SIZE);
 		if (!bh) {
 			if (!written)
 				written = -EIO;
@@ -212,10 +213,8 @@ static int minix_file_write(struct inode * inode, struct file * filp, char * buf
 		brelse(bh);
 	}
 	inode->i_mtime = CURRENT_TIME;
-	if (!(filp->f_flags & O_APPEND)) {
-		filp->f_pos = pos;
-		inode->i_ctime = CURRENT_TIME;
-	}
+	inode->i_ctime = CURRENT_TIME;
+	filp->f_pos = pos;
 	inode->i_dirt = 1;
 	return written;
 }

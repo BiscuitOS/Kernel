@@ -9,7 +9,6 @@
  */
 
 #include <linux/sched.h>
-#define __LP_C__
 #include <linux/lp.h>
 
 static int lp_reset(int minor)
@@ -122,7 +121,7 @@ static struct file_operations lp_fops = {
 	lp_release
 };
 
-void lp_init(void)
+long lp_init(long kmem_start)
 {
 	int offset = 0;
 	unsigned int testvalue = 0;
@@ -145,4 +144,5 @@ void lp_init(void)
 	}
 	if (count == 0)
 		printk("lp_init: no lp devices found\n");
+	return kmem_start;
 }

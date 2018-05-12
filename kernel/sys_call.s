@@ -1,7 +1,7 @@
 /*
  *  linux/kernel/sys_call.S
  *
- *  (C) 1991  Linus Torvalds
+ *  Copyright (C) 1991, 1992  Linus Torvalds
  */
 
 /*
@@ -36,8 +36,6 @@
  *	3C(%esp) - %oldesp
  *	40(%esp) - %oldss
  */
-
-SIG_CHLD	= 17
 
 EBX		= 0x00
 ECX		= 0x04
@@ -81,15 +79,14 @@ ENOSYS = 38
  * Ok, I get parallel printer interrupts while using the floppy for some
  * strange reason. Urgel. Now I just ignore them.
  */
-.globl system_call, timer_interrupt, sys_execve
+.globl system_call, sys_execve
 .globl device_not_available, coprocessor_error
 .globl divide_error, debug, nmi, int3, overflow, bounds, invalid_op
 .globl double_fault, coprocessor_segment_overrun
 .globl invalid_TSS, segment_not_present, stack_segment
-.globl general_protection, irq13, reserved
+.globl general_protection, reserved
 .globl alignment_check, page_fault
-.globl keyboard_interrupt, hd_interrupt
-.globl IRQ3_interrupt, IRQ4_interrupt
+.globl ret_from_sys_call
 
 .align 2
 bad_sys_call:
@@ -120,8 +117,9 @@ system_call:
         movl $0x17,%edx
         mov %dx,%fs
 
+	movl $-ENOSYS,EAX(%esp)
 	cmpl NR_syscalls,%eax
-	jae bad_sys_call
+	jae ret_from_sys_call
 	call *sys_call_table(,%eax,4)
 	movl %eax,EAX(%esp)		# save the return value
 ret_from_sys_call:
@@ -129,15 +127,17 @@ ret_from_sys_call:
 	jne 2f
 	cmpw $0x17,OLDSS(%esp)		# was stack segment = 0x17 ?
 	jne 2f
-1:	movl current,%eax
-	cmpl task,%eax			# task[0] cannot have signals
-	je 2f
-	cmpl $0,need_resched
+1:	cmpl $0, need_resched
 	jne reschedule
+	movl current, %eax
 	cmpl $0,state(%eax)		# state
 	jne reschedule
 	cmpl $0,counter(%eax)		# counter
 	je reschedule
+	movl $1,need_resched
+	cmpl task,%eax			# task[0] cannot have signals
+	je 2f
+	movl $0,need_resched
 	movl signal(%eax),%ebx
 	movl blocked(%eax),%ecx
 	notl %ecx
@@ -146,10 +146,13 @@ ret_from_sys_call:
 	je 2f
 	btrl %ecx,%ebx
 	movl %ebx,signal(%eax)
+	movl %esp,%ebx
+	pushl %ebx
 	incl %ecx
 	pushl %ecx
 	call do_signal
 	popl %ecx
+	popl %ebx
 	testl %eax, %eax
 	jne 1b			# see if we need to switch tasks, or do more signals
 2:	popl %ebx
@@ -165,277 +168,6 @@ ret_from_sys_call:
 	pop %gs
 	addl $4,%esp 		# skip the orig_eax
 	iret
-
-.align 2
-irq13:
-	pushl %eax
-	xorb %al,%al
-	outb %al,$0xF0
-	movb $0x20,%al
-	outb %al,$0x20
-	jmp 1f
-1:	jmp 1f
-1:	outb %al,$0xA0
-	popl %eax
-coprocessor_error:
-	pushl $-1		# mark this as an int. 
-        cld
-        push %gs
-        push %fs
-        push %es
-        push %ds
-        pushl %eax
-        pushl %ebp
-        pushl %edi
-        pushl %esi
-        pushl %edx
-        pushl %ecx
-        pushl %ebx
-        movl $0x10,%edx
-        mov %dx,%ds
-        mov %dx,%es
-        movl $0x17,%edx
-        mov %dx,%fs
-	pushl $ret_from_sys_call
-	jmp math_error
-
-.align 2
-device_not_available:
-	pushl $-1		# mark this as an int
-        cld
-        push %gs
-        push %fs
-        push %es
-        push %ds
-        pushl %eax
-        pushl %ebp
-        pushl %edi
-        pushl %esi
-        pushl %edx
-        pushl %ecx
-        pushl %ebx
-        movl $0x10,%edx
-        mov %dx,%ds
-        mov %dx,%es
-        movl $0x17,%edx
-        mov %dx,%fs
-	pushl $ret_from_sys_call
-	clts				# clear TS so that we can use math
-	movl %cr0,%eax
-	testl $0x4,%eax			# EM (math emulation bit)
-	je math_state_restore
-	pushl $0		# temporary storage for ORIG_EIP
-	call math_emulate
-	addl $4,%esp
-	ret
-
-.align 2
-keyboard_interrupt:
-	pushl $-1
-        cld
-        push %gs
-        push %fs
-        push %es
-        push %ds
-        pushl %eax
-        pushl %ebp
-        pushl %edi
-        pushl %esi
-        pushl %edx
-        pushl %ecx
-        pushl %ebx
-        movl $0x10,%edx
-        mov %dx,%ds
-        mov %dx,%es
-        movl $0x17,%edx
-        mov %dx,%fs
-        inb $0x21,%al
-        jmp 1f
-1:      jmp 1f
-1:      orb $0x02,%al
-        outb %al,$0x21
-        jmp 1f
-1:      jmp 1f
-1:      movb $0x20,%al
-        outb %al,$0x20
-	sti
-	call do_keyboard
-	cli
-        inb $0x21,%al
-        jmp 1f
-1:      jmp 1f
-1:      andb $~(0x02),%al
-        outb %al,$0x21
-	jmp ret_from_sys_call
-
-.align 2
-IRQ3_interrupt:
-	pushl $-1
-        cld
-        push %gs
-        push %fs
-        push %es
-        push %ds
-        pushl %eax
-        pushl %ebp
-        pushl %edi
-        pushl %esi
-        pushl %edx
-        pushl %ecx
-        pushl %ebx
-        movl $0x10,%edx
-        mov %dx,%ds
-        mov %dx,%es
-        movl $0x17,%edx
-        mov %dx,%fs
-        inb $0x21,%al
-        jmp 1f
-1:      jmp 1f
-1:      orb $0x08,%al
-        outb %al,$0x21
-        jmp 1f
-1:      jmp 1f
-1:      movb $0x20,%al
-        outb %al,$0x20
-	sti
-	call do_IRQ3
-	cli
-        inb $0x21,%al
-        jmp 1f
-1:      jmp 1f
-1:      andb $~(0x08),%al
-        outb %al,$0x21
-	jmp ret_from_sys_call
-
-.align 2
-IRQ4_interrupt:
-	pushl $-1
-        cld
-        push %gs
-        push %fs
-        push %es
-        push %ds
-        pushl %eax
-        pushl %ebp
-        pushl %edi
-        pushl %esi
-        pushl %edx
-        pushl %ecx
-        pushl %ebx
-        movl $0x10,%edx
-        mov %dx,%ds
-        mov %dx,%es
-        movl $0x17,%edx
-        mov %dx,%fs
-        inb $0x21,%al
-        jmp 1f
-1:      jmp 1f
-1:      orb $0x10,%al
-        outb %al,$0x21
-        jmp 1f
-1:      jmp 1f
-1:      movb $0x20,%al
-        outb %al,$0x20
-	sti
-	call do_IRQ4
-	cli
-        inb $0x21,%al
-        jmp 1f
-1:      jmp 1f
-1:      andb $~(0x10),%al
-        outb %al,$0x21
-	jmp ret_from_sys_call
-
-.align 2
-timer_interrupt:
-	pushl $-1		# mark this as an int
-        cld
-        push %gs
-        push %fs
-        push %es
-        push %ds
-        pushl %eax
-        pushl %ebp
-        pushl %edi
-        pushl %esi
-        pushl %edx
-        pushl %ecx
-        pushl %ebx
-        movl $0x10,%edx
-        mov %dx,%ds
-        mov %dx,%es
-        movl $0x17,%edx
-        mov %dx,%fs
-        inb $0x21,%al
-        jmp 1f
-1:      jmp 1f
-1:      orb $0x01,%al
-        outb %al,$0x21
-        jmp 1f
-1:      jmp 1f
-1:      movb $0x20,%al
-        outb %al,$0x20
-	sti
-	incl jiffies
-	movl CS(%esp),%eax
-	andl $3,%eax		# %eax is CPL (0 or 3, 0=supervisor)
-	pushl %eax
-	call do_timer		# 'do_timer(long CPL)' does everything from
-	addl $4,%esp		# task switching to accounting ...
-	cli
-        inb $0x21,%al
-        jmp 1f
-1:      jmp 1f
-1:      andb $~(0x01),%al
-        outb %al,$0x21
-	jmp ret_from_sys_call
-
-.align 2
-hd_interrupt:
-	pushl $-1
-        cld
-        push %gs
-        push %fs
-        push %es
-        push %ds
-        pushl %eax
-        pushl %ebp
-        pushl %edi
-        pushl %esi
-        pushl %edx
-        pushl %ecx
-        pushl %ebx
-        movl $0x10,%edx
-        mov %dx,%ds
-        mov %dx,%es
-        movl $0x17,%edx
-        mov %dx,%fs
-        inb $0xA1,%al
-        jmp 1f
-1:      jmp 1f
-1:      orb $0x40,%al
-        outb %al,$0xA1
-        jmp 1f
-1:      jmp 1f
-1:      movb $0x20,%al
-        outb %al,$0xA0
-        jmp 1f
-1:      jmp 1f
-1:      outb %al,$0x20
-	andl $0xfffeffff, timer_active
-	xorl %edx,%edx
-	xchgl do_hd,%edx
-	testl %edx,%edx
-	jne 1f
-	movl $unexpected_hd_interrupt,%edx
-1:	call *%edx		# "interesting" way of handling intr.
-	cli
-        inb $0xA1,%al
-        jmp 1f
-1:      jmp 1f
-1:      andb $~(0x40),%al
-        outb %al,$0xA1
-	jmp ret_from_sys_call
 
 .align 2
 sys_execve:
@@ -477,9 +209,45 @@ error_code:
 	addl $8,%esp
 	jmp ret_from_sys_call
 
+.align 2
+coprocessor_error:
+	pushl $0
+	pushl $do_coprocessor_error
+	jmp error_code
+
+.align 2
+device_not_available:
+	pushl $-1		# mark this as an int
+        cld
+        push %gs
+        push %fs
+        push %es
+        push %ds
+        pushl %eax
+        pushl %ebp
+        pushl %edi
+        pushl %esi
+        pushl %edx
+        pushl %ecx
+        pushl %ebx
+        movl $0x10,%edx
+        mov %dx,%ds
+        mov %dx,%es
+        movl $0x17,%edx
+        mov %dx,%fs
+	pushl $ret_from_sys_call
+	clts				# clear TS so that we can use math
+	movl %cr0,%eax
+	testl $0x4,%eax			# EM (math emulation bit)
+	je math_state_restore
+	pushl $0		# temporary storage for ORIG_EIP
+	call math_emulate
+	addl $4,%esp
+	ret
+
 debug:
 	pushl $0
-	pushl $do_int3		# _do_debug
+	pushl $do_debug		# _do_debug
 	jmp error_code
 
 nmi:

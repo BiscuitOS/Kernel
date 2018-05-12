@@ -1,21 +1,21 @@
 /*
- * linux/fs/minix/dir.c
+ *  linux/fs/minix/dir.c
  *
- * minix directory hadnling functions
+ *  Copyright (C) 1991, 1992 Linus Torvalds
+ *
+ *  minix directory handling functions
  */
-
-#include <errno.h>
-
-#include <sys/stat.h>
 
 #include <asm/segment.h>
 
+#include <linux/errno.h>
 #include <linux/fs.h>
 #include <linux/minix_fs.h>
+#include <linux/stat.h>
 
 static int minix_readdir(struct inode *, struct file *, struct dirent *, int);
 
-static struct file_operations minix_dir_operations = {
+struct file_operations minix_dir_operations = {
 	NULL,			/* lseek - default */
 	minix_file_read,	/* read */
 	NULL,			/* write - bad */
@@ -61,7 +61,7 @@ static int minix_readdir(struct inode * inode, struct file * filp,
 	while (filp->f_pos < inode->i_size) {
 		offset = filp->f_pos & 1023;
 		block = minix_bmap(inode,(filp->f_pos)>>BLOCK_SIZE_BITS);
-		if (!block || !(bh = bread(inode->i_dev,block))) {
+		if (!block || !(bh = bread(inode->i_dev,block,BLOCK_SIZE))) {
 			filp->f_pos += 1024-offset;
 			continue;
 		}
@@ -76,9 +76,9 @@ static int minix_readdir(struct inode * inode, struct file * filp,
 					else
 						break;
 				if (i) {
-					put_fs_long(de->inode,(unsigned long *)&dirent->d_ino);
+					put_fs_long(de->inode, (unsigned long *)&dirent->d_ino);
 					put_fs_byte(0,i+dirent->d_name);
-					put_fs_word(i,(short *)&dirent->d_reclen);
+					put_fs_word(i, (short *)&dirent->d_reclen);
 					brelse(bh);
 					return i;
 				}
