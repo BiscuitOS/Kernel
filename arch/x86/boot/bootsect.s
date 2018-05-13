@@ -6,7 +6,7 @@
 # SYS_SIZE is the number of clicks (16 bytes) to be loaded.
 # 0x3000 is 0x30000 bytes = 196KB, more than enough for current
 # version of linux
-	.equ SYSSIZE, 0x4000
+	.equ SYSSIZE, 0x8000
 
 #
 #	bootsect.s		Copyright (C) 1991, 1992 Linus Torvalds
