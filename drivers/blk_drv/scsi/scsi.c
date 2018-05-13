@@ -4,7 +4,13 @@
  *		Drew Eckhardt 
  *
  *	<drew@colorado.edu>
+ *
+ *	Bug correction thanks go to : 
+ *		Rik Faith <faith@cs.unc.edu>
+ *		Tommy Thorn <tthorn>
+ *		Thomas Wuensche <tw@fgb1.fgb.mw.tu-meunchen.de>
  */
+
 #include <linux/config.h>
 
 #ifdef CONFIG_SCSI
@@ -24,14 +30,19 @@
 #include "st.h"
 #endif
 
+#ifdef CONFIG_BLK_DEV_SR
+#include "sr.h"
+#endif
+
 /*
-static const char RCSid[] = "$Header: /usr/src/linux/kernel/blk_drv/scsi/RCS/scsi.c,v 1.1 1992/04/24 18:01:50 root Exp root $";
+static const char RCSid[] = "$Header: /usr/src/linux/kernel/blk_drv/scsi/RCS/scsi.c,v 1.1 1992/07/24 06:27:38 root Exp root $";
 */
 
-#define INTERNAL_ERROR (printk ("Internal error in file %s, line %s.\n", __FILE__, __LINE__), panic(""))
+#define INTERNAL_ERROR (printk ("Internal error in file %s, line %d.\n", __FILE__, __LINE__), panic(""))
 
 static void scsi_done (int host, int result);
 static void update_timeout (void);
+static void print_inquiry(unsigned char *data);
 
 static int time_start;
 static int time_elapsed;
@@ -48,10 +59,10 @@ Scsi_Device scsi_devices[MAX_SCSI_DEVICE];
 
 #define SENSE_LENGTH 255
 /*
-	As the scsi do command functions are inteligent, and may need to 
-	redo a command, we need to keep track of the last command 
-	executed on each one.
-*/
+ *	As the scsi do command functions are inteligent, and may need to 
+ *	redo a command, we need to keep track of the last command 
+ *	executed on each one.
+ */
 
 #define WAS_RESET 	0x01
 #define WAS_TIMEDOUT 	0x02
@@ -62,66 +73,70 @@ static Scsi_Cmnd last_cmnd[MAX_SCSI_HOSTS];
 static int last_reset[MAX_SCSI_HOSTS];
 
 /*
-	This is the number  of clock ticks we should wait before we time out 
-	and abort the command.  This is for  where the scsi.c module generates 
-	the command, not where it originates from a higher level, in which
-	case the timeout is specified there.
-	
+ *	This is the number  of clock ticks we should wait before we time out 
+ *	and abort the command.  This is for  where the scsi.c module generates 
+ *	the command, not where it originates from a higher level, in which
+ *	case the timeout is specified there.
+ *
+ *	ABORT_TIMEOUT and RESET_TIMEOUT are the timeouts for RESET and ABORT
+ *	respectively.
+ */
 
-	ABORT_TIMEOUT and RESET_TIMEOUT are the timeouts for RESET and ABORT
-	respectively.
-*/
 #ifdef DEBUG
 	#define SCSI_TIMEOUT 500
 #else
 	#define SCSI_TIMEOUT 100
 #endif
+
 #ifdef DEBUG
 	#define SENSE_TIMEOUT SCSI_TIMEOUT
 	#define ABORT_TIMEOUT SCSI_TIMEOUT
 	#define RESET_TIMEOUT SCSI_TIMEOUT
 #else
-
 	#define SENSE_TIMEOUT 50
 	#define RESET_TIMEOUT 50
 	#define ABORT_TIMEOUT 50
 	#define MIN_RESET_DELAY 25
-
 #endif
-/*
-	As the actual SCSI command runs in the background, we must set up a 
-	flag that tells scan_scsis() when the result it has is valid.  
-	scan_scsis can set the_result to -1, and watch for it to become the 
-	actual return code for that call.  the scan_scsis_done function() is 
-	our user specified completion function that is passed on to the  
-	scsi_do_cmd() function.
-*/
 
+/*
+ *	As the actual SCSI command runs in the background, we must set up a 
+ *	flag that tells scan_scsis() when the result it has is valid.  
+ *	scan_scsis can set the_result to -1, and watch for it to become the 
+ *	actual return code for that call.  the scan_scsis_done function() is 
+ *	our user specified completion function that is passed on to the  
+ *	scsi_do_cmd() function.
+ */
+
+volatile static int in_scan = 0;
 static int the_result;
 static unsigned char sense_buffer[SENSE_LENGTH];
 static void scan_scsis_done (int host, int result)
 	{
 	
 #ifdef DEBUG
-	printk ("scan_scsis_done(%d, %06x\n\r", host, result);
+	printk ("scan_scsis_done(%d, %06x)\n\r", host, result);
 #endif	
 	the_result = result;
 	}
 /*
-	Detecting SCSI devices :	
-	We scan all present host adapter's busses,  from ID 0 to ID 6.  
-	We use the INQUIRY command, determine device type, and pass the ID / 
-	lun address of all sequential devices to the tape driver, all random 
-	devices to the disk driver.
-*/
+ *	Detecting SCSI devices :	
+ *	We scan all present host adapter's busses,  from ID 0 to ID 6.  
+ *	We use the INQUIRY command, determine device type, and pass the ID / 
+ *	lun address of all sequential devices to the tape driver, all random 
+ *	devices to the disk driver.
+ */
 
 static void scan_scsis (void)
 	{
-        int host_nr , dev, lun, type, maxed;
+        int host_nr , dev, lun, type, maxed, slave;
 	static unsigned char scsi_cmd [12];
 	static unsigned char scsi_result [256];
 
-        for (host_nr = 0; host_nr < MAX_SCSI_HOSTS; ++host_nr)
+	++in_scan;
+
+        for (slave = host_nr = 0; host_nr < MAX_SCSI_HOSTS; ++host_nr, 
+	     slave = 0)
                 if (scsi_hosts[host_nr].present)
 			{
 			for (dev = 0; dev < 7; ++dev)
@@ -133,7 +148,9 @@ static void scan_scsis (void)
 					{
 					lun = 0;
 				#endif
-					/* Build an INQUIRY command block.  */
+/*
+ * Build an INQUIRY command block.  
+ */
 
 					scsi_cmd[0] = INQUIRY;
 					scsi_cmd[1] = (lun << 5) & 0xe0;
@@ -143,16 +160,17 @@ static void scan_scsis (void)
 					scsi_cmd[5] = 0;
 					the_result = -1;	
 #ifdef DEBUG
-	memset ((void *) scsi_result , 0, 255);
+					memset ((void *) scsi_result , 0, 255);
 #endif 
 					scsi_do_cmd (host_nr, dev, (void *)  scsi_cmd, (void *) 							    
 						 scsi_result, 256,  scan_scsis_done, 
 						 SCSI_TIMEOUT, sense_buffer, 3);
 					
-					/* Wait for valid result */
+/*
+ * 	Wait for valid result 
+ */
 
 					while (the_result < 0);
-	
 
                                         if (!the_result)
 						{
@@ -165,113 +183,179 @@ static void scan_scsis (void)
                                                 scsi_devices[NR_SCSI_DEVICES].
 							removable = (0x80 & 
 							scsi_result[1]) >> 7;
-
-
-
 /* 
-	Currently, all sequential devices are assumed to be tapes,
-	all random devices disk, with the appropriate read only 
-	flags set for ROM / WORM treated as RO.
-*/ 
+ *	Currently, all sequential devices are assumed to be tapes,
+ *	all random devices disk, with the appropriate read only 
+ *	flags set for ROM / WORM treated as RO.
+ */ 
 
                                                 switch (type = scsi_result[0])
-                                                	{
-                                                        case TYPE_TAPE:
-                                                        case TYPE_DISK:
-                                                        	scsi_devices[NR_SCSI_DEVICES].writeable = 1;
-                                                                break;
-                                                        case TYPE_WORM:
-                                                        case TYPE_ROM:
-                                                        	scsi_devices[NR_SCSI_DEVICES].writeable = 0;
-                                                                break;
-                                                        default:
-                                                                type = -1;
-                                                        }
+                                                {
+                                                case TYPE_TAPE :
+                                                case TYPE_DISK :
+                                                	scsi_devices[NR_SCSI_DEVICES].writeable = 1;
+                                                     	break;
+                                                case TYPE_WORM :
+                                                case TYPE_ROM :
+                                                	scsi_devices[NR_SCSI_DEVICES].writeable = 0;
+                                                	break;
+                                                default :
+                                                	type = -1;
+                                                }
 
                                                 scsi_devices[NR_SCSI_DEVICES].random = (type == TYPE_TAPE) ? 0 : 1;
 
                                                 maxed = 0;
                                                 switch (type)
-							{
-                                                        case -1:
-                                                        	break;
-                                                        case TYPE_TAPE:
-								printk("Detected scsi tape at host %d, ID  %d, lun %d \n", host_nr, dev, lun);
-#ifdef CONFIG_BLK_DEV_ST
-                                                                if (!(maxed = (NR_ST == MAX_ST)))
-                                                                                scsi_tapes[NR_ST].device = &scsi_devices[NR_SCSI_DEVICES];
+						{
+                                                case -1 :
+                                                	break;
+                                                case TYPE_TAPE :
+#ifdef DEBUG
+							printk("Detected scsi tape at host %d, ID  %d, lun %d \n", host_nr, dev, lun);
 #endif
-                                                        default:
-								printk("Detected scsi disk at host %d, ID  %d, lun %d \n", host_nr, dev, lun);
+#ifdef CONFIG_BLK_DEV_ST
+                                                        if (!(maxed = (NR_ST == MAX_ST)))
+                                                        	scsi_tapes[NR_ST].device = &scsi_devices[NR_SCSI_DEVICES];
+#endif
+							break;
+							case TYPE_ROM:
+								printk("Detected scsi CD-ROM at host %d, ID  %d, lun %d \n", host_nr, dev, lun);
+#ifdef CONFIG_BLK_DEV_SR
+                                                               	if (!(maxed = (NR_SR >= MAX_SR)))
+										scsi_CDs[NR_SR].device = &scsi_devices[NR_SCSI_DEVICES];
+#endif
+								break;
+                                                default :
+#ifdef DEBUG
+							printk("Detected scsi disk at host %d, ID  %d, lun %d \n", host_nr, dev, lun);
+#endif
 #ifdef CONFIG_BLK_DEV_SD
-                                                               	if (!(maxed = (NR_SD >= MAX_SD)))
-										rscsi_disks[NR_SD].device = &scsi_devices[NR_SCSI_DEVICES];
+                                                        if (!(maxed = (NR_SD >= MAX_SD)))
+								rscsi_disks[NR_SD].device = &scsi_devices[NR_SCSI_DEVICES];
 #endif
-                                                                }
+						}
 
-                                                        if (maxed)
-                                                                {
-                                                                printk ("Already have detected maximum number of SCSI %ss Unable to \n"
-                                                                        "add drive at SCSI host %s, ID %d, LUN %d\n\r", (type == TYPE_TAPE) ?
-                                                                        "tape" : "disk", scsi_hosts[host_nr].name,
-                                                                        dev, lun);
-                                                                type = -1;
-                                                                break;
-                                                                }
+					        print_inquiry(scsi_result);
 
-                                                        else if (type != -1)
-                                                                {
-                                                                if (type == TYPE_TAPE)
+                                                if (maxed)
+                                                	{
+                                                                printk ("Already have detected "
+									"maximum number of SCSI "
+									"%ss Unable to \n"
+                                                                        "add drive at SCSI host "
+									"%s, ID %d, LUN %d\n\r", 
+									(type == TYPE_TAPE) ?
+                                                                             "tape" : 
+									(type == TYPE_DISK) ?
+									     "disk" : "CD-ROM", 
+									scsi_hosts[host_nr].name,
+                                                                dev, lun);
+                                                        type = -1;
+                                                        break;
+                                                        }
+
+                                                 else if (type != -1)
+                                                        {
+							char *p;
+							char str[25]; 
+memcpy((void *) str, (void *) &scsi_result[8], 8);
+for (p = str; (p < (str  + 8)) && (*p != ' '); ++p);
+*p++ = ' ';
+memcpy((void *) p, (void *) &scsi_result[16], 16);
+for (; *p != ' '; ++p);
+*p = 0;
+
+printk("s%c%d at scsi%d, id %d, lun %d : %s\n",
+	(type == TYPE_TAPE) ? 't' : ((type == TYPE_ROM) ? 'r' : 'd'),
+	(type == TYPE_TAPE) ? 
 #ifdef CONFIG_BLK_DEV_ST
-                                                                	++NR_ST;
+	NR_ST  
+#else 
+	-1
+#endif
+	: 
+       (type == TYPE_ROM ? 
+#ifdef CONFIG_BLK_DEV_SR
+	NR_SR
+#else
+	-1	
+#endif
+	:
+#ifdef CONFIG_BLK_DEV_SD
+	NR_SD
+#else
+	-1	
+#endif
+	)
+
+	,host_nr , dev, lun, p); 
+                                                        if (type == TYPE_TAPE)
+#ifdef CONFIG_BLK_DEV_ST
+                                                        	++NR_ST;
 #else
 ;
 #endif
 
-                                                                else
+                                                  else if (type == TYPE_DISK)
 #ifdef CONFIG_BLK_DEV_SD
-                                                                        ++NR_SD;
+                                                        	++NR_SD;
+#else
+;
+#endif
+								else
+#ifdef CONFIG_BLK_DEV_SR
+								        ++NR_SR;
 #else
 ;
 #endif
                                                                 }
+							++slave;
 							++NR_SCSI_DEVICES;
                                                         }       /* if result == DID_OK ends */
                                         }       /* for lun ends */
                         }      	/* if present */  
 
-	printk("Detected "
+	printk("scsi : detected "
 #ifdef CONFIG_BLK_DEV_SD
-"%d disk%s "
+	"%d SCSI disk%s "
 #endif
 
 #ifdef CONFIG_BLK_DEV_ST
-"%d tape%s "
+	"%d tape%s "
 #endif
 
-"total.\n",  
+#ifdef CONFIG_BLK_DEV_SR
+"%d CD-ROM drive%s "
+#endif
+
+	"total.\n"  
 
 #ifdef CONFIG_BLK_DEV_SD
-NR_SD, (NR_SD != 1) ? "s" : ""
-#ifdef CONFIG_BLK_DEV_ST 
-,
-#endif
+	, NR_SD, (NR_SD != 1) ? "s" : ""
 #endif
 
 #ifdef CONFIG_BLK_DEV_ST
-NR_ST, (NR_ST != 1) ? "s" : ""
+	, NR_ST, (NR_ST != 1) ? "s" : ""
 #endif
-);
+
+#ifdef CONFIG_BLK_DEV_SR
+        , NR_SR, (NR_SR != 1) ? "s" : ""
+#endif
+	);
+	in_scan = 0;
         }       /* scan_scsis  ends */
 
 /*
-	We handle the timeout differently if it happens when a reset, 
-	abort, etc are in process. 
-*/
+ *	We handle the timeout differently if it happens when a reset, 
+ *	abort, etc are in process. 
+ */
 
 static unsigned char internal_timeout[MAX_SCSI_HOSTS];
 
-/* Flag bits for the internal_timeout array */
+/*
+ *	Flag bits for the internal_timeout array 
+ */
 
 #define NORMAL_TIMEOUT 0
 #define IN_ABORT 1
@@ -288,7 +372,8 @@ static void scsi_times_out (int host)
  	switch (internal_timeout[host] & (IN_ABORT | IN_RESET))
 		{
 		case NORMAL_TIMEOUT:
-			printk("SCSI host %d timed out - aborting command \r\n",
+			if (!in_scan)
+			      printk("SCSI host %d timed out - aborting command \r\n",
 				host);
 			
 			if (!scsi_abort	(host, DID_TIME_OUT))
@@ -344,7 +429,6 @@ update_timeout();
 		"bufflen = %d, done = %08x)\n", host, target, cmnd, buffer, bufflen, done);
 #endif
 
-	
         if (scsi_hosts[host].can_queue)
 		{
 #ifdef DEBUG
@@ -439,11 +523,11 @@ void scsi_do_cmd (int host,  unsigned char target, const void *cmnd ,
 			{
 			sti();
 #ifdef DEBUG
-			printk("Host %d is busy.\n"	);
+			printk("Host %d is busy.\n", host);
 #endif
 			while (host_busy[host]);
 #ifdef DEBUG
-			printk("Host %d is no longer busy.");
+			printk("Host %d is no longer busy.\n", host);
 #endif
 			}
 		else
@@ -513,8 +597,8 @@ static void reset (int host)
 
 static int check_sense (int host)
 	{
-	if (((sense_buffer[0] & 0x70) >> 4) == 7)
-		switch (sense_buffer[2] & 0xf)
+	if (((last_cmnd[host].sense_buffer[0] & 0x70) >> 4) == 7)
+		switch (last_cmnd[host].sense_buffer[2] & 0xf)
 		{
 		case NO_SENSE:
 		case RECOVERED_ERROR:
@@ -543,6 +627,27 @@ static int check_sense (int host)
 		return SUGGEST_RETRY;	
 	}	
 
+/* This function is the mid-level interrupt routine, which decides how
+ *  to handle error conditions.  Each invocation of this function must
+ *  do one and *only* one of the following:
+ *
+ *  (1) Call last_cmnd[host].done.  This is done for fatal errors and
+ *      normal completion, and indicates that the handling for this
+ *      request is complete.
+ *  (2) Call internal_cmnd to requeue the command.  This will result in
+ *      scsi_done being called again when the retry is complete.
+ *  (3) Call scsi_request_sense.  This asks the host adapter/drive for
+ *      more information about the error condition.  When the information
+ *      is available, scsi_done will be called again.
+ *  (4) Call reset().  This is sort of a last resort, and the idea is that
+ *      this may kick things loose and get the drive working again.  reset()
+ *      automatically calls scsi_request_sense, and thus scsi_done will be
+ *      called again once the reset is complete.
+ *
+ *      If none of the above actions are taken, the drive in question
+ * will hang. If more than one of the above actions are taken by
+ * scsi_done, then unpredictable behavior will result.
+ */
 static void scsi_done (int host, int result)
 	{
 	int status=0;
@@ -556,6 +661,7 @@ static void scsi_done (int host, int result)
 #define FINISHED 0
 #define MAYREDO  1
 #define REDO	 3
+#define PENDING  4
 
 #ifdef DEBUG
 	printk("In scsi_done(host = %d, result = %06x)\n", host, result);
@@ -585,8 +691,11 @@ static void scsi_done (int host, int result)
 			internal_timeout[host] &= ~SENSE_TIMEOUT;
 			sti();
 
-			if (!(last_cmnd[host].flags & WAS_RESET)) 
+			if (!(last_cmnd[host].flags & WAS_RESET))
+				{
 				reset(host);
+				return;
+				}
 			else
 				{
 				exit = (DRIVER_HARD | SUGGEST_ABORT);
@@ -661,6 +770,7 @@ static void scsi_done (int host, int result)
 #endif
 
 				scsi_request_sense (host, last_cmnd[host].target, last_cmnd[host].lun);
+				status = PENDING;
 				break;       	
 			
 			case CONDITION_GOOD:
@@ -682,9 +792,12 @@ static void scsi_done (int host, int result)
 
 			case RESERVATION_CONFLICT:
 				reset(host);
+				return;
+#if 0
 				exit = DRIVER_SOFT | SUGGEST_ABORT;
 				status = MAYREDO;
 				break;
+#endif
 			default:
 				printk ("Internal error %s %s \n"
 					"status byte = %d \n", __FILE__, 
@@ -742,6 +855,7 @@ static void scsi_done (int host, int result)
 	switch (status) 
 		{
 		case FINISHED:
+		case PENDING:
 			break;
 		case MAYREDO:
 
@@ -752,11 +866,13 @@ static void scsi_done (int host, int result)
 
 			if ((++last_cmnd[host].retries) < last_cmnd[host].allowed)
 			{
-			if ((last_cmnd[host].retries >= (last_cmnd[host].allowed >> 1)) 
+			if ((last_cmnd[host].retries >= (last_cmnd[host].allowed >> 1))
 			    && !(last_cmnd[host].flags & WAS_RESET))
-				reset(host);
-				break;
-			
+			        {
+					reset(host);
+					break;
+			        }
+
 			}
 			else
 				{
@@ -784,15 +900,15 @@ static void scsi_done (int host, int result)
 		#ifdef DEBUG
 			printk("Calling done function - at address %08x\n", last_cmnd[host].done);
 		#endif
-		last_cmnd[host].done (host, (result | ((exit & 0xff) << 24)));
 		host_busy[host] = 0;
+		last_cmnd[host].done (host, (result | ((exit & 0xff) << 24)));
 		}
 
 
 #undef FINISHED
 #undef REDO
 #undef MAYREDO
-		
+#undef PENDING
 	}
 
 /*
@@ -825,11 +941,11 @@ int scsi_abort (int host, int why)
 			}
 		else
 			{	
+			oldto = host_timeout[host];
 			internal_timeout[host] |= IN_ABORT;
 			host_timeout[host] = ABORT_TIMEOUT;	
 			update_timeout();
 
-			oldto = host_timeout[host];
 			
 			sti();
 			if (!host_busy[host] || !scsi_hosts[host].abort(why))
@@ -937,7 +1053,7 @@ static int time_start, time_elapsed;
 	
 static void update_timeout(void)
 	{
-	int i, least, used;
+	unsigned int i, least, used;
 
 	cli();
 
@@ -992,9 +1108,9 @@ void scsi_dev_init (void)
 	timer_table[SCSI_TIMER].expires = 0;
 
 	scsi_init();            /* initialize all hosts */
-	/*
-		Set up sense command in each host structure.
-	*/
+/*
+ *	Set up sense command in each host structure.
+ */
 
 	for (i = 0; i < MAX_SCSI_HOSTS; ++i)
 		{
@@ -1012,5 +1128,59 @@ void scsi_dev_init (void)
 #ifdef CONFIG_BLK_DEV_ST
         st_init();              /* init scsi tapes */
 #endif
+
+#ifdef CONFIG_BLK_DEV_SR
+	sr_init();
+#endif
 	}
 #endif
+
+static void print_inquiry(unsigned char *data)
+{
+        int i;
+
+	printk("  Vendor:");
+	for (i = 8; i < 15; i++)
+	        {
+	        if (data[i] >= 20)
+		        printk("%c", data[i]);
+	        else
+		        printk(" ");
+	        }
+
+	printk("  Model:");
+	for (i = 16; i < 31; i++)
+	        {
+	        if (data[i] >= 20)
+		        printk("%c", data[i]);
+	        else
+		        printk(" ");
+	        }
+
+	printk("  Rev:");
+	for (i = 32; i < 35; i++)
+	        {
+	        if (data[i] >= 20)
+		        printk("%c", data[i]);
+	        else
+		        printk(" ");
+	        }
+
+	printk("\n");
+
+	i = data[0] & 0x1f;
+
+	printk("  Type: %s ", 	i == 0x00 ? "Direct-Access    " :
+				i == 0x01 ? "Sequential-Access" :
+				i == 0x02 ? "Printer          " :
+				i == 0x03 ? "Processor        " :
+				i == 0x04 ? "WORM             " :
+				i == 0x05 ? "CD-ROM           " :
+				i == 0x06 ? "Scanner          " :
+				i == 0x07 ? "Optical Device   " :
+				i == 0x08 ? "Medium Changer   " :
+				i == 0x09 ? "Communications   " :
+				            "Unknown          " );
+	printk("ANSI SCSI revision: %02x\n", data[2] & 0x07);
+}
+

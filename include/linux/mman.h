@@ -1,5 +1,5 @@
-#ifndef _MMAN_H
-#define _MMAN_H
+#ifndef _LINUX_MMAN_H
+#define _LINUX_MMAN_H
 
 #define PROT_READ        0x1       /* page can be read */
 #define PROT_WRITE       0x2       /* page can be written */
@@ -11,8 +11,4 @@
 #define MAP_TYPE         0xf       /* Mask for type of mapping */
 #define MAP_FIXED        0x10      /* Interpret addr exactly */
 
-extern caddr_t mmap(caddr_t addr, size_t len, int prot, int flags, int fd,
-		    off_t off);
-extern int munmap(caddr_t addr, size_t len);
-
-#endif /* _MMAN_H */
+#endif /* _LINUX_MMAN_H */

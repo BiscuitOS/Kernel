@@ -12,7 +12,7 @@
 
 static void shift_left(int * c)
 {
-	__asm__ __volatile__("movl (%0),%%eax ; addl %%eax,(%0)\n\t"
+	__asm__ ("movl (%0),%%eax ; addl %%eax,(%0)\n\t"
 		"movl 4(%0),%%eax ; adcl %%eax,4(%0)\n\t"
 		"movl 8(%0),%%eax ; adcl %%eax,8(%0)\n\t"
 		"movl 12(%0),%%eax ; adcl %%eax,12(%0)"
@@ -29,7 +29,7 @@ static int try_sub(int * a, int * b)
 {
 	char ok;
 
-	__asm__ __volatile__("movl (%1),%%eax ; subl %%eax,(%2)\n\t"
+	__asm__ ("movl (%1),%%eax ; subl %%eax,(%2)\n\t"
 		"movl 4(%1),%%eax ; sbbl %%eax,4(%2)\n\t"
 		"movl 8(%1),%%eax ; sbbl %%eax,8(%2)\n\t"
 		"movl 12(%1),%%eax ; sbbl %%eax,12(%2)\n\t"

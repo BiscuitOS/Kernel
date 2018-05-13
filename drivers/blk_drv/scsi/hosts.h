@@ -14,7 +14,7 @@
 #endif
 
 /*
-	$Header: /usr/src/linux/kernel/blk_drv/scsi/RCS/hosts.h,v 1.1 1992/04/24 18:01:50 root Exp root $
+	$Header: /usr/src/linux/kernel/blk_drv/scsi/RCS/hosts.h,v 1.1 1992/07/24 06:27:38 root Exp root $
 */
 
 /*

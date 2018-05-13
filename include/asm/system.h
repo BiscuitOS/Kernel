@@ -11,7 +11,7 @@ __asm__ ("movl %%esp,%%eax\n\t" \
 	"mov %%ax,%%es\n\t" \
 	"mov %%ax,%%fs\n\t" \
 	"mov %%ax,%%gs" \
-	:::"ax")
+	:::)
 
 #define sti() __asm__ ("sti"::)
 #define cli() __asm__ ("cli"::)
@@ -48,8 +48,8 @@ __asm__ ("movw %%dx,%%ax\n\t" \
 	*((gate_addr)+1) = (((base) & 0x0000ffff)<<16) | \
 		((limit) & 0x0ffff); }
 
-#define _set_tssldt_desc(n,addr,type) \
-__asm__ ("movw $232,%1\n\t" \
+#define _set_tssldt_desc(n,addr,limit,type) \
+__asm__ ("movw $" #limit ",%1\n\t" \
 	"movw %%ax,%2\n\t" \
 	"rorl $16,%%eax\n\t" \
 	"movb %%al,%3\n\t" \
@@ -57,9 +57,9 @@ __asm__ ("movw $232,%1\n\t" \
 	"movb $0x00,%5\n\t" \
 	"movb %%ah,%6\n\t" \
 	"rorl $16,%%eax" \
-	::"a" (addr), "m" (*(n)), "m" (*(n+2)), "m" (*(n+4)), \
+	::"a" (addr+0xc0000000), "m" (*(n)), "m" (*(n+2)), "m" (*(n+4)), \
 	 "m" (*(n+5)), "m" (*(n+6)), "m" (*(n+7)) \
 	)
 
-#define set_tss_desc(n,addr) _set_tssldt_desc(((char *) (n)),addr,"0x89")
-#define set_ldt_desc(n,addr) _set_tssldt_desc(((char *) (n)),addr,"0x82")
+#define set_tss_desc(n,addr) _set_tssldt_desc(((char *) (n)),((int)(addr)),231,"0x89")
+#define set_ldt_desc(n,addr) _set_tssldt_desc(((char *) (n)),((int)(addr)),23,"0x82")

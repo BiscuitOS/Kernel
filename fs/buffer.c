@@ -28,6 +28,10 @@
 #include <asm/system.h>
 #include <asm/io.h>
 
+#if defined(CONFIG_BLK_DEV_SR) && defined(CONFIG_SCSI)
+extern int check_cdrom_media_change(int, int);
+#endif
+
 static struct buffer_head * hash_table[NR_HASH];
 static struct buffer_head * free_list = NULL;
 static struct buffer_head * unused_list = NULL;
@@ -121,14 +125,27 @@ void check_disk_change(int dev)
 	int i;
 	struct buffer_head * bh;
 
-	if (MAJOR(dev) != 2)
+	switch(MAJOR(dev)){
+	case 2: /* floppy disc */
+		if (!(bh = getblk(dev,0,1024)))
+			return;
+		i = floppy_change(bh);
+		brelse(bh);
+		break;
+
+#if defined(CONFIG_BLK_DEV_SR) && defined(CONFIG_SCSI)
+         case 11: /* CDROM */
+		i = check_cdrom_media_change(dev, 0);
+		if (i) printk("Flushing buffers and inodes for CDROM\n");
+		break;
+#endif
+
+         default:
 		return;
-	if (!(bh = getblk(dev,0,1024)))
-		return;
-	i = floppy_change(bh);
-	brelse(bh);
-	if (!i)
-		return;
+	};
+
+	if (!i)	return;
+
 	for (i=0 ; i<NR_SUPER ; i++)
 		if (super_block[i].s_dev == dev)
 			put_super(super_block[i].s_dev);
@@ -494,14 +511,18 @@ void grow_buffers(int size)
 		tmp = bh;
 		bh->b_data = (char * ) (page+i);
 		bh->b_size = size;
-		i += size;
 	}
 	tmp = bh;
 	while (1) {
-		tmp->b_next_free = free_list;
-		tmp->b_prev_free = free_list->b_prev_free;
-		free_list->b_prev_free->b_next_free = tmp;
-		free_list->b_prev_free = tmp;
+		if (free_list) {
+			tmp->b_next_free = free_list;
+			tmp->b_prev_free = free_list->b_prev_free;
+			free_list->b_prev_free->b_next_free = tmp;
+			free_list->b_prev_free = tmp;
+		} else {
+			tmp->b_prev_free = tmp;
+			tmp->b_next_free = tmp;
+		}
 		free_list = tmp;
 		++nr_buffers;
 		if (tmp->b_this_page)
@@ -557,17 +578,29 @@ static int try_to_free(struct buffer_head * bh)
 
 /*
  * Try to free up some pages by shrinking the buffer-cache
+ *
+ * Priority tells the routine how hard to try to shrink the
+ * buffers: 3 means "don't bother too much", while a value
+ * of 0 means "we'd better get some free pages now".
  */
-int shrink_buffers(void)
+int shrink_buffers(unsigned int priority)
 {
 	struct buffer_head *bh;
 	int i;
 
+	if (priority < 2)
+		sync_buffers(0);
 	bh = free_list;
-	for (i = nr_buffers*2 ; i-- > 0 ; bh = bh->b_next_free) {
-		wait_on_buffer(bh);
+	i = nr_buffers >> priority;
+	for ( ; i-- > 0 ; bh = bh->b_next_free) {
 		if (bh->b_count || !bh->b_this_page)
 			continue;
+		if (bh->b_lock) {
+			if (priority)
+				continue;
+			else
+				wait_on_buffer(bh);
+		}
 		if (bh->b_dirt) {
 			ll_rw_block(WRITEA,bh);
 			continue;
@@ -579,47 +612,21 @@ int shrink_buffers(void)
 }
 
 /*
- * This initializes the low 1M that isn't used by the kernel to buffer
- * cache. It should really be used for paging memory, but it takes a lot
- * of special-casing, which I don't want to do.
- *
- * The biggest problem with this approach is that all low-mem buffers
- * have a fixed size of 1024 chars: not good if/when the other sizes
- * are implemented.
+ * This initializes the initial buffer free list.  nr_buffers is set
+ * to one less the actual number of buffers, as a sop to backwards
+ * compatibility --- the old code did this (I think unintentionally,
+ * but I'm not sure), and programs in the ps package expect it.
+ * 					- TYT 8/30/92
  */
 void buffer_init(void)
 {
-	struct buffer_head * bh;
-	extern int end;
-	unsigned long mem;
 	int i;
 
 	for (i = 0 ; i < NR_HASH ; i++)
 		hash_table[i] = NULL;
-	mem = (unsigned long) & end;
-	mem += BLOCK_SIZE-1;
-	mem &= ~(BLOCK_SIZE-1);
-	free_list = get_unused_buffer_head();
+	free_list = 0;
+	grow_buffers(BLOCK_SIZE);
 	if (!free_list)
-		panic("unable to get a single buffer-head");
-	free_list->b_prev_free = free_list;
-	free_list->b_next_free = free_list;
-	free_list->b_data = (char *) mem;
-	free_list->b_size = BLOCK_SIZE;
-	mem += BLOCK_SIZE;
-	while (mem + 1024 < 0xA0000) {
-		bh = get_unused_buffer_head();
-		if (!bh)
-			break;
-		bh->b_data = (char *) mem;
-		bh->b_size = BLOCK_SIZE;
-		mem += BLOCK_SIZE;
-		bh->b_next_free = free_list;
-		bh->b_prev_free = free_list->b_prev_free;
-		free_list->b_prev_free->b_next_free = bh;
-		free_list->b_prev_free = bh;
-		free_list = bh;
-		++nr_buffers;
-	}
+		panic("Unable to initialize buffer free list!");
 	return;
 }

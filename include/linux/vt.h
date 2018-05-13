@@ -1,5 +1,5 @@
-#ifndef _VT_H
-#define _VT_H
+#ifndef _LINUX_VT_H
+#define _LINUX_VT_H
 
 /* 0x56 is 'V', to avoid collision with termios and kd */
 
@@ -29,4 +29,4 @@ struct vt_stat {
 
 #define VT_ACTIVATE	0x5606	/* make vt active */
 
-#endif /* _VT_H */
+#endif /* _LINUX_VT_H */

@@ -6,7 +6,7 @@
 #include "scsi.h"
 #include "sd.h"
 
-extern int scsi_ioctl (int dev, int cmd, void *arg);
+extern int scsi_ioctl (Scsi_Device *dev, int cmd, void *arg);
 
 int sd_ioctl(struct inode * inode, struct file * file, unsigned long cmd, unsigned long arg)
 {
@@ -14,7 +14,7 @@ int sd_ioctl(struct inode * inode, struct file * file, unsigned long cmd, unsign
 	
 	switch (cmd) {
 		default:
-			return scsi_ioctl(rscsi_disks[MINOR(dev) >> 4].device,cmd,(void *) arg);
+			return scsi_ioctl(rscsi_disks[MINOR(dev) >> 4].device, cmd, (void *) arg);
 	}
 }
 #endif

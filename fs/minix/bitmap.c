@@ -73,35 +73,37 @@ static unsigned long count_used(struct buffer_head *map[], unsigned numblocks,
 	return(sum);
 }
 
-int minix_free_block(int dev, int block)
+void minix_free_block(int dev, int block)
 {
 	struct super_block * sb;
 	struct buffer_head * bh;
 	unsigned int bit,zone;
 
-	if (!(sb = get_super(dev)))
-		panic("trying to free block on nonexistent device");
-	if (block < sb->u.minix_sb.s_firstdatazone || block >= sb->u.minix_sb.s_nzones)
-		panic("trying to free block not in datazone");
-	bh = get_hash_table(dev,block,BLOCK_SIZE);
-	if (bh) {
-		if (bh->b_count > 1) {
-			brelse(bh);
-			return 0;
-		}
-		bh->b_dirt=0;
-		bh->b_uptodate=0;
-		if (bh->b_count)
-			brelse(bh);
+	if (!(sb = get_super(dev))) {
+		printk("trying to free block on nonexistent device\n");
+		return;
 	}
+	if (block < sb->u.minix_sb.s_firstdatazone ||
+	    block >= sb->u.minix_sb.s_nzones) {
+		printk("trying to free block not in datazone\n");
+		return;
+	}
+	bh = get_hash_table(dev,block,BLOCK_SIZE);
+	if (bh)
+		bh->b_dirt=0;
+	brelse(bh);
 	zone = block - sb->u.minix_sb.s_firstdatazone + 1;
 	bit = zone & 8191;
 	zone >>= 13;
 	bh = sb->u.minix_sb.s_zmap[zone];
+	if (!bh) {
+		printk("minix_free_block: nonexistent bitmap buffer\n");
+		return;
+	}
 	if (clear_bit(bit,bh->b_data))
 		printk("free_block (%04x:%d): bit already cleared\n",dev,block);
 	bh->b_dirt = 1;
-	return 1;
+	return;
 }
 
 int minix_new_block(int dev)
@@ -110,8 +112,11 @@ int minix_new_block(int dev)
 	struct super_block * sb;
 	int i,j;
 
-	if (!(sb = get_super(dev)))
-		panic("trying to get new block from nonexistant device");
+	if (!(sb = get_super(dev))) {
+		printk("trying to get new block from nonexistant device\n");
+		return 0;
+	}
+repeat:
 	j = 8192;
 	for (i=0 ; i<8 ; i++)
 		if ((bh=sb->u.minix_sb.s_zmap[i]))
@@ -119,16 +124,22 @@ int minix_new_block(int dev)
 				break;
 	if (i>=8 || !bh || j>=8192)
 		return 0;
-	if (set_bit(j,bh->b_data)) 
-		panic("new_block: bit already set");
+	if (set_bit(j,bh->b_data)) {
+		printk("new_block: bit already set");
+		goto repeat;
+	}
 	bh->b_dirt = 1;
 	j += i*8192 + sb->u.minix_sb.s_firstdatazone-1;
 	if (j >= sb->u.minix_sb.s_nzones)
 		return 0;
-	if (!(bh=getblk(dev,j,BLOCK_SIZE)))
-		panic("new_block: cannot get block");
-	if (bh->b_count != 1)
-		panic("new block: count is != 1");
+	if (!(bh=getblk(dev,j,BLOCK_SIZE))) {
+		printk("new_block: cannot get block");
+		return 0;
+	}
+	if (bh->b_count != 1) {
+		printk("new block: count is != 1");
+		return 0;
+	}
 	clear_block(bh->b_data);
 	bh->b_uptodate = 1;
 	bh->b_dirt = 1;
@@ -216,6 +227,7 @@ struct inode * minix_new_inode(int dev)
 	inode->i_ino = j + i*8192;
 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME;
 	inode->i_op = NULL;
+	inode->i_blocks = inode->i_blksize = 0;
 	return inode;
 }
 

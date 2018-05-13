@@ -117,6 +117,11 @@
 #define __NR_fstat		108
 #define __NR_uname		109
 #define __NR_iopl		110
+#define __NR_vhangup		111
+#define __NR_idle		112
+#define __NR_vm86		113
+#define __NR_wait4		114
+#define __NR_swapoff		115
 
 extern int errno;
 
@@ -125,7 +130,7 @@ extern int errno;
 type name(void) \
 { \
 long __res; \
-__asm__ volatile ("int $0x80" \
+__asm__ ("int $0x80" \
 	: "=a" (__res) \
 	: "0" (__NR_##name)); \
 if (__res >= 0) \
@@ -138,7 +143,7 @@ return -1; \
 type name(atype a) \
 { \
 long __res; \
-__asm__ volatile ("movl %2,%%ebx\n\t" \
+__asm__ ("movl %2,%%ebx\n\t" \
 	"int $0x80" \
 	: "=a" (__res) \
 	: "0" (__NR_##name),"g" ((long)(a)):"bx"); \
@@ -152,7 +157,7 @@ return -1; \
 type name(atype a,btype b) \
 { \
 long __res; \
-__asm__ volatile ("movl %2,%%ebx\n\t" \
+__asm__ ("movl %2,%%ebx\n\t" \
 	"int $0x80" \
 	: "=a" (__res) \
 	: "0" (__NR_##name),"g" ((long)(a)),"c" ((long)(b)):"bx"); \
@@ -166,7 +171,7 @@ return -1; \
 type name(atype a,btype b,ctype c) \
 { \
 long __res; \
-__asm__ volatile ("movl %2,%%ebx\n\t" \
+__asm__ ("movl %2,%%ebx\n\t" \
 	"int $0x80" \
 	: "=a" (__res) \
 	: "0" (__NR_##name),"g" ((long)(a)),"c" ((long)(b)),"d" ((long)(c)):"bx"); \
@@ -180,7 +185,7 @@ return -1; \
 type name (atype a, btype b, ctype c, dtype d) \
 { \
 long __res; \
-__asm__ volatile ("movl %2,%%ebx\n\t" \
+__asm__ ("movl %2,%%ebx\n\t" \
 	"int $0x80" \
 	: "=a" (__res) \
 	: "0" (__NR_##name),"b" ((long)(a)),"c" ((long)(b)), \
@@ -195,7 +200,7 @@ return -1; \
 type name (atype a,btype b,ctype c,dtype d,etype e) \
 { \
 long __res; \
-__asm__ volatile ("movl %2,%%ebx\n\t" \
+__asm__ ("movl %2,%%ebx\n\t" \
 	"int $0x80" \
 	: "=a" (__res) \
 	: "0" (__NR_##name),"b" ((long)(a)),"c" ((long)(b)), \

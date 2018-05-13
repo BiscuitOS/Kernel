@@ -10,6 +10,7 @@
 #include <linux/config.h>
 #include <linux/sched.h>
 #include <linux/minix_fs.h>
+#include <linux/proc_fs.h>
 #include <linux/ext_fs.h>
 #include <linux/msdos_fs.h>
 #include <linux/kernel.h>
@@ -22,6 +23,7 @@
 
 int sync_dev(int dev);
 void wait_for_keypress(void);
+void fcntl_init_locks(void);
 
 /* set_bit uses setb, as gas doesn't recognize setc */
 #define set_bit(bitnr,addr) ({ \
@@ -39,6 +41,7 @@ static struct file_system_type file_systems[] = {
 	{minix_read_super,"minix"},
 	{ext_read_super,"ext"},
 	{msdos_read_super,"msdos"},
+	{proc_read_super,"proc"},
 	{NULL,NULL}
 };
 
@@ -123,7 +126,7 @@ static struct super_block * read_super(int dev,char *name,int flags,void *data)
 	check_disk_change(dev);
 	if ((s = get_super(dev)))
 		return s;
-	if (!(type=get_fs_type(name))) {
+	if (!(type = get_fs_type(name))) {
 		printk("get fs type failed %s\n",name);
 		return NULL;
 	}
@@ -135,13 +138,15 @@ static struct super_block * read_super(int dev,char *name,int flags,void *data)
 	}
 	s->s_dev = dev;
 	s->s_flags = flags;
-	if (!type->read_super(s,data))
-		return(NULL);
+	if (!type->read_super(s,data)) {
+		s->s_dev = 0;
+		return NULL;
+	}
 	s->s_dev = dev;
 	s->s_covered = NULL;
 	s->s_rd_only = 0;
 	s->s_dirt = 0;
-	return(s);
+	return s;
 }
 
 static int do_umount(int dev)
@@ -180,8 +185,9 @@ int sys_umount(char * dev_name)
 
 	if (!suser())
 		return -EPERM;
-	if (!(inode = namei(dev_name)))
-		return -ENOENT;
+	retval = namei(dev_name,&inode);
+	if (retval)
+		return retval;
 	dev = inode->i_rdev;
 	if (!S_ISBLK(inode->i_mode)) {
 		iput(inode);
@@ -210,9 +216,11 @@ static int do_mount(int dev, const char * dir, char * type, int flags, void * da
 {
 	struct inode * inode, * dir_i;
 	struct super_block * sb;
+	int error;
 
-	if (!(dir_i = namei(dir)))
-		return -ENOENT;
+	error = namei(dir,&dir_i);
+	if (error)
+		return error;
 	if (dir_i->i_count != 1 || dir_i->i_mount) {
 		iput(dir_i);
 		return -EBUSY;
@@ -258,7 +266,7 @@ int sys_mount(char * dev_name, char * dir_name, char * type,
 {
 	struct inode * inode;
 	int dev;
-	int retval = 0;
+	int retval;
 	char tmp[100],*t;
 	int i;
 	unsigned long flags = 0;
@@ -266,8 +274,9 @@ int sys_mount(char * dev_name, char * dir_name, char * type,
 
 	if (!suser())
 		return -EPERM;
-	if (!(inode = namei(dev_name)))
-		return -ENOENT;
+	retval = namei(dev_name,&inode);
+	if (retval)
+		return retval;
 	dev = inode->i_rdev;
 	if (!S_ISBLK(inode->i_mode))
 		retval = -EPERM;
@@ -316,6 +325,7 @@ void mount_root(void)
 		panic("bad i-node size");
 	for(i=0;i<NR_FILE;i++)
 		file_table[i].f_count=0;
+	fcntl_init_locks();
 	if (MAJOR(ROOT_DEV) == 2) {
 		printk("Insert root floppy and press ENTER");
 		wait_for_keypress();

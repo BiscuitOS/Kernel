@@ -1,7 +1,7 @@
 #ifndef _BLK_H
 #define _BLK_H
 
-#define NR_BLK_DEV	10
+#define NR_BLK_DEV	12
 /*
  * NR_REQUEST is the number of entries in the request-queue.
  * NOTE that writes may use only the low 2/3 of these: reads
@@ -40,7 +40,7 @@ struct request {
  * are much more time-critical than writes.
  */
 #define IN_ORDER(s1,s2) \
-((s1)->cmd<(s2)->cmd || ((s1)->cmd==(s2)->cmd && \
+((s1)->cmd < (s2)->cmd || ((s1)->cmd == (s2)->cmd && \
 ((s1)->dev < (s2)->dev || (((s1)->dev == (s2)->dev && \
 (s1)->sector < (s2)->sector)))))
 
@@ -69,6 +69,7 @@ extern struct wait_queue * wait_for_request;
 
 extern int * blk_size[NR_BLK_DEV];
 
+extern unsigned long hd_init(unsigned long mem_start, unsigned long mem_end);
 extern int is_read_only(int dev);
 extern void set_device_ro(int dev,int flag);
 
@@ -77,7 +78,7 @@ extern void set_device_ro(int dev,int flag);
 		 set_device_ro((dev),get_fs_long((unsigned long *) (where))); return 0; \
   case BLKROGET: verify_area((void *) (where), sizeof(long)); \
 		 put_fs_long(is_read_only(dev),(unsigned long *) (where)); return 0;
-
+		 
 #ifdef MAJOR_NR
 
 /*
@@ -132,6 +133,19 @@ extern void set_device_ro(int dev,int flag);
 #define DEVICE_ON(device)
 #define DEVICE_OFF(device)
 
+#elif (MAJOR_NR == 11)
+/* scsi CD-ROM */
+#define DEVICE_NAME "CD-ROM"
+#define DEVICE_INTR do_sr
+#define DEVICE_REQUEST do_sr_request
+#define DEVICE_NR(device) (MINOR(device))
+#define DEVICE_ON(device)
+#define DEVICE_OFF(device)
+
+#else
+/* unknown blk device */
+#error "unknown blk device"
+
 #endif
 
 #ifndef CURRENT
@@ -153,11 +167,10 @@ void (*DEVICE_INTR)(void) = NULL;
 timer_active &= ~(1<<DEVICE_TIMEOUT)
 
 #define SET_INTR(x) \
-if ((DEVICE_INTR = (x))) {\
+if ((DEVICE_INTR = (x))) \
 	SET_TIMER; \
-} else {\
-	CLEAR_TIMER; \
-}
+else \
+	CLEAR_TIMER;
 
 #else
 
@@ -166,7 +179,7 @@ if ((DEVICE_INTR = (x))) {\
 #endif
 static void (DEVICE_REQUEST)(void);
 
-inline void unlock_buffer(struct buffer_head * bh)
+static inline void unlock_buffer(struct buffer_head * bh)
 {
 	if (!bh->b_lock)
 		printk(DEVICE_NAME ": free buffer being unlocked\n");

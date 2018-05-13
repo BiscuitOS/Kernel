@@ -1,5 +1,5 @@
-#ifndef _KD_H
-#define _KD_H
+#ifndef _LINUX_KD_H
+#define _LINUX_KD_H
 
 /* 0x4B is 'K', to avoid collision with termios and vt */
 
@@ -176,4 +176,4 @@ struct kbentry {
 #define KDGKBENT	0x4B46	/* gets one entry in translation table */
 #define KDSKBENT	0x4B47	/* sets one entry in translation table */
 
-#endif /* _KD_H */
+#endif /* _LINUX_KD_H */

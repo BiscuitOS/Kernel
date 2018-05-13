@@ -12,6 +12,9 @@
  * NOTE: This code handles signal-recognition, which happens every time
  * after a timer-interrupt and after each system call.
  *
+ * I changed all the .align's to 4 (16 byte alignment), as that's faster
+ * on a 486.
+ *
  * Stack layout in 'ret_from_system_call':
  * 	ptrace needs to have all regs on the stack.
  *	if the order here is changed, it needs to be 
@@ -55,6 +58,10 @@ EFLAGS		= 0x38
 OLDESP		= 0x3C
 OLDSS		= 0x40
 
+IF_MASK		= 0x00000200
+NT_MASK		= 0x00004000
+VM_MASK		= 0x00020000
+
 /*
  * these are offsets into the task-struct.
  */
@@ -64,6 +71,7 @@ priority	= 8
 signal		= 12
 sigaction	= 16		# MUST be 16 (=len of sigaction)
 blocked		= (33*16)
+saved_kernel_stack = ((33*16)+4)
 
 /*
  * offsets within sigaction
@@ -75,10 +83,6 @@ sa_restorer	= 12
 
 ENOSYS = 38
 
-/*
- * Ok, I get parallel printer interrupts while using the floppy for some
- * strange reason. Urgel. Now I just ignore them.
- */
 .globl system_call, sys_execve
 .globl device_not_available, coprocessor_error
 .globl divide_error, debug, nmi, int3, overflow, bounds, invalid_op
@@ -88,15 +92,15 @@ ENOSYS = 38
 .globl alignment_check, page_fault
 .globl ret_from_sys_call
 
-.align 2
+.align 4
 bad_sys_call:
 	movl $-ENOSYS,EAX(%esp)
 	jmp ret_from_sys_call
-.align 2
+.align 4
 reschedule:
 	pushl $ret_from_sys_call
 	jmp schedule
-.align 2
+.align 4
 system_call:
 	pushl %eax		# save orig_eax
         cld
@@ -122,22 +126,27 @@ system_call:
 	jae ret_from_sys_call
 	call *sys_call_table(,%eax,4)
 	movl %eax,EAX(%esp)		# save the return value
+	.align 4,0x90
 ret_from_sys_call:
+	movl EFLAGS(%esp),%eax		# check VM86 flag: CS/SS are
+	testl $VM_MASK,%eax		# different then
+	jne 4f
 	cmpw $0x0f,CS(%esp)		# was old code segment supervisor ?
 	jne 2f
 	cmpw $0x17,OLDSS(%esp)		# was stack segment = 0x17 ?
 	jne 2f
+4:	orl $IF_MASK,%eax		# these just try to make sure
+	andl $~NT_MASK,%eax		# the program doesn't do anything
+	movl %eax,EFLAGS(%esp)		# stupid
 1:	cmpl $0, need_resched
 	jne reschedule
 	movl current, %eax
+	cmpl task,%eax			# task[0] cannot have signals
+	je 2f
 	cmpl $0,state(%eax)		# state
 	jne reschedule
 	cmpl $0,counter(%eax)		# counter
 	je reschedule
-	movl $1,need_resched
-	cmpl task,%eax			# task[0] cannot have signals
-	je 2f
-	movl $0,need_resched
 	movl signal(%eax),%ebx
 	movl blocked(%eax),%ecx
 	notl %ecx
@@ -145,10 +154,18 @@ ret_from_sys_call:
 	bsfl %ecx,%ecx
 	je 2f
 	btrl %ecx,%ebx
+	incl %ecx
 	movl %ebx,signal(%eax)
 	movl %esp,%ebx
+	testl $VM_MASK,EFLAGS(%esp)
+	je 3f
 	pushl %ebx
-	incl %ecx
+	pushl %ecx
+	call save_v86_state
+	popl %ecx
+	movl %eax,%ebx
+	movl %eax,%esp
+3:	pushl %ebx
 	pushl %ecx
 	call do_signal
 	popl %ecx
@@ -169,7 +186,7 @@ ret_from_sys_call:
 	addl $4,%esp 		# skip the orig_eax
 	iret
 
-.align 2
+.align 4
 sys_execve:
 	lea (EIP+4)(%esp),%eax  # don't forget about the return address.
 	pushl %eax
@@ -177,9 +194,11 @@ sys_execve:
 	addl $4,%esp
 	ret
 
+.align 4
 divide_error:
 	pushl $0 		# no error code
 	pushl $do_divide_error
+.align 4,0x90
 error_code:
 	push %fs
 	push %es
@@ -209,13 +228,13 @@ error_code:
 	addl $8,%esp
 	jmp ret_from_sys_call
 
-.align 2
+.align 4
 coprocessor_error:
 	pushl $0
 	pushl $do_coprocessor_error
 	jmp error_code
 
-.align 2
+.align 4
 device_not_available:
 	pushl $-1		# mark this as an int
         cld
@@ -245,70 +264,85 @@ device_not_available:
 	addl $4,%esp
 	ret
 
+.align 4
 debug:
 	pushl $0
 	pushl $do_debug		# _do_debug
 	jmp error_code
 
+.align 4
 nmi:
 	pushl $0
 	pushl $do_nmi
 	jmp error_code
 
+.align 4
 int3:
 	pushl $0
 	pushl $do_int3
 	jmp error_code
 
+.align 4
 overflow:
 	pushl $0
 	pushl $do_overflow
 	jmp error_code
 
+.align 4
 bounds:
 	pushl $0
 	pushl $do_bounds
 	jmp error_code
 
+.align 4
 invalid_op:
 	pushl $0
 	pushl $do_invalid_op
 	jmp error_code
 
+.align 4
 coprocessor_segment_overrun:
 	pushl $0
 	pushl $do_coprocessor_segment_overrun
 	jmp error_code
 
+.align 4
 reserved:
 	pushl $0
 	pushl $do_reserved
 	jmp error_code
 
+.align 4
 double_fault:
 	pushl $do_double_fault
 	jmp error_code
 
+.align 4
 invalid_TSS:
 	pushl $do_invalid_TSS
 	jmp error_code
 
+.align 4
 segment_not_present:
 	pushl $do_segment_not_present
 	jmp error_code
 
+.align 4
 stack_segment:
 	pushl $do_stack_segment
 	jmp error_code
 
+.align 4
 general_protection:
 	pushl $do_general_protection
 	jmp error_code
 
+.align 4
 alignment_check:
 	pushl $do_alignment_check
 	jmp error_code
 
+.align 4
 page_fault:
 	pushl $do_page_fault
 	jmp error_code

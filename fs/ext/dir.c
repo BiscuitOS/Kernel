@@ -15,6 +15,7 @@
 #include <asm/segment.h>
 
 #include <linux/errno.h>
+#include <linux/kernel.h>
 #include <linux/fs.h>
 #include <linux/ext_fs.h>
 #include <linux/stat.h>
@@ -48,26 +49,24 @@ struct inode_operations ext_dir_inode_operations = {
 	ext_rename,		/* rename */
 	NULL,			/* readlink */
 	NULL,			/* follow_link */
-	ext_bmap,		/* bmap */
+	NULL,			/* bmap */
 	ext_truncate		/* truncate */
 };
 
 static int ext_readdir(struct inode * inode, struct file * filp,
 	struct dirent * dirent, int count)
 {
-	unsigned int block,offset,i;
+	unsigned int offset,i;
 	char c;
 	struct buffer_head * bh;
 	struct ext_dir_entry * de;
 
 	if (!inode || !S_ISDIR(inode->i_mode))
 		return -EBADF;
-/*	if (filp->f_pos & (sizeof (struct ext_dir_entry) - 1))
-		return -EBADF; */
 	while (filp->f_pos < inode->i_size) {
 		offset = filp->f_pos & 1023;
-		block = ext_bmap(inode,(filp->f_pos)>>BLOCK_SIZE_BITS);
-		if (!block || !(bh = bread(inode->i_dev, block, BLOCK_SIZE))) {
+		bh = ext_bread(inode,(filp->f_pos)>>BLOCK_SIZE_BITS,0);
+		if (!bh) {
 			filp->f_pos += 1024-offset;
 			continue;
 		}
@@ -75,6 +74,13 @@ static int ext_readdir(struct inode * inode, struct file * filp,
 		while (offset < 1024 && filp->f_pos < inode->i_size) {
 			offset += de->rec_len;
 			filp->f_pos += de->rec_len;
+			if (de->rec_len < 8 || de->rec_len % 4 != 0 ||
+			    de->rec_len < de->name_len + 8) {
+				printk ("ext_readdir: bad directory entry\n");
+				printk ("dev=%d, dir=%d, offset=%d, rec_len=%d, name_len=%d\n",
+					inode->i_dev, inode->i_ino, offset, de->rec_len, de->name_len);
+				return 0;
+			}
 			if (de->inode) {
 				for (i = 0; i < de->name_len; i++)
 					if ((c = de->name[i]))
@@ -82,15 +88,15 @@ static int ext_readdir(struct inode * inode, struct file * filp,
 					else
 						break;
 				if (i) {
-					put_fs_long(de->inode,(unsigned long *)&dirent->d_ino);
+					put_fs_long(de->inode, (unsigned long *)&dirent->d_ino);
 					put_fs_byte(0,i+dirent->d_name);
 					put_fs_word(i, (short *)&dirent->d_reclen);
 					brelse(bh);
 					return i;
 				}
 			}
-/*			de++; */
-			de = (struct ext_dir_entry *) ((char *) de + de->rec_len);
+			de = (struct ext_dir_entry *) ((char *) de 
+				+ de->rec_len);
 		}
 		brelse(bh);
 	}

@@ -3,32 +3,43 @@
 
 #define HZ 100
 
+/*
+ * This is the maximum nr of tasks - change it if you need to
+ */
 #define NR_TASKS	64
-#define TASK_SIZE	0x04000000
-#define LIBRARY_SIZE	0x00400000
+
+/*
+ * User space process size: 3GB. This is hardcoded into a few places,
+ * so don't change it unless you know what you are doing.
+ */
+#define TASK_SIZE	0xc0000000
 
 /*
  * Size of io_bitmap in longwords: 32 is ports 0-0x3ff.
  */
 #define IO_BITMAP_SIZE	32
 
-#if (TASK_SIZE & 0x3fffff)
-#error "TASK_SIZE must be multiple of 4M"
-#endif
+/*
+ * These are the constant used to fake the fixed-point load-average
+ * counting. Some notes:
+ *  - 11 bit fractions expand to 22 bits by the multiplies: this gives
+ *    a load-average precision of 10 bits integer + 11 bits fractional
+ *  - if you want to count load-averages more often, you need more
+ *    precision, or rounding will get you. With 2-second counting freq,
+ *    the EXP_n values would be 1981, 2034 and 2043 if still using only
+ *    11 bit fractions.
+ */
+#define FSHIFT		11		/* nr of bits of precision */
+#define FIXED_1		(1<<FSHIFT)	/* 1.0 as fixed-point */
+#define LOAD_FREQ	(5*HZ)		/* 5 sec intervals */
+#define EXP_1		1884		/* 1/exp(5sec/1min) as fixed-point */
+#define EXP_5		2014		/* 1/exp(5sec/5min) */
+#define EXP_15		2037		/* 1/exp(5sec/15min) */
 
-#if (LIBRARY_SIZE & 0x3fffff)
-#error "LIBRARY_SIZE must be a multiple of 4M"
-#endif
-
-#if (LIBRARY_SIZE >= (TASK_SIZE/2))
-#error "LIBRARY_SIZE too damn big!"
-#endif
-
-#if (((TASK_SIZE>>16)*NR_TASKS) != 0x10000)
-#error "TASK_SIZE*NR_TASKS must be 4GB"
-#endif
-
-#define LIBRARY_OFFSET (TASK_SIZE - LIBRARY_SIZE)
+#define CALC_LOAD(load,exp,n) \
+	load *= exp; \
+	load += n*(FIXED_1-exp); \
+	load >>= FSHIFT;
 
 #define CT_TO_SECS(x)	((x) / HZ)
 #define CT_TO_USECS(x)	(((x) % HZ) * 1000000/HZ)
@@ -43,6 +54,7 @@
 #include <linux/time.h>
 #include <linux/param.h>
 #include <linux/resource.h>
+#include <linux/vm86.h>
 
 #if (NR_OPEN > 32)
 #error "Currently the close-on-exec-flags and select masks are in one long, max 32 files/proc"
@@ -115,6 +127,7 @@ struct task_struct {
 	long signal;
 	struct sigaction sigaction[32];
 	long blocked;	/* bitmap of masked signals */
+	unsigned long saved_kernel_stack;
 /* various fields */
 	int exit_code;
 	int dumpable:1;
@@ -146,6 +159,8 @@ struct task_struct {
 	unsigned short used_math;
 	unsigned short rss;	/* number of resident pages */
 	char comm[8];
+	struct vm86_struct * vm86_info;
+	unsigned long screen_bitmap;
 /* file system info */
 	int link_count;
 	int tty;		/* -1 if no tty, so it must be signed */
@@ -157,6 +172,7 @@ struct task_struct {
 		struct inode * library;
 		unsigned long start;
 		unsigned long length;
+		unsigned long bss;
 	} libraries[MAX_SHARED_LIBS];
 	int numlibraries;
 	struct file * filp[NR_OPEN];
@@ -173,9 +189,6 @@ struct task_struct {
 #define PF_ALIGNWARN	0x00000001	/* Print alignment warning msgs */
 					/* Not implemented yet, only for 486*/
 #define PF_PTRACED	0x00000010	/* set if ptrace (0) has been called. */
-#define PF_VM86		0x00000020	/* set if process can execute a vm86 */
-					/* task. */
-                                        /* not impelmented. */
 
 /*
  *  INIT_TASK is used to set up the first task table, touch at
@@ -183,7 +196,7 @@ struct task_struct {
  */
 #define INIT_TASK \
 /* state etc */	{ 0,15,15, \
-/* signals */	0,{{},},0, \
+/* signals */	0,{{},},0,0, \
 /* ec,brk... */	0,0,0,0,0,0,0,0, \
 /* pid etc.. */	0,0,0,0, \
 /* suppl grps*/ {NOGROUP,}, \
@@ -199,15 +212,16 @@ struct task_struct {
 /* math */	0, \
 /* rss */	2, \
 /* comm */	"swapper", \
+/* vm86_info */	NULL, 0, \
 /* fs info */	0,-1,0022,NULL,NULL,NULL, \
 /* libraries */	{ { NULL, 0, 0}, }, 0, \
 /* filp */	{NULL,}, 0, \
 		{ \
 			{0,0}, \
-/* ldt */		{0x9f,0xc0fa00}, \
-			{0x9f,0xc0f200} \
+/* ldt */		{0x9f,0xc0c0fa00}, \
+			{0x9f,0xc0c0f200} \
 		}, \
-/*tss*/	{0,PAGE_SIZE+(long)&init_task,0x10,0,0,0,0,(long)&pg_dir,\
+/*tss*/	{0,PAGE_SIZE+(long)&init_task,0x10,0,0,0,0,(long)&swapper_pg_dir,\
 	 0,0,0,0,0,0,0,0, \
 	 0,0,0x17,0x17,0x17,0x17,0x17,0x17, \
 	 _LDT(0),0x80000000,{0xffffffff}, \
@@ -218,9 +232,10 @@ struct task_struct {
 extern struct task_struct *task[NR_TASKS];
 extern struct task_struct *last_task_used_math;
 extern struct task_struct *current;
-extern unsigned long volatile jiffies;
+extern unsigned long jiffies;
 extern unsigned long startup_time;
 extern int jiffies_offset;
+extern int need_resched;
 
 #define CURRENT_TIME (startup_time+(jiffies+jiffies_offset)/HZ)
 

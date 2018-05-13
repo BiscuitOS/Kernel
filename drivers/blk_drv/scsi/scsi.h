@@ -9,7 +9,7 @@
 #ifndef _SCSI_H
 	#define _SCSI_H
 /*
-	$Header: /usr/src/linux/kernel/blk_drv/scsi/RCS/scsi.h,v 1.1 1992/04/24 18:01:50 root Exp root $
+	$Header: /usr/src/linux/kernel/blk_drv/scsi/RCS/scsi.h,v 1.1 1992/07/24 06:27:38 root Exp root $
 
 	For documentation on the OPCODES, MESSAGES, and SENSE values,
 	please consult the SCSI standard.
@@ -71,7 +71,12 @@
 #define LINKED_CMD_COMPLETE	0x0a
 #define LINKED_FLG_CMD_COMPLETE	0x0b
 #define BUS_DEVICE_RESET	0x0c
-#define IDENTIFY		0x80
+#define IDENTIFY_BASE		0x80
+#define IDENTIFY(can_disconnect, lun)   (IDENTIFY_BASE |\
+					 ((can_disconnect) ?  0x40 : 0) |\
+					 ((lun) & 0x07)) 
+
+				 
 /*
 	Status codes
 */
@@ -129,6 +134,10 @@
 	Reset by somebody.
 */
 #define DID_RESET 		0x08
+/*
+	Got an interrupt we weren't expecting.
+*/
+#define	DID_BAD_INTR		0x09
 
 /*
 	Driver status
@@ -226,7 +235,7 @@ typedef struct scsi_device {
 	These are the SCSI devices available on the system.
 */
 
-#define MAX_SCSI_DEVICE 2
+#define MAX_SCSI_DEVICE 4
 extern int NR_SCSI_DEVICES;
 extern Scsi_Device scsi_devices[MAX_SCSI_DEVICE];
 /*
@@ -245,6 +254,9 @@ extern void scsi_dev_init (void);
 
 /*
 	You guesed it.  This sends a command to the selected SCSI host 
+
+extern void print_inquiry(unsigned char *data);
+
 */
 
 
@@ -253,5 +265,5 @@ extern void scsi_do_cmd (int host,  unsigned char target, const void *cmnd ,
                   void *buffer, unsigned bufflen, void (*done)(int,int),
                   int timeout, unsigned  char *sense_buffer, int retries);
 
-int scsi_reset (int host);
+extern int scsi_reset (int host);
 #endif

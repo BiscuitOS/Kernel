@@ -9,10 +9,6 @@
 #ifndef _ULTRASTOR_H
 #define _ULTRASTOR_H
 
-/* ??? Some of the stuff in this file is really private to ultrastor.c and
-   should be moved elsewhere (as this file is included by higher-level driver
-   files). */
-
 /* ??? These don't really belong here */
 #ifndef TRUE
 # define TRUE 1
@@ -21,32 +17,44 @@
 # define FALSE 0
 #endif
 
+/* ??? This should go eventually, once I'm convinced the queueing stuff is
+   stable enough... */
+/* #define NO_QUEUEING */
+
 int ultrastor_14f_detect(int);
 const char *ultrastor_14f_info(void);
-#if 0	/* ??? Future direction... */
 int ultrastor_14f_queuecommand(unsigned char target, const void *cmnd,
 			       void *buff, int bufflen,
 			       void (*done)(int, int));
-#else
+#ifdef NO_QUEUEING
 int ultrastor_14f_command(unsigned char target, const void *cmnd,
 			  void *buff, int bufflen);
 #endif
 int ultrastor_14f_abort(int);
 int ultrastor_14f_reset(void);
 
-#if 0	/* ??? Future direction... */
-# define ULTRASTOR_14F \
+#ifndef NO_QUEUEING
+#define ULTRASTOR_14F \
     { "UltraStor 14F", ultrastor_14f_detect, ultrastor_14f_info, 0, \
       ultrastor_14f_queuecommand, ultrastor_14f_abort, ultrastor_14f_reset, \
-      TRUE, 0, 0 }
+      1, 0, 0 }
+    /* ??? What should can_queue be set to?  Currently 1... */
 #else
-# define ULTRASTOR_14F \
+#define ULTRASTOR_14F \
     { "UltraStor 14F", ultrastor_14f_detect, ultrastor_14f_info, \
       ultrastor_14f_command, 0, ultrastor_14f_abort, ultrastor_14f_reset, \
-      FALSE, 0, 0 }
+      0, 0, 0 }
 #endif
 
-#define PORT_OVERRIDE 0x330
+#define UD_ABORT 0x0001
+#define UD_COMMAND 0x0002
+#define UD_DETECT 0x0004
+#define UD_INTERRUPT 0x0008
+#define UD_RESET 0x0010
+
+#ifdef ULTRASTOR_PRIVATE
+
+/* #define PORT_OVERRIDE 0x330 */
 
 /* Port addresses (relative to the base address) */
 #define LCL_DOORBELL_MASK(port) ((port) + 0x0)
@@ -80,5 +88,7 @@ int ultrastor_14f_reset(void);
 #define HA_CMD_SELF_DIAG 0x2
 #define HA_CMD_READ_BUFF 0x3
 #define HA_CMD_WRITE_BUFF 0x4
+
+#endif
 
 #endif

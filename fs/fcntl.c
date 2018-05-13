@@ -14,6 +14,8 @@
 #include <linux/string.h>
 
 extern int sys_close(int fd);
+extern int fcntl_getlk(unsigned int, struct flock *);
+extern int fcntl_setlk(unsigned int, unsigned int, struct flock *);
 
 static int dupfd(unsigned int fd, unsigned int arg)
 {
@@ -51,7 +53,8 @@ int sys_dup(unsigned int fildes)
 int sys_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg)
 {	
 	struct file * filp;
-
+	extern int sock_fcntl (struct file *, unsigned int cmd,
+			       unsigned long arg);
 	if (fd >= NR_OPEN || !(filp = current->filp[fd]))
 		return -EBADF;
 	switch (cmd) {
@@ -71,9 +74,18 @@ int sys_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg)
 			filp->f_flags &= ~(O_APPEND | O_NONBLOCK);
 			filp->f_flags |= arg & (O_APPEND | O_NONBLOCK);
 			return 0;
-		case F_GETLK:	case F_SETLK:	case F_SETLKW:
-			return -ENOSYS;
+		case F_GETLK:
+			return fcntl_getlk(fd, (struct flock *) arg);
+		case F_SETLK:
+			return fcntl_setlk(fd, cmd, (struct flock *) arg);
+		case F_SETLKW:
+			return fcntl_setlk(fd, cmd, (struct flock *) arg);
 		default:
+			/* sockets need a few special fcntls. */
+			if (S_ISSOCK (filp->f_inode->i_mode))
+			  {
+			     return (sock_fcntl (filp, cmd, arg));
+			  }
 			return -EINVAL;
 	}
 }

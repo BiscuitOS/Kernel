@@ -16,6 +16,14 @@
 
 int sync_dev(int dev);
 
+static inline void wait_on_buffer(struct buffer_head * bh)
+{
+	cli();
+	while (bh->b_lock)
+		sleep_on(&bh->b_wait);
+	sti();
+}
+
 void minix_put_inode(struct inode *inode)
 {
 	inode->i_size = 0;
@@ -131,86 +139,170 @@ void minix_statfs (struct super_block *sb, struct statfs *buf)
 	/* Don't know what value to put in buf->f_fsid */
 }
 
-static int _minix_bmap(struct inode * inode,int block,int create)
-{
-	struct buffer_head * bh;
-	int i;
+#define inode_bmap(inode,nr) ((inode)->u.minix_i.i_data[(nr)])
 
-	if (block<0) {
-		printk("_minix_bmap: block<0");
+static int block_bmap(struct buffer_head * bh, int nr)
+{
+	int tmp;
+
+	if (!bh)
 		return 0;
-	}
-	if (block >= 7+512+512*512) {
-		printk("_minix_bmap: block>big");
-		return 0;
-	}
-	if (block<7) {
-		if (create && !inode->i_data[block])
-			if ((inode->i_data[block]=minix_new_block(inode->i_dev))) {
-				inode->i_ctime=CURRENT_TIME;
-				inode->i_dirt=1;
-			}
-		return inode->i_data[block];
-	}
-	block -= 7;
-	if (block<512) {
-		if (create && !inode->i_data[7])
-			if ((inode->i_data[7]=minix_new_block(inode->i_dev))) {
-				inode->i_dirt=1;
-				inode->i_ctime=CURRENT_TIME;
-			}
-		if (!inode->i_data[7])
-			return 0;
-		if (!(bh = bread(inode->i_dev,inode->i_data[7],BLOCK_SIZE)))
-			return 0;
-		i = ((unsigned short *) (bh->b_data))[block];
-		if (create && !i)
-			if ((i=minix_new_block(inode->i_dev))) {
-				((unsigned short *) (bh->b_data))[block]=i;
-				bh->b_dirt=1;
-			}
-		brelse(bh);
-		return i;
-	}
-	block -= 512;
-	if (create && !inode->i_data[8])
-		if ((inode->i_data[8]=minix_new_block(inode->i_dev))) {
-			inode->i_dirt=1;
-			inode->i_ctime=CURRENT_TIME;
-		}
-	if (!inode->i_data[8])
-		return 0;
-	if (!(bh=bread(inode->i_dev,inode->i_data[8], BLOCK_SIZE)))
-		return 0;
-	i = ((unsigned short *)bh->b_data)[block>>9];
-	if (create && !i)
-		if ((i=minix_new_block(inode->i_dev))) {
-			((unsigned short *) (bh->b_data))[block>>9]=i;
-			bh->b_dirt=1;
-		}
+	tmp = ((unsigned short *) bh->b_data)[nr];
 	brelse(bh);
-	if (!i)
-		return 0;
-	if (!(bh=bread(inode->i_dev,i,BLOCK_SIZE)))
-		return 0;
-	i = ((unsigned short *)bh->b_data)[block&511];
-	if (create && !i)
-		if ((i=minix_new_block(inode->i_dev))) {
-			((unsigned short *) (bh->b_data))[block&511]=i;
-			bh->b_dirt=1;
-		}
-	brelse(bh);
-	return i;
+	return tmp;
 }
 
 int minix_bmap(struct inode * inode,int block)
 {
-	return _minix_bmap(inode,block,0);
+	int i;
+
+	if (block<0) {
+		printk("minix_bmap: block<0");
+		return 0;
+	}
+	if (block >= 7+512+512*512) {
+		printk("minix_bmap: block>big");
+		return 0;
+	}
+	if (block < 7)
+		return inode_bmap(inode,block);
+	block -= 7;
+	if (block < 512) {
+		i = inode_bmap(inode,7);
+		if (!i)
+			return 0;
+		return block_bmap(bread(inode->i_dev,i,BLOCK_SIZE),block);
+	}
+	block -= 512;
+	i = inode_bmap(inode,8);
+	if (!i)
+		return 0;
+	i = block_bmap(bread(inode->i_dev,i,BLOCK_SIZE),block>>9);
+	if (!i)
+		return 0;
+	return block_bmap(bread(inode->i_dev,i,BLOCK_SIZE),block & 511);
 }
 
-int minix_create_block(struct inode * inode, int block)
+static struct buffer_head * inode_getblk(struct inode * inode, int nr, int create)
 {
-	return _minix_bmap(inode,block,1);
+	int tmp;
+	unsigned short *p;
+	struct buffer_head * result;
+
+	p = inode->u.minix_i.i_data + nr;
+repeat:
+	tmp = *p;
+	if (tmp) {
+		result = getblk(inode->i_dev, tmp, BLOCK_SIZE);
+		if (tmp == *p)
+			return result;
+		brelse(result);
+		goto repeat;
+	}
+	if (!create)
+		return NULL;
+	tmp = minix_new_block(inode->i_dev);
+	if (!tmp)
+		return NULL;
+	result = getblk(inode->i_dev, tmp, BLOCK_SIZE);
+	if (*p) {
+		minix_free_block(inode->i_dev,tmp);
+		brelse(result);
+		goto repeat;
+	}
+	*p = tmp;
+	inode->i_ctime = CURRENT_TIME;
+	inode->i_dirt = 1;
+	return result;
+}
+
+static struct buffer_head * block_getblk(struct buffer_head * bh, int nr, int create)
+{
+	int tmp;
+	unsigned short *p;
+	struct buffer_head * result;
+
+	if (!bh)
+		return NULL;
+	if (!bh->b_uptodate) {
+		ll_rw_block(READ,bh);
+		wait_on_buffer(bh);
+		if (!bh->b_uptodate) {
+			brelse(bh);
+			return NULL;
+		}
+	}
+	p = nr + (unsigned short *) bh->b_data;
+repeat:
+	tmp = *p;
+	if (tmp) {
+		result = getblk(bh->b_dev, tmp, BLOCK_SIZE);
+		if (tmp == *p) {
+			brelse(bh);
+			return result;
+		}
+		brelse(result);
+		goto repeat;
+	}
+	if (!create) {
+		brelse(bh);
+		return NULL;
+	}
+	tmp = minix_new_block(bh->b_dev);
+	if (!tmp) {
+		brelse(bh);
+		return NULL;
+	}
+	result = getblk(bh->b_dev, tmp, BLOCK_SIZE);
+	if (*p) {
+		minix_free_block(bh->b_dev,tmp);
+		brelse(result);
+		goto repeat;
+	}
+	*p = tmp;
+	bh->b_dirt = 1;
+	brelse(bh);
+	return result;
+}
+
+struct buffer_head * minix_getblk(struct inode * inode, int block, int create)
+{
+	struct buffer_head * bh;
+
+	if (block<0) {
+		printk("minix_getblk: block<0");
+		return NULL;
+	}
+	if (block >= 7+512+512*512) {
+		printk("minix_getblk: block>big");
+		return NULL;
+	}
+	if (block < 7)
+		return inode_getblk(inode,block,create);
+	block -= 7;
+	if (block < 512) {
+		bh = inode_getblk(inode,7,create);
+		return block_getblk(bh,block,create);
+	}
+	block -= 512;
+	bh = inode_getblk(inode,8,create);
+	bh = block_getblk(bh,block>>9,create);
+	return block_getblk(bh,block & 511,create);
+}
+
+struct buffer_head * minix_bread(struct inode * inode, int block, int create)
+{
+	struct buffer_head * bh;
+
+	bh = minix_getblk(inode,block,create);
+	if (!bh || bh->b_uptodate)
+		return bh;
+	ll_rw_block(READ,bh);
+	wait_on_buffer(bh);
+	if (bh->b_uptodate)
+		return bh;
+	brelse(bh);
+	return NULL;
 }
 
 void minix_read_inode(struct inode * inode)
@@ -231,10 +323,11 @@ void minix_read_inode(struct inode * inode)
 	inode->i_nlink = raw_inode->i_nlinks;
 	inode->i_size = raw_inode->i_size;
 	inode->i_mtime = inode->i_atime = inode->i_ctime = raw_inode->i_time;
+	inode->i_blocks = inode->i_blksize = 0;
 	if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode))
 		inode->i_rdev = raw_inode->i_zone[0];
 	else for (block = 0; block < 9; block++)
-		inode->i_data[block] = raw_inode->i_zone[block];
+		inode->u.minix_i.i_data[block] = raw_inode->i_zone[block];
 	brelse(bh);
 	inode->i_op = NULL;
 	if (S_ISREG(inode->i_mode))
@@ -249,9 +342,10 @@ void minix_read_inode(struct inode * inode)
 		inode->i_op = &minix_blkdev_inode_operations;
 	else if (S_ISFIFO(inode->i_mode)) {
 		inode->i_op = &minix_fifo_inode_operations;
-		inode->i_size = 0;
 		inode->i_pipe = 1;
+		PIPE_BASE(*inode) = NULL;
 		PIPE_HEAD(*inode) = PIPE_TAIL(*inode) = 0;
+		PIPE_READ_WAIT(*inode) = PIPE_WRITE_WAIT(*inode) = NULL;
 		PIPE_READERS(*inode) = PIPE_WRITERS(*inode) = 0;
 	}
 }
@@ -277,7 +371,7 @@ void minix_write_inode(struct inode * inode)
 	if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode))
 		raw_inode->i_zone[0] = inode->i_rdev;
 	else for (block = 0; block < 9; block++)
-		raw_inode->i_zone[block] = inode->i_data[block];
+		raw_inode->i_zone[block] = inode->u.minix_i.i_data[block];
 	bh->b_dirt=1;
 	inode->i_dirt=0;
 	brelse(bh);

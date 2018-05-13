@@ -10,13 +10,13 @@
 #include <linux/tty.h>
 #include <linux/timer.h>
 #include <linux/kernel.h>
+#include <linux/kd.h>
+#include <linux/vt.h>
 
 #include <asm/io.h>
 #include <asm/segment.h>
 
 #include "vt_kern.h"
-#include <sys/kd.h>
-#include <sys/vt.h>
 
 /*
  * console (vt and kd) routines, as defined by usl svr4 manual
@@ -63,16 +63,18 @@ kiocsound(unsigned int freq)
 }
 
 /*
- * all the vt ioctls affect only consoles, so we reject all other ttys.
- * we also have the capability to modify any console, not just the fg_console.
+ * We handle the console-specific ioctl's here.  We allow the
+ * capability to modify any console, not just the fg_console. 
  */
-int
-vt_ioctl(struct tty_struct *tty, int dev, int cmd, int arg)
+int vt_ioctl(struct tty_struct *tty, struct file * file,
+	     unsigned int cmd, unsigned int arg)
 {
-	int console = dev ? dev - 1 : fg_console;
+	int console;
 	unsigned char ucval;
 
-	if (!IS_A_CONSOLE(dev) || console < 0 || console >= NR_CONSOLES)
+	console = tty->line - 1;
+
+	if (console < 0 || console >= NR_CONSOLES)
 		return -EINVAL;
 
 	switch (cmd) {

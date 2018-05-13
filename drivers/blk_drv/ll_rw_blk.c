@@ -11,6 +11,7 @@
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/string.h>
+#include <linux/config.h>
 
 #include <asm/system.h>
 
@@ -101,9 +102,6 @@ void set_device_ro(int dev,int flag)
  * add-request adds a request to the linked list.
  * It disables interrupts so that it can muck with the
  * request-lists in peace.
- *
- * Note that swapping requests always go before other requests,
- * and are done in the order they appear.
  */
 static void add_request(struct blk_dev_struct * dev, struct request * req)
 {
@@ -120,12 +118,6 @@ static void add_request(struct blk_dev_struct * dev, struct request * req)
 		return;
 	}
 	for ( ; tmp->next ; tmp = tmp->next) {
-		if (!req->bh) {
-			if (tmp->next->bh)
-				break;
-			else
-				continue;
-		}	
 		if ((IN_ORDER(tmp,req) ||
 		    !IN_ORDER(tmp,tmp->next)) &&
 		    IN_ORDER(req,tmp->next))
@@ -170,7 +162,7 @@ static void make_request(int major,int rw, struct buffer_head * bh)
 	}
 repeat:
 	cli();
-	if ((major == 3 ||  major == 8 )&& (req = blk_dev[major].current_request)) {
+	if ((major == 3 ||  major == 8 || major == 11)&& (req = blk_dev[major].current_request)) {
 		while ((req = req->next)) {
 			if (req->dev == bh->b_dev &&
 			    !req->waiting &&
@@ -208,9 +200,10 @@ repeat:
 	sti();
 	goto repeat;
 
-found:	sti();
+found:
 /* fill up the request-info, and add it to the queue */
 	req->dev = bh->b_dev;
+	sti();
 	req->cmd = rw;
 	req->errors = 0;
 	req->sector = sector;
@@ -300,6 +293,9 @@ long blk_dev_init(long mem_start, long mem_end)
 		request[i].next = NULL;
 	}
 	memset(ro_bits,0,sizeof(ro_bits));
+#ifdef CONFIG_BLK_DEV_HD
+	mem_start = hd_init(mem_start,mem_end);
+#endif
 #ifdef RAMDISK
 	mem_start += rd_init(mem_start, RAMDISK*1024);
 #endif

@@ -78,6 +78,12 @@ _start:
 	mov	$0x5019, %ax
 	cmp	$0x10, %bl
 	je	novga
+	mov	$0x1a00, %ax	#Added check for EGA/VGA discrimination
+	int	$0x10
+	mov	%ax, %bx
+	mov	$0x5019, %ax
+	cmp	$0x1a, %bl	#1a means VGA, anything else EGA or lower
+	jne	novga
 	call	chsvga
 
 novga:
@@ -139,6 +145,40 @@ no_disk1:
 	rep
 	stosb
 is_disk1:
+
+# check for PS/2 pointing device
+
+	mov	$INITSEG, %ax
+	mov	%ax, %ds
+#	mov	$0x0, %ds:0x1ff	# default is no pointing device
+	int	$0x11		# int 0x11: equipment determination
+	test	$0x04, %al	# check if pointing device installed
+	jz	no_psmouse
+	mov	$0xc201, %ax	# reset pointing device
+	int	$0x15
+	jc	no_psmouse
+	mov	$0x03, %bh	# 3 bytes/packet
+	mov	$0xc205, %ax	# initialize pointing device
+	int	$0x15
+	jc	no_psmouse
+	mov	$0xc203, %ax	# set resolution
+	mov	$0x03, %bh	# 8 counts/mm
+	int	$0x15
+	jc	no_psmouse
+	mov	$0xc206, %ax	# set scaling
+	mov	$0x02, %bh	# 2:1 scaling
+	int	$0x15
+	jc	no_psmouse
+	mov	$0xc202, %ax	# set sample rate
+	mov	$0x05, %bh	# 100 reports per second
+	int	$0x15
+	jc	no_psmouse
+	mov	$0x01, %bh
+	mov	$0xc200, %ax	# enable pointing device
+	int	$0x15
+	jc	no_psmouse
+#	mov	$0xaa, %ds:0x1ff	# device present
+no_psmouse:
 
 # now we want to move to protected mode ...
 
@@ -433,6 +473,17 @@ l1:
 	jmp	*%cx
 nogen:
 	cld
+	lea	idoakvga, %si
+	mov	$0x08, %di
+	mov	$0x08, %cx
+	repe
+	cmpsb
+	jne	nooak
+	lea	dscoakvga, %si
+	lea	mooakvga, %di
+	lea	selmod, %cx
+	jmp	*%cx
+nooak:	cld
 	lea	idparadise, %si	# Check Paradise 'clues'
 	mov	$0x7d, %di
 	mov	$0x04, %cx
@@ -688,6 +739,7 @@ idati:		.ascii	"761295520"
 idcandt:	.byte	0xa5
 idgenoa:	.byte	0x77, 0x00, 0x66, 0x99
 idparadise:	.ascii	"VGA="
+idoakvga:	.ascii  "OAK VGA "
 
 # Manufacturer:	  Numofmodes:	Mode:
 
@@ -701,6 +753,7 @@ moparadise:	.byte	0x02,	0x55, 0x54
 motrident:	.byte	0x07,	0x50, 0x51, 0x52, 0x57, 0x58, 0x59, 0x5a
 motseng:	.byte	0x05,	0x26, 0x2a, 0x23, 0x24, 0x22
 movideo7:	.byte	0x06,	0x40, 0x43, 0x44, 0x41, 0x42, 0x45
+mooakvga:	.byte	0x05,	0x00, 0x07, 0x4f, 0x50, 0x51
 
 # msb = Cols lsb = Rows:
 
@@ -714,6 +767,7 @@ dscparadise:	.word	0x8419, 0x842b
 dsctrident:	.word 	0x501e, 0x502b, 0x503c, 0x8419, 0x841e, 0x842b, 0x843c
 dsctseng:	.word	0x503c, 0x6428, 0x8419, 0x841c, 0x842c
 dscvideo7:	.word	0x502b, 0x503c, 0x643c, 0x8419, 0x842c, 0x841c
+dscoakvga:	.word	0x2819, 0x5019, 0x843c, 0x8419, 0x842C
 
 gdt:
 	.word	0,0,0,0		# dummy

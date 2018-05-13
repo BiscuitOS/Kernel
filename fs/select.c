@@ -18,8 +18,6 @@
 #include <asm/segment.h>
 #include <asm/system.h>
 
-#include <const.h>
-
 /*
  * Ok, Peter made a complicated, but straightforward multiple_wait() function.
  * I have rewritten this, taking some shortcuts: This code may not be easy to
@@ -51,6 +49,8 @@ static int check_in(select_table * wait, struct inode * inode, struct file * fil
 {
 	if (file->f_op && file->f_op->select)
 		return file->f_op->select(inode,file,SEL_IN,wait);
+	if (inode && S_ISREG(inode->i_mode))
+		return 1;
 	return 0;
 }
 
@@ -58,6 +58,8 @@ static int check_out(select_table * wait, struct inode * inode, struct file * fi
 {
 	if (file->f_op && file->f_op->select)
 		return file->f_op->select(inode,file,SEL_OUT,wait);
+	if (inode && S_ISREG(inode->i_mode))
+		return 1;
 	return 0;
 }
 
@@ -65,6 +67,8 @@ static int check_ex(select_table * wait, struct inode * inode, struct file * fil
 {
 	if (file->f_op && file->f_op->select)
 		return file->f_op->select(inode,file,SEL_EX,wait);
+	if (inode && S_ISREG(inode->i_mode))
+		return 1;
 	return 0;
 }
 
@@ -85,15 +89,6 @@ int do_select(fd_set in, fd_set out, fd_set ex,
 			return -EBADF;
 		if (!current->filp[i]->f_inode)
 			return -EBADF;
-		if (current->filp[i]->f_inode->i_pipe)
-			continue;
-		if (S_ISCHR(current->filp[i]->f_inode->i_mode))
-			continue;
-		if (S_ISFIFO(current->filp[i]->f_inode->i_mode))
-			continue;
-		if (S_ISSOCK(current->filp[i]->f_inode->i_mode))
-			continue;
-		return -EBADF;
 	}
 repeat:
 	wait_table.nr = 0;

@@ -1,11 +1,11 @@
-#ifndef _MM_H
-#define _MM_H
+#ifndef _LINUX_MM_H
+#define _LINUX_MM_H
 
 #define PAGE_SIZE 4096
+#define PAGE_SHIFT 12
 
 #include <linux/fs.h>
 #include <linux/kernel.h>
-#include <linux/signal.h>
 
 /*
  * BAD_PAGE is the page that is used for page faults when linux
@@ -41,10 +41,14 @@ static unsigned long inline __bad_pagetable(void)
 }
 #define BAD_PAGETABLE __bad_pagetable()
 
-extern unsigned int swap_device;
-extern struct inode * swap_file;
+extern volatile short free_page_ptr; /* used by malloc and tcp/ip. */
 
 extern int nr_free_pages;
+extern unsigned long free_page_list;
+extern int nr_secondary_pages;
+extern unsigned long secondary_page_list;
+
+#define MAX_SECONDARY_PAGES 10
 
 extern void rw_swap_page(int rw, unsigned int nr, char * buf);
 
@@ -56,10 +60,12 @@ extern void rw_swap_page(int rw, unsigned int nr, char * buf);
 /* memory.c */
 	
 extern unsigned long get_free_page(int priority);
-extern unsigned long put_dirty_page(unsigned long page,unsigned long address);
+extern unsigned long put_dirty_page(struct task_struct * tsk,unsigned long page,
+	unsigned long address);
 extern void free_page(unsigned long addr);
-extern int free_page_tables(unsigned long from,unsigned long size);
-extern int copy_page_tables(unsigned long from,unsigned long to,long size);
+extern void free_page_tables(struct task_struct * tsk);
+extern void clear_page_tables(struct task_struct * tsk);
+extern int copy_page_tables(struct task_struct * new);
 extern int unmap_page_range(unsigned long from, unsigned long size);
 extern int remap_page_range(unsigned long from, unsigned long to, unsigned long size,
 	 int permiss);
@@ -70,27 +76,29 @@ extern void do_wp_page(unsigned long error_code, unsigned long address,
 extern void do_no_page(unsigned long error_code, unsigned long address,
 	struct task_struct *tsk, unsigned long user_esp);
 
-extern unsigned long mem_init(unsigned long start_mem, unsigned long end_mem);
+extern void mem_init(unsigned long low_start_mem,
+		     unsigned long start_mem, unsigned long end_mem);
 extern void show_mem(void);
 extern void do_page_fault(unsigned long *esp, unsigned long error_code);
 extern void oom(struct task_struct * task);
+extern void malloc_grab_pages(void);
 
 /* swap.c */
 
 extern void swap_free(unsigned int page_nr);
+extern void swap_duplicate(unsigned int page_nr);
 extern void swap_in(unsigned long *table_ptr);
 
 #define invalidate() \
-__asm__("movl %%eax,%%cr3"::"a" (0))
+__asm__ __volatile__("movl %%cr3,%%eax\n\tmovl %%eax,%%cr3":::"ax")
 
-extern unsigned long low_memory;
 extern unsigned long high_memory;
-extern unsigned long paging_pages;
 
-#define MAP_NR(addr) (((addr)-low_memory)>>12)
+#define MAP_NR(addr) ((addr) >> PAGE_SHIFT)
+#define MAP_PAGE_RESERVED (1<<15)
 #define USED 100
 
-extern unsigned char * mem_map;
+extern unsigned short * mem_map;
 
 #define PAGE_DIRTY	0x40
 #define PAGE_ACCESSED	0x20
@@ -99,7 +107,8 @@ extern unsigned char * mem_map;
 #define PAGE_PRESENT	0x01
 
 #define GFP_BUFFER	0x00
-#define GFP_USER	0x01
-#define GFP_KERNEL	0x02
+#define GFP_ATOMIC	0x01
+#define GFP_USER	0x02
+#define GFP_KERNEL	0x03
 
 #endif

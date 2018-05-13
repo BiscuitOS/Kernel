@@ -1,13 +1,15 @@
-/* $Id: aha1542.c,v 1.1 1992/04/24 18:01:50 root Exp root $
+/* $Id: aha1542.c,v 1.1 1992/07/24 06:27:38 root Exp root $
  *  linux/kernel/aha1542.c
  *
- *  (C) 1992  Tommy Thorn
+ *  Copyright (C) 1992  Tommy Thorn
  */
 
 #include <linux/config.h>
 #include <linux/kernel.h>
 #include <linux/head.h>
+#include <linux/types.h>
 #include <linux/string.h>
+
 #include <asm/system.h>
 #include <asm/io.h>
 #include "scsi.h"
@@ -21,7 +23,7 @@
 #endif
 
 /*
-static const char RCSid[] = "$Header: /usr/src/linux/kernel/blk_drv/scsi/RCS/aha1542.c,v 1.1 1992/04/24 18:01:50 root Exp root $";
+static const char RCSid[] = "$Header: /usr/src/linux/kernel/blk_drv/scsi/RCS/aha1542.c,v 1.1 1992/07/24 06:27:38 root Exp root $";
 */
 
 #define base 0x330
@@ -32,7 +34,8 @@ static struct ccb ccb;
 
 long WAITtimeout, WAITnexttimeout = 3000000;
 
-void (*do_done)() = NULL;
+void (*do_done)(int, int) = NULL;
+int aha1542_host = 0;
 extern void aha1542_interrupt();
 
 #define aha1542_intr_reset()  outb(IRST, CONTROL)
@@ -52,9 +55,8 @@ extern void aha1542_interrupt();
 
 static void aha1542_stat(void)
 {
-    int s = inb(STATUS), i = inb(INTRFLAGS);
-/*  printk("status = %x, intrflags = %x served %d last %x timeout %d\n", s, i, intr_flag, intr_last, WAITtimeout); */
-    printk("status=%x intrflags=%x\n", s, i, WAITnexttimeout-WAITtimeout);
+/*    int s = inb(STATUS), i = inb(INTRFLAGS);
+  printk("status=%x intrflags=%x\n", s, i, WAITnexttimeout-WAITtimeout); */
 }
 
 static int aha1542_out(unchar *cmdp, int len)
@@ -70,6 +72,18 @@ static int aha1542_out(unchar *cmdp, int len)
     return 1;
 }
 
+static int aha1542_in(unchar *cmdp, int len)
+{
+    while (len--)
+      {
+	  WAIT(STATUS, DF, DF, 0);
+	  *cmdp++ = inb(DATA);
+      }
+    return 0;
+  fail:
+    printk("aha1542_in failed(%d): ", len+1); aha1542_stat();
+    return 1;
+}
 int makecode(unsigned hosterr, unsigned scsierr)
 {
     switch (hosterr) {
@@ -186,19 +200,20 @@ int aha1542_test_port(void)
 /* What's this little function for? */
 char *aha1542_info(void)
 {
-    static char buffer[] = "Adaptec 1542";
+    static char buffer[] = "";			/* looks nicer without anything here */
     return buffer;
 }
 
 /* A "high" level interrupt handler */
 void aha1542_intr_handle(void)
 {
-    int flag = inb(INTRFLAGS);
-    void (*my_done)() = do_done;
+    void (*my_done)(int, int) = do_done;
     int errstatus;
 
     do_done = NULL;
 #ifdef DEBUG
+    {
+    int flag = inb(INTRFLAGS);
     printk("aha1542_intr_handle: ");
     if (!(flag&ANYINTR)) printk("no interrupt?");
     if (flag&MBIF) printk("MBIF ");
@@ -208,6 +223,7 @@ void aha1542_intr_handle(void)
     printk("status %02x\n", inb(STATUS));
     if (ccb.tarstat|ccb.hastat)
       printk("aha1542_command: returning %x (status %d)\n", ccb.tarstat + ((int) ccb.hastat << 16), mb[1].status);
+  };
 #endif
     aha1542_intr_reset();
     if (!my_done) {
@@ -219,7 +235,7 @@ void aha1542_intr_handle(void)
 	
     if (!mb[1].status) {
 	DEB(printk("aha1542_intr_handle: strange: mbif but no mail!\n"));
-	my_done(DID_TIME_OUT << 16);
+	my_done(aha1542_host, DID_TIME_OUT << 16);
 	return;
     }
 
@@ -235,9 +251,11 @@ void aha1542_intr_handle(void)
     if (ccb.tarstat == 2) {
 	int i;
 	DEB(printk("aha1542_intr_handle: sense:"));
+#ifdef DEBUG
 	for (i = 0; i < 12; i++)
 	  printk("%02x ", ccb.cdb[ccb.cdblen+i]);
 	printk("\n");
+#endif
 /*
 	DEB(printk("aha1542_intr_handle: buf:"));
 	for (i = 0; i < bufflen; i++)
@@ -246,18 +264,25 @@ void aha1542_intr_handle(void)
 */
     }
     DEB(if (errstatus) printk("aha1542_intr_handle: returning %6x\n", errstatus));
-    my_done(errstatus);
+    my_done(aha1542_host, errstatus);
     return;
 }
 
-int aha1542_queuecommand(unchar target, const void *cmnd, void *buff, int bufflen, void (*done)(int))
+int aha1542_queuecommand(unchar target, const void *cmnd, void *buff, int bufflen, void (*done)(int, int))
 {
     unchar ahacmd = CMD_START_SCSI;
-    int i;
+    unchar direction;
     unchar *cmd = (unchar *) cmnd;
+    DEB(int i);
 
-    DEB(if (target > 1) {done(DID_TIME_OUT << 16); return 0;});
+    DEB(if (target > 1) {done(aha1542_host, DID_TIME_OUT << 16); return 0;});
     
+    if(*cmd == REQUEST_SENSE){
+      memcpy(buff, &ccb.cdb[ccb.cdblen], bufflen);
+      done(aha1542_host, 0); 
+      return 0;
+    };
+
 #ifdef DEBUG
     if (*cmd == READ_10 || *cmd == WRITE_10)
       i = xscsi2int(cmd+2);
@@ -277,12 +302,18 @@ int aha1542_queuecommand(unchar target, const void *cmnd, void *buff, int buffle
       return 0; /* we are still testing, so *don't* write */
 #endif
     memset(&ccb, 0, sizeof ccb);
-    
+
     ccb.cdblen = (*cmd<=0x1f)?6:10;	/* SCSI Command Descriptor Block Length */
-    
+
+    direction = 0;
+    if (*cmd == READ_10 || *cmd == READ_6)
+	direction = 8;
+    else if (*cmd == WRITE_10 || *cmd == WRITE_6)
+	direction = 16;
+
     memcpy(ccb.cdb, cmd, ccb.cdblen);
     ccb.op = 0;				/* SCSI Initiator Command */
-    ccb.idlun = (target&7)<<5;		/* SCSI Target Id */
+    ccb.idlun = (target&7)<<5 | direction;  /* SCSI Target Id */
     ccb.rsalen = 12;
     any2scsi(ccb.datalen, bufflen);
     any2scsi(ccb.dataptr, buff);
@@ -316,7 +347,7 @@ int aha1542_queuecommand(unchar target, const void *cmnd, void *buff, int buffle
 
 volatile static int internal_done_flag = 0;
 volatile static int internal_done_errcode = 0;
-static void internal_done(int errcode)
+static void internal_done(int host, int errcode)
 {
     internal_done_errcode = errcode;
     ++internal_done_flag;
@@ -357,8 +388,30 @@ void call_buh()
     set_intr_gate(0x2b,&aha1542_interrupt);
 }
 
+/* Query the board to find out if it is a 1542 or a 1740, or whatever. */
+static void aha1542_query()
+{
+  static unchar inquiry_cmd[] = {CMD_INQUIRY };
+  static unchar inquiry_result[4];
+  int i;
+  i = inb(STATUS);
+  if (i & DF) {
+    i = inb(DATA);
+    printk("Stale data:%x ");
+  };
+  aha1542_out(inquiry_cmd, 1);
+  aha1542_in(inquiry_result, 4);
+  WAIT(INTRFLAGS, INTRMASK, HACC, 0);
+  while (0) {
+  fail:
+    printk("aha1542_detect: query card type\n");
+  }
+      aha1542_intr_reset();
+  printk("Inquiry:");
+  for(i=0;i<4;i++) printk("%x ",inquiry_result[i]);
+}
 /* return non-zero on detection */
-int aha1542_detect(int hostnum) /* hostnum ignored for now */
+int aha1542_detect(int hostnum)
 {
     int i;
 
@@ -385,11 +438,12 @@ int aha1542_detect(int hostnum) /* hostnum ignored for now */
 	}
 	aha1542_intr_reset();
     }
+    aha1542_query();
 
-    aha1542_stat();
+    DEB(aha1542_stat());
     setup_mailboxes();
 
-    aha1542_stat();
+    DEB(aha1542_stat());
 
     DEB(printk("aha1542_detect: enable interrupt channel %d\n", intr_chan));
     call_buh();
@@ -433,6 +487,7 @@ int aha1542_detect(int hostnum) /* hostnum ignored for now */
 	  aha1542_command(0, cmd, buffer, 512);
       }
 #endif
+    aha1542_host = hostnum;
     return 1;
 }
 

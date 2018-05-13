@@ -1,0 +1,16 @@
+obj-y += Space.o
+obj-y += arp.o
+obj-y += dev.o
+obj-y += eth.o
+obj-y += icmp.o
+obj-y += ip.o
+obj-y += loopback.o
+obj-y += pack_type.o
+obj-y += packet.o
+obj-y += protocols.o
+obj-y += raw.o
+obj-y += sock.o
+obj-y += tcp.o
+obj-y += timer.o
+obj-y += udp.o
+obj-y += we.o

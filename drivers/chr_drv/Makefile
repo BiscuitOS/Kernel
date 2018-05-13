@@ -8,3 +8,5 @@ obj-y += lp.o
 obj-y += mem.o
 obj-y += vt.o
 obj-y += mouse.o
+obj-y += busmouse.o
+obj-y += psaux.o

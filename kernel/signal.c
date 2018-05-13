@@ -135,13 +135,8 @@ int do_signal(long signr,struct pt_regs * regs)
 	int longs;
 	unsigned long * tmp_esp;
 
-#ifdef notdef
-	printk("pid: %d, signr: %x, eax=%d, oeax = %d, int=%d\n", 
-		current->pid, signr, regs->eax, regs->orig_eax, 
-		sa->sa_flags & SA_INTERRUPT);
-#endif
 	sa_handler = (unsigned long) sa->sa_handler;
-	if ((regs->orig_eax != -1) &&
+	if ((regs->orig_eax >= 0) &&
 	    ((regs->eax == -ERESTARTSYS) || (regs->eax == -ERESTARTNOINTR))) {
 		if ((sa_handler > 1) && (regs->eax == -ERESTARTSYS) &&
 		    (sa->sa_flags & SA_INTERRUPT))
@@ -185,9 +180,10 @@ int do_signal(long signr,struct pt_regs * regs)
 		case SIGFPE:
 		case SIGSEGV:
 			if (core_dump(signr,regs))
-				do_exit(signr|0x80);
+				signr |= 0x80;
 			/* fall through */
 		default:
+			current->signal |= 1<<((signr & 0x7f)-1);
 			do_exit(signr);
 		}
 	}

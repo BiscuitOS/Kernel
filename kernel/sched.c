@@ -29,6 +29,9 @@
 
 int need_resched = 0;
 
+unsigned long * prof_buffer = NULL;
+unsigned long prof_len = 0;
+
 #define _S(nr) (1<<((nr)-1))
 #define _BLOCKABLE (~(_S(SIGKILL) | _S(SIGSTOP)))
 
@@ -75,7 +78,7 @@ union task_union {
 
 static union task_union init_task = {INIT_TASK, };
 
-unsigned long volatile jiffies=0;
+unsigned long jiffies=0;
 unsigned long startup_time=0;
 int jiffies_offset = 0;		/* # clock ticks to add to get "true
 				   time".  Should always be less than
@@ -88,12 +91,12 @@ struct task_struct *last_task_used_math = NULL;
 
 struct task_struct * task[NR_TASKS] = {&(init_task.task), };
 
-long user_stack[PAGE_SIZE >> 2];
+long user_stack [ PAGE_SIZE>>2 ] ;
 
 struct {
-    long *a;
-    short b;
-} stack_start = { &user_stack[PAGE_SIZE >> 2], 0x10};
+	long * a;
+	short b;
+	} stack_start = { & user_stack [PAGE_SIZE>>2] , 0x10 };
 /*
  *  'math_state_restore()' saves the current math information in the
  * old math state array, and gets the new ones from the current task
@@ -157,12 +160,14 @@ void schedule(void)
 			if ((*p)->state == TASK_RUNNING && (*p)->counter > c)
 				c = (*p)->counter, next = i;
 		}
-		if (c) break;
+		if (c)
+			break;
 		for(p = &LAST_TASK ; p > &FIRST_TASK ; --p)
 			if (*p)
 				(*p)->counter = ((*p)->counter >> 1) +
 						(*p)->priority;
 	}
+	sti();
 	switch_to(next);
 }
 
@@ -201,7 +206,7 @@ void wake_up(struct wait_queue **q)
 
 	if (!q || !(next = *q))
 		return;
-	__asm__ __volatile__("pushfl ; popl %0 ; cli":"=r" (flags));
+	__asm__ ("pushfl ; popl %0 ; cli":"=r" (flags));
 	do {
 		tmp = next;
 		next = tmp->next;
@@ -216,7 +221,7 @@ void wake_up(struct wait_queue **q)
 		}
 		tmp->next = NULL;
 	} while (next && next != *q);
-	__asm__ __volatile__("pushl %0 ; popfl"::"r" (flags));
+	__asm__ ("pushl %0 ; popfl"::"r" (flags));
 }
 
 static inline void __sleep_on(struct wait_queue **p, int state)
@@ -229,7 +234,7 @@ static inline void __sleep_on(struct wait_queue **p, int state)
 		panic("task[0] trying to sleep");
 	if (current->wait.next)
 		printk("__sleep_on: wait->next exists\n");
-	__asm__ __volatile__("pushfl ; popl %0 ; cli":"=r" (flags));
+	__asm__ ("pushfl ; popl %0 ; cli":"=r" (flags));
 	current->state = state;
 	add_wait_queue(p,&current->wait);
 	sti();
@@ -351,36 +356,44 @@ void add_timer(long jiffies, void (*fn)(void))
 	sti();
 }
 
-#define	FSHIFT	11
-#define	FSCALE	(1<<FSHIFT)
-/*
- * Constants for averages over 1, 5, and 15 minutes
- * when sampling at 5 second intervals.
- */
-static unsigned long cexp[3] = {
-	1884,	/* 0.9200444146293232 * FSCALE,	 exp(-1/12) */
-	2014,	/* 0.9834714538216174 * FSCALE,	 exp(-1/60) */
-	2037,	/* 0.9944598480048967 * FSCALE,	 exp(-1/180) */
-};
-unsigned long averunnable[3] = { 0, };	/* fixed point numbers */
-
-void update_avg(void)
-{
-    	int i, n=0;
-	struct task_struct **p;
-
-	for(p = &LAST_TASK; p > &FIRST_TASK; --p)
-		if (*p && ((*p)->state == TASK_RUNNING || 
-			   (*p)->state == TASK_UNINTERRUPTIBLE))
-			++n;
-	
-	for (i = 0; i < 3; ++i)
-		averunnable[i] = (cexp[i] * averunnable[i] +
-			n * FSCALE * (FSCALE - cexp[i])) >> FSHIFT;
-}
-
 unsigned long timer_active = 0;
 struct timer_struct timer_table[32];
+
+/*
+ * Hmm.. Changed this, as the GNU make sources (load.c) seems to
+ * imply that avenrun[] is the standard name for this kind of thing.
+ * Nothing else seems to be standardized: the fractional size etc
+ * all seem to differ on different machines.
+ */
+unsigned long avenrun[3] = { 0,0,0 };
+
+/*
+ * Nr of active tasks - counted in fixed-point numbers
+ */
+static unsigned long count_active_tasks(void)
+{
+	struct task_struct **p;
+	unsigned long nr = 0;
+
+	for(p = &LAST_TASK; p > &FIRST_TASK; --p)
+		if (*p && (*p)->state == TASK_RUNNING)
+			nr += FIXED_1;
+	return nr;
+}
+
+static inline void calc_load(void)
+{
+	unsigned long active_tasks; /* fixed-point */
+	static int count = LOAD_FREQ;
+
+	if (count-- > 0)
+		return;
+	count = LOAD_FREQ;
+	active_tasks = count_active_tasks();
+	CALC_LOAD(avenrun[0], EXP_1, active_tasks);
+	CALC_LOAD(avenrun[1], EXP_5, active_tasks);
+	CALC_LOAD(avenrun[2], EXP_15, active_tasks);
+}
 
 /*
  * The int argument is really a (struct pt_regs *), in case the
@@ -388,29 +401,33 @@ struct timer_struct timer_table[32];
  * irq uses this to decide if it should update the user or system
  * times.
  */
-static void do_timer(int regs)
+static void do_timer(struct pt_regs * regs)
 {
 	unsigned long mask;
 	struct timer_struct *tp = timer_table+0;
 	struct task_struct ** task_p;
-	static int avg_cnt = 0;
 
 	jiffies++;
-	if (3 & ((struct pt_regs *) regs)->cs)
+	calc_load();
+	if ((VM_MASK & regs->eflags) || (3 & regs->cs)) {
 		current->utime++;
-	else {
-		current->stime++;
 		/* Update ITIMER_VIRT for current task if not in a system call */
 		if (current->it_virt_value && !(--current->it_virt_value)) {
 			current->it_virt_value = current->it_virt_incr;
 			send_sig(SIGVTALRM,current,1);
 		}
+	} else {
+		current->stime++;
+#ifdef PROFILE_SHIFT
+		if (prof_buffer && current != task[0]) {
+			unsigned long eip = regs->eip;
+			eip >>= PROFILE_SHIFT;
+			if (eip < prof_len)
+				prof_buffer[eip]++;
+		}
+#endif
 	}
-	if (--avg_cnt < 0) {
-		avg_cnt = 500;
-		update_avg();
-	}
-	if ((--current->counter)<=0) {
+	if (current == task[0] || (--current->counter)<=0) {
 		current->counter=0;
 		need_resched = 1;
 	}
@@ -530,5 +547,5 @@ void sched_init(void)
 	outb_p(0x36,0x43);		/* binary, mode 3, LSB/MSB, ch 0 */
 	outb_p(LATCH & 0xff , 0x40);	/* LSB */
 	outb(LATCH >> 8 , 0x40);	/* MSB */
-	request_irq(TIMER_IRQ,do_timer);
+	request_irq(TIMER_IRQ,(void (*)(int)) do_timer);
 }

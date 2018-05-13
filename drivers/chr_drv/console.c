@@ -7,9 +7,14 @@
 /*
  *	console.c
  *
- * This module implements the console io functions
+ * This module exports the console io functions:
+ * 
  *	'long con_init(long)'
- *	'void con_write(struct tty_queue * queue)'
+ *	'void con_open(struct tty_queue * queue, struct )'
+ * 	'void update_screen(int new_console)'
+ * 	'void blank_screen(void)'
+ * 	'void unblank_screen(void)'
+ * 
  * Hopefully this will be a rather complete VT102 implementation.
  *
  * Beeping thanks to John T Kohl.
@@ -39,12 +44,12 @@
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/errno.h>
+#include <linux/kd.h>
 
 #include <asm/io.h>
 #include <asm/system.h>
 #include <asm/segment.h>
 
-#include <sys/kd.h>
 #include "vt_kern.h"
 
 #define NPAR 16
@@ -55,6 +60,7 @@ extern void set_leds(void);
 extern unsigned char kapplic;
 extern unsigned char ckmode;
 extern unsigned char krepeat;
+extern unsigned char default_kleds;
 extern unsigned char kleds;
 extern unsigned char kmode;
 extern unsigned char kraw;
@@ -599,7 +605,7 @@ static inline void set_cursor(int currcons)
 static void respond_string(char * p, int currcons, struct tty_struct * tty)
 {
 	while (*p) {
-		put_tty_queue(*p,tty->read_q);
+		put_tty_queue(*p, &tty->read_q);
 		p++;
 	}
 	TTY_READ_FLUSH(tty);
@@ -615,19 +621,19 @@ static void respond_num(unsigned int n, int currcons, struct tty_struct * tty)
 		n /= 10;
 	} while(n && i < 3);	/* We'll take no chances */
 	while (i--) {
-		put_tty_queue(buff[i],tty->read_q);
+		put_tty_queue(buff[i], &tty->read_q);
 	}
 	/* caller must flush */
 }
 
 static void cursor_report(int currcons, struct tty_struct * tty)
 {
-	put_tty_queue('\033', tty->read_q);
-	put_tty_queue('[', tty->read_q);
+	put_tty_queue('\033', &tty->read_q);
+	put_tty_queue('[', &tty->read_q);
 	respond_num(y + (decom ? top+1 : 1), currcons, tty);
-	put_tty_queue(';', tty->read_q);
+	put_tty_queue(';', &tty->read_q);
 	respond_num(x+1, currcons, tty);
-	put_tty_queue('R', tty->read_q);
+	put_tty_queue('R', &tty->read_q);
 	TTY_READ_FLUSH(tty);
 }
 
@@ -860,7 +866,7 @@ static void reset_terminal(int currcons, int do_clear)
 		ckmode		= 0;
 		kapplic		= 0;
 		lfnlmode	= 0;
-		kleds		= 2;
+		kleds		= default_kleds;
 		kmode		= 0;
 		set_leds();
 	} else {
@@ -868,7 +874,7 @@ static void reset_terminal(int currcons, int do_clear)
 		decckm		= 0;
 		kbdapplic	= 0;
 		lnm		= 0;
-		kbdleds		= 2;
+		kbdleds		= default_kleds;
 		kbdmode		= 0;
 	}
 
@@ -893,13 +899,13 @@ void con_write(struct tty_struct * tty)
 	int c;
 	unsigned int currcons;
 
-	wake_up(&tty->write_q->proc_list);
-	currcons = tty - tty_table;
+	wake_up(&tty->write_q.proc_list);
+	currcons = tty->line - 1;
 	if (currcons >= NR_CONSOLES) {
-		printk("con_write: illegal tty\n\r");
+		printk("con_write: illegal tty (%d)\n", currcons);
 		return;
 	}
-	while (!tty->stopped &&	(c = get_tty_queue(tty->write_q)) >= 0) {
+	while (!tty->stopped &&	(c = get_tty_queue(&tty->write_q)) >= 0) {
 		if (state == ESnormal && translate[c]) {
 			if (need_wrap) {
 				cr(currcons);
@@ -923,13 +929,13 @@ void con_write(struct tty_struct * tty)
 		 *  Control characters can be used in the _middle_
 		 *  of an escape sequence.
 		 */
-		if (c < 32 || c == 127) switch(c) {
+		switch (c) {
 			case 7:
 				sysbeep();
-				break;
+				continue;
 			case 8:
 				bs(currcons);
-				break;
+				continue;
 			case 9:
 				pos -= (x << 1);
 				while (x < video_num_columns - 1) {
@@ -938,80 +944,84 @@ void con_write(struct tty_struct * tty)
 						break;
 				}
 				pos += (x << 1);
-				break;
+				continue;
 			case 10: case 11: case 12:
 				lf(currcons);
 				if (!lfnlmode)
-					break;
+					continue;
 			case 13:
 				cr(currcons);
-				break;
+				continue;
 			case 14:
 				charset = 1;
 				translate = G1_charset;
-				break;
+				continue;
 			case 15:
 				charset = 0;
 				translate = G0_charset;
-				break;
+				continue;
 			case 24: case 26:
 				state = ESnormal;
-				break;
+				continue;
 			case 27:
 				state = ESesc;
-				break;
+				continue;
 			case 127:
 				del(currcons);
-				break;
-		} else switch(state) {
+				continue;
+			case 128+27:
+				state = ESsquare;
+				continue;
+		}
+		switch(state) {
 			case ESesc:
 				state = ESnormal;
 				switch (c) {
 				  case '[':
 					state = ESsquare;
-					break;
+					continue;
 				  case 'E':
 					cr(currcons);
 					lf(currcons);
-					break;
+					continue;
 				  case 'M':
 					ri(currcons);
-					break;
+					continue;
 				  case 'D':
 					lf(currcons);
-					break;
+					continue;
 				  case 'H':
 					tab_stop[x >> 5] |= (1 << (x & 31));
-					break;
+					continue;
 				  case 'Z':
 					respond_ID(currcons,tty);
-					break;
+					continue;
 				  case '7':
 					save_cur(currcons);
-					break;
+					continue;
 				  case '8':
 					restore_cur(currcons);
-					break;
+					continue;
 				  case '(':
 					state = ESsetG0;
-					break;
+					continue;
 				  case ')':
 					state = ESsetG1;
-					break;
+					continue;
 				  case '#':
 					state = EShash;
-					break;
+					continue;
 				  case 'c':
 					reset_terminal(currcons,1);
-					break;
+					continue;
 				  case '>':  /* Numeric keypad */
 					SET(kbdapplic,kapplic,0);
-					break;
+					continue;
 				  case '=':  /* Appl. keypad */
 					SET(kbdapplic,kapplic,1);
-				 	break;
+				 	continue;
 				}	
-				break;
+				continue;
 			case ESsquare:
 				for(npar = 0 ; npar < NPAR ; npar++)
 					par[npar] = 0;
@@ -1019,28 +1029,28 @@ void con_write(struct tty_struct * tty)
 				state = ESgetpars;
 				if (c == '[') { /* Function key */
 					state=ESfunckey;
-					break;
+					continue;
 				}
 				if ((ques=(c=='?')))
-					break;
+					continue;
 			case ESgetpars:
 				if (c==';' && npar<NPAR-1) {
 					npar++;
-					break;
+					continue;
 				} else if (c>='0' && c<='9') {
 					par[npar] *= 10;
 					par[npar] += c-'0';
-					break;
+					continue;
 				} else state=ESgotpars;
 			case ESgotpars:
 				state = ESnormal;
 				switch(c) {
 					case 'h':
 						set_mode(currcons,1);
-						break;
+						continue;
 					case 'l':
 						set_mode(currcons,0);
-						break;
+						continue;
 					case 'n':
 						if (!ques) {
 							if (par[0] == 5)
@@ -1048,69 +1058,69 @@ void con_write(struct tty_struct * tty)
 							else if (par[0] == 6)
 								cursor_report(currcons,tty);
 						}
-						break;
+						continue;
 				}
 				if (ques) {
 					ques = 0;
-					break;
+					continue;
 				}
 				switch(c) {
 					case 'G': case '`':
 						if (par[0]) par[0]--;
 						gotoxy(currcons,par[0],y);
-						break;
+						continue;
 					case 'A':
 						if (!par[0]) par[0]++;
 						gotoxy(currcons,x,y-par[0]);
-						break;
+						continue;
 					case 'B': case 'e':
 						if (!par[0]) par[0]++;
 						gotoxy(currcons,x,y+par[0]);
-						break;
+						continue;
 					case 'C': case 'a':
 						if (!par[0]) par[0]++;
 						gotoxy(currcons,x+par[0],y);
-						break;
+						continue;
 					case 'D':
 						if (!par[0]) par[0]++;
 						gotoxy(currcons,x-par[0],y);
-						break;
+						continue;
 					case 'E':
 						if (!par[0]) par[0]++;
 						gotoxy(currcons,0,y+par[0]);
-						break;
+						continue;
 					case 'F':
 						if (!par[0]) par[0]++;
 						gotoxy(currcons,0,y-par[0]);
-						break;
+						continue;
 					case 'd':
 						if (par[0]) par[0]--;
 						gotoxy(currcons,x,par[0]);
-						break;
+						continue;
 					case 'H': case 'f':
 						if (par[0]) par[0]--;
 						if (par[1]) par[1]--;
 						gotoxy(currcons,par[1],par[0]);
-						break;
+						continue;
 					case 'J':
 						csi_J(currcons,par[0]);
-						break;
+						continue;
 					case 'K':
 						csi_K(currcons,par[0]);
-						break;
+						continue;
 					case 'L':
 						csi_L(currcons,par[0]);
-						break;
+						continue;
 					case 'M':
 						csi_M(currcons,par[0]);
-						break;
+						continue;
 					case 'P':
 						csi_P(currcons,par[0]);
-						break;
+						continue;
 					case 'c':
 						if (!par[0])
 							respond_ID(currcons,tty);
-						break;
+						continue;
 					case 'g':
 						if (!par[0])
 							tab_stop[x >> 5] &= ~(1 << (x & 31));
@@ -1121,10 +1131,10 @@ void con_write(struct tty_struct * tty)
 							tab_stop[3] =
 							tab_stop[4] = 0;
 						}
-						break;
+						continue;
 					case 'm':
 						csi_m(currcons);
-						break;
+						continue;
 					case 'r':
 						if (!par[0])
 							par[0]++;
@@ -1137,24 +1147,24 @@ void con_write(struct tty_struct * tty)
 							bottom=par[1];
 							gotoxy(currcons,0,0);
 						}
-						break;
+						continue;
 					case 's':
 						save_cur(currcons);
-						break;
+						continue;
 					case 'u':
 						restore_cur(currcons);
-						break;
+						continue;
 					case '@':
 						csi_at(currcons,par[0]);
-						break;
+						continue;
 					case ']': /* setterm functions */
 						setterm_command(currcons);
-						break;
+						continue;
 				}
-				break;
+				continue;
 			case ESfunckey:
 				state = ESnormal;
-				break;
+				continue;
 			case EShash:
 				state = ESnormal;
 				if (c == '8') {
@@ -1165,7 +1175,7 @@ void con_write(struct tty_struct * tty)
 					video_erase_char =
 						(video_erase_char & 0xff00) | ' ';
 				}
-				break;
+				continue;
 			case ESsetG0:
 				if (c == '0')
 					G0_charset = GRAF_TRANS;
@@ -1176,7 +1186,7 @@ void con_write(struct tty_struct * tty)
 				if (charset == 0)
 					translate = G0_charset;
 				state = ESnormal;
-				break;
+				continue;
 			case ESsetG1:
 				if (c == '0')
 					G1_charset = GRAF_TRANS;
@@ -1187,7 +1197,7 @@ void con_write(struct tty_struct * tty)
 				if (charset == 1)
 					translate = G1_charset;
 				state = ESnormal;
-				break;
+				continue;
 			default:
 				state = ESnormal;
 		}
@@ -1489,4 +1499,15 @@ void console_print(const char * b)
 		timer_table[BLANK_TIMER].expires = jiffies + blankinterval;
 		timer_active |= 1<<BLANK_TIMER;
 	}
+}
+
+/*
+ * All we do is set the write and ioctl subroutines; later on maybe we'll
+ * dynamically allocate the console screen memory.
+ */
+int con_open(struct tty_struct *tty, struct file * filp)
+{
+	tty->write = con_write;
+	tty->ioctl = vt_ioctl;
+	return 0;
 }

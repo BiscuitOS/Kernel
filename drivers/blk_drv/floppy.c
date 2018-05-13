@@ -75,11 +75,9 @@ static int seek = 0;
 
 extern unsigned char current_DOR;
 
-#define immoutb_p(val,port) \
-__asm__("outb %0,%1\n\tjmp 1f\n1:\tjmp 1f\n1:"::"a" ((char) (val)),"i" (port))
-
 #define TYPE(x) ((x)>>2)
 #define DRIVE(x) ((x)&0x03)
+
 /*
  * Note that MAX_ERRORS=X doesn't imply that we retry every bad read
  * max X times - some types of errors increase the errorcount by 2 or
@@ -91,14 +89,12 @@ __asm__("outb %0,%1\n\tjmp 1f\n1:\tjmp 1f\n1:"::"a" ((char) (val)),"i" (port))
  * Maximum disk size (in kilobytes). This default is used whenever the
  * current disk size is unknown.
  */
-
 #define MAX_DISK_SIZE 1440
 
 /*
  * Maximum number of sectors in a track buffer. Track buffering is disabled
  * if tracks are bigger.
  */
-
 #define MAX_BUFFER_SECTORS 18
 
 /*
@@ -152,11 +148,9 @@ static struct floppy_struct floppy_types[] = {
 };
 
 /* Auto-detection: Disk type used until the next media change occurs. */
-
 struct floppy_struct *current_type[4] = { NULL, NULL, NULL, NULL };
 
 /* This type is tried first. */
-
 struct floppy_struct *base_type[4];
 
 /*
@@ -194,7 +188,7 @@ static int keep_data[4] = { 0,0,0,0 };
  * Announce successful media type detection and media information loss after
  * disk changes.
  */
-static ftd_msg[4] = { 1,1,1,1 };
+static ftd_msg[4] = { 0,0,0,0 };
 
 /* Prevent "aliased" accesses. */
 
@@ -202,16 +196,13 @@ static fd_ref[4] = { 0,0,0,0 };
 static fd_device[4] = { 0,0,0,0 };
 
 /* Synchronization of FDC access. */
-
 static volatile int format_status = FORMAT_NONE, fdc_busy = 0;
 static struct wait_queue *fdc_wait = NULL, *format_done = NULL;
 
 /* Errors during formatting are counted here. */
-
 static int format_errors;
 
 /* Format request descriptor. */
-
 static struct format_descr format_req;
 
 /*
@@ -222,7 +213,6 @@ static struct format_descr format_req;
    (CURRENT->dev))
 
 /* Current error count. */
-
 #define CURRENT_ERRORS (format_status == FORMAT_BUSY ? format_errors : \
     (CURRENT->errors))
 
@@ -234,7 +224,7 @@ static struct format_descr format_req;
 static unsigned short min_report_error_cnt[4] = {2, 2, 2, 2};
 
 /*
- * Rate is 0 for 500kb/s, 2 for 300kbps, 1 for 250kbps
+ * Rate is 0 for 500kb/s, 1 for 300kbps, 2 for 250kbps
  * Spec1 is 0xSH, where S is stepping rate (F=1ms, E=2ms, D=3ms etc),
  * H is head unload time (1=16ms, 2=32ms, etc)
  *
@@ -250,7 +240,6 @@ static unsigned short min_report_error_cnt[4] = {2, 2, 2, 2};
  * Note that you must not change the sizes below without updating head.s.
  */
 extern char tmp_floppy_area[BLOCK_SIZE];
-extern void floppy_interrupt(void);
 extern char floppy_track_buffer[512*2*MAX_BUFFER_SECTORS];
 
 static void redo_fd_request(void);
@@ -351,12 +340,15 @@ __asm__("cld ; rep ; movsl" \
 static void setup_DMA(void)
 {
 	unsigned long addr,count;
+	unsigned char dma_code;
 
+	dma_code = DMA_WRITE;
+	if (command == FD_READ)
+		dma_code = DMA_READ;
 	if (command == FD_FORMAT) {
 		addr = (long) tmp_floppy_area;
 		count = floppy->sect*4;
-	}
-	else {
+	} else {
 		addr = (long) CURRENT->buffer;
 		count = 1024;
 	}
@@ -370,31 +362,30 @@ static void setup_DMA(void)
 		if (command == FD_WRITE)
 			copy_buffer(CURRENT->buffer,tmp_floppy_area);
 	}
-/* mask DMA 2 */
 	cli();
 #ifndef HHB_SYSMACROS
-	immoutb_p(4|2,10);
+/* mask DMA 2 */
+	outb_p(4|2,10);
 /* output command byte. I don't know why, but everyone (minix, */
 /* sanches & canton) output this twice, first to 12 then to 11 */
- 	__asm__("outb %%al,$12\n\tjmp 1f\n1:\tjmp 1f\n1:\t"
-	"outb %%al,$11\n\tjmp 1f\n1:\tjmp 1f\n1:"::
-	"a" ((char) ((command == FD_READ)?DMA_READ:DMA_WRITE)));
+	outb_p(dma_code,12);
+	outb_p(dma_code,11);
 /* 8 low bits of addr */
-	immoutb_p(addr,4);
+	outb_p(addr,4);
 	addr >>= 8;
 /* bits 8-15 of addr */
-	immoutb_p(addr,4);
+	outb_p(addr,4);
 	addr >>= 8;
 /* bits 16-19 of addr */
-	immoutb_p(addr,0x81);
+	outb_p(addr,0x81);
 /* low 8 bits of count-1 */
 	count--;
-	immoutb_p(count,5);
+	outb_p(count,5);
 	count >>= 8;
 /* high 8 bits of count-1 */
-	immoutb_p(count,5);
+	outb_p(count,5);
 /* activate DMA 2 */
-	immoutb_p(0|2,10);
+	outb_p(0|2,10);
 #else			/* just to show off my macros -- hhb */
 	DISABLE_DMA(DMA2);
 	CLEAR_DMA_FF(DMA2);
@@ -492,6 +483,7 @@ static void tell_sector(int nr)
 		printk(": track %d, head %d, sector %d", reply_buffer[3],
 			reply_buffer[4], reply_buffer[5]);
 } /* tell_sector */
+
 
 /*
  * Ok, this interrupt is called after a DMA read/write has succeeded
@@ -671,7 +663,6 @@ static void inline perpendicular_mode(unsigned char rate)
 		}
 	}
 } /* perpendicular_mode */
-
 
 /*
  * This routine is called when everything should be correctly set up
@@ -853,7 +844,7 @@ static void floppy_on_interrupt(void)
 			floppy_sizes[current_drive] = MAX_DISK_SIZE;
 		}
 /* Forcing the drive to seek makes the "media changed" condition go away.
- * There should be a cleaner solution for that ... 
+ * There should be a cleaner solution for that ...
  */
 		if (!reset && !recalibrate) {
 			do_floppy = (current_track && current_track != NO_TRACK)
@@ -1016,12 +1007,15 @@ static int fd_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
 	switch (cmd) {
 		RO_IOCTLS(inode->i_rdev,param);
 	}
-	if (!suser()) return -EPERM;
 	drive = MINOR(inode->i_rdev);
 	switch (cmd) {
 		case FDFMTBEG:
+			if (!suser())
+				return -EPERM;
 			return 0;
 		case FDFMTEND:
+			if (!suser())
+				return -EPERM;
 			cli();
 			fake_change |= 1 << (drive & 3);
 			sti();
@@ -1038,6 +1032,8 @@ static int fd_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
 				    (char *) param+cnt);
 			return 0;
 		case FDFMTTRK:
+			if (!suser())
+				return -EPERM;
 			cli();
 			while (format_status != FORMAT_NONE)
 				sleep_on(&format_done);
@@ -1064,7 +1060,10 @@ static int fd_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
 			wake_up(&format_done);
 			return okay ? 0 : -EIO;
  	}
-	if (drive < 0 || drive > 3) return -EINVAL;
+	if (!suser())
+		return -EPERM;
+	if (drive < 0 || drive > 3)
+		return -EINVAL;
 	switch (cmd) {
 		case FDCLRPRM:
 			current_type[drive] = NULL;
@@ -1183,6 +1182,7 @@ static struct file_operations floppy_fops = {
 	floppy_open,		/* open */
 	floppy_release		/* release */
 };
+
 
 /*
  * The version command is not supposed to generate an interrupt, but

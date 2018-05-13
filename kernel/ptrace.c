@@ -88,7 +88,6 @@ static unsigned long get_long(struct task_struct * tsk,
 {
 	unsigned long page;
 
-	addr += tsk->start_code;
 repeat:
 	page = tsk->tss.cr3 + ((addr >> 20) & 0xffc);
 	page = *(unsigned long *) page;
@@ -117,7 +116,6 @@ static void put_long(struct task_struct * tsk, unsigned long addr,
 {
 	unsigned long page;
 
-	addr += tsk->start_code;
 repeat:
 	page = tsk->tss.cr3 + ((addr >> 20) & 0xffc);
 	page = *(unsigned long *) page;
@@ -267,7 +265,7 @@ int sys_ptrace(long request, long pid, long addr, long data)
 		case PTRACE_PEEKDATA: {
 			int tmp,res;
 
-			res = read_long(child, addr, (unsigned long *)&tmp);
+			res = read_long(child, addr, (long unsigned int *)&tmp);
 			if (res < 0)
 				return res;
 			verify_area((void *) data, 4);

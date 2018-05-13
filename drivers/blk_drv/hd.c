@@ -53,7 +53,8 @@ static inline unsigned char CMOS_READ(unsigned char addr)
 static void recal_intr(void);
 static void bad_rw_intr(void);
 
-static int recalibrate = 0;
+static char recalibrate[ MAX_HD ] = { 0, };
+
 static int reset = 0;
 
 #if (HD_DELAY > 0)
@@ -221,6 +222,8 @@ void unexpected_hd_interrupt(void)
 
 static void bad_rw_intr(void)
 {
+	int i;
+
 	if (!CURRENT)
 		return;
 	if (++CURRENT->errors >= MAX_ERRORS)
@@ -228,7 +231,8 @@ static void bad_rw_intr(void)
 	else if (CURRENT->errors > MAX_ERRORS/2)
 		reset = 1;
 	else
-		recalibrate = 1;
+		for (i=0; i < NR_HD; i++)
+			recalibrate[i] = 1;
 }
 
 static inline int wait_DRQ(void)
@@ -247,23 +251,27 @@ static inline int wait_DRQ(void)
 static void read_intr(void)
 {
 	int i;
+	int retries = 100000;
 
-	i = (unsigned) inb_p(HD_STATUS);
-	if ((i & STAT_MASK) != STAT_OK) {
-		printk("HD: read_intr: status = 0x%02x\n",i);
-		goto bad_read;
+	do {
+		i = (unsigned) inb_p(HD_STATUS);
+		if ((i & STAT_MASK) != STAT_OK)
+			break;
+		if (i & DRQ_STAT)
+			goto ok_to_read;
+	} while (--retries > 0);
+	sti();
+	printk("HD: read_intr: status = 0x%02x\n",i);
+	if (i & ERR_STAT) {
+		i = (unsigned) inb(HD_ERROR);
+		printk("HD: read_intr: error = 0x%02x\n",i);
 	}
-	if (wait_DRQ()) {
-		printk("HD: read_intr: no DRQ\n");
-		goto bad_read;
-	}
+	bad_rw_intr();
+	cli();
+	do_hd_request();
+	return;
+ok_to_read:
 	port_read(HD_DATA,CURRENT->buffer,256);
-	i = (unsigned) inb_p(HD_STATUS);
-	if (!(i & BUSY_STAT))
-		if ((i & STAT_MASK) != STAT_OK) {
-			printk("HD: read_intr: second status = 0x%02x\n",i);
-			goto bad_read;
-		}
 	CURRENT->errors = 0;
 	CURRENT->buffer += 512;
 	CURRENT->sector++;
@@ -286,29 +294,31 @@ static void read_intr(void)
 #endif
 	do_hd_request();
 	return;
-bad_read:
-	if (i & ERR_STAT) {
-		i = (unsigned) inb(HD_ERROR);
-		printk("HD: read_intr: error = 0x%02x\n",i);
-	}
-	bad_rw_intr();
-	do_hd_request();
-	return;
 }
 
 static void write_intr(void)
 {
 	int i;
+	int retries = 100000;
 
-	i = (unsigned) inb_p(HD_STATUS);
-	if ((i & STAT_MASK) != STAT_OK) {
-		printk("HD: write_intr: status = 0x%02x\n",i);
-		goto bad_write;
+	do {
+		i = (unsigned) inb_p(HD_STATUS);
+		if ((i & STAT_MASK) != STAT_OK)
+			break;
+		if ((CURRENT->nr_sectors <= 1) || (i & DRQ_STAT))
+			goto ok_to_write;
+	} while (--retries > 0);
+	sti();
+	printk("HD: write_intr: status = 0x%02x\n",i);
+	if (i & ERR_STAT) {
+		i = (unsigned) inb(HD_ERROR);
+		printk("HD: write_intr: error = 0x%02x\n",i);
 	}
-	if (CURRENT->nr_sectors > 1 && wait_DRQ()) {
-		printk("HD: write_intr: no DRQ\n");
-		goto bad_write;
-	}
+	bad_rw_intr();
+	cli();
+	do_hd_request();
+	return;
+ok_to_write:
 	CURRENT->sector++;
 	i = --CURRENT->nr_sectors;
 	--CURRENT->current_nr_sectors;
@@ -326,16 +336,6 @@ static void write_intr(void)
 		do_hd_request();
 	}
 	return;
-bad_write:
-	sti();
-	if (i & ERR_STAT) {
-		i = (unsigned) inb(HD_ERROR);
-		printk("HD: write_intr: error = 0x%02x\n",i);
-	}
-	bad_rw_intr();
-	cli();
-	do_hd_request();
-	return;
 }
 
 static void recal_intr(void)
@@ -351,8 +351,8 @@ static void recal_intr(void)
  */
 static void hd_times_out(void)
 {
-	sti();
 	DEVICE_INTR = NULL;
+	sti();
 	reset = 1;
 	if (!CURRENT)
 		return;
@@ -378,11 +378,12 @@ static void hd_times_out(void)
 static void do_hd_request(void)
 {
 	unsigned int block,dev;
-	unsigned int sec,head,cyl;
+	unsigned int sec,head,cyl,track;
 	unsigned int nsect;
 
+	if (DEVICE_INTR)
+		return;
 repeat:
-	DEVICE_INTR = NULL;
 	timer_active &= ~(1<<HD_TIMER);
 	sti();
 	INIT_REQUEST;
@@ -399,24 +400,26 @@ repeat:
 	}
 	block += hd[dev].start_sect;
 	dev >>= 6;
-	sec = block % hd_info[dev].sect;
-	block /= hd_info[dev].sect;
-	head = block % hd_info[dev].head;
-	cyl = block / hd_info[dev].head;
-	sec++;
+	sec = block % hd_info[dev].sect + 1;
+	track = block / hd_info[dev].sect;
+	head = track % hd_info[dev].head;
+	cyl = track / hd_info[dev].head;
 #ifdef DEBUG
 	printk("hd%d : cyl = %d, head = %d, sector = %d, buffer = %08x\n",
 		dev, cyl, head, sec, CURRENT->buffer);
 #endif
 	cli();
 	if (reset) {
-		recalibrate = 1;
+		int i;
+
+		for (i=0; i < NR_HD; i++)
+			recalibrate[i] = 1;
 		reset_hd();
 		sti();
 		return;
 	}
-	if (recalibrate) {
-		recalibrate = 0;
+	if (recalibrate[dev]) {
+		recalibrate[dev] = 0;
 		hd_out(dev,hd_info[dev].sect,0,0,0,WIN_RESTORE,&recal_intr);
 		if (reset)
 			goto repeat;
@@ -434,13 +437,16 @@ repeat:
 		}
 		port_write(HD_DATA,CURRENT->buffer,256);
 		sti();
-	} else if (CURRENT->cmd == READ) {
+		return;
+	}
+	if (CURRENT->cmd == READ) {
 		hd_out(dev,nsect,sec,head,cyl,WIN_READ,&read_intr);
 		if (reset)
 			goto repeat;
 		sti();
-	} else
-		panic("unknown hd-command");
+		return;
+	}
+	panic("unknown hd-command");
 }
 
 static int hd_ioctl(struct inode * inode, struct file * file,
@@ -481,7 +487,6 @@ static void hd_release(struct inode * inode, struct file * file)
 	sync_dev(inode->i_rdev);
 }
 
-
 static void hd_geninit();
 
 static struct gendisk hd_gendisk = {
@@ -500,11 +505,11 @@ static struct gendisk hd_gendisk = {
 	
 static void hd_geninit(void)
 {
-	int drive;
+	int drive, i;
 #ifndef HD_TYPE
 	extern struct drive_info drive_info;
 	void *BIOS = (void *) &drive_info;
-	int cmos_disks, i;
+	int cmos_disks;
 	   
 	for (drive=0 ; drive<2 ; drive++) {
 		hd_info[drive].cyl = *(unsigned short *) BIOS;
@@ -578,7 +583,7 @@ static void hd_interrupt(int unused)
 }
 
 /*
- * This is the harddisk IRQ descruption. The SA_INTERRUPT in sa_flags
+ * This is the harddisk IRQ description. The SA_INTERRUPT in sa_flags
  * means we run the IRQ-handler with interrupts disabled: this is bad for
  * interrupt latency, but anything else has led to problems on some
  * machines...
@@ -593,7 +598,7 @@ static struct sigaction hd_sigaction = {
 	NULL
 };
 
-void hd_init(void)
+unsigned long hd_init(unsigned long mem_start, unsigned long mem_end)
 {
 	blk_dev[MAJOR_NR].request_fn = DEVICE_REQUEST;
 	blkdev_fops[MAJOR_NR] = &hd_fops;
@@ -602,6 +607,7 @@ void hd_init(void)
 	if (irqaction(HD_IRQ,&hd_sigaction))
 		printk("Unable to get IRQ%d for the harddisk driver\n",HD_IRQ);
 	timer_table[HD_TIMER].fn = hd_times_out;
+	return mem_start;
 }
 
 #endif

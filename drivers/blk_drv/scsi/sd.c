@@ -9,16 +9,18 @@
 #include <linux/config.h>
 
 #ifdef CONFIG_BLK_DEV_SD
-#include <linux/string.h>
 #include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
+#include <linux/string.h>
+
 #include "scsi.h"
 #include "sd.h"
 
 #define MAJOR_NR 8
 
 #include "../blk.h"
+#include <linux/genhd.h>
 
 /*
 static const char RCSid[] = "$Header:";
@@ -30,20 +32,32 @@ static const char RCSid[] = "$Header:";
  *	Time out in seconds
  */
 
-#define SD_TIMEOUT 100
+#define SD_TIMEOUT 200
 
-Partition scsi_disks[MAX_SD << 4];
+struct hd_struct sd[MAX_SD << 4];
+				
 int NR_SD=0;
 Scsi_Disk rscsi_disks[MAX_SD];
-static int sd_sizes[MAX_SD << 4];
-static int this_count;
+static int sd_sizes[MAX_SD << 4] = {0, };
+static int this_count, total_count = 0;
 static int the_result;
+
+static char sense_buffer[255];
 
 extern int sd_ioctl(struct inode *, struct file *, unsigned long, unsigned long);
 
 static void sd_release(struct inode * inode, struct file * file)
 {
 	sync_dev(inode->i_rdev);
+}
+
+static struct gendisk sd_gendisk;
+
+static void sd_geninit (void) {
+	int i;
+	for (i = 0; i < NR_SD; ++i)
+	  sd[i << 4].nr_sects = rscsi_disks[i].capacity;
+	sd_gendisk.nr_real = NR_SD;
 }
 
 static struct file_operations sd_fops = {
@@ -57,12 +71,19 @@ static struct file_operations sd_fops = {
 	sd_release		/* release */
 };
 
-/*
-	The sense_buffer is where we put data for all mode sense commands 
-	performed.
-*/
-
-static unsigned char sense_buffer[255];
+static struct gendisk sd_gendisk = {
+	MAJOR_NR,		/* Major number */	
+	"sd",		/* Major name */
+	4,		/* Bits to shift to get real from partition */
+	1 << 4,		/* Number of partitions per real */
+	MAX_SD,		/* maximum number of real */
+	sd_geninit,	/* init function */
+	sd,		/* hd struct */
+	sd_sizes,	/* block sizes */
+	0,		/* number */
+	(void *) rscsi_disks,	/* internal */
+	NULL		/* next */
+};
 
 /*
 	rw_intr is the interrupt routine for the device driver.  It will
@@ -75,28 +96,71 @@ static void rw_intr (int host, int result)
 	if (HOST != host)
 		panic ("sd.o : rw_intr() recieving interrupt for different host.");
 
+#ifdef DEBUG
+	printk("sd%d : rw_intr(%d, %x)\n", MINOR(CURRENT->dev), host, result);
+#endif
+
 /*
 	First case : we assume that the command succeeded.  One of two things will
 	happen here.  Either we will be finished, or there will be more 
 	sectors that we were unable to read last time.
 */
 
-	if (!result)
-		if (!(CURRENT->nr_sectors -= this_count)) {
-			end_request(1);
-			do_sd_request();
-		} else {			
-			CURRENT->nr_sectors -= this_count;
+	if (!result) {
+		CURRENT->nr_sectors -= this_count;
+		total_count -= this_count;
+		if(total_count){
+		  CURRENT->sector += this_count;
+		  CURRENT->buffer += (this_count << 9);
+		  do_sd_request();
+		  return;
+		};
+
+#ifdef DEBUG
+		printk("sd%d : %d sectors remain.\n", MINOR(CURRENT->dev), CURRENT->nr_sectors);
+#endif
+
+/*
+ * 	If multiple sectors are requested in one buffer, then
+ *	they will have been finished off by the first command.  If
+ *	not, then we have a multi-buffer command.
+ */
+		if (CURRENT->nr_sectors)
+			{
+			CURRENT->sector += this_count;
+			CURRENT->errors = 0;
+
+			if (!CURRENT->bh)
+				{
+#ifdef DEBUG
+				printk("sd%d : handling page request, no buffer\n", 
+					MINOR(CURRENT->dev));
+#endif
+
 /*
 	The CURRENT->nr_sectors field is always done in 512 byte sectors,
 	even if this really isn't the case.
 */
-	
-			(char *) CURRENT->buffer += this_count << 9;
-			CURRENT->sector += this_count;
-			CURRENT->errors = 0;
-			do_sd_request();			 
+				(char *) CURRENT->buffer += this_count << 9;
+				}
+			else
+				{
+#ifdef DEBUG
+				printk("sd%d :  handling linked buffer request\n", MINOR(CURRENT->dev));
+#endif
+				end_request(1);
+				}
+			}
+		else
+			end_request(1);
+		do_sd_request();			 
 		}
+
+/*
+ *	Of course, the error handling code is a little Fubar down in scsi.c.  
+ *	Version 2 of the drivers will fix that, and we will *really* recover 
+ *	from errors.
+ */
 
 /*
 	Now, if we were good little boys and girls, Santa left us a request 
@@ -148,7 +212,7 @@ static void rw_intr (int host, int result)
 				sense_class(sense_buffer[0]), 
 				sense_error(sense_buffer[0]),
 				sense_buffer[2] & 0xf);
-	
+
 		end_request(0);
 	}
 }
@@ -159,11 +223,12 @@ static void rw_intr (int host, int result)
 	them to SCSI commands.
 */
 	
-void do_sd_request (void)
+static void do_sd_request (void)
 {
 	int dev, block;
 	unsigned char cmd[10];
 
+repeat:
 	INIT_REQUEST;
 	dev =  MINOR(CURRENT->dev);
 	block = CURRENT->sector;
@@ -172,27 +237,35 @@ void do_sd_request (void)
 	printk("Doing sd request, dev = %d, block = %d\n", dev, block);
 #endif
 
-	if (dev >= (NR_SD << 4) || block + 2 > scsi_disks[dev].nr_sects || 
-		(dev % 16) > 5)
+	if (dev >= (NR_SD << 4) || block + CURRENT->nr_sectors > sd[dev].nr_sects) 
 		{
 		end_request(0);	
 		goto repeat;
 		}
 	
-	block += scsi_disks[dev].start_sect;
+	block += sd[dev].start_sect;
 	dev = DEVICE_NR(dev);
 
 #ifdef DEBUG
-	printk("Real dev = %d, block = %d\n", dev, block);
+	printk("sd%d : real dev = /dev/sd%d, block = %d\n", MINOR(CURRENT->dev), dev, block);
 #endif
 
-	if (!rscsi_disks[dev].use)
-		{
-		end_request(0);
-		goto repeat;
-		}
+
+	if (!CURRENT->bh)  	
+		this_count = CURRENT->nr_sectors;
+	else
+		this_count = (BLOCK_SIZE / 512);
+/* This is a temporary hack for the AHA1742. */
+	if(total_count == 0)
+	  total_count = this_count;
+	this_count = 1;  /* Take only 512 bytes at a time */
+
+#ifdef DEBUG
+	printk("sd%d : %s %d/%d 512 byte blocks.\n", MINOR(CURRENT->dev), 
+		(CURRENT->cmd == WRITE) ? "writing" : "reading",
+		this_count, CURRENT->nr_sectors);
+#endif
 	
-	this_count = CURRENT->nr_sectors;
 	switch (CURRENT->cmd)
 		{
 		case WRITE : 
@@ -210,7 +283,7 @@ void do_sd_request (void)
 			printk ("Unknown sd command %d\r\n", CURRENT->cmd);
 			panic("");
 		}
-	
+
 	cmd[1] = (LUN << 5) & 0xe0;
 
 	if (((this_count > 0xff) ||  (block > 0x1fffff)) && rscsi_disks[dev].ten) 
@@ -255,23 +328,31 @@ static void sd_init_done (int host, int result)
 
 void sd_init(void)
 {
-	int i,j,k;
+	int i,j;
 	unsigned char cmd[10];
 	unsigned char buffer[513];
-
-	Partition *p;
+	int try_again;
 
 	
 	for (i = 0; i < NR_SD; ++i)
 		{
+		try_again=2;
 		cmd[0] = READ_CAPACITY;
-		rscsi_disks[i].use = 1;
 		cmd[1] = (rscsi_disks[i].device->lun << 5) & 0xe0;
-		memset ((void *) &cmd[2], 0, 8);
+		memset ((void *) &cmd[2], 0, 8);	
+
+/*
+ *	Super Kludge - since the midlevel error handling code doesn't work
+ *	Version 2 will - it's under development 8^) 
+ * 
+ *	We manually retry
+ */
+	
+
+		do {
 	 	the_result = -1;
 #ifdef DEBUG
-	printk("Read capacity, disk %d at host = %d, id = %d\n", i, 
-		rscsi_disks[i].device->host_no, rscsi_disks[i].device->id);
+	printk("sd%d : READ CAPACITY\n ", i); 
 #endif
 		scsi_do_cmd (rscsi_disks[i].device->host_no , 
 				rscsi_disks[i].device->id, 
@@ -280,24 +361,25 @@ void sd_init(void)
 				 MAX_RETRIES);
 
 		while(the_result < 0);
+		} while (try_again  && the_result);
 /*
-	The SCSI standard says "READ CAPACITY is necessary for self confuring software"
-	While not mandatory, support of READ CAPACITY is strongly encouraged.
-
-	We used to die if we couldn't successfully do a READ CAPACITY.  
-	But, now we go on about our way.  The side effects of this are
-
-	1.  We can't know block size with certainty.  I have said "512 bytes is it"
-	  	as this is most common.
-
-	2.  Recovery from when some one attempts to read past the end of the raw device will
-	    be slower.  
-*/
-
+ *	The SCSI standard says "READ CAPACITY is necessary for self confuring software"
+ *	While not mandatory, support of READ CAPACITY is strongly encouraged.
+ *	We used to die if we couldn't successfully do a READ CAPACITY.  
+ *	But, now we go on about our way.  The side effects of this are
+ *
+ *	1.  We can't know block size with certainty.  I have said "512 bytes is it"
+ *	   	as this is most common.
+ *
+ *	2.  Recovery from when some one attempts to read past the end of the raw device will
+ *	    be slower.  
+ */
+	
 		if (the_result)
 			{
-			printk ("Warning : SCSI device at host %d, id %d, lun %d failed READ CAPACITY.\n"
-				"status = %x, message = %02x, host = %02x, driver = %02x \n",
+			printk ("sd%d : READ CAPACITY failed.\n" 
+				"sd%d : status = %x, message = %02x, host = %02x, driver = %02x \n",
+				i,i,
 				rscsi_disks[i].device->host_no, rscsi_disks[i].device->id,
 				rscsi_disks[i].device->lun,
 			        status_byte(the_result),
@@ -306,11 +388,11 @@ void sd_init(void)
 			        driver_byte(the_result)
 			        );
 			if (driver_byte(the_result)  & DRIVER_SENSE)  
-				printk("Extended sense code = %1x \n", sense_buffer[2] & 0xf);
+				printk("sd%d : extended sense code = %1x \n", i, sense_buffer[2] & 0xf);
 			else
-				printk("Sense not available. \n");
+				printk("sd%d : sense not available. \n", i);
 
-			printk("Block size assumed to be 512 bytes, disk size 1GB.  \n");
+			printk("sd%d : block size assumed to be 512 bytes, disk size 1GB.  \n", i);
 			rscsi_disks[i].capacity = 0x1fffff;
 			rscsi_disks[i].sector_size = 512;
 			}
@@ -326,55 +408,23 @@ void sd_init(void)
 						     (buffer[6] << 8) | 
 						     buffer[7]) != 512)
 				{
-				printk ("Unsupported sector size %d for sd %d",
-					 rscsi_disks[i].sector_size, i);
-				rscsi_disks[i].use = 0;
+				printk ("sd%d : unsupported sector size %d.\n", 
+					i, rscsi_disks[i].sector_size);
+				printk ("scsi : deleting disk entry.\n");
+				for  (j=i;  j < NR_SD;)
+					rscsi_disks[j] = rscsi_disks[++j];
+				--i;
+				continue;
 				}
 			}
 
-		if (rscsi_disks[i].use)
-			{
-			scsi_disks[j = (i << 4)].start_sect = 0;
-
-			sd_sizes[j]=(scsi_disks[j].nr_sects =  rscsi_disks[i].capacity)>>1;
-#ifdef DEBUG
-			printk("/dev/sd%1d size = %d\n", j, sd_sizes[j]);
-#endif
-			cmd[0] = READ_6;
-			cmd[2] = cmd[3] = cmd[5] = 0; 
-			cmd[4] = 1;
- 			the_result = -1;
-	
-			scsi_do_cmd (rscsi_disks[i].device->host_no ,  rscsi_disks[i].device->id, 
-			     	(void *) cmd, (void *) buffer, 512, sd_init_done,  SD_TIMEOUT, 
-			     	sense_buffer, MAX_RETRIES);
-					
-			while (the_result < 0);
-
-
-			if (the_result || (0xaa55 != *(unsigned short *)(buffer + 510)))
-					{
-					printk ("Cannot read partition table for sd %d"
-						"\n\r",i);
-					rscsi_disks[i].use = 0;					
-					}
-			else
-				for (++j, k=j+4, p=(Partition *) (buffer + 0x1be); j < k; ++j, ++p)
-					{
-					memcpy ((void *) &scsi_disks[j], (void *) p, sizeof(Partition));	
-					sd_sizes[j]=(scsi_disks[j].nr_sects)>>1;
-#ifdef DEBUG
-	printk("/dev/sd%1d size = %d (%d blocks), offset = %d\n", j, scsi_disks[j].nr_sects, sd_sizes[j], scsi_disks[j].start_sect);
-#endif
-					}
-		
-			rscsi_disks[i].ten = 1;
-			rscsi_disks[i].remap = 1;
-			}
+		rscsi_disks[i].ten = 1;
+		rscsi_disks[i].remap = 1;
 		}
-	blk_dev[MAJOR_NR].request_fn = DEVICE_REQUEST;
-	blk_size[MAJOR_NR] = sd_sizes;	
-	blkdev_fops[MAJOR_NR] = &sd_fops; 
-}	
-#endif
 
+	blk_dev[MAJOR_NR].request_fn = DEVICE_REQUEST;
+	blkdev_fops[MAJOR_NR] = &sd_fops;
+	sd_gendisk.next = gendisk_head;
+	gendisk_head = &sd_gendisk;
+}
+#endif

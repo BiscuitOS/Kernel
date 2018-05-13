@@ -1,4 +1,3 @@
-obj-$(CONFIG_FS_EXT) += bitmap.o
 obj-$(CONFIG_FS_EXT) += blkdev.o
 obj-$(CONFIG_FS_EXT) += dir.o
 obj-$(CONFIG_FS_EXT) += fifo.o

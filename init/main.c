@@ -5,11 +5,11 @@
  */
 
 #include <stdarg.h>
-#include <time.h>
 
 #include <asm/system.h>
 #include <asm/io.h>
 
+#include <linux/mktime.h>
 #include <linux/types.h>
 #include <linux/fcntl.h>
 #include <linux/config.h>
@@ -17,6 +17,12 @@
 #include <linux/tty.h>
 #include <linux/head.h>
 #include <linux/unistd.h>
+
+extern unsigned long * prof_buffer;
+extern unsigned long prof_len;
+extern int end;
+extern char *linux_banner;
+#define MAX_MEGABYTES 32
 
 #ifdef CONFIG_TESTCASE
 #include <test/debug.h>
@@ -34,6 +40,7 @@
  * won't be any messing with the stack from main(), but we define
  * some others too.
  */
+static inline _syscall0(int,idle)
 inline int fork(void) __attribute__((always_inline));
 inline int pause(void) __attribute__((always_inline));
 inline _syscall0(int, fork)
@@ -63,6 +70,7 @@ char printbuf[1024];
 #define SCREEN_INFO      (*(struct screen_info *)0x90000)
 #define DRIVE_INFO       (*(struct drive_info *)0x90080)
 #define ORIG_ROOT_DEV    (*(unsigned short *)0x901FC)
+#define AUX_DEVICE_INFO  (*(unsigned char *)0x901FF)
 
 /*
  * Yeah, yeah, it's ugly, but I cannot find how to do this correctly
@@ -81,10 +89,13 @@ struct drive_info {
 	char dummy[32];
 } drive_info;
 struct screen_info screen_info;
+unsigned char aux_device_present;
 
-const char *command_line = "loglevel=8 console=ttyS0,115200";
-static unsigned long memory_start = 0;
+static unsigned long memory_start = 0; /* After mem_init, stores the */
+				       /* amount of free user memory */
 static unsigned long memory_end = 0;
+static unsigned long low_memory_start = 0;
+
 static char term[32];
 
 static char *argv_init[] = { "/bin/init", NULL };
@@ -102,9 +113,8 @@ extern void init_IRQ(void);
 extern long blk_dev_init(long, long);
 extern long chr_dev_init(long, long);
 extern void sock_init(void);
-extern void hd_init(void);
 extern void floppy_init(void);
-extern long kernel_mktime(struct tm *);
+extern long kernel_mktime(struct mktime * time);
 
 #ifdef CONFIG_SCSI
 extern void scsi_dev_init(void);
@@ -126,25 +136,24 @@ static int sprintf(char *str, const char *fmt, ...)
  */
 static void time_init(void)
 {
-    struct tm time;
+	struct mktime time;
 
-    do {
-        time.tm_sec = CMOS_READ(0);
-        time.tm_min = CMOS_READ(2);
-        time.tm_hour = CMOS_READ(4);
-        time.tm_mday = CMOS_READ(7);
-        time.tm_mon = CMOS_READ(8);
-        time.tm_year = CMOS_READ(9);
-    } while (time.tm_sec != CMOS_READ(0));
-
-    BCD_TO_BIN(time.tm_sec);
-    BCD_TO_BIN(time.tm_min);
-    BCD_TO_BIN(time.tm_hour);
-    BCD_TO_BIN(time.tm_mday);
-    BCD_TO_BIN(time.tm_mon);
-    BCD_TO_BIN(time.tm_year);
-    time.tm_mon--;
-    startup_time = kernel_mktime(&time);
+	do {
+		time.sec = CMOS_READ(0);
+		time.min = CMOS_READ(2);
+		time.hour = CMOS_READ(4);
+		time.day = CMOS_READ(7);
+		time.mon = CMOS_READ(8);
+		time.year = CMOS_READ(9);
+	} while (time.sec != CMOS_READ(0));
+	BCD_TO_BIN(time.sec);
+	BCD_TO_BIN(time.min);
+	BCD_TO_BIN(time.hour);
+	BCD_TO_BIN(time.day);
+	BCD_TO_BIN(time.mon);
+	BCD_TO_BIN(time.year);
+	time.mon--;
+	startup_time = kernel_mktime(&time);
 }
 
 int start_kernel(void)
@@ -159,32 +168,37 @@ int start_kernel(void)
     ROOT_DEV = ORIG_ROOT_DEV;
     drive_info = DRIVE_INFO;
     screen_info = SCREEN_INFO;
+    aux_device_present = AUX_DEVICE_INFO;
     sprintf(term, "TERM=con%dx%d", ORIG_VIDEO_COLS, ORIG_VIDEO_LINES);
     envp[1] = term;
     envp_rc[1] = term;
     envp_init[1] = term;
     memory_end = (1<<20) + (EXT_MEM_K<<10);
     memory_end &= 0xfffff000;
-    if (memory_end > 16*1024*1024)
-        memory_end = 16*1024*1024;
+    if (memory_end > MAX_MEGABYTES*1024*1024)
+        memory_end = MAX_MEGABYTES*1024*1024;
     memory_start = 1024*1024;
+    low_memory_start = (unsigned long) &end;
+    low_memory_start += 0xfff;
+    low_memory_start &= 0xfffff000;
     trap_init();
     init_IRQ();
     sched_init();
+#ifdef CONFIG_PROFILE_SHIFT
+    prof_buffer = (unsigned long *) memory_start;
+    prof_len = (unsigned long) &end;
+    prof_len >>= PROFILE_SHIFT;
+    memory_start += prof_len * sizeof(unsigned long);
+#endif
     memory_start = chr_dev_init(memory_start,memory_end);
     memory_start = blk_dev_init(memory_start,memory_end);
-    memory_start = mem_init(memory_start,memory_end);
+    mem_init(low_memory_start,memory_start,memory_end);
     buffer_init();
     time_init();
-    printk("Linux version " UTS_RELEASE " " __DATE__ " " __TIME__ "\n");
-#ifdef CONFIG_HARDDISK
-    hd_init();
-#endif
 #ifdef CONFIG_FLOPPY
     floppy_init();
 #endif
     sock_init();
-    sti();
 #ifdef CONFIG_SCSIS
     scsi_dev_init();
 #endif
@@ -195,10 +209,10 @@ int start_kernel(void)
     defined (CONFIG_DEBUG_USERLAND_SHELL)
     debug_kernel_on_userland_stage();
 #endif
+    sti();
     move_to_user_mode();
-    if (!fork()) {   /* we count on this going ok */
+    if (!fork())    /* we count on this going ok */
         init();
-    }
 /*
  * task[0] is meant to be used as an "idle" task: it may not sleep, but
  * it might do some general things like count free pages or it could be
@@ -206,10 +220,10 @@ int start_kernel(void)
  * anything that can be useful, but shouldn't take time from the real
  * processes.
  *
- * Right now task[0] just does a infinite loop in user mode.
+ * Right now task[0] just does a infinite idle loop.
  */
-    for (;;)
-        /* nothing */;
+	for(;;)
+		idle();
 }
 
 int printf(const char *fmt, ...)
@@ -228,9 +242,10 @@ void init(void)
     int pid, i;
 
     setup((void *)&drive_info);
-    (void)open("/dev/tty0", O_RDWR, 0);
+    (void)open("/dev/tty1", O_RDWR, 0);
     (void)dup(0);
     (void)dup(0);
+    printf(linux_banner);
 #ifdef CONFIG_DEBUG_USERLAND_SYSCALL
     debug_on_userland_syscall();
 #endif
@@ -258,7 +273,7 @@ void init(void)
             close(1);
             close(2);
             setsid();
-            (void) open("/dev/tty0", O_RDWR, 0);
+            (void) open("/dev/tty1", O_RDWR, 0);
             (void) dup(0);
             (void) dup(0);
             _exit(execve("/bin/sh", argv, envp));

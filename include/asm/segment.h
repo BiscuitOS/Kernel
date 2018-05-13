@@ -1,6 +1,3 @@
-#ifndef _ASM_SEGMENT_H
-#define _ASM_SEGMENT_H
-
 static inline unsigned char get_fs_byte(const char * addr)
 {
 	unsigned register char _v;
@@ -40,32 +37,6 @@ static inline void put_fs_long(unsigned long val,unsigned long * addr)
 __asm__ ("movl %0,%%fs:%1"::"r" (val),"m" (*addr));
 }
 
-/*
- * Someone who knows GNU asm better than I should double check the followig.
- * It seems to work, but I don't know if I'm doing something subtly wrong.
- * --- TYT, 11/24/91
- * [ nothing wrong here, Linus: I just changed the ax to be any reg]
- */
-
-static inline unsigned long get_fs() 
-{
-	unsigned short _v;
-	__asm__("mov %%fs,%0":"=r" (_v):);
-	return _v;
-}
-
-static inline unsigned long get_ds() 
-{
-	unsigned short _v;
-	__asm__("mov %%ds,%0":"=r" (_v):);
-	return _v;
-}
-
-static inline void set_fs(unsigned long val)
-{
-	__asm__("mov %0,%%fs"::"r" ((unsigned short) val));
-}
-
 static inline void memcpy_tofs(void * to, void * from, unsigned long n)
 {
 __asm__("cld\n\t"
@@ -98,4 +69,28 @@ __asm__("cld\n\t"
 	::"c" (n),"D" ((long) to),"S" ((long) from));
 }
 
-#endif
+/*
+ * Someone who knows GNU asm better than I should double check the followig.
+ * It seems to work, but I don't know if I'm doing something subtly wrong.
+ * --- TYT, 11/24/91
+ * [ nothing wrong here, Linus: I just changed the ax to be any reg ]
+ */
+
+static inline unsigned long get_fs() 
+{
+	unsigned short _v;
+	__asm__("mov %%fs,%0":"=r" (_v):);
+	return _v;
+}
+
+static inline unsigned long get_ds() 
+{
+	unsigned short _v;
+	__asm__("mov %%ds,%0":"=r" (_v):);
+	return _v;
+}
+
+static inline void set_fs(unsigned long val)
+{
+	__asm__("mov %0,%%fs"::"r" ((unsigned short) val));
+}

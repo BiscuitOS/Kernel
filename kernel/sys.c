@@ -13,12 +13,14 @@
 #include <linux/utsname.h>
 #include <linux/param.h>
 #include <linux/resource.h>
+#include <linux/signal.h>
 #include <linux/string.h>
+#include <linux/ptrace.h>
 
 #include <asm/segment.h>
 
 /*
- * this indicates wether you can reboot with ctrl-alt-del: the deault is yes
+ * this indicates wether you can reboot with ctrl-alt-del: the default is yes
  */
 static int C_A_D = 1;
 
@@ -126,6 +128,77 @@ int sys_gtty()
 int sys_prof()
 {
 	return -ENOSYS;
+}
+
+unsigned long save_v86_state(int signr,struct vm86_regs * regs)
+{
+	unsigned long stack;
+
+	if (!current->vm86_info) {
+		printk("no vm86_info: BAD\n");
+		do_exit(SIGSEGV);
+	}
+	memcpy_tofs(&(current->vm86_info->regs),regs,sizeof(*regs));
+	put_fs_long(current->screen_bitmap,&(current->vm86_info->screen_bitmap));
+	stack = current->tss.esp0;
+	current->tss.esp0 = current->saved_kernel_stack;
+	current->saved_kernel_stack = 0;
+	return stack;
+}
+
+static void mark_screen_rdonly(struct task_struct * tsk)
+{
+	unsigned long tmp;
+	unsigned long *pg_table;
+
+	if ((tmp = tsk->tss.cr3)) {
+		tmp = *(unsigned long *) tmp;
+		if (tmp & PAGE_PRESENT) {
+			tmp &= 0xfffff000;
+			pg_table = (0xA0000 >> PAGE_SHIFT) + (unsigned long *) tmp;
+			tmp = 32;
+			while (tmp--) {
+				if (PAGE_PRESENT & *pg_table)
+					*pg_table &= ~PAGE_RW;
+				pg_table++;
+			}
+		}
+	}
+}
+
+int sys_vm86(struct vm86_struct * v86)
+{
+	struct vm86_struct info;
+	struct pt_regs * pt_regs = (struct pt_regs *) &v86;
+
+	if (current->saved_kernel_stack)
+		return -EPERM;
+	memcpy_fromfs(&info,v86,sizeof(info));
+/*
+ * make sure the vm86() system call doesn't try to do anything silly
+ */
+	info.regs.__null_ds = 0;
+	info.regs.__null_es = 0;
+	info.regs.__null_fs = 0;
+	info.regs.__null_gs = 0;
+/*
+ * The eflags register is also special: we cannot trust that the user
+ * has set it up safely, so this makes sure interrupt etc flags are
+ * inherited from protected mode.
+ */
+	info.regs.eflags &= 0x00000dd5;
+	info.regs.eflags |= 0xfffff22a & pt_regs->eflags;
+	info.regs.eflags |= VM_MASK;
+	current->saved_kernel_stack = current->tss.esp0;
+	current->tss.esp0 = (unsigned long) pt_regs;
+	current->vm86_info = v86;
+	current->screen_bitmap = info.screen_bitmap;
+	if (info.flags & VM86_SCREEN_BITMAP)
+		mark_screen_rdonly(current);
+	__asm__ ("movl %0,%%esp\n\t"
+		"pushl $ret_from_sys_call\n\t"
+		"ret"::"g" ((long) &(info.regs)),"a" (info.regs.eax));
+	return 0;
 }
 
 extern void hard_reset_now(void);
@@ -445,16 +518,12 @@ int in_group_p(gid_t grp)
 	return 0;
 }
 
-static struct new_utsname thisname = {
-	UTS_SYSNAME, UTS_NODENAME, UTS_RELEASE, UTS_VERSION, UTS_MACHINE
-};
-
 int sys_newuname(struct new_utsname * name)
 {
 	if (!name)
 		return -EFAULT;
 	verify_area(name, sizeof *name);
-	memcpy_tofs(name,&thisname,sizeof *name);
+	memcpy_tofs(name,&system_utsname,sizeof *name);
 	return 0;
 }
 
@@ -463,15 +532,15 @@ int sys_uname(struct old_utsname * name)
 	if (!name)
 		return -EINVAL;
 	verify_area(name,sizeof *name);
-	memcpy_tofs(&name->sysname,&thisname.sysname,__OLD_UTS_LEN);
+	memcpy_tofs(&name->sysname,&system_utsname.sysname,__OLD_UTS_LEN);
 	put_fs_byte(0,name->sysname+__OLD_UTS_LEN);
-	memcpy_tofs(&name->nodename,&thisname.nodename,__OLD_UTS_LEN);
+	memcpy_tofs(&name->nodename,&system_utsname.nodename,__OLD_UTS_LEN);
 	put_fs_byte(0,name->nodename+__OLD_UTS_LEN);
-	memcpy_tofs(&name->release,&thisname.release,__OLD_UTS_LEN);
+	memcpy_tofs(&name->release,&system_utsname.release,__OLD_UTS_LEN);
 	put_fs_byte(0,name->release+__OLD_UTS_LEN);
-	memcpy_tofs(&name->version,&thisname.version,__OLD_UTS_LEN);
+	memcpy_tofs(&name->version,&system_utsname.version,__OLD_UTS_LEN);
 	put_fs_byte(0,name->version+__OLD_UTS_LEN);
-	memcpy_tofs(&name->machine,&thisname.machine,__OLD_UTS_LEN);
+	memcpy_tofs(&name->machine,&system_utsname.machine,__OLD_UTS_LEN);
 	put_fs_byte(0,name->machine+__OLD_UTS_LEN);
 	return 0;
 }
@@ -488,10 +557,10 @@ int sys_sethostname(char *name, int len)
 	if (len > __NEW_UTS_LEN)
 		return -EINVAL;
 	for (i=0; i < len; i++) {
-		if ((thisname.nodename[i] = get_fs_byte(name+i)) == 0)
+		if ((system_utsname.nodename[i] = get_fs_byte(name+i)) == 0)
 			return 0;
 	}
-	thisname.nodename[i] = 0;
+	system_utsname.nodename[i] = 0;
 	return 0;
 }
 
@@ -532,35 +601,51 @@ int sys_setrlimit(int resource, struct rlimit *rlim)
  * a lot simpler!  (Which we're not doing right now because we're not
  * measuring them yet).
  */
-int sys_getrusage(int who, struct rusage *ru)
+void getrusage(struct task_struct *p, int who, struct rusage *ru)
 {
 	struct rusage r;
 	unsigned long	*lp, *lpend, *dest;
 
-	if (who != RUSAGE_SELF && who != RUSAGE_CHILDREN)
-		return -EINVAL;
 	verify_area(ru, sizeof *ru);
 	memset((char *) &r, 0, sizeof(r));
-	if (who == RUSAGE_SELF) {
-		r.ru_utime.tv_sec = CT_TO_SECS(current->utime);
-		r.ru_utime.tv_usec = CT_TO_USECS(current->utime);
-		r.ru_stime.tv_sec = CT_TO_SECS(current->stime);
-		r.ru_stime.tv_usec = CT_TO_USECS(current->stime);
-		r.ru_minflt = current->min_flt;
-		r.ru_majflt = current->maj_flt;
-	} else {
-		r.ru_utime.tv_sec = CT_TO_SECS(current->cutime);
-		r.ru_utime.tv_usec = CT_TO_USECS(current->cutime);
-		r.ru_stime.tv_sec = CT_TO_SECS(current->cstime);
-		r.ru_stime.tv_usec = CT_TO_USECS(current->cstime);
-		r.ru_minflt = current->cmin_flt;
-		r.ru_majflt = current->cmaj_flt;
+	switch (who) {
+		case RUSAGE_SELF:
+			r.ru_utime.tv_sec = CT_TO_SECS(p->utime);
+			r.ru_utime.tv_usec = CT_TO_USECS(p->utime);
+			r.ru_stime.tv_sec = CT_TO_SECS(p->stime);
+			r.ru_stime.tv_usec = CT_TO_USECS(p->stime);
+			r.ru_minflt = p->min_flt;
+			r.ru_majflt = p->maj_flt;
+			break;
+		case RUSAGE_CHILDREN:
+			r.ru_utime.tv_sec = CT_TO_SECS(p->cutime);
+			r.ru_utime.tv_usec = CT_TO_USECS(p->cutime);
+			r.ru_stime.tv_sec = CT_TO_SECS(p->cstime);
+			r.ru_stime.tv_usec = CT_TO_USECS(p->cstime);
+			r.ru_minflt = p->cmin_flt;
+			r.ru_majflt = p->cmaj_flt;
+			break;
+		default:
+			r.ru_utime.tv_sec = CT_TO_SECS(p->utime + p->cutime);
+			r.ru_utime.tv_usec = CT_TO_USECS(p->utime + p->cutime);
+			r.ru_stime.tv_sec = CT_TO_SECS(p->stime + p->cstime);
+			r.ru_stime.tv_usec = CT_TO_USECS(p->stime + p->cstime);
+			r.ru_minflt = p->min_flt + p->cmin_flt;
+			r.ru_majflt = p->maj_flt + p->cmaj_flt;
+			break;
 	}
 	lp = (unsigned long *) &r;
 	lpend = (unsigned long *) (&r+1);
 	dest = (unsigned long *) ru;
 	for (; lp < lpend; lp++, dest++) 
 		put_fs_long(*lp, dest);
+}
+
+int sys_getrusage(int who, struct rusage *ru)
+{
+	if (who != RUSAGE_SELF && who != RUSAGE_CHILDREN)
+		return -EINVAL;
+	getrusage(current, who, ru);
 	return(0);
 }
 
@@ -646,3 +731,4 @@ int sys_umask(int mask)
 	current->umask = mask & 0777;
 	return (old);
 }
+

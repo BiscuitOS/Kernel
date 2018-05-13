@@ -14,6 +14,7 @@ obj-y += ptrace.o
 obj-y += ioport.o
 obj-y += irq.o
 obj-y += itimer.o
+obj-y += version.o
 
 $(obj)/%.o: $(obj)/%.s FORCE
 	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<

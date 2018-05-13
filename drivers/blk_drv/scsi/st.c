@@ -15,10 +15,6 @@
 #include <linux/sched.h>
 #include "../blk.h" 
 
-/*
-static const char RCSid[] = "$Header: /usr/src/linux/kernel/blk_drv/scsi/RCS/st.c,v 1.1 1992/04/24 18:01:50 root Exp root $";
-*/
-
 Scsi_Tape scsi_tapes[MAX_ST];
 static int st_sizes[MAX_ST];
 int NR_ST=0;
