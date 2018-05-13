@@ -88,12 +88,12 @@ struct task_struct *last_task_used_math = NULL;
 
 struct task_struct * task[NR_TASKS] = {&(init_task.task), };
 
-long user_stack [ PAGE_SIZE>>2 ] ;
+long user_stack[PAGE_SIZE >> 2];
 
 struct {
-	long * a;
-	short b;
-	} stack_start = { & user_stack [PAGE_SIZE>>2] , 0x10 };
+    long *a;
+    short b;
+} stack_start = { &user_stack[PAGE_SIZE >> 2], 0x10};
 /*
  *  'math_state_restore()' saves the current math information in the
  * old math state array, and gets the new ones from the current task

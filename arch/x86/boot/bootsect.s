@@ -4,7 +4,7 @@
 # rewrite for biscuitos by buddy <buddy.zhang@aliyun.com> at 180420
 #
 # SYS_SIZE is the number of clicks (16 bytes) to be loaded.
-# 0x3000 is 0x30000 bytes = 196KB, more than enough for current
+# 0x8000 is 0x1000000 bytes = 10MB, more than enough for current
 # version of linux
 	.equ SYSSIZE, 0x8000
 
@@ -175,6 +175,7 @@ ok_load_setup:
 
 	mov $20, %cx
 	mov $0x0007, %bx   # page 0, attribute 7 (normal)
+	xor %dx, %dx
 #	lea msg1, %bp
 	mov $msg1, %bp
 	mov $0x1301, %ax

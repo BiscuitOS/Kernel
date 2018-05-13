@@ -70,7 +70,8 @@ struct super_block *minix_read_super(struct super_block *s,void *data)
 	s->u.minix_sb.s_max_size = ms->s_max_size;
 	s->s_magic = ms->s_magic;
 	brelse(bh);
-	if (s->s_magic != MINIX_SUPER_MAGIC) {
+	if (s->s_magic != MINIX_SUPER_MAGIC &&
+	    s->s_magic != MINIX_SUPER_MAGIC_V1) {
 		s->s_dev = 0;
 		free_super(s);
 		printk("magic match failed\n");

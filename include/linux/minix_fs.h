@@ -10,7 +10,8 @@
 
 #define MINIX_I_MAP_SLOTS 8
 #define MINIX_Z_MAP_SLOTS 8
-#define MINIX_SUPER_MAGIC 0x137F
+#define MINIX_SUPER_MAGIC       0x137F
+#define MINIX_SUPER_MAGIC_V1    0x138F
 
 #define MINIX_INODES_PER_BLOCK ((BLOCK_SIZE)/(sizeof (struct minix_inode)))
 #define MINIX_DIR_ENTRIES_PER_BLOCK ((BLOCK_SIZE)/(sizeof (struct minix_dir_entry)))
