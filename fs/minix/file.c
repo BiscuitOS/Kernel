@@ -15,6 +15,7 @@
 #include <linux/errno.h>
 #include <linux/fcntl.h>
 #include <linux/stat.h>
+#include <linux/locks.h>
 
 #define	NBUF	16
 
@@ -24,15 +25,7 @@
 #include <linux/fs.h>
 #include <linux/minix_fs.h>
 
-static inline void wait_on_buffer(struct buffer_head * bh)
-{
-	cli();
-	while (bh->b_lock)
-		sleep_on(&bh->b_wait);
-	sti();
-}
-
-int minix_file_read(struct inode *, struct file *, char *, int);
+static int minix_file_read(struct inode *, struct file *, char *, int);
 static int minix_file_write(struct inode *, struct file *, char *, int);
 
 /*
@@ -46,6 +39,7 @@ struct file_operations minix_file_operations = {
 	NULL,			/* readdir - bad */
 	NULL,			/* select - default */
 	NULL,			/* ioctl - default */
+	NULL,			/* mmap */
 	NULL,			/* no special open is needed */
 	NULL			/* release */
 };
@@ -67,86 +61,120 @@ struct inode_operations minix_file_inode_operations = {
 	minix_truncate		/* truncate */
 };
 
-/*
- * minix_file_read() is also needed by the directory read-routine,
- * so it's not static. NOTE! reading directories directly is a bad idea,
- * but has to be supported for now for compatability reasons with older
- * versions.
- */
-int minix_file_read(struct inode * inode, struct file * filp, char * buf, int count)
+static int minix_file_read(struct inode * inode, struct file * filp, char * buf, int count)
 {
 	int read,left,chars;
 	int block, blocks, offset;
+	int bhrequest, uptodate;
 	struct buffer_head ** bhb, ** bhe;
+	struct buffer_head * bhreq[NBUF];
 	struct buffer_head * buflist[NBUF];
+	unsigned int size;
 
 	if (!inode) {
 		printk("minix_file_read: inode = NULL\n");
 		return -EINVAL;
 	}
-	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode))) {
+	if (!S_ISREG(inode->i_mode)) {
 		printk("minix_file_read: mode = %07o\n",inode->i_mode);
 		return -EINVAL;
 	}
-	if (filp->f_pos > inode->i_size)
+	offset = filp->f_pos;
+	size = inode->i_size;
+	if (offset > size)
 		left = 0;
 	else
-		left = inode->i_size - filp->f_pos;
+		left = size - offset;
 	if (left > count)
 		left = count;
 	if (left <= 0)
 		return 0;
 	read = 0;
-	block = filp->f_pos >> BLOCK_SIZE_BITS;
-	offset = filp->f_pos & (BLOCK_SIZE-1);
-	blocks = (left + offset + BLOCK_SIZE - 1) / BLOCK_SIZE;
+	block = offset >> BLOCK_SIZE_BITS;
+	offset &= BLOCK_SIZE-1;
+	size = (size + (BLOCK_SIZE-1)) >> BLOCK_SIZE_BITS;
+	blocks = (left + offset + BLOCK_SIZE - 1) >> BLOCK_SIZE_BITS;
 	bhb = bhe = buflist;
+	if (filp->f_reada) {
+		blocks += read_ahead[MAJOR(inode->i_dev)] / (BLOCK_SIZE >> 9);
+		if (block + blocks > size)
+			blocks = size - block;
+	}
+
+	/* We do this in a two stage process.  We first try and request
+	   as many blocks as we can, then we wait for the first one to
+	   complete, and then we try and wrap up as many as are actually
+	   done.  This routine is rather generic, in that it can be used
+	   in a filesystem by substituting the appropriate function in
+	   for getblk.
+
+	   This routine is optimized to make maximum use of the various
+	   buffers and caches. */
+
 	do {
-		if (blocks) {
+		bhrequest = 0;
+	        uptodate = 1;
+		while (blocks) {
 			--blocks;
-			*bhb = minix_getblk(inode,block++,0);
-			if (*bhb && !(*bhb)->b_uptodate)
-				ll_rw_block(READ,*bhb);
+			*bhb = minix_getblk(inode, block++, 0);
+			if (*bhb && !(*bhb)->b_uptodate) {
+			        uptodate = 0;
+			        bhreq[bhrequest++] = *bhb;
+			}
 
 			if (++bhb == &buflist[NBUF])
 				bhb = buflist;
 
-			if (bhb != bhe)
-				continue;
-		}
-		if (*bhe) {
-			wait_on_buffer(*bhe);
-			if (!(*bhe)->b_uptodate) {
-				do {
-					brelse(*bhe);
-					if (++bhe == &buflist[NBUF])
-						bhe = buflist;
-				} while (bhe != bhb);
+			/* If the block we have on hand is uptodate, go ahead
+			   and complete processing. */
+			if (uptodate)
 				break;
-			}
+			if (bhb == bhe)
+				break;
 		}
 
-		if (left < BLOCK_SIZE - offset)
-			chars = left;
-		else
-			chars = BLOCK_SIZE - offset;
-		filp->f_pos += chars;
-		left -= chars;
-		read += chars;
-		if (*bhe) {
-			memcpy_tofs(buf,offset+(*bhe)->b_data,chars);
-			brelse(*bhe);
-			buf += chars;
-		} else {
-			while (chars-->0)
-				put_fs_byte(0,buf++);
-		}
-		offset = 0;
+		/* Now request them all */
+		if (bhrequest)
+			ll_rw_block(READ, bhrequest, bhreq);
+
+		do { /* Finish off all I/O that has actually completed */
+			if (*bhe) {
+				wait_on_buffer(*bhe);
+				if (!(*bhe)->b_uptodate) {	/* read error? */
+					left = 0;
+					break;
+				}
+			}
+			if (left < BLOCK_SIZE - offset)
+				chars = left;
+			else
+				chars = BLOCK_SIZE - offset;
+			filp->f_pos += chars;
+			left -= chars;
+			read += chars;
+			if (*bhe) {
+				memcpy_tofs(buf,offset+(*bhe)->b_data,chars);
+				brelse(*bhe);
+				buf += chars;
+			} else {
+				while (chars-->0)
+					put_fs_byte(0,buf++);
+			}
+			offset = 0;
+			if (++bhe == &buflist[NBUF])
+				bhe = buflist;
+		} while (left > 0 && bhe != bhb && (!*bhe || !(*bhe)->b_lock));
+	} while (left > 0);
+
+/* Release the read-ahead blocks */
+	while (bhe != bhb) {
+		brelse(*bhe);
 		if (++bhe == &buflist[NBUF])
 			bhe = buflist;
-	} while (left > 0);
+	};
 	if (!read)
 		return -EIO;
+	filp->f_reada = 1;
 	if (!IS_RDONLY(inode)) {
 		inode->i_atime = CURRENT_TIME;
 		inode->i_dirt = 1;
@@ -189,7 +217,7 @@ static int minix_file_write(struct inode * inode, struct file * filp, char * buf
 		if (c > count-written)
 			c = count-written;
 		if (c != BLOCK_SIZE && !bh->b_uptodate) {
-			ll_rw_block(READ,bh);
+			ll_rw_block(READ, 1, &bh);
 			wait_on_buffer(bh);
 			if (!bh->b_uptodate) {
 				brelse(bh);

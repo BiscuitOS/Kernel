@@ -7,6 +7,7 @@
 #include <linux/socket.h>
 #include <linux/fcntl.h>
 #include <linux/termios.h>
+#include <linux/config.h>
 
 #include <asm/system.h>
 #include <asm/segment.h>
@@ -17,7 +18,7 @@
 extern int sys_close(int fd);
 
 extern struct proto_ops unix_proto_ops;
-#ifdef INET_SOCKETS
+#ifdef CONFIG_TCPIP
 extern struct proto_ops inet_proto_ops;
 #endif
 
@@ -27,9 +28,6 @@ static struct {
 	struct proto_ops *ops;
 } proto_table[] = {
 	{AF_UNIX,	"AF_UNIX",	&unix_proto_ops},
-#ifdef INET_SOCKETS
-	{AF_INET,	"AF_INET",	&inet_proto_ops},
-#endif
 };
 #define NPROTO (sizeof(proto_table) / sizeof(proto_table[0]))
 
@@ -62,8 +60,9 @@ static struct file_operations socket_file_ops = {
 	sock_read,
 	sock_write,
 	sock_readdir,
-	sock_select,	/* not in vfs yet */
+	sock_select,
 	sock_ioctl,
+	NULL,		/* mmap */
 	NULL,		/* no special open code... */
 	sock_close
 };
@@ -80,29 +79,31 @@ static struct wait_queue *socket_wait_free = NULL;
 static int
 get_fd(struct inode *inode)
 {
-	int fd, i;
+	int fd;
 	struct file *file;
 
 	/*
 	 * find a file descriptor suitable for return to the user.
 	 */
+	file = get_empty_filp();
+	if (!file)
+		return -1;
 	for (fd = 0; fd < NR_OPEN; ++fd)
 		if (!current->filp[fd])
 			break;
-	if (fd == NR_OPEN)
+	if (fd == NR_OPEN) {
+		file->f_count = 0;
 		return -1;
-	current->close_on_exec &= ~(1 << fd);
-	for (file = file_table, i = 0; i < NR_FILE; ++i, ++file)
-		if (!file->f_count)
-			break;
-	if (i == NR_FILE)
-		return -1;
+	}
+	FD_CLR(fd, &current->close_on_exec);
 	current->filp[fd] = file;
 	file->f_op = &socket_file_ops;
 	file->f_mode = 3;
 	file->f_flags = 0;
 	file->f_count = 1;
 	file->f_inode = inode;
+	if (inode)
+		inode->i_count++;
 	file->f_pos = 0;
 	return fd;
 }
@@ -115,11 +116,11 @@ get_fd(struct inode *inode)
 static inline void
 toss_fd(int fd)
 {
-	current->filp[fd]->f_inode = NULL;	/* safe from iput */
+  /* the count protects us from iput. */
 	sys_close(fd);
 }
 
-static inline struct socket *
+struct socket *
 socki_lookup(struct inode *inode)
 {
 	struct socket *sock;
@@ -227,6 +228,8 @@ sock_release(struct socket *sock)
 		sock_release_peer(peersock);
 	sock->state = SS_FREE;		/* this really releases us */
 	wake_up(&socket_wait_free);
+	iput(SOCK_INODE(sock)); /* we need to do this.  If sock alloc was
+				   called we already have an inode. */
 }
 
 static int
@@ -576,17 +579,18 @@ sock_accept(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen)
 		return i;
 	}
 
-	if ((fd = get_fd(SOCK_INODE(newsock))) < 0) {
-		sock_release(newsock);
-		return -EINVAL;
-	}
 	i = newsock->ops->accept(sock, newsock, file->f_flags);
 
 	if ( i < 0)
 	  {
-	     sys_close (fd);
-	     return (i);
+	    sock_release(newsock);
+	    return (i);
 	  }
+
+	if ((fd = get_fd(SOCK_INODE(newsock))) < 0) {
+		sock_release(newsock);
+		return -EINVAL;
+	}
 
 	PRINTK("sys_accept: connected socket 0x%x via 0x%x\n",
 	       sock, newsock);
@@ -611,9 +615,20 @@ sock_connect(int fd, struct sockaddr *uservaddr, int addrlen)
 	PRINTK("sys_connect: fd = %d\n", fd);
 	if (!(sock = sockfd_lookup(fd, &file)))
 		return -EBADF;
-	if (sock->state != SS_UNCONNECTED) {
-		PRINTK("sys_connect: socket not unconnected\n");
-		return -EINVAL;
+	switch (sock->state) {
+		case SS_UNCONNECTED:
+			/* This is ok... continue with connect */
+			break;
+		case SS_CONNECTED:
+			/* Socket is already connected */
+			return -EISCONN;
+		case SS_CONNECTING:
+			/* Not yet connected... */
+			/* we will check this. */
+			return (sock->ops->connect(sock, uservaddr, addrlen, file->f_flags));
+		default:
+			PRINTK("sys_connect: socket not unconnected\n");
+			return -EINVAL;
 	}
 	i = sock->ops->connect(sock, uservaddr, addrlen, file->f_flags);
 	if (i < 0) {

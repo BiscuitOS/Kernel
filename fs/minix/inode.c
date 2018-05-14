@@ -10,22 +10,15 @@
 #include <linux/mm.h>
 #include <linux/string.h>
 #include <linux/stat.h>
+#include <linux/locks.h>
 
 #include <asm/system.h>
 #include <asm/segment.h>
 
-int sync_dev(int dev);
-
-static inline void wait_on_buffer(struct buffer_head * bh)
-{
-	cli();
-	while (bh->b_lock)
-		sleep_on(&bh->b_wait);
-	sti();
-}
-
 void minix_put_inode(struct inode *inode)
 {
+	if (inode->i_nlink)
+		return;
 	inode->i_size = 0;
 	minix_truncate(inode);
 	minix_free_inode(inode);
@@ -41,12 +34,13 @@ void minix_put_super(struct super_block *sb)
 		brelse(sb->u.minix_sb.s_imap[i]);
 	for(i = 0 ; i < MINIX_Z_MAP_SLOTS ; i++)
 		brelse(sb->u.minix_sb.s_zmap[i]);
-	free_super(sb);
+	unlock_super(sb);
 	return;
 }
 
 static struct super_operations minix_sops = { 
 	minix_read_inode,
+	NULL,
 	minix_write_inode,
 	minix_put_inode,
 	minix_put_super,
@@ -60,11 +54,13 @@ struct super_block *minix_read_super(struct super_block *s,void *data)
 	struct minix_super_block *ms;
 	int i,dev=s->s_dev,block;
 
+	if (32 != sizeof (struct minix_inode))
+		panic("bad i-node size");
 	lock_super(s);
 	if (!(bh = bread(dev,1,BLOCK_SIZE))) {
 		s->s_dev=0;
-		free_super(s);
-		printk("bread failed\n");
+		unlock_super(s);
+		printk("MINIX-fs: unable to read superblock\n");
 		return NULL;
 	}
 	ms = (struct minix_super_block *) bh->b_data;
@@ -81,8 +77,8 @@ struct super_block *minix_read_super(struct super_block *s,void *data)
 	if (s->s_magic != MINIX_SUPER_MAGIC &&
 	    s->s_magic != MINIX_SUPER_MAGIC_V1) {
 		s->s_dev = 0;
-		free_super(s);
-		printk("magic match failed\n");
+		unlock_super(s);
+		printk("MINIX-fs magic match failed\n");
 		return NULL;
 	}
 	for (i=0;i < MINIX_I_MAP_SLOTS;i++)
@@ -91,12 +87,12 @@ struct super_block *minix_read_super(struct super_block *s,void *data)
 		s->u.minix_sb.s_zmap[i] = NULL;
 	block=2;
 	for (i=0 ; i < s->u.minix_sb.s_imap_blocks ; i++)
-		if ((s->u.minix_sb.s_imap[i]=bread(dev,block,BLOCK_SIZE)))
+		if ((s->u.minix_sb.s_imap[i]=bread(dev,block,BLOCK_SIZE)) != NULL)
 			block++;
 		else
 			break;
 	for (i=0 ; i < s->u.minix_sb.s_zmap_blocks ; i++)
-		if ((s->u.minix_sb.s_zmap[i]=bread(dev,block,BLOCK_SIZE)))
+		if ((s->u.minix_sb.s_zmap[i]=bread(dev,block,BLOCK_SIZE)) != NULL)
 			block++;
 		else
 			break;
@@ -106,25 +102,26 @@ struct super_block *minix_read_super(struct super_block *s,void *data)
 		for(i=0;i<MINIX_Z_MAP_SLOTS;i++)
 			brelse(s->u.minix_sb.s_zmap[i]);
 		s->s_dev=0;
-		free_super(s);
-		printk("block failed\n");
+		unlock_super(s);
+		printk("MINIX-fs: bad superblock or unable to read bitmaps\n");
 		return NULL;
 	}
 	s->u.minix_sb.s_imap[0]->b_data[0] |= 1;
 	s->u.minix_sb.s_zmap[0]->b_data[0] |= 1;
-	free_super(s);
 	/* set up enough so that it can read an inode */
 	s->s_dev = dev;
 	s->s_op = &minix_sops;
-	if (!(s->s_mounted = iget(dev,MINIX_ROOT_INO))) {
-		s->s_dev=0;
-		printk("get root inode failed\n");
+	s->s_mounted = iget(s,MINIX_ROOT_INO);
+	unlock_super(s);
+	if (!s->s_mounted) {
+		s->s_dev = 0;
+		printk("MINIX-fs: get root inode failed\n");
 		return NULL;
 	}
 	return s;
 }
 
-void minix_statfs (struct super_block *sb, struct statfs *buf)
+void minix_statfs(struct super_block *sb, struct statfs *buf)
 {
 	long tmp;
 
@@ -201,12 +198,12 @@ repeat:
 	}
 	if (!create)
 		return NULL;
-	tmp = minix_new_block(inode->i_dev);
+	tmp = minix_new_block(inode->i_sb);
 	if (!tmp)
 		return NULL;
 	result = getblk(inode->i_dev, tmp, BLOCK_SIZE);
 	if (*p) {
-		minix_free_block(inode->i_dev,tmp);
+		minix_free_block(inode->i_sb,tmp);
 		brelse(result);
 		goto repeat;
 	}
@@ -216,7 +213,8 @@ repeat:
 	return result;
 }
 
-static struct buffer_head * block_getblk(struct buffer_head * bh, int nr, int create)
+static struct buffer_head * block_getblk(struct inode * inode, 
+	struct buffer_head * bh, int nr, int create)
 {
 	int tmp;
 	unsigned short *p;
@@ -225,7 +223,7 @@ static struct buffer_head * block_getblk(struct buffer_head * bh, int nr, int cr
 	if (!bh)
 		return NULL;
 	if (!bh->b_uptodate) {
-		ll_rw_block(READ,bh);
+		ll_rw_block(READ, 1, &bh);
 		wait_on_buffer(bh);
 		if (!bh->b_uptodate) {
 			brelse(bh);
@@ -248,14 +246,14 @@ repeat:
 		brelse(bh);
 		return NULL;
 	}
-	tmp = minix_new_block(bh->b_dev);
+	tmp = minix_new_block(inode->i_sb);
 	if (!tmp) {
 		brelse(bh);
 		return NULL;
 	}
 	result = getblk(bh->b_dev, tmp, BLOCK_SIZE);
 	if (*p) {
-		minix_free_block(bh->b_dev,tmp);
+		minix_free_block(inode->i_sb,tmp);
 		brelse(result);
 		goto repeat;
 	}
@@ -282,12 +280,12 @@ struct buffer_head * minix_getblk(struct inode * inode, int block, int create)
 	block -= 7;
 	if (block < 512) {
 		bh = inode_getblk(inode,7,create);
-		return block_getblk(bh,block,create);
+		return block_getblk(inode, bh, block, create);
 	}
 	block -= 512;
 	bh = inode_getblk(inode,8,create);
-	bh = block_getblk(bh,block>>9,create);
-	return block_getblk(bh,block & 511,create);
+	bh = block_getblk(inode, bh, block>>9, create);
+	return block_getblk(inode, bh, block & 511, create);
 }
 
 struct buffer_head * minix_bread(struct inode * inode, int block, int create)
@@ -297,7 +295,7 @@ struct buffer_head * minix_bread(struct inode * inode, int block, int create)
 	bh = minix_getblk(inode,block,create);
 	if (!bh || bh->b_uptodate)
 		return bh;
-	ll_rw_block(READ,bh);
+	ll_rw_block(READ, 1, &bh);
 	wait_on_buffer(bh);
 	if (bh->b_uptodate)
 		return bh;
@@ -309,14 +307,16 @@ void minix_read_inode(struct inode * inode)
 {
 	struct buffer_head * bh;
 	struct minix_inode * raw_inode;
-	int block;
+	int block, ino;
 
-	block = 2 + inode->i_sb->u.minix_sb.s_imap_blocks + inode->i_sb->u.minix_sb.s_zmap_blocks +
-		(inode->i_ino-1)/MINIX_INODES_PER_BLOCK;
+	ino = inode->i_ino;
+	block = 2 + inode->i_sb->u.minix_sb.s_imap_blocks +
+		    inode->i_sb->u.minix_sb.s_zmap_blocks +
+		    (ino-1)/MINIX_INODES_PER_BLOCK;
 	if (!(bh=bread(inode->i_dev,block, BLOCK_SIZE)))
 		panic("unable to read i-node block");
 	raw_inode = ((struct minix_inode *) bh->b_data) +
-		(inode->i_ino-1)%MINIX_INODES_PER_BLOCK;
+		    (ino-1)%MINIX_INODES_PER_BLOCK;
 	inode->i_mode = raw_inode->i_mode;
 	inode->i_uid = raw_inode->i_uid;
 	inode->i_gid = raw_inode->i_gid;
@@ -372,7 +372,7 @@ void minix_write_inode(struct inode * inode)
 		raw_inode->i_zone[0] = inode->i_rdev;
 	else for (block = 0; block < 9; block++)
 		raw_inode->i_zone[block] = inode->u.minix_i.i_data[block];
-	bh->b_dirt=1;
 	inode->i_dirt=0;
+	bh->b_dirt=1;
 	brelse(bh);
 }

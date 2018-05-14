@@ -401,11 +401,14 @@ sectors:
 msg1:
 	.byte 13,10
 	.ascii "Loading BiscuitOS ..."
-	.byte 13,10,13,10
 
-	.org 506
+	.org 502
 swap_dev:
 	.word SWAP_DEV
+ram_size:
+	.word 0
+vid_mode:
+	.word 0
 root_dev:
 	.word ROOT_DEV
 boot_flag:

@@ -13,9 +13,9 @@
  */
 
 #ifdef SLOW_IO_BY_JUMPING
-#define __SLOW_DOWN_IO __asm__ ("jmp 1f\n1:\tjmp 1f\n1:")
+#define __SLOW_DOWN_IO __asm__ __volatile__("jmp 1f\n1:\tjmp 1f\n1:")
 #else
-#define __SLOW_DOWN_IO __asm__ ("inb $0x61,%%al":::"ax")
+#define __SLOW_DOWN_IO __asm__ __volatile__("outb %al,$0x80")
 #endif
 
 #ifdef REALLY_SLOW_IO
@@ -24,31 +24,31 @@
 #define SLOW_DOWN_IO __SLOW_DOWN_IO
 #endif
 
-static void inline outb(char value, unsigned short port)
+static inline void outb(char value, unsigned short port)
 {
-__asm__ ("outb %%al,%%dx"
+__asm__ __volatile__ ("outb %%al,%%dx"
 		::"a" ((char) value),"d" ((unsigned short) port));
 }
 
-static unsigned int inline inb(unsigned short port)
+static inline unsigned int inb(unsigned short port)
 {
 	unsigned int _v;
-__asm__ ("inb %%dx,%%al"
+__asm__ __volatile__ ("inb %%dx,%%al"
 		:"=a" (_v):"d" ((unsigned short) port),"0" (0));
 	return _v;
 }
 
-static void inline outb_p(char value, unsigned short port)
+static inline void outb_p(char value, unsigned short port)
 {
-__asm__ ("outb %%al,%%dx"
+__asm__ __volatile__ ("outb %%al,%%dx"
 		::"a" ((char) value),"d" ((unsigned short) port));
 	SLOW_DOWN_IO;
 }
 
-static unsigned int inline inb_p(unsigned short port)
+static inline unsigned int inb_p(unsigned short port)
 {
 	unsigned int _v;
-__asm__ ("inb %%dx,%%al"
+__asm__ __volatile__ ("inb %%dx,%%al"
 		:"=a" (_v):"d" ((unsigned short) port),"0" (0));
 	SLOW_DOWN_IO;
 	return _v;

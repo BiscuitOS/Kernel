@@ -19,6 +19,27 @@
     The Author may be reached as bir7@leland.stanford.edu or
     C/O Department of Mathematics; Stanford University; Stanford, CA 94305
 */
+/* $Id: loopback.c,v 0.8.4.5 1992/12/12 19:25:04 bir7 Exp $ */
+/* $Log: loopback.c,v $
+ * Revision 0.8.4.5  1992/12/12  19:25:04  bir7
+ * Cleaned up Log messages.
+ *
+ * Revision 0.8.4.4  1992/12/05  21:35:53  bir7
+ * changed dev->init to return an int.
+ *
+ * Revision 0.8.4.3  1992/11/18  15:38:03  bir7
+ * Fixed bug in start_xmit.
+ *
+ * Revision 0.8.4.2  1992/11/10  10:38:48  bir7
+ * Change free_s to kfree_s and accidently changed free_skb to kfree_skb.
+ *
+ * Revision 0.8.4.1  1992/11/10  00:17:18  bir7
+ * version change only.
+ *
+ * Revision 0.8.3.2  1992/11/10  00:14:47  bir7
+ * Changed malloc to kmalloc and added Id and Log
+ * */
+
 #include <linux/config.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
@@ -26,10 +47,10 @@
 #include <linux/tty.h>
 #include <linux/types.h>
 #include <linux/ptrace.h>
+#include <linux/string.h>
 #include <asm/system.h>
 #include <asm/segment.h>
 #include <asm/io.h>
-#include <asm/memory.h>
 #include <errno.h>
 #include <linux/fcntl.h>
 #include <netinet/in.h>
@@ -42,9 +63,15 @@
 #include "sock.h"
 #include "arp.h"
 
-#include "../kern_sock.h" /* for PRINTK */
+#ifdef PRINTK
+#undef PRINTK
+#endif
 
-
+#ifdef LOOPBACK_DEBUG
+#define PRINTK printk
+#else
+#define PRINTK dummy_routine
+#endif
 
 static int
 loopback_xmit(struct sk_buff *skb, struct device *dev)
@@ -65,27 +92,36 @@ loopback_xmit(struct sk_buff *skb, struct device *dev)
     }
   inuse = 1;
   sti();
-  tmp = NULL;
-  done = dev_rint ((unsigned char *)(skb+1), skb->len, 0, dev);
+
+  done = -1;
+  while (done == -1)
+    done = dev_rint ((unsigned char *)(skb+1), skb->len, 0, dev);
 
   if (skb->free)
-    free_skb (skb, FREE_WRITE);
+    kfree_skb (skb, FREE_WRITE);
 
+  tmp = NULL;
+  i = 0;
   while (done != 1)
 	 {
 	    if (done != -1 && (i = dev_tint (buff,dev)) != 0)
 	      {
 		 /* print out the buffer. */
-		 PRINTK ("ethernet xmit: \n");
+		 PRINTK ("loopback xmit: \n");
 		 eth = (struct enet_header *)buff;
 		 print_eth (eth);
 		 tmp = buff;
 		 done = dev_rint (buff, i, 0, dev);
-		 if (done != -1) tmp = NULL;
+		 if (done != -1)
+		   {
+		     tmp = NULL;
+		     i = 0;
+		   }
 	      }
 	    else
 	      {
-		 done = dev_rint (tmp, 0, 0, dev);
+		if (i == 0) tmp = NULL;
+		 done = dev_rint (tmp, i, 0, dev);
 	      }
 	    
 	 }
@@ -93,7 +129,7 @@ loopback_xmit(struct sk_buff *skb, struct device *dev)
   return (0);
 }
 
-void
+int
 loopback_init(struct device *dev)
 {
    printk ("Loopback device init\n");
@@ -110,4 +146,5 @@ loopback_init(struct device *dev)
   dev->rebuild_header = eth_rebuild_header;
   dev->type_trans = eth_type_trans;
   dev->loopback = 1;
+  return (0);
 }

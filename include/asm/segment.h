@@ -1,6 +1,6 @@
 static inline unsigned char get_fs_byte(const char * addr)
 {
-	unsigned register char _v;
+	register unsigned char _v;
 
 	__asm__ ("movb %%fs:%1,%0":"=q" (_v):"m" (*addr));
 	return _v;
@@ -37,7 +37,7 @@ static inline void put_fs_long(unsigned long val,unsigned long * addr)
 __asm__ ("movl %0,%%fs:%1"::"r" (val),"m" (*addr));
 }
 
-static inline void memcpy_tofs(void * to, void * from, unsigned long n)
+static inline void memcpy_tofs(void * to, const void * from, unsigned long n)
 {
 __asm__("cld\n\t"
 	"push %%es\n\t"
@@ -55,7 +55,7 @@ __asm__("cld\n\t"
 	::"c" (n),"D" ((long) to),"S" ((long) from));
 }
 
-static inline void memcpy_fromfs(void * to, void * from, unsigned long n)
+static inline void memcpy_fromfs(void * to, const void * from, unsigned long n)
 {
 __asm__("cld\n\t"
 	"testb $1,%%cl\n\t"
@@ -92,5 +92,5 @@ static inline unsigned long get_ds()
 
 static inline void set_fs(unsigned long val)
 {
-	__asm__("mov %0,%%fs"::"r" ((unsigned short) val));
+	__asm__ __volatile__("mov %0,%%fs"::"r" ((unsigned short) val));
 }

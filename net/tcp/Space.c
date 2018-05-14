@@ -1,10 +1,33 @@
 /* Space.c */
+
 /* Holds initial configuration information for devices. */
+/* $Id: Space.c,v 0.8.4.5 1992/12/12 19:25:04 bir7 Exp $ */
+/* $Log: Space.c,v $
+ * Revision 0.8.4.5  1992/12/12  19:25:04  bir7
+ * Cleaned up Log messages.
+ *
+ * Revision 0.8.4.4  1992/12/05  21:35:53  bir7
+ * Updated dev->init type.
+ *
+ * Revision 0.8.4.3  1992/11/15  14:55:30  bir7
+ * Removed ctrl-h so diff no longer thinks it's a binary file.
+ *
+ * Revision 0.8.4.2  1992/11/10  10:38:48  bir7
+ * Change free_s to kfree_s and accidently changed free_skb to kfree_skb.
+ *
+ * Revision 0.8.4.1  1992/11/10  00:17:18  bir7
+ * version change only.
+ *
+ * Revision 0.8.3.2  1992/11/10  00:14:47  bir7
+ * Changed malloc to kmalloc and added Id and Log
+ *
+ */
+
 #include "dev.h"
 #include <linux/stddef.h>
 
-
-extern void wd8003_init(struct device *);
+extern int wd8003_init(struct device *);
+extern int loopback_init(struct device *dev);
 
 static struct device wd8003_dev =
 {
@@ -39,8 +62,6 @@ static struct device wd8003_dev =
   {0,}, /* device address */
   0     /* addr len */
 };
-
-extern void loopback_init(struct device *dev);
 
 static struct device loopback_dev =
 {

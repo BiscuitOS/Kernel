@@ -9,7 +9,9 @@
 #include <linux/sched.h>
 #include <linux/errno.h>
 #include <linux/string.h>
+#include <linux/ctype.h>
 #include <linux/stat.h>
+#include <linux/locks.h>
 
 #include <asm/segment.h>
 
@@ -17,10 +19,12 @@ void msdos_put_inode(struct inode *inode)
 {
 	struct inode *depend;
 
+	if (inode->i_nlink)
+		return;
 	inode->i_size = 0;
 	msdos_truncate(inode);
 	depend = MSDOS_I(inode)->i_depend;
-	memset(inode,0,sizeof(struct inode));
+	clear_inode(inode);
 	if (depend) {
 		if (MSDOS_I(depend)->i_old != inode) {
 			printk("Invalid link (0x%X): expected 0x%X, got "
@@ -39,13 +43,14 @@ void msdos_put_super(struct super_block *sb)
 	cache_inval_dev(sb->s_dev);
 	lock_super(sb);
 	sb->s_dev = 0;
-	free_super(sb);
+	unlock_super(sb);
 	return;
 }
 
 
 static struct super_operations msdos_sops = { 
 	msdos_read_inode,
+	NULL,
 	msdos_write_inode,
 	msdos_put_inode,
 	msdos_put_super,
@@ -54,15 +59,19 @@ static struct super_operations msdos_sops = {
 };
 
 
-static int parse_options(char *options,char *check,char *conversion)
+static int parse_options(char *options,char *check,char *conversion,uid_t *uid, gid_t *gid, int *umask)
 {
 	char *this,*value;
 
 	*check = 'n';
 	*conversion = 'b';
+	*uid = current->uid;
+	*gid = current->gid;
+	*umask = current->umask;
 	if (!options) return 1;
 	for (this = strtok(options,","); this; this = strtok(NULL,",")) {
-		if ((value = strchr(this,'='))) *value++ = 0;
+		if ((value = strchr(this,'=')) != NULL)
+			*value++ = 0;
 		if (!strcmp(this,"check") && value) {
 			if (value[0] && !value[1] && strchr("rns",*value))
 				*check = *value;
@@ -79,6 +88,27 @@ static int parse_options(char *options,char *check,char *conversion)
 			else if (!strcmp(value,"auto")) *conversion = 'a';
 			else return 0;
 		}
+		else if (!strcmp(this,"uid")) {
+			if (!value || !*value)
+				return 0;
+			*uid = simple_strtoul(value,&value,0);
+			if (*value)
+				return 0;
+		}
+		else if (!strcmp(this,"gid")) {
+			if (!value || !*value)
+				return 0;
+			*gid = simple_strtoul(value,&value,0);
+			if (*value)
+				return 0;
+		}
+		else if (!strcmp(this,"umask")) {
+			if (!value || !*value)
+				return 0;
+			*umask = simple_strtoul(value,&value,8);
+			if (*value)
+				return 0;
+		}
 		else return 0;
 	}
 	return 1;
@@ -93,15 +123,18 @@ struct super_block *msdos_read_super(struct super_block *s,void *data)
 	struct msdos_boot_sector *b;
 	int data_sectors;
 	char check,conversion;
+	uid_t uid;
+	gid_t gid;
+	int umask;
 
-	if (!parse_options((char *) data,&check,&conversion)) {
+	if (!parse_options((char *) data,&check,&conversion,&uid,&gid,&umask)) {
 		s->s_dev = 0;
 		return NULL;
 	}
 	cache_init();
 	lock_super(s);
 	bh = bread(s->s_dev, 0, BLOCK_SIZE);
-	free_super(s);
+	unlock_super(s);
 	if (bh == NULL) {
 		s->s_dev = 0;
 		printk("MSDOS bread failed\n");
@@ -123,8 +156,8 @@ struct super_block *msdos_read_super(struct super_block *s,void *data)
 	    0;
 	MSDOS_SB(s)->fat_bits = MSDOS_SB(s)->clusters > MSDOS_FAT12 ? 16 : 12;
 	brelse(bh);
-printk("[MS-DOS FS Rel. alpha.8, FAT %d, check=%c, conv=%c]\n",
-  MSDOS_SB(s)->fat_bits,check,conversion);
+printk("[MS-DOS FS Rel. alpha.8, FAT %d, check=%c, conv=%c, uid=%d, gid=%d, umask=%03o]\n",
+  MSDOS_SB(s)->fat_bits,check,conversion,uid,gid,umask);
 printk("[me=0x%x,cs=%d,#f=%d,fs=%d,fl=%d,ds=%d,de=%d,data=%d,se=%d,ts=%d]\n",
   b->media,MSDOS_SB(s)->cluster_size,MSDOS_SB(s)->fats,MSDOS_SB(s)->fat_start,
   MSDOS_SB(s)->fat_length,MSDOS_SB(s)->dir_start,MSDOS_SB(s)->dir_entries,
@@ -142,13 +175,13 @@ printk("[me=0x%x,cs=%d,#f=%d,fs=%d,fl=%d,ds=%d,de=%d,data=%d,se=%d,ts=%d]\n",
 	MSDOS_SB(s)->conversion = conversion;
 	/* set up enough so that it can read an inode */
 	s->s_op = &msdos_sops;
-	MSDOS_SB(s)->fs_uid = current->uid;
-	MSDOS_SB(s)->fs_gid = current->gid;
-	MSDOS_SB(s)->fs_umask = current->umask;
+	MSDOS_SB(s)->fs_uid = uid;
+	MSDOS_SB(s)->fs_gid = gid;
+	MSDOS_SB(s)->fs_umask = umask;
 	MSDOS_SB(s)->free_clusters = -1; /* don't know yet */
 	MSDOS_SB(s)->fat_wait = NULL;
 	MSDOS_SB(s)->fat_lock = 0;
-	if (!(s->s_mounted = iget(s->s_dev,MSDOS_ROOT_INO))) {
+	if (!(s->s_mounted = iget(s,MSDOS_ROOT_INO))) {
 		s->s_dev = 0;
 		printk("get root inode failed\n");
 		return NULL;
@@ -222,7 +255,7 @@ void msdos_read_inode(struct inode *inode)
 		inode->i_blksize = MSDOS_SB(inode->i_sb)->cluster_size*
 		    SECTOR_SIZE;
 		inode->i_blocks = (inode->i_size+inode->i_blksize-1)/
-		    inode->i_blksize;
+		    inode->i_blksize*MSDOS_SB(inode->i_sb)->cluster_size;
 		MSDOS_I(inode)->i_start = 0;
 		MSDOS_I(inode)->i_attrs = 0;
 		inode->i_mtime = inode->i_atime = inode->i_ctime = 0;
@@ -247,7 +280,7 @@ void msdos_read_inode(struct inode *inode)
 		}
 #endif
 		inode->i_size = 0;
-		if ((this = raw_entry->start))
+		if ((this = raw_entry->start) != 0)
 			while (this != -1) {
 				inode->i_size += SECTOR_SIZE*MSDOS_SB(inode->
 				    i_sb)->cluster_size;
@@ -272,7 +305,7 @@ void msdos_read_inode(struct inode *inode)
 	/* this is as close to the truth as we can get ... */
 	inode->i_blksize = MSDOS_SB(inode->i_sb)->cluster_size*SECTOR_SIZE;
 	inode->i_blocks = (inode->i_size+inode->i_blksize-1)/
-	    inode->i_blksize;
+	    inode->i_blksize*MSDOS_SB(inode->i_sb)->cluster_size;
 	inode->i_mtime = inode->i_atime = inode->i_ctime =
 	    date_dos2unix(raw_entry->time,raw_entry->date);
 	brelse(bh);

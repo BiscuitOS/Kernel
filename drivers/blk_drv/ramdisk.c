@@ -6,7 +6,6 @@
 
 
 #include <linux/config.h>
-#ifdef RAMDISK
 #include <linux/sched.h>
 #include <linux/minix_fs.h>
 #include <linux/fs.h>
@@ -14,7 +13,6 @@
 #include <linux/string.h>
 #include <asm/system.h>
 #include <asm/segment.h>
-#include <asm/memory.h>
 
 #define MAJOR_NR 1
 #include "blk.h"
@@ -56,6 +54,7 @@ static struct file_operations rd_fops = {
 	NULL,			/* readdir - bad */
 	NULL,			/* select */
 	NULL,			/* ioctl */
+	NULL,			/* mmap */
 	NULL,			/* no special open code */
 	NULL			/* no special release code */
 };
@@ -87,7 +86,7 @@ void rd_load(void)
 {
 	struct buffer_head *bh;
 	struct minix_super_block s;
-	int		block = 256;	/* Start at block 256 */
+	int		block = 512;	/* Start at block 512 */
 	int		i = 1;
 	int		nblocks;
 	char		*cp;		/* Move pointer */
@@ -138,4 +137,3 @@ void rd_load(void)
 	printk("\ndone\n");
 	ROOT_DEV=0x0101;
 }
-#endif

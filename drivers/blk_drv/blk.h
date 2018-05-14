@@ -28,7 +28,7 @@ struct request {
 	unsigned long nr_sectors;
 	unsigned long current_nr_sectors;
 	char * buffer;
-	struct wait_queue * waiting;
+	struct task_struct * waiting;
 	struct buffer_head * bh;
 	struct buffer_head * bhtail;
 	struct request * next;
@@ -72,6 +72,10 @@ extern int * blk_size[NR_BLK_DEV];
 extern unsigned long hd_init(unsigned long mem_start, unsigned long mem_end);
 extern int is_read_only(int dev);
 extern void set_device_ro(int dev,int flag);
+
+extern void rd_load(void);
+extern long rd_init(long mem_start, int length);
+extern int ramdisk_size;
 
 #define RO_IOCTLS(dev,where) \
   case BLKROSET: if (!suser()) return -EPERM; \
@@ -167,7 +171,7 @@ void (*DEVICE_INTR)(void) = NULL;
 timer_active &= ~(1<<DEVICE_TIMEOUT)
 
 #define SET_INTR(x) \
-if ((DEVICE_INTR = (x))) \
+if ((DEVICE_INTR = (x)) != NULL) \
 	SET_TIMER; \
 else \
 	CLEAR_TIMER;
@@ -187,10 +191,13 @@ static inline void unlock_buffer(struct buffer_head * bh)
 	wake_up(&bh->b_wait);
 }
 
+/* SCSI devices have their own version */
+#if (MAJOR_NR != 8 && MAJOR_NR != 9 && MAJOR_NR != 11)
 static void end_request(int uptodate)
 {
 	struct request * req;
 	struct buffer_head * bh;
+	struct task_struct * p;
 
 	req = CURRENT;
 	req->errors = 0;
@@ -203,12 +210,12 @@ static void end_request(int uptodate)
 		req->sector &= ~SECTOR_MASK;		
 	}
 
-	if ((bh = req->bh)) {
+	if ((bh = req->bh) != NULL) {
 		req->bh = bh->b_reqnext;
 		bh->b_reqnext = NULL;
 		bh->b_uptodate = uptodate;
 		unlock_buffer(bh);
-		if ((bh = req->bh)) {
+		if ((bh = req->bh) != NULL) {
 			req->current_nr_sectors = bh->b_size >> 9;
 			if (req->nr_sectors < req->current_nr_sectors) {
 				req->nr_sectors = req->current_nr_sectors;
@@ -220,10 +227,16 @@ static void end_request(int uptodate)
 	}
 	DEVICE_OFF(req->dev);
 	CURRENT = req->next;
-	wake_up(&req->waiting);
+	if ((p = req->waiting) != NULL) {
+		req->waiting = NULL;
+		p->state = TASK_RUNNING;
+		if (p->counter > current->counter)
+			need_resched = 1;
+	}
 	req->dev = -1;
 	wake_up(&wait_for_request);
 }
+#endif
 
 #ifdef DEVICE_INTR
 #define CLEAR_INTR SET_INTR(NULL)

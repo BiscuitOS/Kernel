@@ -15,19 +15,22 @@
 #include <linux/stat.h>
 #include <linux/string.h>
 
-static int msdos_dummy_read(struct inode *inode,struct file *filp,char *buf,
-    int count);
+static int msdos_dir_read(struct inode * inode,struct file * filp, char * buf,int count)
+{
+	return -EISDIR;
+}
+
 static int msdos_readdir(struct inode *inode,struct file *filp,
     struct dirent *dirent,int count);
 
-
 struct file_operations msdos_dir_operations = {
 	NULL,			/* lseek - default */
-	msdos_dummy_read,	/* read */
+	msdos_dir_read,		/* read */
 	NULL,			/* write - bad */
 	msdos_readdir,		/* readdir */
 	NULL,			/* select - default */
 	NULL,			/* ioctl - default */
+	NULL,			/* mmap */
 	NULL,			/* no special open code */
 	NULL			/* no special release code */
 };
@@ -48,22 +51,6 @@ struct inode_operations msdos_dir_inode_operations = {
 	msdos_bmap,		/* bmap */
 	NULL			/* truncate */
 };
-
-
-/* So  grep *  doesn't complain in the presence of directories. */
-
-static int msdos_dummy_read(struct inode *inode,struct file *filp,char *buf,
-    int count)
-{
-	static long last_warning = 0;
-
-	if (CURRENT_TIME-last_warning >= 10) {
-		printk("COMPATIBILITY WARNING: reading a directory\n");
-		last_warning = CURRENT_TIME;
-	}
-	return 0;
-}
-
 
 static int msdos_readdir(struct inode *inode,struct file *filp,
     struct dirent *dirent,int count)
@@ -99,18 +86,16 @@ static int msdos_readdir(struct inode *inode,struct file *filp,
 				put_fs_byte(c,i+dirent->d_name);
 			}
 			i = last;
-			if (de->ext[0] && de->ext[0] != ' ') {
-				put_fs_byte('.',i+dirent->d_name);
+			put_fs_byte('.',i+dirent->d_name);
+			i++;
+			for (i2 = 0; i2 < 3; i2++) {
+				if (!(c = de->ext[i2])) break;
+				if (c >= 'A' && c <= 'Z') c += 32;
+				if (c != ' ') last = i+1;
+				put_fs_byte(c,i+dirent->d_name);
 				i++;
-				for (i2 = 0; i2 < 3; i2++) {
-					if (!(c = de->ext[i2])) break;
-					if (c >= 'A' && c <= 'Z') c += 32;
-					put_fs_byte(c,i+dirent->d_name);
-					i++;
-					if (c != ' ') last = i;
-				}
 			}
-			if ((i = last)) {
+			if ((i = last) != 0) {
 				if (!strcmp(de->name,MSDOS_DOT))
 					ino = inode->i_ino;
 				else if (!strcmp(de->name,MSDOS_DOTDOT))

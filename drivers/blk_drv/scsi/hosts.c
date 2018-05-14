@@ -14,23 +14,22 @@
  */
 
 #include <linux/config.h>
-
-#ifdef CONFIG_SCSI
+#include "../blk.h"
 #include <linux/kernel.h>
 #include "scsi.h"
 
 #ifndef NULL 
-	#define NULL 0L
-#endif
-
-#ifdef FIGURE_MAX_SCSI_HOSTS
-	#define MAX_SCSI_HOSTS
+#define NULL 0L
 #endif
 
 #include "hosts.h"
 
 #ifdef CONFIG_SCSI_AHA1542
 #include "aha1542.h"
+#endif
+
+#ifdef CONFIG_SCSI_AHA1740
+#include "aha1740.h"
 #endif
 
 #ifdef CONFIG_SCSI_FUTURE_DOMAIN
@@ -46,7 +45,11 @@
 #endif
 
 #ifdef CONFIG_SCSI_7000FASST
-#include "7000fasst.h"
+#include "wd7000.h"
+#endif
+
+#ifdef CONFIG_SCSI_DEBUG
+#include "scsi_debug.h"
 #endif
 
 /*
@@ -71,52 +74,41 @@ static const char RCSid[] = "$Header: /usr/src/linux/kernel/blk_drv/scsi/RCS/hos
  *	idiocy.
  */
 
-#ifdef FIGURE_MAX_SCSI_HOSTS
-	#define BLANKIFY(what) BLANK_HOST
-#else
-	#define BLANKIFY(what) what
-#endif
-
 Scsi_Host scsi_hosts[] =
 	{
 #ifdef CONFIG_SCSI_AHA1542
-	BLANKIFY(AHA1542),
+	AHA1542,
 #endif
-
+#ifdef CONFIG_SCSI_AHA1740
+	AHA1740,
+#endif
 #ifdef CONFIG_SCSI_FUTURE_DOMAIN
-	BLANKIFY(FDOMAIN_16X0),
+	FDOMAIN_16X0,
 #endif
-
 #ifdef CONFIG_SCSI_SEAGATE
-	BLANKIFY(SEAGATE_ST0X),
+	SEAGATE_ST0X,
 #endif
 #ifdef CONFIG_SCSI_ULTRASTOR
-	BLANKIFY(ULTRASTOR_14F),
+	ULTRASTOR_14F,
 #endif
 #ifdef CONFIG_SCSI_7000FASST
-	BLANKIFY(WD7000FASST),
+	WD7000,
+#endif
+#ifdef CONFIG_SCSI_DEBUG
+	SCSI_DEBUG,
 #endif
 	};
 
-#ifdef FIGURE_MAX_SCSI_HOSTS
-	#undef MAX_SCSI_HOSTS
-	#define  MAX_SCSI_HOSTS  (sizeof(scsi_hosts) / sizeof(Scsi_Host))
-#endif
-
-#ifdef FIGURE_MAX_SCSI_HOSTS
-#include <stdio.h>
-void main (void)
-{	
-	printf("%d", MAX_SCSI_HOSTS);
-}
-#else
 /*
  *	Our semaphores and timeout counters, where size depends on MAX_SCSI_HOSTS here. 
  */
 
 volatile unsigned char host_busy[MAX_SCSI_HOSTS];
 volatile int host_timeout[MAX_SCSI_HOSTS];
-volatile Scsi_Cmnd *host_queue[MAX_SCSI_HOSTS]; 
+int last_reset[MAX_SCSI_HOSTS];
+Scsi_Cmnd *host_queue[MAX_SCSI_HOSTS]; 
+struct wait_queue *host_wait[MAX_SCSI_HOSTS] = {NULL,};   /* For waiting until host available*/
+int max_scsi_hosts = MAX_SCSI_HOSTS;  /* This is used by scsi.c */
 
 void scsi_init(void)
 	{
@@ -133,7 +125,6 @@ void scsi_init(void)
  */ 
 
 			host_busy[i] = 0;
-			host_timeout[i] = 0;
 			host_queue[i] = NULL;	
 			
 			if ((scsi_hosts[i].detect) &&  (scsi_hosts[i].present = scsi_hosts[i].detect(i)))
@@ -149,9 +140,44 @@ void scsi_init(void)
 
 	}
 
+#ifndef CONFIG_BLK_DEV_SD
+unsigned long sd_init(unsigned long memory_start, unsigned long memory_end){
+  return memory_start;
+};
+unsigned long sd_init1(unsigned long memory_start, unsigned long memory_end){
+  return memory_start;
+};
+void sd_attach(Scsi_Device * SDp){
+};
+int NR_SD=-1;
+int MAX_SD=0;
 #endif
-#else
-void main(void) {
-	printf("0\n");
-	}
-#endif	
+
+
+#ifndef CONFIG_BLK_DEV_SR
+unsigned long sr_init(unsigned long memory_start, unsigned long memory_end){
+  return memory_start;
+};
+unsigned long sr_init1(unsigned long memory_start, unsigned long memory_end){
+  return memory_start;
+};
+void sr_attach(Scsi_Device * SDp){
+};
+int NR_SR=-1;
+int MAX_SR=0;
+#endif
+
+
+#ifndef CONFIG_BLK_DEV_ST
+unsigned long st_init(unsigned long memory_start, unsigned long memory_end){
+  return memory_start;
+};
+unsigned long st_init1(unsigned long memory_start, unsigned long memory_end){
+  return memory_start;
+};
+void st_attach(Scsi_Device * SDp){
+};
+int NR_ST=-1;
+int MAX_ST=0;
+#endif
+

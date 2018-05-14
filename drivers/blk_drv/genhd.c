@@ -14,10 +14,14 @@
 #include <linux/fs.h>
 #include <linux/genhd.h>
 #include <linux/kernel.h>
+
 struct gendisk *gendisk_head = NULL;
 
 static int current_minor = 0;
 extern int *blk_size[];
+extern void rd_load(void);
+extern int ramdisk_size;
+
 /*
  * Create devices for each logical partition in an extended partition.
  * The logical partitions form a linked list, with each entry being
@@ -147,6 +151,29 @@ static void check_partition(struct gendisk *hd, unsigned int dev)
 	brelse(bh);
 }
 
+/* This function is used to re-read partition tables for removable disks.
+   Much of the cleanup from the old partition tables should have already been
+   done */
+
+/* This function will re-read the partition tables for a given device,
+and set things back up again.  There are some important caveats,
+however.  You must ensure that no one is using the device, and no one
+can start using the device while this function is being executed. */
+
+void resetup_one_dev(struct gendisk *dev, int drive)
+{
+	int i;
+	int start = drive<<dev->minor_shift;
+	int j = start + dev->max_p;
+	int major = dev->major << 8;
+
+	current_minor = 1+(drive<<dev->minor_shift);
+	check_partition(dev, major+(drive<<dev->minor_shift));
+
+	for (i=start ; i < j ; i++)
+		dev->sizes[i] = dev->part[i].nr_sects >> (BLOCK_SIZE_BITS - 9);
+}
+
 static void setup_dev(struct gendisk *dev)
 {
 	int i;
@@ -188,8 +215,9 @@ int sys_setup(void * BIOS)
 	if (nr)
 		printk("Partition table%s ok.\n\r",(nr>1)?"s":"");
 
-#ifdef RAMDISK
-	rd_load();
+#ifdef CONFIG_RAMDISK
+	if (ramdisk_size)
+		rd_load();
 #endif
 	mount_root();
 	return (0);

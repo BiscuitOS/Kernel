@@ -20,34 +20,17 @@
 #include <asm/system.h>
 #include <asm/io.h>
 
-static void pty_close(struct tty_struct * tty, struct file * filp);
-
-int pty_open(struct tty_struct *tty, struct file * filp)
-{
-	if (!tty || !tty->link)
-		return -ENODEV;
-	if (IS_A_PTY_MASTER(tty->line))
-		tty->write = mpty_write;
-	else
-		tty->write = spty_write;
-	tty->close = pty_close;
-	wake_up(&tty->read_q.proc_list);
-	if (filp->f_flags & O_NDELAY)
-		return 0;
-	while (!tty->link->count && !(current->signal & ~current->blocked))
-		interruptible_sleep_on(&tty->link->read_q.proc_list);
-	if (!tty->link->count)
-		return -ERESTARTSYS;
-	return 0;
-}
-
 static void pty_close(struct tty_struct * tty, struct file * filp)
 {
-	wake_up(&tty->read_q.proc_list);
-	wake_up(&tty->link->write_q.proc_list);
+	if (!tty)
+		return;
+	wake_up_interruptible(&tty->read_q.proc_list);
+	if (!tty->link)
+		return;
+	wake_up_interruptible(&tty->link->write_q.proc_list);
 	if (IS_A_PTY_MASTER(tty->line)) {
-		if (tty->link->pgrp > 0)
-			kill_pg(tty->link->pgrp,SIGHUP,1);
+		if (tty->link->session > 0)
+			kill_sl(tty->link->session,SIGHUP,1);
 	}
 }
 
@@ -68,7 +51,7 @@ static inline void pty_copy(struct tty_struct * from, struct tty_struct * to)
 			break;
 	}
 	TTY_READ_FLUSH(to);
-	wake_up(&from->write_q.proc_list);
+	wake_up_interruptible(&from->write_q.proc_list);
 }
 
 /*
@@ -76,14 +59,24 @@ static inline void pty_copy(struct tty_struct * from, struct tty_struct * to)
  * the write_queue. It copies the input to the output-queue of it's
  * slave.
  */
-void mpty_write(struct tty_struct * tty)
+static void pty_write(struct tty_struct * tty)
 {
 	if (tty->link)
 		pty_copy(tty,tty->link);
 }
 
-void spty_write(struct tty_struct * tty)
+int pty_open(struct tty_struct *tty, struct file * filp)
 {
-	if (tty->link)
-		pty_copy(tty,tty->link);
+	if (!tty || !tty->link)
+		return -ENODEV;
+	tty->write = tty->link->write = pty_write;
+	tty->close = tty->link->close = pty_close;
+	wake_up_interruptible(&tty->read_q.proc_list);
+	if (filp->f_flags & O_NDELAY)
+		return 0;
+	while (!tty->link->count && !(current->signal & ~current->blocked))
+		interruptible_sleep_on(&tty->link->read_q.proc_list);
+	if (!tty->link->count)
+		return -ERESTARTSYS;
+	return 0;
 }

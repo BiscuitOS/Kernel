@@ -19,11 +19,34 @@
     The Author may be reached as bir7@leland.stanford.edu or
     C/O Department of Mathematics; Stanford University; Stanford, CA 94305
 */
+/* $Id: arp.c,v 0.8.4.5 1992/12/12 19:25:04 bir7 Exp $ */
+/* $Log: arp.c,v $
+ * Revision 0.8.4.5  1992/12/12  19:25:04  bir7
+ * Cleaned up Log messages.
+ *
+ * Revision 0.8.4.4  1992/12/03  19:52:20  bir7
+ * Added paranoid queue checking.
+ *
+ * Revision 0.8.4.3  1992/11/15  14:55:30  bir7
+ * Put more cli/sti pairs in send_q and another sanity check
+ * in arp_queue.
+ *
+ * Revision 0.8.4.2  1992/11/10  10:38:48  bir7
+ * Change free_s to kfree_s and accidently changed free_skb to kfree_skb.
+ *
+ * Revision 0.8.4.1  1992/11/10  00:17:18  bir7
+ * version change only.
+ *
+ * Revision 0.8.3.3  1992/11/10  00:14:47  bir7
+ * Changed malloc to kmalloc and added Id and Log
+ *
+ */
 
 #include <linux/types.h>
 #include <linux/string.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
+#include <linux/config.h>
 
 #include <linux/socket.h>
 #include <netinet/in.h>
@@ -43,19 +66,50 @@
 #endif
 
 static struct arp_table *arp_table[ARP_TABLE_SIZE] ={NULL, };
-static struct sk_buff *arp_q=NULL;
+struct sk_buff *arp_q=NULL;
 
 /* this will try to retransmit everything on the queue. */
 static void
 send_arp_q(void)
 {
    struct sk_buff *skb;
+   struct sk_buff *skb2;
+
+   cli();
    if (arp_q == NULL) return;
 
    skb = arp_q;
    do {
-      if (!skb->dev->rebuild_header (skb+1, skb->dev))
-	{
+     if (skb->magic != ARP_QUEUE_MAGIC)
+       {
+	 printk ("arp.c skb with bad magic - %X: squashing queue\n");
+	 cli();
+	 arp_q = NULL;
+	 sti();
+	 return;
+       }
+     /* extra consistancy check. */
+     if (skb->next == NULL
+#ifdef CONFIG_MAX_16M
+	 || (unsigned long)(skb->next) > 16*1024*1024
+#endif
+	 )
+
+       {
+	 printk ("dev.c: *** bug bad skb->next, squashing queue \n");
+	 cli();
+	 arp_q = NULL;
+	 sti();
+	 return;
+       }
+
+     skb->magic = 0;
+     skb2=skb->next;
+
+     sti();
+     if (!skb->dev->rebuild_header (skb+1, skb->dev))
+       {
+	  cli();
 	   if (skb->next == skb)
 	     {
 		arp_q = NULL;
@@ -69,13 +123,16 @@ send_arp_q(void)
 	   skb->next = NULL;
 	   skb->prev = NULL;
 	   skb->arp  = 1;
+	  sti();
 	   skb->dev->queue_xmit (skb, skb->dev, 0);
-	   if (arp_q == NULL) break;
-	   skb = arp_q;
-	   continue;
+
+	  if (arp_q == NULL) break;
+
+	   cli();
 	}
-      skb=skb->next;
+      skb=skb2;
    } while (skb != arp_q);
+   sti();
 
 }
 
@@ -86,6 +143,11 @@ print_arp(struct arp *arp)
   unsigned long *lptr;
   unsigned char *ptr;
   PRINTK ("arp: \n");
+  if (arp == NULL)
+    {
+      PRINTK ("(null)\n");
+      return;
+    }
   PRINTK ("   hrd = %d\n",net16(arp->hrd));
   PRINTK ("   pro = %d\n",net16(arp->pro));
   PRINTK ("   hlen = %d plen = %d\n",arp->hlen, arp->plen);
@@ -152,13 +214,13 @@ arp_targetp(struct arp *arp)
 static  void
 arp_free (void *ptr, unsigned long len)
 {
-  free_s(ptr, len);
+  kfree_s(ptr, len);
 }
 
 static  void *
-arp_malloc (unsigned long amount)
+arp_malloc (unsigned long amount, int priority)
 {
-  return (malloc (amount));
+  return (kmalloc (amount, priority));
 }
 
 static  int
@@ -170,9 +232,11 @@ arp_response (struct arp *arp1, struct device *dev)
 
   /* get some mem and initialize it for the return trip. */
   skb = arp_malloc (sizeof (*skb) + sizeof (*arp2) +
-		    2*arp1->hlen + 2*arp1->plen + dev->hard_header_len);
+		    2*arp1->hlen + 2*arp1->plen + dev->hard_header_len,
+		    GFP_ATOMIC);
   if (skb == NULL) return (1);
 
+  skb->lock = 0;
   skb->mem_addr = skb;
   skb->mem_len = sizeof (*skb) + sizeof (*arp2) + 2*arp1->hlen + 
     2*arp1->plen + dev->hard_header_len;
@@ -278,7 +342,7 @@ create_arp (unsigned long paddr, unsigned char *addr, int hlen)
 {
   struct arp_table *apt;
   unsigned long hash;
-  apt = arp_malloc (sizeof (*apt));
+  apt = arp_malloc (sizeof (*apt), GFP_ATOMIC);
   if (apt == NULL) return (NULL);
 
   hash = net32(paddr) & (ARP_TABLE_SIZE - 1);
@@ -286,10 +350,10 @@ create_arp (unsigned long paddr, unsigned char *addr, int hlen)
   apt->hlen =hlen;
   memcpy (apt->hard, addr, hlen);
   apt->last_used=timer_seq;
-  sti();
-  apt->next = arp_table[hash];
-  arp_table[hash]=apt;
   cli();
+  apt->next = arp_table[hash];
+  arp_table[hash] = apt;
+  sti();
   return (apt);
 }
 
@@ -307,14 +371,14 @@ arp_rcv(struct sk_buff *skb, struct device *dev, struct packet_type *pt)
   /* if this test doesn't pass, something fishy is going on. */
   if (arp->hlen != dev->addr_len || dev->type !=NET16( arp->hrd))
     {
-       free_skb(skb, FREE_READ);
+       kfree_skb(skb, FREE_READ);
        return (0);
     }
 
   /* for now we will only deal with ip addresses. */
   if (arp->pro != NET16(ARP_IP_PROT) || arp->plen != 4)
     {
-       free_skb (skb, FREE_READ);
+       kfree_skb (skb, FREE_READ);
        return (0);
     }
 
@@ -329,7 +393,7 @@ arp_rcv(struct sk_buff *skb, struct device *dev, struct packet_type *pt)
 
   if (!my_ip_addr(*arp_targetp(arp)))
     {
-       free_skb (skb, FREE_READ);
+       kfree_skb (skb, FREE_READ);
        return (0);
     }
 
@@ -341,13 +405,13 @@ arp_rcv(struct sk_buff *skb, struct device *dev, struct packet_type *pt)
      
   if (arp->op != NET16(ARP_REQUEST))
     {
-       free_skb (skb, FREE_READ);
+       kfree_skb (skb, FREE_READ);
        return (0);
     }
 
   /* now we need to create a new packet. */
    ret = arp_response(arp, dev);
-   free_skb (skb, FREE_READ);
+   kfree_skb (skb, FREE_READ);
    return (ret);
 }
 
@@ -365,9 +429,10 @@ arp_snd (unsigned long paddr, struct device *dev, unsigned long saddr)
   if (apt == NULL) return;
 
   skb = arp_malloc (sizeof (*arp) + sizeof (*skb) + dev->hard_header_len +
-		    2*dev->addr_len+8);
+		    2*dev->addr_len+8, GFP_ATOMIC);
   if (skb == NULL) return;
   
+  skb->lock = 0;
   skb->sk = NULL;
   skb->mem_addr = skb;
   skb->mem_len = sizeof (*arp) + sizeof (*skb) + dev->hard_header_len +
@@ -427,18 +492,17 @@ arp_find(unsigned char *haddr, unsigned long paddr, struct device *dev,
 	 }
     }
 
-  /* if we didn't find an entry, we will try to 
-     send an arp packet. */
-  if (apt == NULL || after (timer_seq, apt->last_used+ARP_RES_TIME))
-    arp_snd(paddr,dev,saddr);
-
-  /* this assume haddr are atleast 4 bytes.
+  /* this assume haddr are at least 4 bytes.
      If this isn't true we can use a lookup
      table, one for every dev. */
   *(unsigned long *)haddr = paddr;
+
+  /* if we didn't find an entry, we will try to 
+     send an arp packet. */
+  arp_snd(paddr,dev,saddr);
+
   return (1);
 }
-
 
 void
 arp_add (unsigned long addr, unsigned char *haddr, struct device *dev)
@@ -461,11 +525,17 @@ arp_add_broad (unsigned long addr, struct device *dev)
   arp_add (addr,  dev->broadcast , dev);
 }
 
-
 void
 arp_queue(struct sk_buff *skb)
 {
-   cli();
+  cli();
+  if (skb->next != NULL)
+    {
+      sti();
+      printk ("arp.c: arp_queue skb already on queue magic=%X. \n",
+	      skb->magic);
+      return;
+    }
    if (arp_q == NULL)
      {
 	arp_q = skb;
@@ -473,13 +543,12 @@ arp_queue(struct sk_buff *skb)
 	skb->prev = skb;
      }
    else
-    {
-      skb->next = arp_q;
-      skb->prev = arp_q->prev;
-      skb->next->prev = skb;
-      skb->prev->next = skb;
-    }
-  sti();
-
+     {
+	skb->next = arp_q;
+	skb->prev = arp_q->prev;
+	skb->next->prev = skb;
+	skb->prev->next = skb;
+     }
+  skb->magic = ARP_QUEUE_MAGIC;
+   sti();
 }
-

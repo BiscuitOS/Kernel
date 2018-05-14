@@ -9,78 +9,75 @@
  */
 #include <linux/config.h>
 #include <linux/sched.h>
-#include <linux/minix_fs.h>
-#include <linux/proc_fs.h>
-#include <linux/ext_fs.h>
-#include <linux/msdos_fs.h>
 #include <linux/kernel.h>
 #include <linux/stat.h>
 #include <linux/errno.h>
 #include <linux/string.h>
+#include <linux/locks.h>
 
 #include <asm/system.h>
 #include <asm/segment.h>
+ 
+/*
+ * The definition of file_systems that used to be here is now in
+ * filesystems.c.  Now super.c contains no fs specific code.  -- jrs
+ */
 
-int sync_dev(int dev);
-void wait_for_keypress(void);
-void fcntl_init_locks(void);
+extern struct file_system_type file_systems[];
 
-/* set_bit uses setb, as gas doesn't recognize setc */
-#define set_bit(bitnr,addr) ({ \
-register int __res __asm__("ax"); \
-__asm__("bt %2,%3;setb %%al":"=a" (__res):"a" (0),"r" (bitnr),"m" (*(addr))); \
-__res; })
+extern void wait_for_keypress(void);
+extern void fcntl_init_locks(void);
 
 struct super_block super_block[NR_SUPER];
+
 /* this is initialized in init/main.c */
-int ROOT_DEV = 0;
-
-/* Move into include file later */
-
-static struct file_system_type file_systems[] = {
-	{minix_read_super,"minix"},
-	{ext_read_super,"ext"},
-	{msdos_read_super,"msdos"},
-	{proc_read_super,"proc"},
-	{NULL,NULL}
-};
-
-/* end of include file */
+dev_t ROOT_DEV = 0;
 
 struct file_system_type *get_fs_type(char *name)
 {
 	int a;
 	
+	if (!name)
+		return &file_systems[0];
 	for(a = 0 ; file_systems[a].read_super ; a++)
 		if (!strcmp(name,file_systems[a].name))
 			return(&file_systems[a]);
-	return(NULL);
+	return NULL;
 }
 
-void lock_super(struct super_block * sb)
+void __wait_on_super(struct super_block * sb)
 {
-	cli();
-	while (sb->s_lock)
-		sleep_on(&(sb->s_wait));
-	sb->s_lock = 1;
-	sti();
+	struct wait_queue wait = { current, NULL };
+
+	add_wait_queue(&sb->s_wait, &wait);
+repeat:
+	current->state = TASK_UNINTERRUPTIBLE;
+	if (sb->s_lock) {
+		schedule();
+		goto repeat;
+	}
+	remove_wait_queue(&sb->s_wait, &wait);
+	current->state = TASK_RUNNING;
 }
 
-void free_super(struct super_block * sb)
+void sync_supers(dev_t dev)
 {
-	sb->s_lock = 0;
-	wake_up(&(sb->s_wait));
+	struct super_block * sb;
+
+	for (sb = super_block + 0 ; sb < super_block + NR_SUPER ; sb++) {
+		if (!sb->s_dev)
+			continue;
+		wait_on_super(sb);
+		if (!sb->s_dev || !sb->s_dirt)
+			continue;
+		if (dev && (dev != sb->s_dev))
+			continue;
+		if (sb->s_op && sb->s_op->write_super)
+			sb->s_op->write_super(sb);
+	}
 }
 
-void wait_on_super(struct super_block * sb)
-{
-	cli();
-	while (sb->s_lock)
-		sleep_on(&(sb->s_wait));
-	sti();
-}
-
-struct super_block * get_super(int dev)
+static struct super_block * get_super(dev_t dev)
 {
 	struct super_block * s;
 
@@ -98,7 +95,7 @@ struct super_block * get_super(int dev)
 	return NULL;
 }
 
-void put_super(int dev)
+void put_super(dev_t dev)
 {
 	struct super_block * sb;
 
@@ -116,7 +113,7 @@ void put_super(int dev)
 		sb->s_op->put_super(sb);
 }
 
-static struct super_block * read_super(int dev,char *name,int flags,void *data)
+static struct super_block * read_super(dev_t dev,char *name,int flags,void *data)
 {
 	struct super_block * s;
 	struct file_system_type *type;
@@ -124,7 +121,8 @@ static struct super_block * read_super(int dev,char *name,int flags,void *data)
 	if (!dev)
 		return NULL;
 	check_disk_change(dev);
-	if ((s = get_super(dev)))
+	s = get_super(dev);
+	if (s)
 		return s;
 	if (!(type = get_fs_type(name))) {
 		printk("get fs type failed %s\n",name);
@@ -149,10 +147,46 @@ static struct super_block * read_super(int dev,char *name,int flags,void *data)
 	return s;
 }
 
-static int do_umount(int dev)
+/*
+ * Unnamed block devices are dummy devices used by virtual
+ * filesystems which don't use real block-devices.  -- jrs
+ */
+
+static char unnamed_dev_in_use[256];
+
+static dev_t get_unnamed_dev(void)
+{
+	static int first_use = 0;
+	int i;
+
+	if (first_use == 0) {
+		first_use = 1;
+		memset(unnamed_dev_in_use, 0, sizeof(unnamed_dev_in_use));
+		unnamed_dev_in_use[0] = 1; /* minor 0 (nodev) is special */
+	}
+	for (i = 0; i < 256; i++) {
+		if (!unnamed_dev_in_use[i]) {
+			unnamed_dev_in_use[i] = 1;
+			return (UNNAMED_MAJOR << 8) | i;
+		}
+	}
+	return 0;
+}
+
+static void put_unnamed_dev(dev_t dev)
+{
+	if (!dev)
+		return;
+	if (!unnamed_dev_in_use[dev]) {
+		printk("put_unnamed_dev: trying to free unused device\n");
+		return;
+	}
+	unnamed_dev_in_use[dev] = 0;
+}
+
+static int do_umount(dev_t dev)
 {
 	struct super_block * sb;
-	struct inode * inode;
 
 	if (dev==ROOT_DEV)
 		return -EBUSY;
@@ -160,46 +194,79 @@ static int do_umount(int dev)
 		return -ENOENT;
 	if (!sb->s_covered->i_mount)
 		printk("Mounted inode has i_mount=0\n");
-	for (inode = inode_table+0 ; inode < inode_table+NR_INODE ; inode++)
-		if (inode->i_dev==dev && inode->i_count) {
-			if (inode == sb->s_mounted && inode->i_count == 1)
-				continue;
-			else
-				return -EBUSY;
-		}
+	if (!fs_may_umount(dev, sb->s_mounted))
+		return -EBUSY;
 	sb->s_covered->i_mount=0;
 	iput(sb->s_covered);
 	sb->s_covered = NULL;
 	iput(sb->s_mounted);
 	sb->s_mounted = NULL;
 	if (sb->s_op && sb->s_op->write_super && sb->s_dirt)
-		sb->s_op->write_super (sb);
-        put_super(dev);
+		sb->s_op->write_super(sb);
+	put_super(dev);
 	return 0;
 }
 
-int sys_umount(char * dev_name)
+/*
+ * Now umount can handle mount points as well as block devices.
+ * This is important for filesystems which use unnamed block devices.
+ *
+ * There is a little kludge here with the dummy_inode.  The current
+ * vfs release functions only use the r_dev field in the inode so
+ * we give them the info they need without using a real inode.
+ * If any other fields are ever needed by any block device release
+ * functions, they should be faked here.  -- jrs
+ */
+
+int sys_umount(char * name)
 {
 	struct inode * inode;
-	int dev,retval;
+	dev_t dev;
+	int retval;
+	struct inode dummy_inode;
+	struct file_operations * fops;
 
 	if (!suser())
 		return -EPERM;
-	retval = namei(dev_name,&inode);
+	retval = namei(name,&inode);
 	if (retval)
 		return retval;
-	dev = inode->i_rdev;
-	if (!S_ISBLK(inode->i_mode)) {
+	if (S_ISBLK(inode->i_mode)) {
+		dev = inode->i_rdev;
+		if (IS_NODEV(inode)) {
+			iput(inode);
+			return -EACCES;
+		}
+	} else if (S_ISDIR(inode->i_mode)) {
+		if (!inode || !inode->i_sb || inode != inode->i_sb->s_mounted) {
+			iput(inode);
+			return -EINVAL;
+		}
+		dev = inode->i_sb->s_dev;
 		iput(inode);
-		return -ENOTBLK;
+		memset(&dummy_inode, 0, sizeof(dummy_inode));
+		dummy_inode.i_rdev = dev;
+		inode = &dummy_inode;
+	} else {
+		iput(inode);
+		return -EINVAL;
 	}
-	retval = do_umount(dev);
-	if (!retval && MAJOR(dev) < MAX_BLKDEV &&
-	    blkdev_fops[MAJOR(dev)]->release)
-		blkdev_fops[MAJOR(dev)]->release(inode,NULL);
-	iput(inode);
-	if (retval) return retval;
-        sync_dev(dev);
+	if (MAJOR(dev) >= MAX_BLKDEV) {
+		iput(inode);
+		return -ENXIO;
+	}
+	if (!(retval = do_umount(dev))) {
+		fops = blkdev_fops[MAJOR(dev)];
+		if (fops && fops->release)
+			fops->release(inode,NULL);
+		if (MAJOR(dev) == UNNAMED_MAJOR)
+			put_unnamed_dev(dev);
+	}
+	if (inode != &dummy_inode)
+		iput(inode);
+	if (retval)
+		return retval;
+	sync_dev(dev);
 	return 0;
 }
 
@@ -212,9 +279,9 @@ int sys_umount(char * dev_name)
  * We also have to flush all inode-data for this device, as the new mount
  * might need new info.
  */
-static int do_mount(int dev, const char * dir, char * type, int flags, void * data)
+static int do_mount(dev_t dev, const char * dir, char * type, int flags, void * data)
 {
-	struct inode * inode, * dir_i;
+	struct inode * dir_i;
 	struct super_block * sb;
 	int error;
 
@@ -229,21 +296,15 @@ static int do_mount(int dev, const char * dir, char * type, int flags, void * da
 		iput(dir_i);
 		return -EPERM;
 	}
-	for (inode = inode_table+0 ; inode < inode_table+NR_INODE ; inode++) {
-		if (inode->i_dev != dev)
-			continue;
-		if (inode->i_count || inode->i_dirt || inode->i_lock) {
-			iput(dir_i);
-			return -EBUSY;
-		}
-		inode->i_dev = 0;
+	if (!fs_may_mount(dev)) {
+		iput(dir_i);
+		return -EBUSY;
 	}
 	sb = read_super(dev,type,flags,data);
 	if (!sb || sb->s_covered) {
 		iput(dir_i);
 		return -EBUSY;
 	}
-	sb->s_flags = flags;
 	sb->s_covered = dir_i;
 	dir_i->i_mount = 1;
 	return 0;		/* we don't iput(dir_i) - see umount */
@@ -262,93 +323,109 @@ static int do_mount(int dev, const char * dir, char * type, int flags, void * da
  * are talking to an older version that didn't understand them.
  */
 int sys_mount(char * dev_name, char * dir_name, char * type,
-	unsigned long new_flags, void *data)
+	unsigned long new_flags, void * data)
 {
+	struct file_system_type * fstype;
 	struct inode * inode;
-	int dev;
+	struct file_operations * fops;
+	dev_t dev;
 	int retval;
-	char tmp[100],*t;
+	char tmp[100], * t;
 	int i;
 	unsigned long flags = 0;
 	unsigned long page = 0;
 
 	if (!suser())
 		return -EPERM;
-	retval = namei(dev_name,&inode);
-	if (retval)
-		return retval;
-	dev = inode->i_rdev;
-	if (!S_ISBLK(inode->i_mode))
-		retval = -EPERM;
-	else if (IS_NODEV(inode))
-		retval = -EACCES;
-	if (!retval && blkdev_fops[MAJOR(dev)]->open)
-		retval = blkdev_fops[MAJOR(dev)]->open(inode,NULL);
-	if (retval) {
-		iput(inode);
-		return retval;
-	}
-	if ((new_flags & 0xffff0000) == 0xC0ED0000) {
-		flags = new_flags & 0xffff;
-		if (data && (unsigned long) data < TASK_SIZE)
-			page = get_free_page(GFP_KERNEL);
-	}
-	if (page) {
-		i = TASK_SIZE - (unsigned long) data;
-		if (i < 0 || i > 4095)
-			i = 4095;
-		memcpy_fromfs((void *) page,data,i);
-	}
 	if (type) {
 		for (i = 0 ; i < 100 ; i++)
 			if (!(tmp[i] = get_fs_byte(type++)))
 				break;
 		t = tmp;
 	} else
-		t = "minix";
+		t = NULL;
+	if (!(fstype = get_fs_type(t)))
+		return -ENODEV;
+	t = fstype->name;
+	if (fstype->requires_dev) {
+		retval = namei(dev_name,&inode);
+		if (retval)
+			return retval;
+		if (!S_ISBLK(inode->i_mode)) {
+			iput(inode);
+			return -ENOTBLK;
+		}
+		if (IS_NODEV(inode)) {
+			iput(inode);
+			return -EACCES;
+		}
+		dev = inode->i_rdev;
+		if (MAJOR(dev) >= MAX_BLKDEV) {
+			iput(inode);
+			return -ENXIO;
+		}
+	}
+	else {
+		if (!(dev = get_unnamed_dev()))
+			return -EMFILE;
+		inode = NULL;
+	}
+	fops = blkdev_fops[MAJOR(dev)];
+	if (fops && fops->open) {
+		retval = fops->open(inode,NULL);
+		if (retval) {
+			iput(inode);
+			return retval;
+		}
+	}
+	if ((new_flags & 0xffff0000) == 0xC0ED0000) {
+		flags = new_flags & 0xffff;
+		if (data) {
+			if ((unsigned long) data >= TASK_SIZE) {
+				iput(inode);
+				return -EFAULT;
+			}
+			page = get_free_page(GFP_KERNEL);
+			i = TASK_SIZE - (unsigned long) data;
+			if (i < 0 || i > 4095)
+				i = 4095;
+			memcpy_fromfs((void *) page,data,i);
+		}
+	}
 	retval = do_mount(dev,dir_name,t,flags,(void *) page);
 	free_page(page);
-	if (retval && blkdev_fops[MAJOR(dev)]->release)
-		blkdev_fops[MAJOR(dev)]->release(inode,NULL);
+	if (retval && fops && fops->release)
+		fops->release(inode,NULL);
 	iput(inode);
 	return retval;
 }
 
 void mount_root(void)
 {
-	int i;
-	struct file_system_type * fs_type = file_systems;
-	struct super_block * p;
-	struct inode * mi;
+	struct file_system_type * fs_type;
+	struct super_block * sb;
+	struct inode * inode;
 
-	if (32 != sizeof (struct minix_inode))
-		panic("bad i-node size");
-	for(i=0;i<NR_FILE;i++)
-		file_table[i].f_count=0;
+	memset(file_table, 0, sizeof(file_table));
+	memset(super_block, 0, sizeof(super_block));
 	fcntl_init_locks();
 	if (MAJOR(ROOT_DEV) == 2) {
 		printk("Insert root floppy and press ENTER");
 		wait_for_keypress();
 	}
-	for(p = &super_block[0] ; p < &super_block[NR_SUPER] ; p++) {
-		p->s_dev = 0;
-		p->s_blocksize = 0;
-		p->s_lock = 0;
-		p->s_wait = NULL;
-		p->s_mounted = p->s_covered = NULL;
-	}
-	while (fs_type->read_super && fs_type->name) {
-		p = read_super(ROOT_DEV,fs_type->name,0,NULL);
-		if (p) {
-			mi = p->s_mounted;
-			mi->i_count += 3 ;	/* NOTE! it is logically used 4 times, not 1 */
-			p->s_covered = mi;
-			p->s_flags = 0;
-			current->pwd = mi;
-			current->root = mi;
+	for (fs_type = file_systems; fs_type->read_super; fs_type++) {
+		if (!fs_type->requires_dev)
+			continue;
+		sb = read_super(ROOT_DEV,fs_type->name,0,NULL);
+		if (sb) {
+			inode = sb->s_mounted;
+			inode->i_count += 3 ;	/* NOTE! it is logically used 4 times, not 1 */
+			sb->s_covered = inode;
+			sb->s_flags = 0;
+			current->pwd = inode;
+			current->root = inode;
 			return;
 		}
-		fs_type++;
 	}
 	panic("Unable to mount root");
 }

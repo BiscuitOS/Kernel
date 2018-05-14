@@ -19,9 +19,46 @@
     The Author may be reached as bir7@leland.stanford.edu or
     C/O Department of Mathematics; Stanford University; Stanford, CA 94305
 */
+/* $Id: dev.c,v 0.8.4.10 1992/12/12 19:25:04 bir7 Exp $ */
+/* $Log: dev.c,v $
+ * Revision 0.8.4.10  1992/12/12  19:25:04  bir7
+ * Cleaned up Log messages.
+ *
+ * Revision 0.8.4.9  1992/12/12  01:50:49  bir7
+ * *** empty log message ***
+ *
+ * Revision 0.8.4.8  1992/12/08  20:49:15  bir7
+ * Edited ctrl-h's out of log messages.
+ *
+ * Revision 0.8.4.7  1992/12/06  23:29:59  bir7
+ * Converted to using lower half interrupt routine.
+ *
+ * Revision 0.8.4.6  1992/12/05  21:35:53  bir7
+ * Updated dev->init type.
+ *
+ * Revision 0.8.4.5  1992/12/03  19:52:20  bir7
+ * Added paranoid queue checking.
+ *
+ * Revision 0.8.4.4  1992/11/18  15:38:03  bir7
+ * Fixed bug in copying packets and changed some printk's
+ *
+ * Revision 0.8.4.3  1992/11/15  14:55:30  bir7
+ * More sanity checks.
+ *
+ * Revision 0.8.4.2  1992/11/10  10:38:48  bir7
+ * Change free_s to kfree_s and accidently changed free_skb to kfree_skb.
+ *
+ * Revision 0.8.4.1  1992/11/10  00:17:18  bir7
+ * version change only.
+ *
+ * Revision 0.8.3.5  1992/11/10  00:14:47  bir7
+ * Changed malloc to kmalloc and added Id and Log
+ *
+ */
 
 #include <asm/segment.h>
 #include <asm/system.h>
+#include <linux/config.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
@@ -29,7 +66,6 @@
 #include <linux/mm.h>
 #include <linux/socket.h>
 #include <netinet/in.h>
-#include <asm/memory.h>
 #include "dev.h"
 #include "eth.h"
 #include "timer.h"
@@ -37,6 +73,7 @@
 #include "tcp.h"
 #include "sock.h"
 #include <linux/errno.h>
+#include <linux/interrupt.h>
 #include "arp.h"
 
 #undef DEV_DEBUG
@@ -120,8 +157,22 @@ void
 dev_queue_xmit (struct sk_buff *skb, struct device *dev, int pri)
 {
   struct sk_buff *skb2;
-  PRINTK ("eth_queue_xmit (skb=%X, dev=%X, pri = %d)\n", skb, dev, pri);
+  PRINTK ("dev_queue_xmit (skb=%X, dev=%X, pri = %d)\n", skb, dev, pri);
+
+  if (dev == NULL)
+    {
+      printk ("dev.c: dev_queue_xmit: dev = NULL\n");
+      return;
+    }
+  
   skb->dev = dev;
+  if (skb->next != NULL)
+    {
+      /* make sure we haven't missed an interrupt. */
+       dev->hard_start_xmit (NULL, dev);
+       return;
+    }
+
   if (pri < 0 || pri >= DEV_NUMBUFFS)
     {
        printk ("bad priority in dev_queue_xmit.\n");
@@ -133,18 +184,8 @@ dev_queue_xmit (struct sk_buff *skb, struct device *dev, int pri)
        return;
     }
 
-  if (skb->next != NULL)
-    {
-       printk ("retransmitted packet still on queue. \n");
-       return;
-    }
-
-  /* used to say it is not currently on a send list. */
-  skb->next = NULL;
-
-
   /* put skb into a bidirectional circular linked list. */
-  PRINTK ("eth_queue dev->buffs[%d]=%X\n",pri, dev->buffs[pri]);
+  PRINTK ("dev_queue_xmit dev->buffs[%d]=%X\n",pri, dev->buffs[pri]);
   /* interrupts should already be cleared by hard_start_xmit. */
   cli();
   if (dev->buffs[pri] == NULL)
@@ -161,6 +202,7 @@ dev_queue_xmit (struct sk_buff *skb, struct device *dev, int pri)
       skb->next->prev = skb;
       skb->prev->next = skb;
     }
+  skb->magic = DEV_QUEUE_MAGIC;
   sti();
 
 }
@@ -171,153 +213,164 @@ dev_queue_xmit (struct sk_buff *skb, struct device *dev, int pri)
 
    1 <- exit even if you have more packets.
    0 <- call me again no matter what.
-  -1 <- last packet not processed, try again. */
+  -1 <- last packet not processed, try again.
+
+  It's changed now 
+  1 <- exit I can't do any more
+  0 <- feed me more. 
+
+  */
+
+static struct sk_buff *backlog = NULL;
 
 int
-dev_rint(unsigned char *buff, unsigned long len, int flags,
+dev_rint(unsigned char *buff, long len, int flags,
 	 struct device * dev)
 {
    struct sk_buff *skb=NULL;
-   struct packet_type *ptype;
-   unsigned short type;
-   unsigned char flag =0;
    unsigned char *to;
    int amount;
 
-   /* try to grab some memory. */
-   if (len > 0 && buff != NULL)
+   if (dev == NULL || buff == NULL || len <= 0) return (1);
+
+   if (flags & IN_SKBUFF)
      {
-	skb = malloc (sizeof (*skb) + len);
-	skb->mem_len = sizeof (*skb) + len;
-	skb->mem_addr = skb;
-     }
-
-   /* firs we copy the packet into a buffer, and save it for later. */
-   if (buff != NULL && skb != NULL)
-     {
-	if ( !(flags & IN_SKBUFF))
-	  {
-	     to = (unsigned char *)(skb+1);
-	     while (len > 0)
-	       {
-		  amount = min (len, (unsigned long) dev->rmem_end -
-			        (unsigned long) buff);
-		  memcpy (to, buff, amount);
-		  len -= amount;
-		  buff += amount;
-		  to += amount;
-		  if ((unsigned long)buff == dev->rmem_end)
-		    buff = (unsigned char *)dev->rmem_start;
-	       }
-	  }
-	else
-	  {
-	     free_s (skb->mem_addr, skb->mem_len);
-	     skb = (struct sk_buff *)buff;
-	  }
-
-	skb->len = len;
-	skb->dev = dev;
-	skb->sk = NULL;
-
-	/* now add it to the dev backlog. */
-	cli();
-	if (dev-> backlog == NULL)
-	  {
-	     skb->prev = skb;
-	     skb->next = skb;
-	     dev->backlog = skb;
-	  }
-	else
-	  {
-	     skb ->prev = dev->backlog->prev;
-	     skb->next = dev->backlog;
-	     skb->next->prev = skb;
-	     skb->prev->next = skb;
-	  }
-	sti();
-	return (0);
-     }
-
-   if (skb != NULL) 
-     free_s (skb->mem_addr, skb->mem_len);
-
-   /* anything left to process? */
-
-   if (dev->backlog == NULL)
-     {
-	if (buff == NULL)
-	  {
-	     sti();
-	     return (1);
-	  }
-
-	if (skb != NULL)
-	  {
-	     sti();
-	     return (-1);
-	  }
-
-	sti();
-	printk ("dev_rint:Dropping packets due to lack of memory\n");
-	return (1);
-     }
-
-   skb= dev->backlog;
-   if (skb->next == skb)
-     {
-	dev->backlog = NULL;
+       skb = (struct sk_buff *)buff;
      }
    else
      {
-	dev->backlog = skb->next;
-	skb->next->prev = skb->prev;
-	skb->prev->next = skb->next;
+       skb = kmalloc (sizeof (*skb) + len, GFP_ATOMIC);
+       if (skb == NULL)
+	 {
+	   printk ("dev_rint:dropping packet due to lack of memory.\n");
+	   return (1);
+	 }
+       skb->lock = 0;
+       skb->mem_len = sizeof (*skb) + len;
+       skb->mem_addr = skb;
+       /* first we copy the packet into a buffer, and save it for later. */
+
+       to = (unsigned char *)(skb+1);
+       while (len > 0)
+	 {
+	   amount = min (len, (unsigned long) dev->rmem_end -
+			 (unsigned long) buff);
+	   memcpy (to, buff, amount);
+	   len -= amount;
+	   buff += amount;
+	   to += amount;
+	   if ((unsigned long)buff == dev->rmem_end)
+	     buff = (unsigned char *)dev->rmem_start;
+	 }
+     }
+
+   skb->len = len;
+   skb->dev = dev;
+   skb->sk = NULL;
+
+   /* now add it to the backlog. */
+   cli();
+   if (backlog == NULL)
+     {
+       skb->prev = skb;
+       skb->next = skb;
+       backlog = skb;
+     }
+   else
+     {
+       skb ->prev = backlog->prev;
+       skb->next = backlog;
+       skb->next->prev = skb;
+       skb->prev->next = skb;
      }
    sti();
+   
+   if (backlog != NULL)
+     bh_active |= 1 << INET_BH;
 
-   /* bump the pointer to the next structure. */
-   skb->h.raw = (unsigned char *)(skb+1) + dev->hard_header_len;
-   skb->len -= dev->hard_header_len;
+  return (0);
+}
 
-   /* convert the type to an ethernet type. */
-   type = dev->type_trans (skb, dev);
+void
+inet_bh(void *tmp)
+{
+  struct sk_buff *skb;
+  struct packet_type *ptype;
+  unsigned short type;
+  unsigned char flag =0;
+  static int in_bh=0;
 
-   /* if there get to be a lot of types we should changes this to
-      a bunch of linked lists like we do for ip protocols. */
-   for (ptype = ptype_base; ptype != NULL; ptype=ptype->next)
+  cli();
+  if (in_bh != 0)
+    {
+      sti();
+      return;
+    }
+  in_bh=1;
+  
+  /* anything left to process? */
+  
+  while (backlog != NULL)
      {
-	if (ptype->type == type)
-	  {
-	     struct sk_buff *skb2;
-	     /* copy the packet if we need to. */
-	     if (ptype->copy)
-	       {
-		  skb2 = malloc (skb->mem_len);
-		  if (skb2 == NULL) continue;
-		  memcpy (skb2, skb, skb->mem_len);
-		  skb2->mem_addr = skb2;
-	       }
-	     else
-	       {
-		  skb2 = skb;
-		  flag = 1;
-	       }
+       cli();
+       skb= backlog;
+       if (skb->next == skb)
+	 {
+	   backlog = NULL;
+	 }
+       else
+	 {
+	   backlog = skb->next;
+	   skb->next->prev = skb->prev;
+	   skb->prev->next = skb->next;
+	 }
+       sti();
+
+       /* bump the pointer to the next structure. */
+       skb->h.raw = (unsigned char *)(skb+1) + skb->dev->hard_header_len;
+       skb->len -= skb->dev->hard_header_len;
+
+       /* convert the type to an ethernet type. */
+       type = skb->dev->type_trans (skb, skb->dev);
+
+       /* if there get to be a lot of types we should changes this to
+	  a bunch of linked lists like we do for ip protocols. */
+       for (ptype = ptype_base; ptype != NULL; ptype=ptype->next)
+	 {
+	   if (ptype->type == type)
+	     {
+	       struct sk_buff *skb2;
+	       /* copy the packet if we need to. */
+	       if (ptype->copy)
+		 {
+		   skb2 = kmalloc (skb->mem_len, GFP_ATOMIC);
+		   if (skb2 == NULL) continue;
+		   memcpy (skb2, skb, skb->mem_len);
+		   skb2->mem_addr = skb2;
+		   skb2->lock = 0;
+		   skb2->h.raw = (void *)((unsigned long)skb2
+					  + (unsigned long)skb->h.raw
+					  - (unsigned long)skb);
+
+		 }
+	       else
+		 {
+		   skb2 = skb;
+		   flag = 1;
+		 }
 	       
-	     ptype->func (skb2, dev, ptype);
-	  }
-     }
+	       ptype->func (skb2, skb->dev, ptype);
+	     }
+	 }
 
-   if (!flag)
-     {
-	PRINTK ("discarding packet type = %X\n", type);
-	free_skb (skb, FREE_READ);
+       if (!flag)
+	 {
+	   PRINTK ("discarding packet type = %X\n", type);
+	   kfree_skb (skb, FREE_READ);
+	 }
      }
-
-     if (buff == NULL)
-       return (0);
-     else
-       return (-1);
+  in_bh = 0;
+  sti();
 }
 
 /* This routine is called when an device interface is ready to
@@ -338,30 +391,58 @@ dev_tint(unsigned char *buff,  struct device *dev)
 	{
 	  cli();
 	  skb=dev->buffs[i];
+	  if (skb->magic != DEV_QUEUE_MAGIC)
+	    {
+	      printk ("dev.c skb with bad magic-%X: squashing queue\n",
+		      skb->magic);
+	      cli();
+	      dev->buffs[i] = NULL;
+	      sti();
+	      continue;
+	    }
+
+	  skb->magic = 0;
+
 	  if (skb->next == skb)
 	    {
 	      dev->buffs[i] = NULL;
 	    }
 	  else
 	    {
-	      dev->buffs[i]=skb->next;
-	      skb->prev->next = skb->next;
-	      skb->next->prev = skb->prev;
+	      /* extra consistancy check. */
+	      if (skb->next == NULL
+#ifdef CONFIG_MAX_16M
+		  || (unsigned long)(skb->next) > 16*1024*1024
+#endif
+		  )
+
+		{
+		  printk ("dev.c: *** bug bad skb->next, squashing queue \n");
+		  cli();
+		  dev->buffs[i] = NULL;
+		}
+	      else
+		{
+		  dev->buffs[i]= skb->next;
+		  skb->prev->next = skb->next;
+		  skb->next->prev = skb->prev;
+		}
 	    }
 	  skb->next = NULL;
 	  skb->prev = NULL;
-	  sti();
-	  tmp = skb->len;
+
 	  if (!skb->arp)
 	    {
 	       if (dev->rebuild_header (skb+1, dev))
 		 {
-		    skb->dev = dev;
-		    arp_queue (skb);
-		    continue;
+		   skb->dev = dev;
+		   sti();
+		   arp_queue (skb);
+		   continue;
 		 }
 	    }
 	     
+	  tmp = skb->len;
 	  if (tmp <= dev->mtu)
 	    {
 	       if (dev->send_packet != NULL)
@@ -376,12 +457,17 @@ dev_tint(unsigned char *buff,  struct device *dev)
 	    }
 	  else
 	    {
-	       printk ("**** bug len bigger than mtu. \n");
-	    }
+	       printk ("dev.c:**** bug len bigger than mtu, "
+		       "squashing queue. \n");
+	       cli();
+	       dev->buffs[i] = NULL;
+	       continue;
 
+	    }
+	  sti();
 	  if (skb->free)
 	    {
-		  free_skb(skb, FREE_WRITE);
+		  kfree_skb(skb, FREE_WRITE);
 	    }
 
 	  if (tmp != 0)

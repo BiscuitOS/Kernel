@@ -87,17 +87,21 @@ struct serial_struct {
 #define PORT_16450	2
 #define PORT_16550	3
 #define PORT_16550A	4
+#define PORT_MAX	4
 
 /*
  * Definitions for async_struct (and serial_struct) flags field
  */
 #define ASYNC_NOSCRATCH	0x0001	/* 16XXX UART with no scratch register */
 #define ASYNC_FOURPORT  0x0002	/* Set OU1, OUT2 per AST Fourport settings */
+#define ASYNC_SAK	0x0004	/* Secure Attention Key (Orange book) */
 
 #define ASYNC_SPD_MASK	0x0030
 #define ASYNC_SPD_HI	0x0010	/* Use 56000 instead of 38400 bps */
 #define ASYNC_SPD_VHI	0x0020  /* Use 115200 instead of 38400 bps */
 #define ASYNC_SPD_CUST	0x0030  /* Use user-specified divisor */
+
+#define ASYNC_FLAGS	0x0037	/* Possible legal async flags */
 
 #define IS_A_CONSOLE(min)	(((min) & 0xC0) == 0x00)
 #define IS_A_SERIAL(min)	(((min) & 0xC0) == 0x40)
@@ -148,6 +152,7 @@ extern int get_tty_queue(struct tty_queue * queue);
 #define I_CRNL(tty)	_I_FLAG((tty),ICRNL)
 #define I_NOCR(tty)	_I_FLAG((tty),IGNCR)
 #define I_IXON(tty)	_I_FLAG((tty),IXON)
+#define I_IXANY(tty)	_I_FLAG((tty),IXANY)
 #define I_STRP(tty)	_I_FLAG((tty),ISTRIP)
 
 #define O_POST(tty)	_O_FLAG((tty),OPOST)
@@ -221,48 +226,24 @@ struct tty_struct {
  * Again, the low-level driver is free to ignore any of these, and has
  * to implement RQ_THREHOLD_LW for itself if it wants it.
  */
-#define SQ_THRESHOLD_LW	0
+#define SQ_THRESHOLD_LW	16
 #define SQ_THRESHOLD_HW 768
-#define RQ_THRESHOLD_LW 64
+#define RQ_THRESHOLD_LW 16
 #define RQ_THRESHOLD_HW 768
 
 /*
- * so that interrupts won't be able to mess up the
- * queues, copy_to_cooked must be atomic with repect
- * to itself, as must tty->write. These are the flag
- * bit-numbers. Use the set_bit() and clear_bit()
- * macros to make it all atomic.
- * 
  * These bits are used in the flags field of the tty structure.
+ * 
+ * So that interrupts won't be able to mess up the queues,
+ * copy_to_cooked must be atomic with repect to itself, as must
+ * tty->write.  Thus, you must use the inline functions set_bit() and
+ * clear_bit() to make things atomic.
  */
 #define TTY_WRITE_BUSY 0
 #define TTY_READ_BUSY 1
 #define TTY_CR_PENDING 2
 #define TTY_SQ_THROTTLED 3
 #define TTY_RQ_THROTTLED 4
-
-/*
- * These have to be done with inline assembly: that way the bit-setting
- * is guaranteed to be atomic. Both set_bit and clear_bit return 0
- * if the bit-setting went ok, != 0 if the bit already was set/cleared.
- */
-static inline int set_bit(int nr,int * addr)
-{
-	char ok;
-
-	__asm__ __volatile__("btsl %1,%2\n\tsetb %0":
-		"=q" (ok):"r" (nr),"m" (*(addr)));
-	return ok;
-}
-
-static inline int clear_bit(int nr, int * addr)
-{
-	char ok;
-
-	__asm__ __volatile__("btrl %1,%2\n\tsetnb %0":
-		"=q" (ok):"r" (nr),"m" (*(addr)));
-	return ok;
-}
 
 #define TTY_WRITE_FLUSH(tty) tty_write_flush((tty))
 #define TTY_READ_FLUSH(tty) tty_read_flush((tty))
@@ -303,13 +284,13 @@ extern int is_orphaned_pgrp(int pgrp);
 extern int is_ignored(int sig);
 extern int tty_signal(int sig, struct tty_struct *tty);
 extern int kill_pg(int pgrp, int sig, int priv);
+extern int kill_sl(int sess, int sig, int priv);
+extern void do_SAK(struct tty_struct *tty);
 
 /* tty write functions */
 
 extern void rs_write(struct tty_struct * tty);
 extern void con_write(struct tty_struct * tty);
-extern void mpty_write(struct tty_struct * tty);
-extern void spty_write(struct tty_struct * tty);
 
 /* serial.c */
 

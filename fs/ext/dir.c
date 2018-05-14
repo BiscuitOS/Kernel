@@ -20,15 +20,21 @@
 #include <linux/ext_fs.h>
 #include <linux/stat.h>
 
+static int ext_dir_read(struct inode * inode, struct file * filp, char * buf, int count)
+{
+	return -EISDIR;
+}
+
 static int ext_readdir(struct inode *, struct file *, struct dirent *, int);
 
 struct file_operations ext_dir_operations = {
 	NULL,			/* lseek - default */
-	NULL,			/* read */
+	ext_dir_read,		/* read */
 	NULL,			/* write - bad */
 	ext_readdir,		/* readdir */
 	NULL,			/* select - default */
 	NULL,			/* ioctl - default */
+	NULL,			/* mmap */
 	NULL,			/* no special open code */
 	NULL			/* no special release code */
 };
@@ -63,6 +69,8 @@ static int ext_readdir(struct inode * inode, struct file * filp,
 
 	if (!inode || !S_ISDIR(inode->i_mode))
 		return -EBADF;
+	if (filp->f_pos % 8 != 0)
+		return -EBADF;
 	while (filp->f_pos < inode->i_size) {
 		offset = filp->f_pos & 1023;
 		bh = ext_bread(inode,(filp->f_pos)>>BLOCK_SIZE_BITS,0);
@@ -72,18 +80,22 @@ static int ext_readdir(struct inode * inode, struct file * filp,
 		}
 		de = (struct ext_dir_entry *) (offset + bh->b_data);
 		while (offset < 1024 && filp->f_pos < inode->i_size) {
-			offset += de->rec_len;
-			filp->f_pos += de->rec_len;
-			if (de->rec_len < 8 || de->rec_len % 4 != 0 ||
-			    de->rec_len < de->name_len + 8) {
-				printk ("ext_readdir: bad directory entry\n");
+			if (de->rec_len < 8 || de->rec_len % 8 != 0 ||
+			    de->rec_len < de->name_len + 8 ||
+			    (de->rec_len + filp->f_pos - 1) / 1024 > (filp->f_pos / 1024)) {
+				printk ("ext_readdir: bad dir entry, skipping\n");
 				printk ("dev=%d, dir=%d, offset=%d, rec_len=%d, name_len=%d\n",
 					inode->i_dev, inode->i_ino, offset, de->rec_len, de->name_len);
-				return 0;
+				filp->f_pos += 1024-offset;
+				if (filp->f_pos > inode->i_size)
+					filp->f_pos = inode->i_size;
+				continue;
 			}
+			offset += de->rec_len;
+			filp->f_pos += de->rec_len;
 			if (de->inode) {
 				for (i = 0; i < de->name_len; i++)
-					if ((c = de->name[i]))
+					if ((c = de->name[i]) != 0)
 						put_fs_byte(c,i+dirent->d_name);
 					else
 						break;

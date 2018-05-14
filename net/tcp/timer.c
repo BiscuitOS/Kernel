@@ -19,6 +19,28 @@
   The Author may be reached as bir7@leland.stanford.edu or
   C/O Department of Mathematics; Stanford University; Stanford, CA 94305
   */
+
+/* $Id: timer.c,v 0.8.4.5 1992/12/12 19:25:04 bir7 Exp $ */
+/* $Log: timer.c,v $
+ * Revision 0.8.4.5  1992/12/12  19:25:04  bir7
+ * cleaned up Log messages.
+ *
+ * Revision 0.8.4.4  1992/12/12  01:50:49  bir7
+ * Fixed timeouts.
+ *
+ * Revision 0.8.4.3  1992/12/06  23:29:59  bir7
+ * Fixed bugs in timeout.
+ *
+ * Revision 0.8.4.2  1992/11/10  10:38:48  bir7
+ * Change free_s to kfree_s and accidently changed free_skb to kfree_skb.
+ *
+ * Revision 0.8.4.1  1992/11/10  00:17:18  bir7
+ * version change only.
+ *
+ * Revision 0.8.3.2  1992/11/10  00:14:47  bir7
+ * Changed malloc to kmalloc and added Id and Log
+ * */
+
 #include <linux/types.h>
 #include <linux/errno.h>
 #include <linux/socket.h>
@@ -32,7 +54,19 @@
 #include "tcp.h"
 #include "sock.h"
 #include "arp.h"
-#include "../kern_sock.h"
+
+#undef TIMER_DEBUG
+
+#ifdef PRINTK
+#undef PRINTK
+#endif
+
+
+#ifdef TIMER_DEBUG
+#define PRINTK printk
+#else
+#define PRINTK dummy_routine
+#endif
 
 static struct timer *timer_base=NULL;
 unsigned long seq_offset;
@@ -42,7 +76,7 @@ delete_timer (struct timer *t)
 {
    struct timer *tm;
    PRINTK ("delete_timer (t=%X)\n",t);
-   if (timer_base == NULL) return;
+   if (timer_base == NULL || t == NULL) return;
    cli();
    if (t == timer_base) 
      {
@@ -137,8 +171,9 @@ net_timer (void)
 	  }
 	sk->inuse = 1;
 	sti();
-	PRINTK ("net_timer: found sk=%X\n",sk);
 	why = sk->timeout;
+
+	PRINTK ("net_timer: found sk=%X why = %d\n",sk, why);
 
 	if (sk->keepopen)
 	  {
@@ -199,17 +234,20 @@ net_timer (void)
 	    case TIME_WRITE: /* try to retransmit. */
 	     if (sk->send_head != NULL)
 	       {
-		  sk->retransmits ++;
+		 PRINTK ("retransmitting.\n");
+		 sk->prot->retransmit (sk, 0);
+
 		  if (sk->retransmits > TCP_RETR1)
 		    {
-		       arp_destroy (sk->daddr);
-		       ip_route_check (sk->daddr);
+		      PRINTK ("timer.c TIME_WRITE time-out 1\n");
+		      arp_destroy (sk->daddr);
+		      ip_route_check (sk->daddr);
 		    }
 
 		  if (sk->retransmits > TCP_RETR2)
 		    {
+		      PRINTK ("timer.c TIME_WRITE time-out 2\n");
 		       sk->err = ETIMEDOUT;
-		       arp_destroy (sk->daddr);
 		       if (sk->state == TCP_FIN_WAIT1 ||
 			   sk->state == TCP_FIN_WAIT2 ||
 			   sk->state == TCP_LAST_ACK)
@@ -227,16 +265,13 @@ net_timer (void)
 			    break;
 			 }
 		    }
-		  else /* sk->retransmites .. */
-		    {
-		       sk->prot->retransmit (sk, 1);
-		       release_sock (sk);
-		    }
+		  release_sock (sk);
 		  break;
 	       }
+
 	     /* if we have stuff which hasn't been written because the
 		window is too small, fall throught to TIME_KEEPOPEN */
-	     if (sk->wfront == NULL)
+	     if (sk->wfront == NULL && sk->send_tmp == NULL)
 	       {
 		  release_sock (sk);
 		  break;
@@ -244,22 +279,36 @@ net_timer (void)
 
 	     /* this basically assumes tcp here. */
 	     /* exponential fall back. */
+	     /* The rtt should quickly get back to normal once
+		we start sending packets again. */
+
 	     sk->rtt *= 2;
-	     sk->time_wait.len = sk->rtt*2;
+	     sk->time_wait.len = sk->rtt;
 	     sk->timeout = TIME_WRITE;
+	     if (sk->prot->write_wakeup != NULL)
+	       sk->prot->write_wakeup(sk);
+
 	     reset_timer ((struct timer *)&sk->time_wait);
+	     release_sock (sk);
+	     break;
 
 	    case TIME_KEEPOPEN: /* send something to keep the
 				   connection open. */
+
+	     if (sk->prot->write_wakeup != NULL)
+	       sk->prot->write_wakeup(sk);
 	     sk->retransmits ++;
 	     if (sk->retransmits > TCP_RETR1)
 	       {
-		  arp_destroy (sk->daddr);
-		  ip_route_check (sk->daddr);
-		  
+		 PRINTK ("timer.c TIME_KEEPOPEN time-out 1\n");
+		 arp_destroy (sk->daddr);
+		 ip_route_check (sk->daddr);
+		 release_sock (sk);
+		 break;
 	       }
 	     if (sk->retransmits > TCP_RETR2)
 	       {
+		 PRINTK ("timer.c TIME_KEEPOPEN time-out 2\n");
 		  arp_destroy (sk->daddr);
 		  sk->err = ETIMEDOUT;
 		  if (sk->state == TCP_FIN_WAIT1 ||
@@ -276,13 +325,8 @@ net_timer (void)
 		    }
 		  break;
 	       }
-	     else /* sk->retransmits. */
-	       {
-		  if (sk->prot->write_wakeup != NULL)
-		    sk->prot->write_wakeup(sk);
-		  release_sock (sk);
-		  break;
-	       }
+	     release_sock (sk);
+	     break;
 	     
 	    default:
 	     release_sock(sk);

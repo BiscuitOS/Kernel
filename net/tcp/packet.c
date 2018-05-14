@@ -19,6 +19,26 @@
     The Author may be reached as bir7@leland.stanford.edu or
     C/O Department of Mathematics; Stanford University; Stanford, CA 94305
 */
+/* $Id: packet.c,v 0.8.4.5 1992/12/12 19:25:04 bir7 Exp $ */
+/* $Log: packet.c,v $
+ * Revision 0.8.4.5  1992/12/12  19:25:04  bir7
+ * Cleaned up Log messages.
+ *
+ * Revision 0.8.4.4  1992/12/12  01:50:49  bir7
+ * Fixed bug in call to err routine.
+ *
+ * Revision 0.8.4.3  1992/11/17  14:19:47  bir7
+ * *** empty log message ***
+ *
+ * Revision 0.8.4.2  1992/11/10  10:38:48  bir7
+ * Change free_s to kfree_s and accidently changed free_skb to kfree_skb.
+ *
+ * Revision 0.8.4.1  1992/11/10  00:17:18  bir7
+ * version change only.
+ *
+ * Revision 0.8.3.3  1992/11/10  00:14:47  bir7
+ * Changed malloc to kmalloc and added Id and Log
+ * */
 
 #include <linux/types.h>
 #include <linux/sched.h>
@@ -64,7 +84,7 @@ packet_rcv (struct sk_buff *skb, struct device *dev,  struct packet_type *pt)
 	   Assume that the other end will retransmit if it was
 	   important. */
 	skb->sk = NULL;
-	free_skb (skb, FREE_READ);
+	kfree_skb (skb, FREE_READ);
 	return (0);
 
      }
@@ -77,7 +97,7 @@ packet_rcv (struct sk_buff *skb, struct device *dev,  struct packet_type *pt)
    if (sk->rmem_alloc + skb->mem_len >= SK_RMEM_MAX)
      {
 	skb->sk = NULL;
-	free_skb (skb, FREE_READ);
+	kfree_skb (skb, FREE_READ);
 	return (0);
      }
 	     
@@ -121,13 +141,14 @@ packet_sendto (volatile struct sock *sk, unsigned char *from, int len,
      {
 	if (addr_len < sizeof (saddr))
 	  return (-EINVAL);
-	verify_area (usin, sizeof (saddr));
+/*	verify_area (usin, sizeof (saddr));*/
 	memcpy_fromfs (&saddr, usin, sizeof(saddr));
      }
    else
      return (-EINVAL);
 
-   skb = sk->prot->wmalloc (sk, len+sizeof (*skb) + sk->prot->max_header, 0);
+   skb = sk->prot->wmalloc (sk, len+sizeof (*skb) + sk->prot->max_header, 0,
+			    GFP_KERNEL);
    /* this shouldn't happen, but it could. */
    if (skb == NULL)
      {
@@ -135,6 +156,7 @@ packet_sendto (volatile struct sock *sk, unsigned char *from, int len,
 	print_sk (sk);
 	return (-EAGAIN);
      }
+   skb->lock = 0;
    skb->mem_addr = skb;
    skb->mem_len = len + sizeof (*skb) +sk->prot->max_header;
    skb->sk = sk;
@@ -146,14 +168,14 @@ packet_sendto (volatile struct sock *sk, unsigned char *from, int len,
 	sk->prot->wfree (sk, skb->mem_addr, skb->mem_len);
 	return (-ENXIO);
      }
-   verify_area (from, len);
+/*   verify_area (from, len);*/
    memcpy_fromfs (skb+1, from, len);
    skb->len = len;
    skb->next = NULL;
    if (dev->up)
      dev->queue_xmit (skb, dev, sk->priority);
    else
-     free_skb (skb, FREE_WRITE);
+     kfree_skb (skb, FREE_WRITE);
    return (len);
 }
 
@@ -170,7 +192,7 @@ packet_close (volatile struct sock *sk, int timeout)
    sk->inuse = 1;
    sk->state = TCP_CLOSE;
    dev_remove_pack ((struct packet_type *)sk->pair);
-   free_s ((void *)sk->pair, sizeof (struct packet_type));
+   kfree_s ((void *)sk->pair, sizeof (struct packet_type));
    release_sock (sk);
 }
 
@@ -178,7 +200,7 @@ static int
 packet_init (volatile struct sock *sk)
 {
    struct packet_type *p;
-   p = malloc (sizeof (*p));
+   p = kmalloc (sizeof (*p), GFP_KERNEL);
    if (p == NULL) return (-ENOMEM);
 
    p->func = packet_rcv;
@@ -207,6 +229,9 @@ packet_recvfrom (volatile struct sock *sk, unsigned char *to, int len,
 
 	if (len == 0) return (0);
 	if (len < 0) return (-EINVAL);
+
+	if (sk->shutdown & RCV_SHUTDOWN) return (0);
+
 	if (addr_len)
 	  {
 		  verify_area (addr_len, sizeof(*addr_len));
@@ -263,7 +288,7 @@ packet_recvfrom (volatile struct sock *sk, unsigned char *to, int len,
 
 	if (!(flags & MSG_PEEK))
 	  {
-	     free_skb (skb, FREE_READ);
+	     kfree_skb (skb, FREE_READ);
 	  }
 
 	release_sock (sk);
@@ -309,6 +334,7 @@ struct proto packet_prot =
   udp_select,
   NULL,
   packet_init,
+  NULL,
   128,
   0,
   {NULL,}

@@ -65,12 +65,17 @@ int lookup(struct inode * dir,const char * name, int len,
 		else if ((sb = dir->i_sb) && (dir == sb->s_mounted)) {
 			sb = dir->i_sb;
 			iput(dir);
-			if ((dir = sb->s_covered))
+			dir = sb->s_covered;
+			if (dir)
 				dir->i_count++;
 		}
 	}
 	if (!dir)
 		return -ENOENT;
+	if (!dir->i_op || !dir->i_op->lookup) {
+		iput(dir);
+		return -ENOTDIR;
+	}
  	if (!permission(dir,MAY_EXEC)) {
 		iput(dir);
 		return -EACCES;
@@ -78,10 +83,6 @@ int lookup(struct inode * dir,const char * name, int len,
 	if (!len) {
 		*result = dir;
 		return 0;
-	}
-	if (!dir->i_op || !dir->i_op->lookup) {
-		iput(dir);
-		return -ENOENT;
 	}
 	return dir->i_op->lookup(dir,name,len,result);
 }
@@ -143,6 +144,10 @@ static int dir_namei(const char * pathname, int * namelen, const char ** name,
 		error = follow_link(base,inode,0,0,&base);
 		if (error)
 			return error;
+	}
+	if (!base->i_op || !base->i_op->lookup) {
+		iput(base);
+		return -ENOTDIR;
 	}
 	*name = thisname;
 	*namelen = len;
@@ -221,12 +226,17 @@ int open_namei(const char * pathname, int flag, int mode,
 	if (error)
 		return error;
 	if (!namelen) {			/* special case: '/usr/' etc */
-		if (!(flag & 2)) {
-			*res_inode=dir;
-			return 0;
+		if (flag & 2) {
+			iput(dir);
+			return -EISDIR;
 		}
-		iput(dir);
-		return -EISDIR;
+		/* thanks to Paul Pluzhnikov for noticing this was missing.. */
+		if (!permission(dir,ACC_MODE(flag))) {
+			iput(dir);
+			return -EACCES;
+		}
+		*res_inode=dir;
+		return 0;
 	}
 	dir->i_count++;		/* lookup eats the dir */
 	error = lookup(dir,basename,namelen,&inode);
@@ -254,11 +264,12 @@ int open_namei(const char * pathname, int flag, int mode,
 		iput(inode);
 		return -EEXIST;
 	}
-	if ((error = follow_link(dir,inode,flag,mode,&inode)))
+	error = follow_link(dir,inode,flag,mode,&inode);
+	if (error)
 		return error;
 	if (S_ISDIR(inode->i_mode) && (flag & 2)) {
 		iput(inode);
-		return -EPERM;
+		return -EISDIR;
 	}
 	if (!permission(inode,ACC_MODE(flag))) {
 		iput(inode);
@@ -293,7 +304,7 @@ int open_namei(const char * pathname, int flag, int mode,
 	return 0;
 }
 
-int do_mknod(const char * filename, int mode, int dev)
+int do_mknod(const char * filename, int mode, dev_t dev)
 {
 	const char * basename;
 	int namelen, error;
@@ -321,7 +332,7 @@ int do_mknod(const char * filename, int mode, int dev)
 	return dir->i_op->mknod(dir,basename,namelen,mode,dev);
 }
 
-int sys_mknod(const char * filename, int mode, int dev)
+int sys_mknod(const char * filename, int mode, dev_t dev)
 {
 	if (S_ISFIFO(mode) || suser())
 		return do_mknod(filename,mode,dev);
@@ -373,7 +384,7 @@ int sys_rmdir(const char * name)
 		iput(dir);
 		return -EROFS;
 	}
-	if (!permission(dir,MAY_WRITE)) {
+	if (!permission(dir,MAY_WRITE | MAY_EXEC)) {
 		iput(dir);
 		return -EACCES;
 	}
@@ -401,7 +412,7 @@ int sys_unlink(const char * name)
 		iput(dir);
 		return -EROFS;
 	}
-	if (!permission(dir,MAY_WRITE)) {
+	if (!permission(dir,MAY_WRITE | MAY_EXEC)) {
 		iput(dir);
 		return -EACCES;
 	}

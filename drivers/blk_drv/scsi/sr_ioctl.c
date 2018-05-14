@@ -1,5 +1,3 @@
-#include <linux/config.h>
-#ifdef CONFIG_BLK_DEV_SR
 #include <linux/kernel.h>
 #include <linux/sched.h>
 #include <linux/fs.h>
@@ -9,6 +7,7 @@
 #include "../blk.h"
 #include "scsi.h"
 #include "sr.h"
+#include "scsi_ioctl.h"
 
 #include <linux/cdrom.h>
 
@@ -16,74 +15,52 @@
 /* The CDROM is fairly slow, so we need a little extra time */
 #define IOCTL_TIMEOUT 200
 
-static u_char 	sr_cmd[10];
-static u_char 	data_buffer[255];
-static u_char 	sense_buffer[255];
-static int 	the_result;
+extern int scsi_ioctl (Scsi_Device *dev, int cmd, void *arg);
 
-static struct wait_queue *sr_cmd_wait = NULL;   /* For waiting until cmd done*/
-static u_char 	sr_lock = 0;   /* To make sure that only one person is doing
-				  an ioctl at one time */
-static int 	target;
-
-extern int scsi_ioctl (int dev, int cmd, void *arg);
-
-static void lock_sr_ioctl( void )
+static void sr_ioctl_done(Scsi_Cmnd * SCpnt)
 {
-  /* We do not use wakeup here because there could conceivably be three
-     processes trying to get at the drive simultaneously, and we would
-     be screwed if that happened.
-     */
-
-	while (sr_lock);
-	sr_lock = 1;
-}
-
-static void unlock_sr_ioctl( void )
-{
-	sr_lock = 0;
-}
-
-static void sr_ioctl_done( int host, int result )
-{
-	the_result = result;
-	wake_up(&sr_cmd_wait);
+  struct request * req;
+  struct task_struct * p;
+  
+  req = &SCpnt->request;
+  req->dev = 0xfffe; /* Busy, but indicate request done */
+  
+  if ((p = req->waiting) != NULL) {
+    req->waiting = NULL;
+    p->state = TASK_RUNNING;
+    if (p->counter > current->counter)
+      need_resched = 1;
+  }
 }
 
 /* We do our own retries because we want to know what the specific
    error code is.  Normally the UNIT_ATTENTION code will automatically
    clear after one error */
 
-static int do_ioctl( void )
+static int do_ioctl(int target, unsigned char * sr_cmd)
 {
-	int retries = IOCTL_RETRIES;
-retry:     
+	Scsi_Cmnd * SCpnt;
+	int result;
 
-	the_result = -1;
+	SCpnt = allocate_device(NULL, scsi_CDs[target].device->index, 1);
+	scsi_do_cmd(SCpnt,
+		    (void *) sr_cmd, NULL, 255, sr_ioctl_done, 
+		    IOCTL_TIMEOUT, IOCTL_RETRIES);
 
-	scsi_do_cmd(scsi_CDs[target].device->host_no, scsi_CDs[target].device->id,
-		    (void *) sr_cmd, (void *) data_buffer, 255, sr_ioctl_done, 
-		    IOCTL_TIMEOUT, (void *) sense_buffer, 0);
 
-	while (the_result < 0) sleep_on(&sr_cmd_wait);
-
-	if(driver_byte(the_result) != 0 && 
-	   (sense_buffer[2] & 0xf) == UNIT_ATTENTION) {
-	  scsi_CDs[target].changed = 1;
-	  printk("Disc change detected.\n");
+	if (SCpnt->request.dev != 0xfffe){
+	  SCpnt->request.waiting = current;
+	  current->state = TASK_UNINTERRUPTIBLE;
+	  while (SCpnt->request.dev != 0xfffe) schedule();
 	};
 
-	if (the_result && retries)
-	        {
-		retries--;
-		goto retry;
-		}
+	result = SCpnt->result;
 
 /* Minimal error checking.  Ignore cases we know about, and report the rest. */
-	if(driver_byte(the_result) != 0)
-	  switch(sense_buffer[2] & 0xf) {
+	if(driver_byte(result) != 0)
+	  switch(SCpnt->sense_buffer[2] & 0xf) {
 	  case UNIT_ATTENTION:
-	    scsi_CDs[target].changed = 1;
+	    scsi_CDs[target].device->changed = 1;
 	    printk("Disc change detected.\n");
 	    break;
 	  case NOT_READY: /* This happens if there is no disc in drive */
@@ -97,102 +74,34 @@ retry:
 		   scsi_CDs[target].device->host_no, 
 		   scsi_CDs[target].device->id,
 		   scsi_CDs[target].device->lun,
-		   the_result);
+		   result);
 	    printk("\tSense class %x, sense error %x, extended sense %x\n",
-		   sense_class(sense_buffer[0]), 
-		   sense_error(sense_buffer[0]),
-		   sense_buffer[2] & 0xf);
+		   sense_class(SCpnt->sense_buffer[0]), 
+		   sense_error(SCpnt->sense_buffer[0]),
+		   SCpnt->sense_buffer[2] & 0xf);
 	    
 	};
-      	return the_result;
-}
-	
-/*
- * This function checks to see if the media has been changed in the
- * CDROM drive.  It is possible that we have already sensed a change,
- * or the drive may have sensed one and not yet reported it.  We must
- * be ready for either case. This function always reports the current
- * value of the changed bit.  If flag is 0, then the changed bit is reset.
- * This function could be done as an ioctl, but we would need to have
- * an inode for that to work, and we do not always have one.
- */
 
-int check_cdrom_media_change(int full_dev, int flag){
-	int retval;
-
-	lock_sr_ioctl();
-
-	target =  MINOR(full_dev);
-
-	if (target >= NR_SR) {
-		printk("CD-ROM request error: invalid device.\n");
-		unlock_sr_ioctl();
-		return 0;
-	};
-
-	sr_cmd[0] = TEST_UNIT_READY;
-	sr_cmd[1] = (scsi_CDs[target].device->lun << 5) & 0xe0;
-	sr_cmd[2] = sr_cmd[3] = sr_cmd[4] = sr_cmd[5] = 0;
-
-	retval = do_ioctl();
-
-	if(retval){ /* Unable to test, unit probably not ready.  This usually
-		     means there is no disc in the drive.  Mark as changed,
-		     and we will figure it out later once the drive is
-		     available again.  */
-
-	  scsi_CDs[target].changed = 1;
-	  unlock_sr_ioctl();
-	  return 1; /* This will force a flush, if called from
-		       check_disk_change */
-	};
-
-	retval = scsi_CDs[target].changed;
-	if(!flag) scsi_CDs[target].changed = 0;
-	unlock_sr_ioctl();
-
-	return retval;
+	result = SCpnt->result;
+	SCpnt->request.dev = -1; /* Deallocate */
+	wake_up(&scsi_devices[SCpnt->index].device_wait);
+	/* Wake up a process waiting for device*/
+      	return result;
 }
 
 int sr_ioctl(struct inode * inode, struct file * file, unsigned long cmd, unsigned long arg)
 {
+        u_char 	sr_cmd[10];
+
 	int dev = inode->i_rdev;
-	int result;
+	int result, target;
 
 	target = MINOR(dev);
 
 	switch (cmd) 
 		{
-		/* linux-specific */
-		case CDROMDOORUNLOCK:
-		        lock_sr_ioctl();
-
-		        sr_cmd[0] = ALLOW_MEDIUM_REMOVAL;
-			sr_cmd[1] = scsi_CDs[target].device->lun << 5;
-			sr_cmd[2] = sr_cmd[3] = sr_cmd[5] = 0;
-			sr_cmd[4] = SR_REMOVAL_ALLOW;
-
-			result = do_ioctl();
-
-			unlock_sr_ioctl();
-			return result;
-
-		case CDROMDOORLOCK:
-		        lock_sr_ioctl();
-
-		        sr_cmd[0] = ALLOW_MEDIUM_REMOVAL;
-			sr_cmd[1] = scsi_CDs[target].device->lun << 5;
-			sr_cmd[2] = sr_cmd[3] = sr_cmd[5] = 0;
-			sr_cmd[4] = SR_REMOVAL_PREVENT;
-
-			result = do_ioctl();
-
-			unlock_sr_ioctl();
-			return result;
-
 		/* Sun-compatible */
 		case CDROMPAUSE:
-			lock_sr_ioctl();
 
 			sr_cmd[0] = SCMD_PAUSE_RESUME;
 			sr_cmd[1] = scsi_CDs[target].device->lun << 5;
@@ -201,13 +110,10 @@ int sr_ioctl(struct inode * inode, struct file * file, unsigned long cmd, unsign
 			sr_cmd[8] = 1;
 			sr_cmd[9] = 0;
 
-			result = do_ioctl();
-
-			unlock_sr_ioctl();
+			result = do_ioctl(target, sr_cmd);
 			return result;
 
 		case CDROMRESUME:
-			lock_sr_ioctl();
 
 			sr_cmd[0] = SCMD_PAUSE_RESUME;
 			sr_cmd[1] = scsi_CDs[target].device->lun << 5;
@@ -216,16 +122,13 @@ int sr_ioctl(struct inode * inode, struct file * file, unsigned long cmd, unsign
 			sr_cmd[8] = 0;
 			sr_cmd[9] = 0;
 
-			result = do_ioctl();
+			result = do_ioctl(target, sr_cmd);
 
-			unlock_sr_ioctl();
 			return result;
 
 		case CDROMPLAYMSF:
 			{
 			struct cdrom_msf msf;
-			lock_sr_ioctl();
-
 			memcpy_fromfs(&msf, (void *) arg, sizeof(msf));
 
 			sr_cmd[0] = SCMD_PLAYAUDIO_MSF;
@@ -239,17 +142,13 @@ int sr_ioctl(struct inode * inode, struct file * file, unsigned long cmd, unsign
 			sr_cmd[8] = msf.cdmsf_frame1;
 			sr_cmd[9] = 0;
 
-			result = do_ioctl();
-
-			unlock_sr_ioctl();
+			result = do_ioctl(target, sr_cmd);
 			return result;
 			}
 
 		case CDROMPLAYTRKIND:
 			{
 			struct cdrom_ti ti;
-			lock_sr_ioctl();
-
 			memcpy_fromfs(&ti, (void *) arg, sizeof(ti));
 
 			sr_cmd[0] = SCMD_PLAYAUDIO_TI;
@@ -263,9 +162,8 @@ int sr_ioctl(struct inode * inode, struct file * file, unsigned long cmd, unsign
 			sr_cmd[8] = ti.cdti_ind1;
 			sr_cmd[9] = 0;
 
-			result = do_ioctl();
+			result = do_ioctl(target, sr_cmd);
 
-			unlock_sr_ioctl();
 			return result;
 			}
 
@@ -275,42 +173,30 @@ int sr_ioctl(struct inode * inode, struct file * file, unsigned long cmd, unsign
 			return -EINVAL;
 
 		case CDROMSTOP:
-		        lock_sr_ioctl();
-
 		        sr_cmd[0] = START_STOP;
 			sr_cmd[1] = ((scsi_CDs[target].device->lun) << 5) | 1;
 			sr_cmd[2] = sr_cmd[3] = sr_cmd[5] = 0;
 			sr_cmd[4] = 0;
 
-			result = do_ioctl();
-
-			unlock_sr_ioctl();
+			result = do_ioctl(target, sr_cmd);
 			return result;
 			
 		case CDROMSTART:
-		        lock_sr_ioctl();
-
 		        sr_cmd[0] = START_STOP;
 			sr_cmd[1] = ((scsi_CDs[target].device->lun) << 5) | 1;
 			sr_cmd[2] = sr_cmd[3] = sr_cmd[5] = 0;
 			sr_cmd[4] = 1;
 
-			result = do_ioctl();
-
-			unlock_sr_ioctl();
+			result = do_ioctl(target, sr_cmd);
 			return result;
 
 		case CDROMEJECT:
-		        lock_sr_ioctl();
-
 		        sr_cmd[0] = START_STOP;
 			sr_cmd[1] = ((scsi_CDs[target].device->lun) << 5) | 1;
 			sr_cmd[2] = sr_cmd[3] = sr_cmd[5] = 0;
 			sr_cmd[4] = 0x02;
 
-			result = do_ioctl();
-
-			unlock_sr_ioctl();
+			result = do_ioctl(target, sr_cmd);
 			return result;
 
 		case CDROMVOLCTRL:
@@ -327,5 +213,3 @@ int sr_ioctl(struct inode * inode, struct file * file, unsigned long cmd, unsign
 			return scsi_ioctl(scsi_CDs[target].device,cmd,(void *) arg);
 		}
 }
-
-#endif

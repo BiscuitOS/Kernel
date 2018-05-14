@@ -44,6 +44,37 @@
 /* Note:  My driver was full of bugs.  Basically if it works, credit
    Bob Harris.  If it's broken blame me.  -RAB */
 
+/* $Id: we.c,v 0.8.4.8 1992/12/12 19:25:04 bir7 Exp $ */
+/* $Log: we.c,v $
+ * Revision 0.8.4.8  1992/12/12  19:25:04  bir7
+ * cleaned up Log messages.
+ *
+ * Revision 0.8.4.7  1992/12/12  01:50:49  bir7
+ * made ring buffer volatile.
+ *
+ * Revision 0.8.4.6  1992/12/06  11:31:47  bir7
+ * Added missing braces in if statement.
+ *
+ * Revision 0.8.4.5  1992/12/05  21:35:53  bir7
+ * Added check for bad hardware returning runt packets.
+ *
+ * Revision 0.8.4.4  1992/12/03  19:52:20  bir7
+ * Added better queue checking.
+ *
+ * Revision 0.8.4.3  1992/11/15  14:55:30  bir7
+ * Put more checking in start_xmit to make sure packet doesn't disapear
+ * out from under us.
+ *
+ * Revision 0.8.4.2  1992/11/10  10:38:48  bir7
+ * Change free_s to kfree_s and accidently changed free_skb to kfree_skb.
+ *
+ * Revision 0.8.4.1  1992/11/10  00:17:18  bir7
+ * version change only.
+ *
+ * Revision 0.8.3.4  1992/11/10  00:14:47  bir7
+ * Changed malloc to kmalloc and added Id and Log
+ * */
+
 #include <linux/config.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
@@ -51,10 +82,10 @@
 #include <linux/tty.h>
 #include <linux/types.h>
 #include <linux/ptrace.h>
+#include <linux/string.h>
 #include <asm/system.h>
 #include <asm/segment.h>
 #include <asm/io.h>
-#include <asm/memory.h>
 #include <errno.h>
 #include <linux/fcntl.h>
 #include <netinet/in.h>
@@ -92,6 +123,8 @@ static unsigned char max_pages;		/* Board memory/256 */
 static unsigned char wd_debug = 0;	/* turns on/off debug messages */
 static unsigned char dconfig = WD_DCONFIG;	/* default data configuration */
 static int tx_aborted = 0;			/* Empties tx bit bucket */
+
+static void wd_trs (struct device *);
 
 static  int
 max(int a, int b)
@@ -172,12 +205,18 @@ wd8003_open(struct device *dev)
 
 /* This routine just calls the ether rcv_int. */
 static  int
-wdget(struct wd_ring *ring, struct device *dev)
+wdget(volatile struct wd_ring *ring, struct device *dev)
 {
   unsigned char *fptr;
-  unsigned long len;
+  long len;
   fptr = (unsigned char *)(ring +1);
+  /* some people have bugs in their hardware which let
+     ring->count be 0.  It shouldn't happen, but we
+     should check for it. */
   len = ring->count-4;
+  if (len < 56)
+    printk ("we.c: Hardware problem, runt packet. ring->count = %d\n",
+	    ring->count);
   return (dev_rint(fptr, len, 0, dev));
 }
 
@@ -186,24 +225,47 @@ wd8003_start_xmit(struct sk_buff *skb, struct device *dev)
 {
   unsigned char cmd;
   int len;
+
   cli();
   if (status & TRS_BUSY)
     {
        /* put in a time out. */
        if (jiffies - dev->trans_start < 30)
-	 return (1);
+	 {
+	   return (1);
+	 }
+
        printk ("wd8003 transmit timed out. \n");
     }
   status |= TRS_BUSY;
-  sti();
+
+  if (skb == NULL)
+    {
+      sti();
+      wd_trs(dev);
+      return (0);
+    }
+
+  /* this should check to see if it's been killed. */
+  if (skb->dev != dev)
+    {
+      sti();
+      return (0);
+    }
+
 
   if (!skb->arp)
     {
       if ( dev->rebuild_header (skb+1, dev)) 
 	{
-	   skb->dev = dev;
-	   arp_queue (skb);
+	  cli();
+	  if (skb->dev == dev)
+	    {
+	      arp_queue (skb);
+	    }
+	   cli (); /* arp_queue turns them back on. */
 	   status &= ~TRS_BUSY;
+	   sti();
 	   return (0);
 	}
     }
@@ -217,7 +279,7 @@ wd8003_start_xmit(struct sk_buff *skb, struct device *dev)
   len=max(len, ETHER_MIN_LEN); /* actually we should zero out
 				  the extra memory. */
 /*  printk ("start_xmit len - %d\n", len);*/
-  cli();
+
   cmd=inb_p(WD_COMM);
   cmd &= ~CPAGE;
   outb_p(cmd, WD_COMM);
@@ -234,7 +296,7 @@ wd8003_start_xmit(struct sk_buff *skb, struct device *dev)
   
   if (skb->free)
     {
-	    free_skb (skb, FREE_WRITE);
+	    kfree_skb (skb, FREE_WRITE);
     }
 
   return (0);
@@ -307,7 +369,7 @@ wd_rcv( struct device *dev )
    unsigned char   bnd;	/* Last packet page end */
    unsigned char   cur;	/* Future packet page start */
    unsigned char   cmd;	/* Command register save */
-   struct wd_ring *ring;
+   volatile struct wd_ring *ring;
    int		   done=0;
    
    /* Calculate next packet location */
@@ -322,7 +384,7 @@ wd_rcv( struct device *dev )
 	  {
 
 	     /* Position pointer to packet in card ring buffer */
-	     ring = (struct wd_ring *) (dev->mem_start + (pkt << 8));
+	     ring = (volatile struct wd_ring *) (dev->mem_start + (pkt << 8));
 	     
 	     /* Ensure a valid packet */
 	     if( ring->status & 1 )
@@ -496,7 +558,7 @@ wd8003_interrupt(int reg_ptr)
 	status |= IN_INT;
 
 	do{ /* find out who called */ 
-
+	  sti();
 		/* Check for overrunning receive buffer first */
 		if ( ( isr = inb_p( ISR ) ) & OVW ) {	/* Receiver overwrite warning */
 			stats.rx_over_errors++;
@@ -538,8 +600,10 @@ wd8003_interrupt(int reg_ptr)
 				printk("\nwd8013 - network cable open!");
 			}
 			if (errors & FU )
-				stats.tx_fifo_errors++;
-				printk("\nwd8013 - TX FIFO underrun!");
+			  {
+			    stats.tx_fifo_errors++;
+			    printk("\nwd8013 - TX FIFO underrun!");
+			  }
 
 			/* Cannot do anymore - empty the bit bucket */
 			tx_aborted = 1;
@@ -565,7 +629,7 @@ wd8003_interrupt(int reg_ptr)
 		if( ++count > max_pages + 1 ){
 			printk("\nwd8013_interrupt - infinite loop detected, isr = x%x, count = %d", isr, count );
 		}
-
+		cli();
 	} while( inb_p( ISR ) != 0 );
 
 	status &= ~IN_INT;
@@ -580,7 +644,7 @@ static struct sigaction wd8003_sigaction =
    NULL
 };
 
-void
+int
 wd8003_init(struct device *dev)
 {
   unsigned char csum;
@@ -596,7 +660,7 @@ wd8003_init(struct device *dev)
 
       /* make sure no one can attempt to open the device. */
       status = OPEN;
-      return;
+      return (1);
     }
   printk("wd8013");
   /* initialize the rest of the device structure. */
@@ -675,5 +739,7 @@ wd8003_init(struct device *dev)
   if (irqaction (dev->irq, &wd8003_sigaction))
     {
        printk ("Unable to get IRQ%d for wd8013 board\n", dev->irq);
+       return (1);
     }
+  return (0);
 }

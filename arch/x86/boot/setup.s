@@ -154,29 +154,6 @@ is_disk1:
 	int	$0x11		# int 0x11: equipment determination
 	test	$0x04, %al	# check if pointing device installed
 	jz	no_psmouse
-	mov	$0xc201, %ax	# reset pointing device
-	int	$0x15
-	jc	no_psmouse
-	mov	$0x03, %bh	# 3 bytes/packet
-	mov	$0xc205, %ax	# initialize pointing device
-	int	$0x15
-	jc	no_psmouse
-	mov	$0xc203, %ax	# set resolution
-	mov	$0x03, %bh	# 8 counts/mm
-	int	$0x15
-	jc	no_psmouse
-	mov	$0xc206, %ax	# set scaling
-	mov	$0x02, %bh	# 2:1 scaling
-	int	$0x15
-	jc	no_psmouse
-	mov	$0xc202, %ax	# set sample rate
-	mov	$0x05, %bh	# 100 reports per second
-	int	$0x15
-	jc	no_psmouse
-	mov	$0x01, %bh
-	mov	$0xc200, %ax	# enable pointing device
-	int	$0x15
-	jc	no_psmouse
 #	mov	$0xaa, %ds:0x1ff	# device present
 no_psmouse:
 
@@ -279,11 +256,19 @@ end_move:
 	ljmp	$sel_cs0, $0	# jmp offset 0 of code segment 0 in gdt
 
 # This routine checks that the keyboard command queue is empty
+# (after emptying the output buffers)
+#
 # No timeout is used - if this hangs there is something wrong with
 # the machine, and we probably couldn't proceed anyway.
 empty_8042:
 	.word	0x00eb,0x00eb
 	in	$0x64, %al	# 8042 status port
+	test	$0x1, %al	# output buffer?
+	jz	no_output
+	.word	0x00eb, 0x00eb
+	in	$0x60, %al	# read it
+	jmp	empty_8042
+no_output:
 	test	$2, %al		# is input buffer full?
 	jnz	empty_8042	# yes - loop
 	ret

@@ -14,6 +14,7 @@ obj-y += ioctl.o
 obj-y += select.o
 obj-y += fifo.o
 obj-y += locks.o
+obj-y += filesystems.o
 obj-$(CONFIG_FS_MINIX)  += minix/
 obj-$(CONFIG_FS_EXT)    += ext/
 obj-$(CONFIG_FS_MSDOS)  += msdos/

@@ -4,3 +4,4 @@ obj-$(CONFIG_FS_PROC) += inode.o
 obj-$(CONFIG_FS_PROC) += link.o
 obj-$(CONFIG_FS_PROC) += mem.o
 obj-$(CONFIG_FS_PROC) += root.o
+obj-$(CONFIG_FS_PROC) += array.o

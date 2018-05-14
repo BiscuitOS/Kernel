@@ -1,149 +1,98 @@
 #
-# Makefile for the linux kernel block device drivers.
+# Makefile for kernel/blk_drv/scsi
 #
 # Note! Dependencies are done automagically by 'make dep', which also
-# removes any old dependencies. DON'T put your own dependencies here
-# unless it's something special (ie not a .c file).
+# removes any old dependencies. DONT put your own dependencies here
+# unless its something special (ie not a .c file).
 #
 
-#DEBUG = -DDEBUG=0xffffffff -DDEBUG_NO_CMD
+SCSI_HOSTS := 0
+SCSI_OBJS :=
 
-AR	=ar
-AS	=as
-LD	=ld
-LDFLAGS	=-s -x
-CC	=cc
+ifdef CONFIG_SCSI
 
-CPP	=cc -E -nostdinc -I../../../include
+SCSI_OBJS := hosts.o scsi.o scsi_ioctl.o
 
-.c.s:
-	$(CC) -nostdinc $(CFLAGS) $(DEBUG) \
-	-S -o $*.s $<
-.s.o:
-	$(AS) -c -o $*.o $<
-.c.o:
-	$(CC) -nostdinc -I../../../include $(CFLAGS) $(DEBUG) \
-	-c -o $*.o $<
+ifdef CONFIG_BLK_DEV_ST
+SCSI_OBJS := $(SCSI_OBJS) st.o
+endif
 
-LOWLEVELCSRC = aha1542.c seagate.c ultrastor.c 
-LOWLEVELHSRC = aha1542.c seagate.h ultrastor.h
- 
-CSRC = hosts.c sd.c st.c scsi.c $(LOWLEVELCSRC)
-HSRC = hosts.h sd.h st.h scsi.h $(LOWLEVELHSRC)
+ifdef CONFIG_BLK_DEV_SD
+SCSI_OBJS := $(SCSI_OBJS) sd.o sd_ioctl.o
+endif
 
-OBJS =	scsi.o hosts.o scsi_ioctl.o sd.o sd_ioctl.o st.o st_ioctl.o \
-	aha1542.o seagate.o ultrastor.o
+ifdef CONFIG_BLK_DEV_SR
+SCSI_OBJS := $(SCSI_OBJS) sr.o sr_ioctl.o
+endif
 
-all: scsi.a
+ifdef CONFIG_SCSI_AHA1542
+SCSI_OBJS := $(SCSI_OBJS) aha1542.o
+SCSI_HOSTS := 1+$(SCSI_HOSTS)
+endif
 
-config.out : config.in ../../../include/linux/config.h
-	rm -f  foo.c
-	ln -s config.in foo.c	
-	$(CPP) foo.c | grep '\.o' > config.out 
-	rm foo.c
+ifdef CONFIG_SCSI_AHA1740
+SCSI_OBJS := $(SCSI_OBJS) aha1740.o
+SCSI_HOSTS := 1+$(SCSI_HOSTS)
+endif
 
-figure : hosts.h ../../../include/linux/config.h hosts.c config.out
-	$(CC) -I../../../include -DFIGURE_MAX_SCSI_HOSTS hosts.c -o figure
+ifdef CONFIG_SCSI_FUTURE_DOMAIN
+SCSI_OBJS := $(SCSI_OBJS) fdomain.o
+SCSI_HOSTS := 1+$(SCSI_HOSTS)
+endif
 
-max_hosts.h : figure
-	(echo "#ifndef _MAX_HOSTS_H"; \
-	 echo "#define _MAX_HOSTS_H"; \
-	 echo "#define MAX_SCSI_HOSTS `./figure`";\
-	 echo "#endif") > tmp_max
-	cp tmp_max max_hosts.h
-		
-scsi.a: $(OBJS)
-	$(AR) rcs scsi.a $(OBJS)
+ifdef CONFIG_SCSI_ULTRASTOR
+SCSI_OBJS := $(SCSI_OBJS) ultrastor.o
+SCSI_HOSTS := 1+$(SCSI_HOSTS)
+endif
+
+ifdef CONFIG_SCSI_7000FASST
+SCSI_OBJS := $(SCSI_OBJS) wd7000.o
+SCSI_HOSTS := 1+$(SCSI_HOSTS)
+endif
+
+ifdef CONFIG_SCSI_SEAGATE
+SCSI_OBJS := $(SCSI_OBJS) seagate.o
+SCSI_HOSTS := 1+$(SCSI_HOSTS)
+else
+ifdef CONFIG_SCSI_FD_88x
+SCSI_OBJS := $(SCSI_OBJS) seagate.o
+SCSI_HOSTS := 1+$(SCSI_HOSTS)
+endif
+endif
+
+ifdef CONFIG_SCSI_DEBUG
+SCSI_OBJS := $(SCSI_OBJS) scsi_debug.o
+SCSI_HOSTS := 1+$(SCSI_HOSTS)
+endif
+
+scsi.a: $(SCSI_OBJS)
+	rm -f scsi.a
+	$(AR) rcs scsi.a $(SCSI_OBJS)
 	sync
 
-scsi.shar: Makefile scsi.doc $(CSRC) $(HSRC) ../ll_rw_blk.c ../blk.h all.diff
-	(cd ..; shar scsi/scsi.doc scsi/Makefile scsi/*.{c,h} scsi/all.diff blk.h ll_rw_blk.c) > scsi.shar;
+else
+
+scsi.a:
+	rm -f scsi.a
+	@echo No SCSI drivers configured
+	$(AR) rcs scsi.a
+
+endif
+
+CFLAGS := $(CFLAGS) "-DMAX_SCSI_HOSTS=($(SCSI_HOSTS))"
+
+seagate.o: seagate.c
+	$(CC) -Wall -I$(KERNELHDRS) -c seagate.c 
 
 clean:
-	rm -f core *.o *.a tmp_make tmp_max figure config.out Makefile.tag max_hosts.h
-
-seagate.s seagate.o : seagate.c ../../../include/linux/config.h \
-  ../../../include/linux/config.dist.h ../../../include/linux/sched.h \
-  ../../../include/linux/head.h ../../../include/linux/fs.h \
-  ../../../include/sys/types.h ../../../include/linux/mm.h \
-  ../../../include/linux/kernel.h ../../../include/signal.h \
-  ../../../include/sys/param.h ../../../include/sys/time.h \
-  ../../../include/time.h ../../../include/sys/resource.h \
-  ../../../include/linux/string.h seagate.h scsi.h hosts.h max_hosts.h 
-	cc -nostdinc -I../../../include -Wall -c seagate.c $(DEBUG) 
+	rm -f core *.o *.a *.s
 
 dep:
-	sed '/\#\#\# Dependencies/q' < Makefile > tmp_make
-	(for i in *.c ;do echo -n `echo $$i | sed 's,\.c,\.s,'`" "; \
-		$(CPP) -M $$i;done) >> tmp_make
-	cp tmp_make Makefile
+	$(CPP) -M *.c > .depend
 
-### Dependencies:
-aha1542.s aha1542.o : aha1542.c ../../../include/linux/config.h ../../../include/linux/config_rel.h \
-  ../../../include/linux/config_ver.h ../../../include/linux/config.dist.h ../../../include/linux/kernel.h \
-  ../../../include/linux/head.h ../../../include/linux/string.h ../../../include/asm/system.h \
-  ../../../include/asm/io.h scsi.h hosts.h max_hosts.h aha1542.h 
-hosts.s hosts.o : hosts.c ../../../include/linux/config.h ../../../include/linux/config_rel.h \
-  ../../../include/linux/config_ver.h ../../../include/linux/config.dist.h ../../../include/linux/kernel.h \
-  scsi.h hosts.h max_hosts.h aha1542.h seagate.h ultrastor.h 
-scsi.s scsi.o : scsi.c ../../../include/linux/config.h ../../../include/linux/config_rel.h \
-  ../../../include/linux/config_ver.h ../../../include/linux/config.dist.h ../../../include/asm/system.h \
-  ../../../include/linux/sched.h ../../../include/linux/head.h ../../../include/linux/fs.h \
-  ../../../include/sys/types.h ../../../include/sys/dirent.h ../../../include/limits.h \
-  ../../../include/linux/mm.h ../../../include/linux/kernel.h ../../../include/signal.h \
-  ../../../include/sys/param.h ../../../include/sys/time.h ../../../include/time.h \
-  ../../../include/sys/resource.h ../../../include/linux/timer.h ../../../include/linux/string.h \
-  scsi.h hosts.h max_hosts.h sd.h st.h 
-scsi_ioctl.s scsi_ioctl.o : scsi_ioctl.c ../../../include/linux/config.h ../../../include/linux/config_rel.h \
-  ../../../include/linux/config_ver.h ../../../include/linux/config.dist.h ../../../include/errno.h \
-  ../../../include/asm/io.h ../../../include/asm/segment.h ../../../include/asm/system.h \
-  ../../../include/linux/kernel.h ../../../include/linux/sched.h ../../../include/linux/head.h \
-  ../../../include/linux/fs.h ../../../include/sys/types.h ../../../include/sys/dirent.h \
-  ../../../include/limits.h ../../../include/linux/mm.h ../../../include/signal.h \
-  ../../../include/sys/param.h ../../../include/sys/time.h ../../../include/time.h \
-  ../../../include/sys/resource.h ../../../include/linux/string.h scsi.h hosts.h \
-  max_hosts.h scsi_ioctl.h 
-sd.s sd.o : sd.c ../../../include/linux/config.h ../../../include/linux/config_rel.h \
-  ../../../include/linux/config_ver.h ../../../include/linux/config.dist.h ../../../include/linux/string.h \
-  ../../../include/linux/fs.h ../../../include/sys/types.h ../../../include/sys/dirent.h \
-  ../../../include/limits.h ../../../include/linux/kernel.h ../../../include/linux/sched.h \
-  ../../../include/linux/head.h ../../../include/linux/mm.h ../../../include/signal.h \
-  ../../../include/sys/param.h ../../../include/sys/time.h ../../../include/time.h \
-  ../../../include/sys/resource.h scsi.h sd.h ../blk.h 
-sd_ioctl.s sd_ioctl.o : sd_ioctl.c ../../../include/linux/config.h ../../../include/linux/config_rel.h \
-  ../../../include/linux/config_ver.h ../../../include/linux/config.dist.h ../../../include/linux/kernel.h \
-  ../../../include/linux/sched.h ../../../include/linux/head.h ../../../include/linux/fs.h \
-  ../../../include/sys/types.h ../../../include/sys/dirent.h ../../../include/limits.h \
-  ../../../include/linux/mm.h ../../../include/signal.h ../../../include/sys/param.h \
-  ../../../include/sys/time.h ../../../include/time.h ../../../include/sys/resource.h \
-  scsi.h sd.h 
-seagate.s seagate.o : seagate.c ../../../include/linux/config.h ../../../include/linux/config_rel.h \
-  ../../../include/linux/config_ver.h ../../../include/linux/config.dist.h ../../../include/linux/sched.h \
-  ../../../include/linux/head.h ../../../include/linux/fs.h ../../../include/sys/types.h \
-  ../../../include/sys/dirent.h ../../../include/limits.h ../../../include/linux/mm.h \
-  ../../../include/linux/kernel.h ../../../include/signal.h ../../../include/sys/param.h \
-  ../../../include/sys/time.h ../../../include/time.h ../../../include/sys/resource.h \
-  seagate.h scsi.h hosts.h max_hosts.h 
-st.s st.o : st.c ../../../include/linux/config.h ../../../include/linux/config_rel.h \
-  ../../../include/linux/config_ver.h ../../../include/linux/config.dist.h scsi.h \
-  st.h ../../../include/linux/fs.h ../../../include/sys/types.h ../../../include/sys/dirent.h \
-  ../../../include/limits.h ../../../include/linux/kernel.h ../../../include/linux/sched.h \
-  ../../../include/linux/head.h ../../../include/linux/mm.h ../../../include/signal.h \
-  ../../../include/sys/param.h ../../../include/sys/time.h ../../../include/time.h \
-  ../../../include/sys/resource.h ../blk.h 
-st_ioctl.s st_ioctl.o : st_ioctl.c ../../../include/linux/config.h ../../../include/linux/config_rel.h \
-  ../../../include/linux/config_ver.h ../../../include/linux/config.dist.h ../../../include/linux/kernel.h \
-  ../../../include/linux/sched.h ../../../include/linux/head.h ../../../include/linux/fs.h \
-  ../../../include/sys/types.h ../../../include/sys/dirent.h ../../../include/limits.h \
-  ../../../include/linux/mm.h ../../../include/signal.h ../../../include/sys/param.h \
-  ../../../include/sys/time.h ../../../include/time.h ../../../include/sys/resource.h \
-  st.h scsi.h 
-ultrastor.s ultrastor.o : ultrastor.c ../../../include/linux/config.h ../../../include/linux/config_rel.h \
-  ../../../include/linux/config_ver.h ../../../include/linux/config.dist.h ../../../include/stddef.h \
-  ../../../include/linux/string.h ../../../include/linux/sched.h ../../../include/linux/head.h \
-  ../../../include/linux/fs.h ../../../include/sys/types.h ../../../include/sys/dirent.h \
-  ../../../include/limits.h ../../../include/linux/mm.h ../../../include/linux/kernel.h \
-  ../../../include/signal.h ../../../include/sys/param.h ../../../include/sys/time.h \
-  ../../../include/time.h ../../../include/sys/resource.h ../../../include/linux/hdreg.h \
-  ../../../include/asm/system.h ../../../include/asm/io.h ../../../include/asm/segment.h \
-  ultrastor.h scsi.h hosts.h max_hosts.h 
+#
+# include a dependency file if one exists
+#
+ifeq (.depend,$(wildcard .depend))
+include .depend
+endif

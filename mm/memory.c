@@ -36,6 +36,7 @@
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/string.h>
+#include <linux/types.h>
 
 unsigned long high_memory = 0;
 
@@ -55,6 +56,8 @@ __asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024))
 
 unsigned short * mem_map = NULL;
 
+#define CODE_SPACE(addr,p) ((addr) < (p)->end_code)
+
 /*
  * oom() prints a message (so that the user knows why the process died),
  * and gives the process an untrappable SIGSEGV.
@@ -62,9 +65,9 @@ unsigned short * mem_map = NULL;
 void oom(struct task_struct * task)
 {
 	printk("\nout of memory\n");
-	task->sigaction[SIGSEGV-1].sa_handler = NULL;
-	task->blocked &= ~(1<<(SIGSEGV-1));
-	send_sig(SIGSEGV,task,1);
+	task->sigaction[SIGKILL-1].sa_handler = NULL;
+	task->blocked &= ~(1<<(SIGKILL-1));
+	send_sig(SIGKILL,task,1);
 }
 
 static void free_one_table(unsigned long * page_dir)
@@ -147,7 +150,7 @@ void free_page_tables(struct task_struct * tsk)
 	}
 	tsk->tss.cr3 = (unsigned long) swapper_pg_dir;
 	if (tsk == current)
-		__asm__ ("movl %0,%%cr3"::"a" (tsk->tss.cr3));
+		__asm__ __volatile__("movl %0,%%cr3"::"a" (tsk->tss.cr3));
 	page_dir = (unsigned long *) pg_dir;
 	for (i = 0 ; i < 1024 ; i++,page_dir++)
 		free_one_table(page_dir);
@@ -257,7 +260,7 @@ int unmap_page_range(unsigned long from, unsigned long size)
 			poff = 0;
 		}
 		for (pc = pcnt; pc--; page_table++) {
-			if ((page = *page_table)) {
+			if ((page = *page_table) != 0) {
 				--current->rss;
 				*page_table = 0;
 				if (1 & page)
@@ -334,7 +337,7 @@ int remap_page_range(unsigned long from, unsigned long to, unsigned long size,
 			if (permiss & 4)
 				mask |= 1;
 
-			if ((page = *page_table)) {
+			if ((page = *page_table) != 0) {
 				*page_table = 0;
 				--current->rss;
 				if (1 & page)
@@ -371,8 +374,9 @@ int remap_page_range(unsigned long from, unsigned long to, unsigned long size,
  * It returns the physical address of the page gotten, 0 if
  * out of memory (either when trying to access page-table or
  * page.)
+ * if wp = 1 the page will be write protected
  */
-static unsigned long put_page(struct task_struct * tsk,unsigned long page,unsigned long address)
+static unsigned long put_page(struct task_struct * tsk,unsigned long page,unsigned long address,int wp)
 {
 	unsigned long tmp, *page_table;
 
@@ -405,7 +409,7 @@ static unsigned long put_page(struct task_struct * tsk,unsigned long page,unsign
 		*page_table = 0;
 		invalidate();
 	}
-	*page_table = page | PAGE_ACCESSED | 7;
+	*page_table = page | PAGE_ACCESSED | 5 | (!wp << 1);
 /* no need for invalidate */
 	return page;
 }
@@ -446,31 +450,71 @@ unsigned long put_dirty_page(struct task_struct * tsk, unsigned long page, unsig
 	return page;
 }
 
-static void un_wp_page(unsigned long * table_entry, struct task_struct * task)
+/*
+ * This routine handles present pages, when users try to write
+ * to a shared page. It is done by copying the page to a new address
+ * and decrementing the shared-page counter for the old page.
+ *
+ * Fixed the routine to repeat a bit more: this is slightly slower,
+ * but there were race-conditions in the old code..
+ */
+void do_wp_page(unsigned long error_code, unsigned long address,
+	struct task_struct * tsk, unsigned long user_esp)
 {
-	unsigned long old_page;
+	unsigned long pde, pte, old_page, dirty;
 	unsigned long new_page = 0;
-	unsigned long dirty;
 
+	/* check code space write */
+	if (tsk == current && tsk->executable && CODE_SPACE(address, current)) {
+		/* don't send SIGSEGV when in kernel or v86 mode */
+		if (user_esp)
+			send_sig(SIGSEGV, tsk, 1);
+		/* Note that we still do the copy-on-write: if the process catches
+		 * SIGSEGV we want things to work..
+		 */
+	}
 repeat:
-	old_page = *table_entry;
-	if (!(old_page & 1)) {
+	pde = tsk->tss.cr3 + ((address>>20) & 0xffc);
+	pte = *(unsigned long *) pde;
+	if (!(pte & PAGE_PRESENT)) {
 		if (new_page)
 			free_page(new_page);
 		return;
 	}
+	if ((pte & 7) != 7 || pte >= high_memory) {
+		printk("do_wp_page: bogus page-table at address %08x (%08x)\n",address,pte);
+		*(unsigned long *) pde = BAD_PAGETABLE | 7;
+		send_sig(SIGKILL, tsk, 1);
+		if (new_page)
+			free_page(new_page);
+		return;
+	}
+	pte &= 0xfffff000;
+	pte += (address>>10) & 0xffc;
+	old_page = *(unsigned long *) pte;
+	if (!(old_page & PAGE_PRESENT)) {
+		if (new_page)
+			free_page(new_page);
+		return;
+	}
+	if (old_page >= high_memory) {
+		printk("do_wp_page: bogus page at address %08x (%08x)\n",address,old_page);
+		*(unsigned long *) pte = BAD_PAGE | 7;
+		send_sig(SIGKILL, tsk, 1);
+		if (new_page)
+			free_page(new_page);
+		return;
+	}
+	if (old_page & PAGE_RW) {
+		if (new_page)
+			free_page(new_page);
+		return;
+	}
+	tsk->min_flt++;
 	dirty = old_page & PAGE_DIRTY;
 	old_page &= 0xfffff000;
-	if (old_page >= high_memory) {
-		if (new_page)
-			free_page(new_page);
-		printk("bad page address\n\r");
-		send_sig(SIGSEGV, task, 1);
-		*table_entry = BAD_PAGE | 7;
-		return;
-	}
 	if (mem_map[MAP_NR(old_page)]==1) {
-		*table_entry |= 2;
+		*(unsigned long *) pte |= 2;
 		invalidate();
 		if (new_page)
 			free_page(new_page);
@@ -482,58 +526,17 @@ repeat:
 		copy_page(old_page,new_page);
 	else {
 		new_page = BAD_PAGE;
-		oom(task);
+		oom(tsk);
 	}
-	*table_entry = new_page | dirty | PAGE_ACCESSED | 7;
+	*(unsigned long *) pte = new_page | dirty | PAGE_ACCESSED | 7;
 	free_page(old_page);
 	invalidate();
-}	
-
-/*
- * This routine handles present pages, when users try to write
- * to a shared page. It is done by copying the page to a new address
- * and decrementing the shared-page counter for the old page.
- *
- * If it's in code space we exit with a segment error.
- */
-void do_wp_page(unsigned long error_code, unsigned long address,
-	struct task_struct * tsk, unsigned long user_esp)
-{
-	unsigned long pde, pte, page;
-
-	pde = tsk->tss.cr3 + ((address>>20) & 0xffc);
-	pte = *(unsigned long *) pde;
-	if ((pte & 3) != 3) {
-		printk("do_wp_page: bogus page-table at address %08x (%08x)\n",address,pte);
-		*(unsigned long *) pde = BAD_PAGETABLE | 7;
-		send_sig(SIGSEGV, tsk, 1);
-		return;
-	}
-	pte &= 0xfffff000;
-	pte += (address>>10) & 0xffc;
-	page = *(unsigned long *) pte;
-	if ((page & 3) != 1) {
-		printk("do_wp_page: bogus page at address %08x (%08x)\n",address,page);
-		*(unsigned long *) pte = BAD_PAGE | 7;
-		send_sig(SIGSEGV, tsk, 1);
-		return;
-	}
-	tsk->min_flt++;
-	un_wp_page((unsigned long *) pte, tsk);
 }
 
 void write_verify(unsigned long address)
 {
-	unsigned long page;
-
-	page = *(unsigned long *) (current->tss.cr3 + ((address>>20) & 0xffc));
-	if (!(page & PAGE_PRESENT))
-		return;
-	page &= 0xfffff000;
-	page += ((address>>10) & 0xffc);
-	if ((3 & *(unsigned long *) page) == 1)  /* non-writeable, present */
-		un_wp_page((unsigned long *) page, current);
-	return;
+	if (address < TASK_SIZE)
+		do_wp_page(1,address,current,0);
 }
 
 static void get_empty_page(struct task_struct * tsk, unsigned long address)
@@ -545,7 +548,7 @@ static void get_empty_page(struct task_struct * tsk, unsigned long address)
 		oom(tsk);
 		tmp = BAD_PAGE;
 	}
-	if (!put_page(tsk,tmp,address))
+	if (!put_page(tsk,tmp,address,0))
 		free_page(tmp);
 }
 
@@ -583,23 +586,25 @@ static int try_to_share(unsigned long address, struct task_struct * tsk,
 		return 0;
 	if (mem_map[MAP_NR(phys_addr)] & MAP_PAGE_RESERVED)
 		return 0;
+/* share them: write-protect */
+	*(unsigned long *) from_page &= ~2;
+	invalidate();
+	phys_addr >>= PAGE_SHIFT;
+	mem_map[phys_addr]++;
 	to = *(unsigned long *) to_page;
 	if (!(to & 1)) {
 		to = get_free_page(GFP_KERNEL);
-		if (!to)
+		if (!to) {
+			mem_map[phys_addr]--;
 			return 0;
+		}
 		*(unsigned long *) to_page = to | PAGE_ACCESSED | 7;
 	}
 	to &= 0xfffff000;
 	to_page = to + ((address>>10) & 0xffc);
 	if (1 & *(unsigned long *) to_page)
 		panic("try_to_share: to_page already exists");
-/* share them: write-protect */
-	*(unsigned long *) from_page &= ~2;
 	*(unsigned long *) to_page = *(unsigned long *) from_page;
-	invalidate();
-	phys_addr >>= PAGE_SHIFT;
-	mem_map[phys_addr]++;
 	return 1;
 }
 
@@ -657,7 +662,7 @@ repeat:
 		*p = page | PAGE_ACCESSED | 7;
 		return *p;
 	}
-	if ((page = get_free_page(GFP_KERNEL)))
+	if ((page = get_free_page(GFP_KERNEL)) != 0)
 		goto repeat;
 	oom(current);
 	*p = BAD_PAGETABLE | 7;
@@ -679,10 +684,8 @@ void do_no_page(unsigned long error_code, unsigned long address,
 	page &= 0xfffff000;
 	page += (address >> 10) & 0xffc;
 	tmp = *(unsigned long *) page;
-	if (tmp & 1) {
-		printk("bogus do_no_page\n");
+	if (tmp & 1)
 		return;
-	}
 	++tsk->rss;
 	if (tmp) {
 		++tsk->maj_flt;
@@ -731,13 +734,17 @@ void do_no_page(unsigned long error_code, unsigned long address,
 	page = get_free_page(GFP_KERNEL);
 	if (!page) {
 		oom(current);
-		put_page(tsk,BAD_PAGE,address);
+		put_page(tsk,BAD_PAGE,address,0);
 		return;
 	}
 	if (block) {
 		for (i=0 ; i<4 ; block++,i++)
 			nr[i] = bmap(inode,block);
 		bread_page(page,inode->i_dev,nr);
+	}
+	if (share_page(tsk,inode,address)) {
+		free_page(page);
+		return;
 	}
 	i = address + PAGE_SIZE - tsk->end_data;
 	if (i > PAGE_SIZE-1)
@@ -747,10 +754,76 @@ void do_no_page(unsigned long error_code, unsigned long address,
 		tmp--;
 		*(char *)tmp = 0;
 	}
-	if (put_page(tsk,page,address))
+	if (put_page(tsk,page,address,CODE_SPACE(address, tsk)))
 		return;
 	free_page(page);
 	oom(current);
+}
+
+/*
+ * This routine handles page faults.  It determines the address,
+ * and the problem, and then passes it off to one of the appropriate
+ * routines.
+ */
+void do_page_fault(unsigned long *esp, unsigned long error_code)
+{
+	unsigned long address;
+	unsigned long user_esp = 0;
+	unsigned int bit;
+	extern void die_if_kernel();
+
+	/* get the address */
+	__asm__("movl %%cr2,%0":"=r" (address));
+	if (address < TASK_SIZE) {
+		if (error_code & 4) {	/* user mode access? */
+			if (esp[2] & VM_MASK) {
+				bit = (address - 0xA0000) >> PAGE_SHIFT;
+				if (bit < 32)
+					current->screen_bitmap |= 1 << bit;
+			} else 
+				user_esp = esp[3];
+		}
+		if (error_code & 1)
+			do_wp_page(error_code, address, current, user_esp);
+		else
+			do_no_page(error_code, address, current, user_esp);
+		return;
+	}
+	printk("Unable to handle kernel paging request at address %08x\n",address);
+	die_if_kernel("Oops",esp,error_code);
+	do_exit(SIGKILL);
+}
+
+/*
+ * BAD_PAGE is the page that is used for page faults when linux
+ * is out-of-memory. Older versions of linux just did a
+ * do_exit(), but using this instead means there is less risk
+ * for a process dying in kernel mode, possibly leaving a inode
+ * unused etc..
+ *
+ * BAD_PAGETABLE is the accompanying page-table: it is initialized
+ * to point to BAD_PAGE entries.
+ */
+unsigned long __bad_pagetable(void)
+{
+	extern char empty_bad_page_table[PAGE_SIZE];
+
+	__asm__ __volatile__("cld ; rep ; stosl"
+		::"a" (7+BAD_PAGE),
+		  "D" ((long) empty_bad_page_table),
+		  "c" (1024));
+	return (unsigned long) empty_bad_page_table;
+}
+
+unsigned long __bad_page(void)
+{
+	extern char empty_bad_page[PAGE_SIZE];
+
+	__asm__ __volatile__("cld ; rep ; stosl"
+		::"a" (0),
+		  "D" ((long) empty_bad_page),
+		  "c" (1024));
+	return (unsigned long) empty_bad_page;
 }
 
 void show_mem(void)
@@ -779,36 +852,49 @@ void show_mem(void)
 	printk("%d pages shared\n",shared);
 }
 
+/*
+ * paging_init() sets up the page tables - note that the first 4MB are
+ * already mapped by head.S.
+ *
+ * This routines also unmaps the page at virtual kernel address 0, so
+ * that we can trap those pesky NULL-reference errors in the kernel.
+ */
+unsigned long paging_init(unsigned long start_mem, unsigned long end_mem)
+{
+	unsigned long * pg_dir;
+	unsigned long * pg_table;
+	unsigned long tmp;
+	unsigned long address;
 
 /*
- * This routine handles page faults.  It determines the address,
- * and the problem, and then passes it off to one of the appropriate
- * routines.
+ * Physical page 0 is special: it's a "zero-page", and is guaranteed to
+ * stay that way - it's write-protected and when there is a c-o-w, the
+ * mm handler treats it specially.
  */
-void do_page_fault(unsigned long *esp, unsigned long error_code)
-{
-	unsigned long address;
-	unsigned long user_esp = 0;
-
-	/* get the address */
-	__asm__("movl %%cr2,%0":"=r" (address));
-	if (address >= TASK_SIZE) {
-		printk("Unable to handle kernel paging request at address %08x\n",address);
-		do_exit(SIGSEGV);
+	memset((void *) 0, 0, 4096);
+	start_mem += 4095;
+	start_mem &= 0xfffff000;
+	address = 0;
+	pg_dir = swapper_pg_dir + 768;		/* at virtual addr 0xC0000000 */
+	while (address < end_mem) {
+		tmp = *pg_dir;
+		if (!tmp) {
+			tmp = start_mem;
+			*pg_dir = tmp | 7;
+			start_mem += 4096;
+		}
+		pg_dir++;
+		pg_table = (unsigned long *) (tmp & 0xfffff000);
+		for (tmp = 0 ; tmp < 1024 ; tmp++,pg_table++) {
+			if (address && address < end_mem)
+				*pg_table = 7 + address;
+			else
+				*pg_table = 0;
+			address += 4096;
+		}
 	}
-	if (esp[2] & VM_MASK) {
-		unsigned int bit;
-
-		bit = (address - 0xA0000) >> PAGE_SHIFT;
-		if (bit < 32)
-			current->screen_bitmap |= 1 << bit;
-	} else
-		if ((0xffff & esp[1]) == 0xf)
-			user_esp = esp[3];
-	if (!(error_code & 1))
-		do_no_page(error_code, address, current, user_esp);
-	else
-		do_wp_page(error_code, address, current, user_esp);
+	invalidate();
+	return start_mem;
 }
 
 void mem_init(unsigned long start_low_mem,
@@ -866,5 +952,30 @@ void mem_init(unsigned long start_low_mem,
 		codepages << 2,
 		reservedpages << 2,
 		datapages << 2);
+	return;
+}
+
+void si_meminfo(struct sysinfo *val)
+{
+	int i;
+
+	i = high_memory >> PAGE_SHIFT;
+	val->totalram = 0;
+	val->freeram = 0;
+	val->sharedram = 0;
+	val->bufferram = buffermem;
+	while (i-- > 0)  {
+		if (mem_map[i] & MAP_PAGE_RESERVED)
+			continue;
+		val->totalram++;
+		if (!mem_map[i]) {
+			val->freeram++;
+			continue;
+		}
+		val->sharedram += mem_map[i]-1;
+	}
+	val->totalram <<= PAGE_SHIFT;
+	val->freeram <<= PAGE_SHIFT;
+	val->sharedram <<= PAGE_SHIFT;
 	return;
 }

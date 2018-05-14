@@ -70,6 +70,7 @@ void release(struct task_struct * p)
 		if (task[i] == p) {
 			task[i] = NULL;
 			REMOVE_LINKS(p);
+			free_page(p->kernel_stack_page);
 			free_page((long) p);
 			return;
 		}
@@ -98,7 +99,7 @@ int bad_task_ptr(struct task_struct *p)
  * holds.  Used for debugging only, since it's very slow....
  *
  * It looks a lot scarier than it really is.... we're doing ænothing more
- * than verifying the doubly-linked list foundæin p_ysptr and p_osptr, 
+ * than verifying the doubly-linked list found in p_ysptr and p_osptr, 
  * and checking it corresponds with the process tree defined by p_cptr and 
  * p_pptr;
  */
@@ -187,6 +188,10 @@ int session_of_pgrp(int pgrp)
 	return fallback;
 }
 
+/*
+ * kill_pg() sends a signal to a process group: this is what the tty
+ * control characters do (^C, ^Z etc)
+ */
 int kill_pg(int pgrp, int sig, int priv)
 {
 	struct task_struct **p;
@@ -197,7 +202,7 @@ int kill_pg(int pgrp, int sig, int priv)
 		return -EINVAL;
  	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p)
 		if (*p && (*p)->pgrp == pgrp) {
-			if (sig && (err = send_sig(sig,*p,priv)))
+			if ((err = send_sig(sig,*p,priv)) != 0)
 				retval = err;
 			else
 				found++;
@@ -205,28 +210,27 @@ int kill_pg(int pgrp, int sig, int priv)
 	return(found ? 0 : retval);
 }
 
-/* This routine is used by vhangup.  It send's sigkill to everything
-   waiting on a particular wait_queue.  It assumes root privledges.
-   We don't want to destroy the wait queue here, because the caller
-   should call wake_up immediately after calling kill_wait. */
-
-void
-kill_wait (struct wait_queue **q, int sig)
+/*
+ * kill_sl() sends a signal to the session leader: this is used
+ * to send SIGHUP to the controlling process of a terminal when
+ * the connection is lost.
+ */
+int kill_sl(int sess, int sig, int priv)
 {
-   struct wait_queue *next;
-   struct wait_queue *tmp;
-   struct task_struct *p;
-   
-   if (!q || !(next = *q))
-     return;
-   do { 
-      tmp = next;
-      next = tmp->next;
-      if ((p = tmp->task))
-	{
-	   send_sig (sig, p , 1);
-	}
-   } while (next && next != *q);
+	struct task_struct **p;
+	int err,retval = -ESRCH;
+	int found = 0;
+
+	if (sig<0 || sig>32 || sess<=0)
+		return -EINVAL;
+ 	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p)
+		if (*p && (*p)->session == sess && (*p)->leader) {
+			if ((err = send_sig(sig,*p,priv)) != 0)
+				retval = err;
+			else
+				found++;
+		}
+	return(found ? 0 : retval);
 }
 
 int kill_proc(int pid, int sig, int priv)
@@ -237,7 +241,7 @@ int kill_proc(int pid, int sig, int priv)
 		return -EINVAL;
 	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p)
 		if (*p && (*p)->pid == pid)
-			return(sig ? send_sig(sig,*p,priv) : 0);
+			return send_sig(sig,*p,priv);
 	return(-ESRCH);
 }
 
@@ -369,10 +373,10 @@ fake_volatile:
 	 *	as a result of our exiting, and if they have any stopped
 	 *	jobs, send them a SIGHUP and then a SIGCONT.  (POSIX 3.2.2.2)
 	 */
-	while ((p = current->p_cptr)) {
+	while ((p = current->p_cptr) != NULL) {
 		current->p_cptr = p->p_osptr;
 		p->p_ysptr = NULL;
-		p->flags &= ~PF_PTRACED;
+		p->flags &= ~(PF_PTRACED|PF_TRACESYS);
 		if (task[1])
 			p->p_pptr = task[1];
 		else
@@ -402,10 +406,12 @@ fake_volatile:
 
 		if (current->tty >= 0) {
 			tty = TTY_TABLE(current->tty);
-			if (tty->pgrp > 0)
-				kill_pg(tty->pgrp, SIGHUP, 1);
-			tty->pgrp = -1;
-			tty->session = 0;
+			if (tty) {
+				if (tty->pgrp > 0)
+					kill_pg(tty->pgrp, SIGHUP, 1);
+				tty->pgrp = -1;
+				tty->session = 0;
+			}
 		}
 	 	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p)
 			if (*p && (*p)->session == current->session)

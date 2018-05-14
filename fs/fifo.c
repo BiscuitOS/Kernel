@@ -93,6 +93,7 @@ static int fifo_open(struct inode * inode,struct file * filp)
 	}
 	if (!page)
 		return -ENOMEM;
+	PIPE_HEAD(*inode) = PIPE_TAIL(*inode) = 0;
 	PIPE_BASE(*inode) = (char *) page;
 	return 0;
 }
@@ -103,6 +104,7 @@ static int fifo_open(struct inode * inode,struct file * filp)
  * depending on the access mode of the file...
  */
 struct file_operations def_fifo_fops = {
+	NULL,
 	NULL,
 	NULL,
 	NULL,

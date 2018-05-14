@@ -8,6 +8,7 @@
 
 #include <linux/sched.h>
 #include <linux/minix_fs.h>
+#include <linux/stat.h>
 #include <linux/kernel.h>
 #include <linux/string.h>
 
@@ -73,13 +74,12 @@ static unsigned long count_used(struct buffer_head *map[], unsigned numblocks,
 	return(sum);
 }
 
-void minix_free_block(int dev, int block)
+void minix_free_block(struct super_block * sb, int block)
 {
-	struct super_block * sb;
 	struct buffer_head * bh;
 	unsigned int bit,zone;
 
-	if (!(sb = get_super(dev))) {
+	if (!sb) {
 		printk("trying to free block on nonexistent device\n");
 		return;
 	}
@@ -88,7 +88,7 @@ void minix_free_block(int dev, int block)
 		printk("trying to free block not in datazone\n");
 		return;
 	}
-	bh = get_hash_table(dev,block,BLOCK_SIZE);
+	bh = get_hash_table(sb->s_dev,block,BLOCK_SIZE);
 	if (bh)
 		bh->b_dirt=0;
 	brelse(bh);
@@ -101,25 +101,24 @@ void minix_free_block(int dev, int block)
 		return;
 	}
 	if (clear_bit(bit,bh->b_data))
-		printk("free_block (%04x:%d): bit already cleared\n",dev,block);
+		printk("free_block (%04x:%d): bit already cleared\n",sb->s_dev,block);
 	bh->b_dirt = 1;
 	return;
 }
 
-int minix_new_block(int dev)
+int minix_new_block(struct super_block * sb)
 {
 	struct buffer_head * bh;
-	struct super_block * sb;
 	int i,j;
 
-	if (!(sb = get_super(dev))) {
+	if (!sb) {
 		printk("trying to get new block from nonexistant device\n");
 		return 0;
 	}
 repeat:
 	j = 8192;
 	for (i=0 ; i<8 ; i++)
-		if ((bh=sb->u.minix_sb.s_zmap[i]))
+		if ((bh=sb->u.minix_sb.s_zmap[i]) != NULL)
 			if ((j=find_first_zero(bh->b_data))<8192)
 				break;
 	if (i>=8 || !bh || j>=8192)
@@ -132,7 +131,7 @@ repeat:
 	j += i*8192 + sb->u.minix_sb.s_firstdatazone-1;
 	if (j >= sb->u.minix_sb.s_nzones)
 		return 0;
-	if (!(bh=getblk(dev,j,BLOCK_SIZE))) {
+	if (!(bh = getblk(sb->s_dev,j,BLOCK_SIZE))) {
 		printk("new_block: cannot get block");
 		return 0;
 	}
@@ -160,10 +159,10 @@ void minix_free_inode(struct inode * inode)
 	if (!inode)
 		return;
 	if (!inode->i_dev) {
-		memset(inode,0,sizeof(*inode));
+		printk("free_inode: inode has no device\n");
 		return;
 	}
-	if (inode->i_count>1) {
+	if (inode->i_count != 1) {
 		printk("free_inode: inode has count=%d\n",inode->i_count);
 		return;
 	}
@@ -184,28 +183,26 @@ void minix_free_inode(struct inode * inode)
 		return;
 	}
 	if (clear_bit(inode->i_ino&8191,bh->b_data))
-		printk("free_inode: bit already cleared.\n\r");
+		printk("free_inode: bit %d already cleared.\n",inode->i_ino);
 	bh->b_dirt = 1;
-	memset(inode,0,sizeof(*inode));
+	clear_inode(inode);
 }
 
-struct inode * minix_new_inode(int dev)
+struct inode * minix_new_inode(const struct inode * dir)
 {
+	struct super_block * sb;
 	struct inode * inode;
 	struct buffer_head * bh;
 	int i,j;
 
-	if (!(inode=get_empty_inode()))
+	if (!dir || !(inode = get_empty_inode()))
 		return NULL;
-	if (!(inode->i_sb = get_super(dev))) {
-		printk("new_inode: unknown device\n");
-		iput(inode);
-		return NULL;
-	}
+	sb = dir->i_sb;
+	inode->i_sb = sb;
 	inode->i_flags = inode->i_sb->s_flags;
 	j = 8192;
 	for (i=0 ; i<8 ; i++)
-		if ((bh=inode->i_sb->u.minix_sb.s_imap[i]))
+		if ((bh = inode->i_sb->u.minix_sb.s_imap[i]) != NULL)
 			if ((j=find_first_zero(bh->b_data))<8192)
 				break;
 	if (!bh || j >= 8192 || j+i*8192 > inode->i_sb->u.minix_sb.s_ninodes) {
@@ -220,9 +217,9 @@ struct inode * minix_new_inode(int dev)
 	bh->b_dirt = 1;
 	inode->i_count = 1;
 	inode->i_nlink = 1;
-	inode->i_dev = dev;
+	inode->i_dev = sb->s_dev;
 	inode->i_uid = current->euid;
-	inode->i_gid = current->egid;
+	inode->i_gid = (dir->i_mode & S_ISGID) ? dir->i_gid : current->egid;
 	inode->i_dirt = 1;
 	inode->i_ino = j + i*8192;
 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME;

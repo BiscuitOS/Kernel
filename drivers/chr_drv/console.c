@@ -35,8 +35,6 @@
  * <g-hunt@ee.utah.edu>
  */
 
-#define KEYBOARD_IRQ 1
-
 #include <linux/sched.h>
 #include <linux/timer.h>
 #include <linux/tty.h>
@@ -45,6 +43,7 @@
 #include <linux/string.h>
 #include <linux/errno.h>
 #include <linux/kd.h>
+#include <linux/keyboard.h>
 
 #include <asm/io.h>
 #include <asm/system.h>
@@ -55,17 +54,7 @@
 #define NPAR 16
 
 extern void vt_init(void);
-extern void keyboard_interrupt(int pt_regs);
 extern void set_leds(void);
-extern unsigned char kapplic;
-extern unsigned char ckmode;
-extern unsigned char krepeat;
-extern unsigned char default_kleds;
-extern unsigned char kleds;
-extern unsigned char kmode;
-extern unsigned char kraw;
-extern unsigned char ke0;
-extern unsigned char lfnlmode;
 
 unsigned long	video_num_columns;		/* Number of text columns	*/
 unsigned long	video_num_lines;		/* Number of test lines		*/
@@ -99,17 +88,13 @@ static struct {
 	unsigned long	vc_saved_x;
 	unsigned long	vc_saved_y;
 	/* mode flags */
-	unsigned long	vc_kbdapplic	: 1;	/* Application keyboard */
 	unsigned long	vc_charset	: 1;	/* Character set G0 / G1 */
 	unsigned long	vc_s_charset	: 1;	/* Saved character set */
-	unsigned long	vc_decckm	: 1;	/* Cursor Keys Mode */
 	unsigned long	vc_decscnm	: 1;	/* Screen Mode */
 	unsigned long	vc_decom	: 1;	/* Origin Mode */
 	unsigned long	vc_decawm	: 1;	/* Autowrap Mode */
-	unsigned long	vc_decarm	: 1;	/* Autorepeat Mode */
 	unsigned long	vc_deccm	: 1;	/* Cursor Visible */
 	unsigned long	vc_decim	: 1;	/* Insert Mode */
-	unsigned long	vc_lnm		: 1;	/* Line feed New line Mode */
 	/* attribute flags */
 	unsigned long	vc_intensity	: 2;	/* 0=half-bright, 1=normal, 2=bold */
 	unsigned long	vc_underline	: 1;
@@ -160,15 +145,11 @@ static int console_blanked = 0;
 #define video_mem_start	(vc_cons[currcons].vc_video_mem_start)
 #define video_mem_end	(vc_cons[currcons].vc_video_mem_end)
 #define video_erase_char (vc_cons[currcons].vc_video_erase_char)	
-#define decckm		(vc_cons[currcons].vc_decckm)
 #define decscnm		(vc_cons[currcons].vc_decscnm)
 #define decom		(vc_cons[currcons].vc_decom)
 #define decawm		(vc_cons[currcons].vc_decawm)
-#define decarm		(vc_cons[currcons].vc_decarm)
 #define deccm		(vc_cons[currcons].vc_deccm)
 #define decim		(vc_cons[currcons].vc_decim)
-#define lnm		(vc_cons[currcons].vc_lnm)
-#define kbdapplic	(vc_cons[currcons].vc_kbdapplic)
 #define need_wrap	(vc_cons[currcons].vc_need_wrap)
 #define color		(vc_cons[currcons].vc_color)
 #define s_color		(vc_cons[currcons].vc_s_color)
@@ -189,14 +170,17 @@ static int console_blanked = 0;
 #define	halfcolor	(vc_cons[currcons].vc_halfcolor)
 #define kbdmode		(vc_cons[currcons].vc_kbdmode)
 #define tab_stop	(vc_cons[currcons].vc_tab_stop)
-#define kbdraw		(vt_cons[currcons].vc_kbdraw)
-#define kbdleds		(vt_cons[currcons].vc_kbdleds)
 #define vtmode		(vt_cons[currcons].vt_mode)
 
-#define SET(mode,fg,v) \
-	(mode) = (v); \
-	if (currcons == fg_console) \
-		(fg) = (v)
+#define set_kbd(x) set_vc_kbd_flag(kbd_table+currcons,x)
+#define clr_kbd(x) clr_vc_kbd_flag(kbd_table+currcons,x)
+#define is_kbd(x) vc_kbd_flag(kbd_table+currcons,x)
+
+#define decarm		VC_REPEAT
+#define decckm		VC_CKMODE
+#define kbdapplic	VC_APPLIC
+#define kbdraw		VC_RAW
+#define lnm		VC_CRLF
 
 int blankinterval = 10*60*HZ;
 static int screen_size = 0;
@@ -665,7 +649,10 @@ static void set_mode(int currcons, int on_off)
 	for (i=0; i<=npar; i++)
 		if (ques) switch(par[i]) {	/* DEC private modes set/reset */
 			case 1:			/* Cursor keys send ^[Ox/^[[x */
-				SET(decckm,ckmode,on_off);
+				if (on_off)
+					set_kbd(decckm);
+				else
+					clr_kbd(decckm);
 				break;
 			case 3:	/* 80/132 mode switch unimplemented */
 				csi_J(currcons,2);
@@ -686,7 +673,10 @@ static void set_mode(int currcons, int on_off)
 				decawm = on_off;
 				break;
 			case 8:			/* Autorepeat on/off */
-				SET(decarm,krepeat,on_off);
+				if (on_off)
+					set_kbd(decarm);
+				else
+					clr_kbd(decarm);
 				break;
 			case 25:		/* Cursor on/off */
 				deccm = on_off;
@@ -697,7 +687,10 @@ static void set_mode(int currcons, int on_off)
 				decim = on_off;
 				break;
 			case 20:		/* Lf, Enter == CrLf/Lf */
-				SET(lnm,lfnlmode,on_off);
+				if (on_off)
+					set_kbd(lnm);
+				else
+					clr_kbd(lnm);
 				break;
 		}
 }
@@ -861,22 +854,15 @@ static void reset_terminal(int currcons, int do_clear)
 	deccm		= 1;
 	decim		= 0;
 
-	if (currcons == fg_console) {
-		krepeat		= 1;
-		ckmode		= 0;
-		kapplic		= 0;
-		lfnlmode	= 0;
-		kleds		= default_kleds;
-		kmode		= 0;
-		set_leds();
-	} else {
-		decarm		= 1;
-		decckm		= 0;
-		kbdapplic	= 0;
-		lnm		= 0;
-		kbdleds		= default_kleds;
-		kbdmode		= 0;
-	}
+	set_kbd(decarm);
+	clr_kbd(decckm);
+	clr_kbd(kbdapplic);
+	clr_kbd(lnm);
+	kbd_table[currcons].flags =
+		(kbd_table[currcons].flags & ~LED_MASK) |
+		(kbd_table[currcons].default_flags & LED_MASK);
+	kbdmode		= 0;
+	set_leds();
 
 	default_attr(currcons);
 	update_attr(currcons);
@@ -899,7 +885,7 @@ void con_write(struct tty_struct * tty)
 	int c;
 	unsigned int currcons;
 
-	wake_up(&tty->write_q.proc_list);
+	wake_up_interruptible(&tty->write_q.proc_list);
 	currcons = tty->line - 1;
 	if (currcons >= NR_CONSOLES) {
 		printk("con_write: illegal tty (%d)\n", currcons);
@@ -947,7 +933,7 @@ void con_write(struct tty_struct * tty)
 				continue;
 			case 10: case 11: case 12:
 				lf(currcons);
-				if (!lfnlmode)
+				if (!is_kbd(lnm))
 					continue;
 			case 13:
 				cr(currcons);
@@ -1015,10 +1001,10 @@ void con_write(struct tty_struct * tty)
 					reset_terminal(currcons,1);
 					continue;
 				  case '>':  /* Numeric keypad */
-					SET(kbdapplic,kapplic,0);
+					clr_kbd(kbdapplic);
 					continue;
 				  case '=':  /* Appl. keypad */
-					SET(kbdapplic,kapplic,1);
+					set_kbd(kbdapplic);
 				 	continue;
 				}	
 				continue;
@@ -1031,7 +1017,8 @@ void con_write(struct tty_struct * tty)
 					state=ESfunckey;
 					continue;
 				}
-				if ((ques=(c=='?')))
+				ques = (c=='?');
+				if (ques)
 					continue;
 			case ESgetpars:
 				if (c==';' && npar<NPAR-1) {
@@ -1243,7 +1230,6 @@ return s;
  */
 long con_init(long kmem_start)
 {
-	register unsigned char a;
 	char *display_desc = "????";
 	char *display_ptr;
 	int currcons = 0;
@@ -1320,7 +1306,7 @@ long con_init(long kmem_start)
 		scr_end = video_mem_end = (base += screen_size);
 		vc_scrbuf[currcons] = (unsigned short *) origin;
 		vtmode		= KD_TEXT;
-		kbdraw		= 0;
+		clr_kbd(kbdraw);
 		def_color	= 0x07;   /* white */
 		ulcolor		= 0x0f;   /* bold white */
 		halfcolor	= 0x08;   /* grey */
@@ -1336,34 +1322,15 @@ long con_init(long kmem_start)
 	save_cur(currcons);
 	gotoxy(currcons,orig_x,orig_y);
 	update_screen(fg_console);
-
-	if (request_irq(KEYBOARD_IRQ,keyboard_interrupt))
-		printk("Unable to get IRQ%d for keyboard driver\n",KEYBOARD_IRQ);
-	a=inb_p(0x61);
-	outb_p(a|0x80,0x61);
-	outb_p(a,0x61);
 	return kmem_start;
 }
 
+/*
+ * kbdsave doesn't need to do anything: it's all handled automatically
+ * with the new data structures..
+ */
 void kbdsave(int new_console)
 {
-	int currcons = fg_console;
-	kbdmode = kmode;
-	kbdraw = kraw;
-	kbdleds = kleds;
-	kbdapplic = kapplic;
-	decckm = ckmode;
-	decarm = krepeat;
-	lnm = lfnlmode;
-	currcons = new_console;
-	kmode = (kmode & 0x3F) | (kbdmode & 0xC0);
-	kraw = kbdraw;
-	kleds = kbdleds;
-	kapplic = kbdapplic;
-	ckmode = decckm;
-	krepeat = decarm;
-	lfnlmode = lnm;
-	set_leds();
 }
 
 static void get_scrmem(int currcons)
@@ -1420,6 +1387,7 @@ void update_screen(int new_console)
 	set_scrmem(fg_console); 
 	set_origin(fg_console);
 	set_cursor(new_console);
+	set_leds();
 	lock = 0;
 }
 
@@ -1471,7 +1439,7 @@ void console_print(const char * b)
 
 	if (currcons<0 || currcons>=NR_CONSOLES)
 		currcons = 0;
-	while ((c = *(b++))) {
+	while ((c = *(b++)) != 0) {
 		if (c == 10 || c == 13 || need_wrap) {
 			if (c != 13)
 				lf(currcons);

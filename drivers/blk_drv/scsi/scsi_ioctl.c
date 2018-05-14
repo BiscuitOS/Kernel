@@ -1,6 +1,3 @@
-#include <linux/config.h>
-#ifdef CONFIG_SCSI 
-
 #include <asm/io.h>
 #include <asm/segment.h>
 #include <asm/system.h>
@@ -10,13 +7,14 @@
 #include <linux/sched.h>
 #include <linux/string.h>
 
+#include "../blk.h"
 #include "scsi.h"
 #include "hosts.h"
 #include "scsi_ioctl.h"
 
 #define MAX_RETRIES 5	
 #define MAX_TIMEOUT 200
-#define MAX_BUF 8192  	
+#define MAX_BUF 4096
 
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 
@@ -53,6 +51,9 @@ static int ioctl_probe(int dev, void *buffer)
  * Note that no more than MAX_BUF data bytes will be transfered.  Since
  * SCSI block device size is 512 bytes, I figured 1K was good.
  * but (WDE) changed it to 8192 to handle large bad track buffers.
+ * ERY: I changed this to a dynamic allocation using scsi_malloc - we were
+ * getting a kernel stack overflow which was crashing the system when we
+ * were using 8192 bytes.
  * 
  * This size *does not* include the initial lengths that were passed.
  * 
@@ -63,20 +64,86 @@ static int ioctl_probe(int dev, void *buffer)
  * The output area is then filled in starting from the command byte. 
  */
 
-static int the_result[MAX_SCSI_HOSTS];
-
-static void scsi_ioctl_done (int host, int result)
+static void scsi_ioctl_done (Scsi_Cmnd * SCpnt)
 {
-	the_result[host] = result;	
+  struct request * req;
+  struct task_struct * p;
+  
+  req = &SCpnt->request;
+  req->dev = 0xfffe; /* Busy, but indicate request done */
+  
+  if ((p = req->waiting) != NULL) {
+    req->waiting = NULL;
+    p->state = TASK_RUNNING;
+    if (p->counter > current->counter)
+      need_resched = 1;
+  }
 }	
-	
+
+static int ioctl_internal_command(Scsi_Device *dev, char * cmd)
+{
+	int host, result;
+	Scsi_Cmnd * SCpnt;
+
+	host = dev->host_no;
+
+	SCpnt = allocate_device(NULL, dev->index, 1);
+	scsi_do_cmd(SCpnt,  cmd, NULL,  0,
+			scsi_ioctl_done,  MAX_TIMEOUT,
+			MAX_RETRIES);
+
+	if (SCpnt->request.dev != 0xfffe){
+	  SCpnt->request.waiting = current;
+	  current->state = TASK_UNINTERRUPTIBLE;
+	  while (SCpnt->request.dev != 0xfffe) schedule();
+	};
+
+	if(driver_byte(SCpnt->result) != 0)
+	  switch(SCpnt->sense_buffer[2] & 0xf) {
+	  case ILLEGAL_REQUEST:
+	    printk("SCSI device (ioctl) reports ILLEGAL REQUEST.\n");
+	    break;
+	  case NOT_READY: /* This happens if there is no disc in drive */
+	    if(dev->removable){
+	      printk("Device not ready.  Make sure there is a disc in the drive.\n");
+	      break;
+	    };
+	  case UNIT_ATTENTION:
+	    if (dev->removable){
+	      dev->changed = 1;
+	      SCpnt->result = 0; /* This is no longer considered an error */
+	      printk("Disc change detected.\n");
+	      break;
+	    };
+	  default: /* Fall through for non-removable media */
+	    printk("SCSI CD error: host %d id %d lun %d return code = %x\n",
+		   dev->host_no,
+		   dev->id,
+		   dev->lun,
+		   SCpnt->result);
+	    printk("\tSense class %x, sense error %x, extended sense %x\n",
+		   sense_class(SCpnt->sense_buffer[0]),
+		   sense_error(SCpnt->sense_buffer[0]),
+		   SCpnt->sense_buffer[2] & 0xf);
+
+	  };
+
+	result = SCpnt->result;
+	SCpnt->request.dev = -1;  /* Mark as not busy */
+	wake_up(&scsi_devices[SCpnt->index].device_wait);
+	return result;
+}
+
 static int ioctl_command(Scsi_Device *dev, void *buffer)
 {
-	char buf[MAX_BUF];
+	char * buf;
 	char cmd[10];
 	char * cmd_in;
+	Scsi_Cmnd * SCpnt;
 	unsigned char opcode;
-	int inlen, outlen, cmdlen, temp, host;
+	int inlen, outlen, cmdlen, host;
+	int needed;
+	int result;
 
 	if (!buffer)
 		return -EINVAL;
@@ -87,34 +154,40 @@ static int ioctl_command(Scsi_Device *dev, void *buffer)
 	cmd_in = (char *) ( ((int *)buffer) + 2);
 	opcode = get_fs_byte(cmd_in); 
 
+	needed = (inlen > outlen ? inlen : outlen);
+	if(needed){
+	  needed = (needed + 511) & ~511;
+	  if (needed > MAX_BUF) needed = MAX_BUF;
+	  buf = scsi_malloc(needed);
+	  if (!buf) return -ENOMEM;
+	} else
+	  buf = NULL;
+
 	memcpy_fromfs ((void *) cmd,  cmd_in,  cmdlen = COMMAND_SIZE (opcode));
 	memcpy_fromfs ((void *) buf,  (void *) (cmd_in + cmdlen),  inlen);
 	host = dev->host_no;
 
 #ifndef DEBUG_NO_CMD
-	do {
-		cli();
-		if (the_result[host]) {
-			sti();
-			while(the_result[host])
-				/* nothing */;
-		} else {
-			the_result[host]=-1;
-			sti();
-			break;
-		}
-	} while (1);
 	
-	scsi_do_cmd(host,  dev->id,  cmd,  buf,  ((outlen > MAX_BUF) ? 
-			MAX_BUF : outlen),  scsi_ioctl_done,  MAX_TIMEOUT, 
-			buf,  MAX_RETRIES);
+	SCpnt = allocate_device(NULL, dev->index, 1);
 
-	while (the_result[host] == -1)
-		/* nothing */;
-	temp = the_result[host];
-	the_result[host] = 0;
+	scsi_do_cmd(SCpnt,  cmd,  buf,  ((outlen > MAX_BUF) ? 
+			MAX_BUF : outlen),  scsi_ioctl_done,  MAX_TIMEOUT, 
+			MAX_RETRIES);
+
+	if (SCpnt->request.dev != 0xfffe){
+	  SCpnt->request.waiting = current;
+	  current->state = TASK_UNINTERRUPTIBLE;
+	  while (SCpnt->request.dev != 0xfffe) schedule();
+	};
+
+	verify_area(cmd_in, (outlen > MAX_BUF) ? MAX_BUF  : outlen);
 	memcpy_tofs ((void *) cmd_in,  buf,  (outlen > MAX_BUF) ? MAX_BUF  : outlen);
-	return temp;
+	result = SCpnt->result;
+	SCpnt->request.dev = -1;  /* Mark as not busy */
+	if (buf) scsi_free(buf, needed);
+	wake_up(&scsi_devices[SCpnt->index].device_wait);
+	return result;
 #else
 	{
 	int i;
@@ -141,9 +214,11 @@ static int ioctl_command(Scsi_Device *dev, void *buffer)
 */
 int scsi_ioctl (Scsi_Device *dev, int cmd, void *arg)
 {
+        char scsi_cmd[10];
+
 	if ((cmd != 0 && dev->id > NR_SCSI_DEVICES))
 		return -ENODEV;
-	if ((cmd == 0 && dev->host_no > MAX_SCSI_HOSTS))
+	if ((cmd == 0 && dev->host_no > max_scsi_hosts))
 		return -ENODEV;
 	
 	switch (cmd) {
@@ -151,8 +226,29 @@ int scsi_ioctl (Scsi_Device *dev, int cmd, void *arg)
 			return ioctl_probe(dev->host_no, arg);
 		case SCSI_IOCTL_SEND_COMMAND:
 			return ioctl_command((Scsi_Device *) dev, arg);
+		case SCSI_IOCTL_DOORLOCK:
+			if (!dev->removable) return 0;
+		        scsi_cmd[0] = ALLOW_MEDIUM_REMOVAL;
+			scsi_cmd[1] = dev->lun << 5;
+			scsi_cmd[2] = scsi_cmd[3] = scsi_cmd[5] = 0;
+			scsi_cmd[4] = SCSI_REMOVAL_PREVENT;
+			return ioctl_internal_command((Scsi_Device *) dev, scsi_cmd);
+			break;
+		case SCSI_IOCTL_DOORUNLOCK:
+			if (!dev->removable) return 0;
+		        scsi_cmd[0] = ALLOW_MEDIUM_REMOVAL;
+			scsi_cmd[1] = dev->lun << 5;
+			scsi_cmd[2] = scsi_cmd[3] = scsi_cmd[5] = 0;
+			scsi_cmd[4] = SCSI_REMOVAL_ALLOW;
+			return ioctl_internal_command((Scsi_Device *) dev, scsi_cmd);
+		case SCSI_IOCTL_TEST_UNIT_READY:
+		        scsi_cmd[0] = TEST_UNIT_READY;
+			scsi_cmd[1] = dev->lun << 5;
+			scsi_cmd[2] = scsi_cmd[3] = scsi_cmd[5] = 0;
+			scsi_cmd[4] = 0;
+			return ioctl_internal_command((Scsi_Device *) dev, scsi_cmd);
+			break;
 		default :			
 			return -EINVAL;
 	}
 }
-#endif

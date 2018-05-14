@@ -1,7 +1,7 @@
 #ifndef _LINUX_CONFIG_H
 #define _LINUX_CONFIG_H
 
-#define CONFIG_DISTRIBUTION
+#include <linux/autoconf.h>
 
 /*
  * Defines for what uname() should return 
@@ -23,6 +23,11 @@
 #define DEF_SYSSEG	0x1000
 #define DEF_SETUPSEG	0x9020
 #define DEF_SYSSIZE	0x7000
+
+/* internal svga startup constants */
+#define NORMAL_VGA	0xffff		/* 80x25 mode */
+#define EXTENDED_VGA	0xfffe		/* 80x50 mode */
+#define ASK_VGA		0xfffd		/* ask for it at bootup */
 
 /*
  * The root-device is no longer hard-coded. You can change the default
@@ -61,45 +66,7 @@
 */
 
 #undef HD_TYPE
-
-#define CONFIG_BLK_DEV_HD
-#undef CONFIG_BLK_DEV_SD
-#undef CONFIG_BLK_DEV_ST
-#undef CONFIG_BLK_DEV_SR
-
-
-/*
-	Choose supported SCSI adapters here.
-*/
-
-#undef CONFIG_SCSI_AHA1542
-#undef CONFIG_SCSI_ALWAYS
-#undef CONFIG_SCSI_CSC
-#undef CONFIG_SCSI_DTC
-#undef CONFIG_SCSI_FUTURE_DOMAIN
-#undef CONFIG_SCSI_SEAGATE
-#undef CONFIG_SCSI_ULTRASTOR
-#undef CONFIG_SCSI_7000FASST
-
-#if defined(CONFIG_BLK_DEV_SD) || defined(CONFIG_BLK_DEV_SR) || \
-defined(CONFIG_CHR_DEV_ST)
-#ifndef CONFIG_SCSI
-	#define CONFIG_SCSI
-#endif
-
-#if !defined(CONFIG_SCSI_AHA1542) && !defined(CONFIG_SCSI_CSC) && !defined(CONFIG_SCSI_DTC) && \
-		!defined(CONFIG_SCSI_FUTURE_DOMAIN) &&  !defined(CONFIG_SCSI_SEAGATE) && !defined(CONFIG_SCSI_ULTRASTOR) && \
-		!defined(CONFIG_SCSI_7000FASST)
-#error  Error : SCSI devices enabled, but no low level drivers have been enabled.
-#endif
-#endif
-
-#ifdef CONFIG_DISTRIBUTION
-#include <linux/config.dist.h>
-#else
-#include <linux/config.site.h>
-#endif
-
+ 
 /*
 	File type specific stuff goes into this.
 */

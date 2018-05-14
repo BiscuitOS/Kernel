@@ -19,6 +19,27 @@
     The Author may be reached as bir7@leland.stanford.edu or
     C/O Department of Mathematics; Stanford University; Stanford, CA 94305
 */
+/* $Id: sock.h,v 0.8.4.5 1992/12/12 01:50:49 bir7 Exp $ */
+/* $Log: sock.h,v $
+ * Revision 0.8.4.5  1992/12/12  01:50:49  bir7
+ * Fixed support for half duplex connections.
+ *
+ * Revision 0.8.4.4  1992/12/06  23:29:59  bir7
+ * Added mss and support for half completed packets.
+ *
+ * Revision 0.8.4.3  1992/12/03  19:54:12  bir7
+ * Added paranoid queue checking.
+ *
+ * Revision 0.8.4.2  1992/11/10  10:38:48  bir7
+ * Change free_s to kfree_s and accidently changed free_skb to kfree_skb.
+ *
+ * Revision 0.8.4.1  1992/11/10  00:17:18  bir7
+ * version change only.
+ *
+ * Revision 0.8.3.4  1992/11/10  00:14:47  bir7
+ * Changed malloc to kmalloc and added Id and Log
+ *
+ */
 #ifndef _TCP_SOCK_H
 #define _TCP_SOCK_H
 
@@ -48,6 +69,7 @@ struct sock
   struct sk_buff *send_tail;
   struct sk_buff *send_head;
   struct sk_buff *back_log;
+  struct sk_buff *send_tmp;
   long retransmits;
   struct sk_buff *wback, *wfront, *rqueue;
   struct proto *prot;
@@ -63,11 +85,12 @@ struct sock
   unsigned short packets_out;
   unsigned short urg;
   unsigned short shutdown;
+  unsigned short mss;
   short rtt;
+  short err;
   unsigned char protocol;
   unsigned char state;
   unsigned char ack_backlog;
-  unsigned char err;
   unsigned char max_ack_backlog;
   unsigned char priority;
   struct tcp_header dummy_th; /* I may be able to get rid of this. */
@@ -76,8 +99,10 @@ struct sock
 
 struct proto 
 {
-  void *(*wmalloc)(volatile struct sock *sk, unsigned long size, int force);
-  void *(*rmalloc)(volatile struct sock *sk, unsigned long size, int force);
+  void *(*wmalloc)(volatile struct sock *sk, unsigned long size, int force,
+		   int priority);
+  void *(*rmalloc)(volatile struct sock *sk, unsigned long size, int force,
+		   int priority);
   void (*wfree)(volatile struct sock *sk, void *mem, unsigned long size);
   void (*rfree)(volatile struct sock *sk, void *mem, unsigned long size);
   unsigned long (*rspace)(volatile struct sock *sk);
@@ -110,6 +135,7 @@ struct proto
   int (*select)(volatile struct sock *sk, int which, select_table *wait);
   int (*ioctl) (volatile struct sock *sk, int cmd, unsigned long arg);
   int (*init) (volatile struct sock *sk);
+  void (*shutdown) (volatile struct sock *sk, int how);
   unsigned short max_header;
   unsigned long retransmits;
   volatile struct sock *sock_array[SOCK_ARRAY_SIZE];
@@ -149,6 +175,7 @@ struct sk_buff
   unsigned long len;
   unsigned long saddr;
   unsigned long daddr;
+  int magic;
   unsigned long acked:1,used:1,free:1,arp:1, urg_used:1, lock:1;
 };
 
@@ -167,13 +194,15 @@ volatile struct sock *get_sock(struct proto *, unsigned short, unsigned long,
 			       unsigned short, unsigned long);
 void print_sk (volatile struct sock *);
 void print_skb (struct sk_buff *);
-void *sock_wmalloc(volatile struct sock *sk, unsigned long size, int force);
-void *sock_rmalloc(volatile struct sock *sk, unsigned long size, int force);
+void *sock_wmalloc(volatile struct sock *sk, unsigned long size, int force,
+		   int priority);
+void *sock_rmalloc(volatile struct sock *sk, unsigned long size, int force,
+		   int priority);
 void sock_wfree(volatile struct sock *sk, void *mem, unsigned long size);
 void sock_rfree(volatile struct sock *sk, void *mem, unsigned long size);
 unsigned long sock_rspace(volatile struct sock *sk);
 unsigned long sock_wspace(volatile struct sock *sk);
-void free_skb (struct sk_buff *skb, int rw);
+void kfree_skb (struct sk_buff *skb, int rw);
 void lock_skb (struct sk_buff *skb);
 void unlock_skb (struct sk_buff *skb, int rw);
 

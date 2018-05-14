@@ -3,4 +3,6 @@
 #
 menu "Character device driver"
 
+source "drivers/chr_drv/sound/Kconfig"
+
 endmenu

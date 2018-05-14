@@ -13,15 +13,21 @@
 #include <linux/minix_fs.h>
 #include <linux/stat.h>
 
+static int minix_dir_read(struct inode * inode, struct file * filp, char * buf, int count)
+{
+	return -EISDIR;
+}
+
 static int minix_readdir(struct inode *, struct file *, struct dirent *, int);
 
 struct file_operations minix_dir_operations = {
 	NULL,			/* lseek - default */
-	minix_file_read,	/* read */
+	minix_dir_read,		/* read */
 	NULL,			/* write - bad */
 	minix_readdir,		/* readdir */
 	NULL,			/* select - default */
 	NULL,			/* ioctl - default */
+	NULL,			/* mmap */
 	NULL,			/* no special open code */
 	NULL			/* no special release code */
 };
@@ -71,7 +77,7 @@ static int minix_readdir(struct inode * inode, struct file * filp,
 			filp->f_pos += sizeof (struct minix_dir_entry);
 			if (de->inode) {
 				for (i = 0; i < MINIX_NAME_LEN; i++)
-					if ((c = de->name[i]))
+					if ((c = de->name[i]) != 0)
 						put_fs_byte(c,i+dirent->d_name);
 					else
 						break;

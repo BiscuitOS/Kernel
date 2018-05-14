@@ -10,3 +10,6 @@ obj-y += vt.o
 obj-y += mouse.o
 obj-y += busmouse.o
 obj-y += psaux.o
+obj-y += msbusmouse.o
+obj-y += atixlmouse.o
+obj-$(CONFIG_SOUND) += sound/

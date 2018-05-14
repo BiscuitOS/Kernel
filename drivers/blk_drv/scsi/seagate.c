@@ -11,15 +11,17 @@
 #if defined(CONFIG_SCSI_SEAGATE) || defined(CONFIG_SCSI_FD_88x) 
 #include <asm/io.h>
 #include <asm/system.h>
+#include <linux/signal.h>
 #include <linux/sched.h>
-#include "seagate.h"
+#include "../blk.h"
 #include "scsi.h"
 #include "hosts.h"
+#include "seagate.h"
 
-extern void seagate_intr(void);
-static int internal_command(unsigned char target, const void *cmnd,
+
+static int internal_command(unsigned char target, unsigned char lun,
+			    const void *cmnd,
 			 void *buff, int bufflen, int reselect);
-void (*do_seagate)(void) = NULL;
 
 static int incommand;			/*
 						set if arbitration has finished and we are 
@@ -121,12 +123,19 @@ SEAGATE SCSI BIOS REVISION 3.2
  */
 
 static int hostno = -1;
+static void seagate_reconnect_intr(int);
 
 int seagate_st0x_detect (int hostnum)
 	{
 #ifndef OVERRIDE
 	int i,j;
 #endif
+static struct sigaction seagate_sigaction = {
+	&seagate_reconnect_intr,
+	0,
+	SA_INTERRUPT,
+	NULL
+};
 
 /*
  *	First, we try for the manual override.
@@ -170,19 +179,14 @@ int seagate_st0x_detect (int hostnum)
 #ifdef DEBUG
 		printk("ST0x detected. Base address = %x, cr = %x, dr = %x\n", base_address, st0x_cr_sr, st0x_dr);
 #endif
-		hostno = hostnum;
-
 /*
  *	At all times, we will use IRQ 5.  
  */
-		
-#if 1
-		set_intr_gate (0x25, seagate_intr);
-		__asm__("
-		inb	$0x21, %%al
-		andb	$0xdf, %%al
-		outb	%%al, $0x21"::);
-#endif
+		hostno = hostnum;
+		if (irqaction(5, &seagate_sigaction)) {
+			printk("Unable to allocate IRQ5 for ST0x driver\n");
+			return 0;
+		}
 		return -1;
 		}
 	else
@@ -194,7 +198,7 @@ int seagate_st0x_detect (int hostnum)
 		}
 	}
 	 
-char *seagate_st0x_info(void)
+const char *seagate_st0x_info(void)
 {
 	static char buffer[] = "Seagate ST-0X SCSI driver by Drew Eckhardt \n"
 "$Header: /usr/src/linux/kernel/blk_drv/scsi/RCS/seagate.c,v 1.1 1992/07/24 06:27:38 root Exp root $\n";
@@ -206,13 +210,14 @@ char *seagate_st0x_info(void)
  * waiting for a reconnect
  */
 
-static unsigned char current_target;
+static unsigned char current_target, current_lun;
 static unsigned char *current_cmnd, *current_data;
 static int current_bufflen;
-static void (*done_fn)(int, int) = NULL;
+static void (*done_fn)(Scsi_Cmnd *) = NULL;
+static Scsi_Cmnd * SCint = NULL;
 
 /*
- * These control weather or not disconnect / reconnect will be attempted,
+ * These control whether or not disconnect / reconnect will be attempted,
  * or are being attempted.
  */
 
@@ -226,27 +231,24 @@ static void (*done_fn)(int, int) = NULL;
 
 static int should_reconnect = 0;
 
-void seagate_unexpected_intr (void)
-	{
-	printk("scsi%d: unexpected interrupt.\n", hostno);
-	}	
-	
 /*
  * The seagate_reconnect_intr routine is called when a target reselects the 
  * host adapter.  This occurs on the interrupt triggered by the target 
  * asserting SEL.
  */
 
-void seagate_reconnect_intr (void)
+static void seagate_reconnect_intr (int unused)
 	{
 	int temp;
-	
+
+/* enable all other interrupts. */	
+	sti();
 #if (DEBUG & PHASE_RESELECT)
 	printk("scsi%d : seagate_reconnect_intr() called\n", hostno);
 #endif
 
 	if (!should_reconnect)
-		seagate_unexpected_intr();
+	    printk("scsi%d: unexpected interrupt.\n", hostno);
 	else
 		{
 		should_reconnect = 0;
@@ -257,7 +259,7 @@ void seagate_reconnect_intr (void)
 			current_target, current_data, current_bufflen);
 #endif
 	
-		temp =  internal_command (current_target, 
+		temp =  internal_command (current_target, current_lun,
 			current_cmnd, current_data, current_bufflen,
 			RECONNECT_NOW);
 
@@ -269,7 +271,8 @@ void seagate_reconnect_intr (void)
 				printk("scsi%d : done_fn(%d,%08x)", hostno, 
 				hostno, temp);
 #endif
-				done_fn (hostno, temp);
+				SCint->result = temp;
+				done_fn (SCint);
 				}
 			else
 				printk("done_fn() not defined.\n");
@@ -284,37 +287,39 @@ void seagate_reconnect_intr (void)
  * is set to the one passed to the function.
  */
 
-int seagate_st0x_queue_command (unsigned char target, const void *cmnd,
-				void *buff, int bufflen, void (*fn)(int, 
-				 int))
+int seagate_st0x_queue_command (Scsi_Cmnd * SCpnt,  void (*done)(Scsi_Cmnd *))
 	{
 	int result;
 
-	done_fn = fn;
-	current_target = target;
-	(const void *) current_cmnd = cmnd;
-	current_data = buff;
-	current_bufflen = bufflen;
+	done_fn = done;
+	current_target = SCpnt->target;
+	current_lun = SCpnt->lun;
+	(const void *) current_cmnd = SCpnt->cmnd;
+	current_data = SCpnt->request_buffer;
+	current_bufflen = SCpnt->request_bufflen;
+	SCint = SCpnt;
 
-	result = internal_command (target, cmnd, buff, bufflen, 
+	result = internal_command (SCpnt->target, SCpnt->lun, SCpnt->cmnd, SCpnt->request_buffer,
+				   SCpnt->request_bufflen, 
 				   CAN_RECONNECT);
 	if (msg_byte(result) == DISCONNECT)
 		return 0;
 	else 
 		{
-		done_fn (hostno, result); 
+		  SCpnt->result = result;
+		done_fn (SCpnt); 
 		return 1; 
 		}
 	}
 
-int seagate_st0x_command (unsigned char target, const void *cmnd, 
-			void *buff, int bufflen)
+int seagate_st0x_command (Scsi_Cmnd * SCpnt)
 	{
-	return internal_command (target, cmnd, buff, bufflen, 
+	return internal_command (SCpnt->target, SCpnt->lun, SCpnt->cmnd, SCpnt->request_buffer,
+				 SCpnt->request_bufflen, 
 				 (int) NO_RECONNECT);
 	}
 	
-static int internal_command(unsigned char target, const void *cmnd,
+static int internal_command(unsigned char target, unsigned char lun, const void *cmnd,
 			 void *buff, int bufflen, int reselect)
 	{
 	int len;			
@@ -335,8 +340,6 @@ static int internal_command(unsigned char target, const void *cmnd,
 	unsigned char status = 0;	
 	unsigned char message = 0;
 	register unsigned char status_read;
-
-	do_seagate = seagate_unexpected_intr;
 
 	len=bufflen;
 	data=(unsigned char *) buff;
@@ -367,11 +370,7 @@ static int internal_command(unsigned char target, const void *cmnd,
 	
 
 	if (target > 6)
-		{
-		if (reselect == RECONNECT_NOW)
-			eoi();
 		return DID_BAD_TARGET;
-		}
 
 /*
  *	We work it differently depending on if this is is "the first time,"
@@ -403,7 +402,6 @@ static int internal_command(unsigned char target, const void *cmnd,
 			printk("scsi%d : RESELECT timed out while waiting for IO .\n",
 				hostno);
 #endif
-			eoi();
 			return (DID_BAD_INTR << 16);
 			}
 
@@ -418,7 +416,6 @@ static int internal_command(unsigned char target, const void *cmnd,
 			printk("scsi%d : detected reconnect request to different target.\n" 
 			       "\tData bus = %d\n", hostno, temp);
 #endif
-			eoi();
 			return (DID_BAD_INTR << 16);
 			}
 
@@ -426,7 +423,6 @@ static int internal_command(unsigned char target, const void *cmnd,
 			{
 			printk("scsi%d : Unexpected reselect interrupt.  Data bus = %d\n",
 				hostno, temp);
-			eoi();
 			return (DID_BAD_INTR << 16);
 			}
                 data=current_data;      /* WDE add */
@@ -454,7 +450,6 @@ static int internal_command(unsigned char target, const void *cmnd,
 			printk("scsi%d : RESELECT timed out while waiting for SEL.\n",
 				hostno);
 #endif
-			eoi();
 			return (DID_BAD_INTR << 16);				 
 			}
 
@@ -464,7 +459,6 @@ static int internal_command(unsigned char target, const void *cmnd,
  *	At this point, we have connected with the target and can get 
  *	on with our lives.
  */	 
-		eoi();
 		}  	
 	else
  		{	
@@ -670,7 +664,7 @@ static int internal_command(unsigned char target, const void *cmnd,
  * 	We loop as long as we are in a data out phase, there is data to send, 
  *	and BSY is still active.
  */
-		__asm__ ("
+		__asm__ (
 
 /*
 	Local variables : 
@@ -681,9 +675,9 @@ static int internal_command(unsigned char target, const void *cmnd,
 
 	Test for any data here at all.
 */
-	movl %0, %%esi		/* local value of data */
-	movl %1, %%ecx		/* local value of len */	
-	orl %%ecx, %%ecx
+	"movl %0, %%esi\n"		/* local value of data */
+	"\tmovl %1, %%ecx\n"		/* local value of len */	
+	"\torl %%ecx, %%ecx
 	jz 2f
 
 	cld
@@ -691,23 +685,23 @@ static int internal_command(unsigned char target, const void *cmnd,
 	movl _st0x_cr_sr, %%ebx
 	movl _st0x_dr, %%edi
 	
-1:	movb (%%ebx), %%al
+1:	movb (%%ebx), %%al\n"
 /*
 	Test for BSY
 */
 
-	test $1, %%al 
-	jz 2f
+	"\ttest $1, %%al
+	jz 2f\n"
 
 /*
 	Test for data out phase - STATUS & REQ_MASK should be REQ_DATAOUT, which is 0.
 */
-	test $0xe, %%al
-	jnz 2f	
+	"\ttest $0xe, %%al
+	jnz 2f	\n"
 /*
 	Test for REQ
 */	
-	test $0x10, %%al
+	"\ttest $0x10, %%al
 	jz 1b
 	lodsb
 	movb %%al, (%%edi) 
@@ -732,7 +726,7 @@ static int internal_command(unsigned char target, const void *cmnd,
  * 	and BSY is still active
  */
  
-			__asm__ ("
+			__asm__ (
 /*
 	Local variables : 
 	ecx = len
@@ -743,44 +737,44 @@ static int internal_command(unsigned char target, const void *cmnd,
 	Test for room to read
 */
 
-	movl %0, %%edi		/* data */
-	movl %1, %%ecx		/* len */
-	orl %%ecx, %%ecx
+	"movl %0, %%edi\n"		/* data */
+	"\tmovl %1, %%ecx\n"		/* len */
+	"\torl %%ecx, %%ecx
 	jz 2f
 
 	cld
 	movl _st0x_cr_sr, %%esi
 	movl _st0x_dr, %%ebx
 
-1:	movb (%%esi), %%al
+1:	movb (%%esi), %%al\n"
 /*
 	Test for BSY
 */
 
-	test $1, %%al 
-	jz 2f
+	"\ttest $1, %%al 
+	jz 2f\n"
 
 /*
 	Test for data in phase - STATUS & REQ_MASK should be REQ_DATAIN, = STAT_IO, which is 4.
 */
-	movb $0xe, %%ah	
+	"\tmovb $0xe, %%ah	
 	andb %%al, %%ah
 	cmpb $0x04, %%ah
-	jne 2f
+	jne 2f\n"
 		
 /*
 	Test for REQ
 */	
-	test $0x10, %%al
+	"\ttest $0x10, %%al
 	jz 1b
 
 	movb (%%ebx), %%al	
 	stosb	
 	loop 1b
 
-2: 	movl %%edi, %2	 	/* data */
-	movl %%ecx, %3 		/* len */
-									":
+2: 	movl %%edi, %2\n"	 	/* data */
+	"\tmovl %%ecx, %3\n" 		/* len */
+									:
 /* output */
 "=r" (data), "=r" (len) :
 /* input */
@@ -813,7 +807,7 @@ static int internal_command(unsigned char target, const void *cmnd,
  */
 			if (reselect)
 				{
-				DATA = IDENTIFY(1,0);
+				DATA = IDENTIFY(1, lun);
 #if (DEBUG & (PHASE_RESELECT | PHASE_MSGOUT)) 
 				printk("scsi%d : sent IDENTIFY message.\n", hostno);
 #endif
@@ -927,7 +921,6 @@ static int internal_command(unsigned char target, const void *cmnd,
 		printk("scsi%d : exiting seagate_st0x_queue_command() with reconnect enabled.\n",
 			hostno);
 #endif
-		do_seagate = seagate_reconnect_intr;
 		CONTROL = BASE_CMD | CMD_INTR ;
 		}
 	else
@@ -936,7 +929,7 @@ static int internal_command(unsigned char target, const void *cmnd,
 	return retcode (st0x_aborted);
 	}
 
-int seagate_st0x_abort (int code)
+int seagate_st0x_abort (Scsi_Cmnd * SCpnt, int code)
 	{
 	if (code)
 		st0x_aborted = code;

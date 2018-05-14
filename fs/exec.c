@@ -77,7 +77,8 @@ int core_dump(long signr, struct pt_regs * regs)
 		return 0;
 	current->dumpable = 0;
 /* See if we have enough room to write the upage.  */
-	if(current->rlim[RLIMIT_CORE].rlim_cur < PAGE_SIZE/1024) return 0;
+	if (current->rlim[RLIMIT_CORE].rlim_cur < PAGE_SIZE)
+		return 0;
 	__asm__("mov %%fs,%0":"=r" (fs));
 	__asm__("mov %0,%%fs"::"r" ((unsigned short) 0x10));
 	if (open_namei("core",O_CREAT | O_WRONLY | O_TRUNC,0600,&inode,NULL)) {
@@ -113,24 +114,31 @@ int core_dump(long signr, struct pt_regs * regs)
 		dump.u_ssize = ((unsigned long) (TASK_SIZE - dump.start_stack)) >> 12;
 /* If the size of the dump file exceeds the rlimit, then see what would happen
    if we wrote the stack, but not the data area.  */
-	if ((dump.u_dsize+dump.u_ssize+1) * PAGE_SIZE/1024 >
+	if ((dump.u_dsize+dump.u_ssize+1) * PAGE_SIZE >
 	    current->rlim[RLIMIT_CORE].rlim_cur)
 		dump.u_dsize = 0;
 /* Make sure we have enough room to write the stack and data areas. */
-	if ((dump.u_ssize+1) * PAGE_SIZE / 1024 >
+	if ((dump.u_ssize+1) * PAGE_SIZE >
 	    current->rlim[RLIMIT_CORE].rlim_cur)
 		dump.u_ssize = 0;
        	dump.u_comm = 0;
 	dump.u_ar0 = (struct pt_regs *)(((int)(&dump.regs)) -((int)(&dump)));
 	dump.signal = signr;
 	dump.regs = *regs;
-/* Flag indicating the math stuff is valid. */
-	if ((dump.u_fpvalid = current->used_math)) {
-		if (last_task_used_math == current)
-			__asm__("clts ; fnsave %0"::"m" (dump.i387));
-		else
-			memcpy(&dump.i387,&current->tss.i387,sizeof(dump.i387));
-	};
+/* Flag indicating the math stuff is valid. We don't support this for the
+   soft-float routines yet */
+	if (hard_math) {
+		if ((dump.u_fpvalid = current->used_math) != 0) {
+			if (last_task_used_math == current)
+				__asm__("clts ; fnsave %0"::"m" (dump.i387));
+			else
+				memcpy(&dump.i387,&current->tss.i387.hard,sizeof(dump.i387));
+		}
+	} else {
+		/* we should dump the emulator state here, but we need to
+		   convert it into standard 387 format first.. */
+		dump.u_fpvalid = 0;
+	}
 	__asm__("mov %0,%%fs"::"r" ((unsigned short) 0x10));
 	DUMP_WRITE(&dump,sizeof(dump));
 	DUMP_SEEK(sizeof(dump));
@@ -235,16 +243,19 @@ static unsigned long * create_tables(char * p,int argc,int envc)
 	put_fs_long((unsigned long)envp,--sp);
 	put_fs_long((unsigned long)argv,--sp);
 	put_fs_long((unsigned long)argc,--sp);
+	current->arg_start = (unsigned long) p;
 	while (argc-->0) {
 		put_fs_long((unsigned long) p,argv++);
 		while (get_fs_byte(p++)) /* nothing */ ;
 	}
 	put_fs_long(0,argv);
+	current->arg_end = current->env_start = (unsigned long) p;
 	while (envc-->0) {
 		put_fs_long((unsigned long) p,envp++);
 		while (get_fs_byte(p++)) /* nothing */ ;
 	}
 	put_fs_long(0,envp);
+	current->env_end = (unsigned long) p;
 	return sp;
 }
 
@@ -256,7 +267,7 @@ static int count(char ** argv)
 	int i=0;
 	char ** tmp;
 
-	if ((tmp = argv))
+	if ((tmp = argv) != 0)
 		while (get_fs_long((unsigned long *) (tmp++)))
 			i++;
 
@@ -316,7 +327,7 @@ static unsigned long copy_strings(int argc,char ** argv,unsigned long *page,
 					set_fs(old_fs);
 				if (!(pag = (char *) page[p/PAGE_SIZE]) &&
 				    !(pag = (char *) (page[p/PAGE_SIZE] =
-				      (unsigned long)get_free_page(GFP_USER)))) 
+				      (unsigned long) get_free_page(GFP_USER)))) 
 					return 0;
 				if (from_kmem==2)
 					set_fs(new_fs);
@@ -473,7 +484,7 @@ restart_interp:
 		brelse(bh);
 		iput(inode);
 		buf[127] = '\0';
-		if ((cp = strchr(buf, '\n'))) {
+		if ((cp = strchr(buf, '\n')) != NULL) {
 			*cp = '\0';
 			for (cp = buf; (*cp == ' ') || (*cp == '\t'); cp++);
 		}
@@ -581,9 +592,9 @@ restart_interp:
 			current->sigaction[i].sa_handler = NULL;
 	}
 	for (i=0 ; i<NR_OPEN ; i++)
-		if ((current->close_on_exec>>i)&1)
+		if (FD_ISSET(i,&current->close_on_exec))
 			sys_close(i);
-	current->close_on_exec = 0;
+	FD_ZERO(&current->close_on_exec);
 	clear_page_tables(current);
 	if (last_task_used_math == current)
 		last_task_used_math = NULL;

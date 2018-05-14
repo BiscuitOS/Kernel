@@ -58,7 +58,7 @@ void coprocessor_error(void);
 void reserved(void);
 void alignment_check(void);
 
-static void die_if_kernel(char * str,long esp_ptr,long nr)
+/*static*/ void die_if_kernel(char * str,long esp_ptr,long nr)
 {
 	long * esp = (long *) esp_ptr;
 	int i;
@@ -69,7 +69,7 @@ static void die_if_kernel(char * str,long esp_ptr,long nr)
 	printk("EIP:    %04x:%p\nEFLAGS: %p\n", 0xffff & esp[1],esp[0],esp[2]);
 	printk("fs: %04x\n",_fs());
 	printk("base: %p, limit: %p\n",get_base(current->ldt[1]),get_limit(0x17));
-	str(i);
+	store_TR(i);
 	printk("Pid: %d, process nr: %d\n\r",current->pid,0xffff & i);
 	for(i=0;i<10;i++)
 		printk("%02x ",0xff & get_seg_byte(esp[1],(i+(char *)esp[0])));

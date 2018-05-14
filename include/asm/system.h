@@ -1,5 +1,5 @@
 #define move_to_user_mode() \
-__asm__ ("movl %%esp,%%eax\n\t" \
+__asm__ __volatile__ ("movl %%esp,%%eax\n\t" \
 	"pushl $0x17\n\t" \
 	"pushl %%eax\n\t" \
 	"pushfl\n\t" \
@@ -13,14 +13,20 @@ __asm__ ("movl %%esp,%%eax\n\t" \
 	"mov %%ax,%%gs" \
 	:::)
 
-#define sti() __asm__ ("sti"::)
-#define cli() __asm__ ("cli"::)
-#define nop() __asm__ ("nop"::)
+#define sti() __asm__ __volatile__ ("sti"::)
+#define cli() __asm__ __volatile__ ("cli"::)
+#define nop() __asm__ __volatile__ ("nop"::)
 
-#define iret() __asm__ ("iret"::)
+#define save_flags(x) \
+__asm__ __volatile__("pushfl ; popl %0":"=r" (x))
+
+#define restore_flags(x) \
+__asm__ __volatile__("pushl %0 ; popfl"::"r" (x))
+
+#define iret() __asm__ __volatile__ ("iret"::)
 
 #define _set_gate(gate_addr,type,dpl,addr) \
-__asm__ ("movw %%dx,%%ax\n\t" \
+__asm__ __volatile__ ("movw %%dx,%%ax\n\t" \
 	"movw %0,%%dx\n\t" \
 	"movl %%eax,%1\n\t" \
 	"movl %%edx,%2" \
@@ -49,7 +55,7 @@ __asm__ ("movw %%dx,%%ax\n\t" \
 		((limit) & 0x0ffff); }
 
 #define _set_tssldt_desc(n,addr,limit,type) \
-__asm__ ("movw $" #limit ",%1\n\t" \
+__asm__ __volatile__ ("movw $" #limit ",%1\n\t" \
 	"movw %%ax,%2\n\t" \
 	"rorl $16,%%eax\n\t" \
 	"movb %%al,%3\n\t" \

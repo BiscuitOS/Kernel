@@ -151,7 +151,7 @@ static void mark_screen_rdonly(struct task_struct * tsk)
 	unsigned long tmp;
 	unsigned long *pg_table;
 
-	if ((tmp = tsk->tss.cr3)) {
+	if ((tmp = tsk->tss.cr3) != 0) {
 		tmp = *(unsigned long *) tmp;
 		if (tmp & PAGE_PRESENT) {
 			tmp &= 0xfffff000;
@@ -195,7 +195,7 @@ int sys_vm86(struct vm86_struct * v86)
 	current->screen_bitmap = info.screen_bitmap;
 	if (info.flags & VM86_SCREEN_BITMAP)
 		mark_screen_rdonly(current);
-	__asm__ ("movl %0,%%esp\n\t"
+	__asm__ __volatile__("movl %0,%%esp\n\t"
 		"pushl $ret_from_sys_call\n\t"
 		"ret"::"g" ((long) &(info.regs)),"a" (info.regs.eax));
 	return 0;
@@ -253,23 +253,28 @@ void ctrl_alt_del(void)
  * 100% compatible with BSD.  A program which uses just setgid() will be
  * 100% compatible with POSIX w/ Saved ID's. 
  */
-int sys_setregid(int rgid, int egid)
+int sys_setregid(gid_t rgid, gid_t egid)
 {
-	if (rgid >= 0) {
-		if ((current->gid == rgid) || 
+	int old_rgid = current->gid;
+
+	if (rgid != (gid_t) -1) {
+		if ((current->egid==rgid) ||
+		    (old_rgid == rgid) || 
 		    suser())
 			current->gid = rgid;
 		else
 			return(-EPERM);
 	}
-	if (egid >= 0) {
-		if ((current->gid == egid) ||
+	if (egid != (gid_t) -1) {
+		if ((old_rgid == egid) ||
 		    (current->egid == egid) ||
 		    suser()) {
 			current->egid = egid;
 			current->sgid = egid;
-		} else
+		} else {
+			current->gid = old_rgid;
 			return(-EPERM);
+		}
 	}
 	return 0;
 }
@@ -277,7 +282,7 @@ int sys_setregid(int rgid, int egid)
 /*
  * setgid() is implemeneted like SysV w/ SAVED_IDS 
  */
-int sys_setgid(int gid)
+int sys_setgid(gid_t gid)
 {
 	if (suser())
 		current->gid = current->egid = current->sgid = gid;
@@ -338,11 +343,11 @@ int sys_time(long * tloc)
  * 100% compatible with BSD.  A program which uses just setuid() will be
  * 100% compatible with POSIX w/ Saved ID's. 
  */
-int sys_setreuid(int ruid, int euid)
+int sys_setreuid(uid_t ruid, uid_t euid)
 {
 	int old_ruid = current->uid;
 	
-	if (ruid >= 0) {
+	if (ruid != (uid_t) -1) {
 		if ((current->euid==ruid) ||
 		    (old_ruid == ruid) ||
 		    suser())
@@ -350,7 +355,7 @@ int sys_setreuid(int ruid, int euid)
 		else
 			return(-EPERM);
 	}
-	if (euid >= 0) {
+	if (euid != (uid_t) -1) {
 		if ((old_ruid == euid) ||
 		    (current->euid == euid) ||
 		    suser()) {
@@ -375,7 +380,7 @@ int sys_setreuid(int ruid, int euid)
  * will allow a root program to temporarily drop privileges and be able to
  * regain them by swapping the real and effective uid.  
  */
-int sys_setuid(int uid)
+int sys_setuid(uid_t uid)
 {
 	if (suser())
 		current->uid = current->euid = current->suid = uid;
@@ -424,7 +429,7 @@ int sys_brk(unsigned long end_data_seg)
  * only important on a multi-user system anyway, to make sure one user
  * can't send a signal to a process owned by another.  -TYT, 12/12/91
  */
-int sys_setpgid(int pid, int pgid)
+int sys_setpgid(pid_t pid, pid_t pgid)
 {
 	int i; 
 
@@ -564,7 +569,7 @@ int sys_sethostname(char *name, int len)
 	return 0;
 }
 
-int sys_getrlimit(int resource, struct rlimit *rlim)
+int sys_getrlimit(unsigned int resource, struct rlimit *rlim)
 {
 	if (resource >= RLIM_NLIMITS)
 		return -EINVAL;
@@ -576,7 +581,7 @@ int sys_getrlimit(int resource, struct rlimit *rlim)
 	return 0;	
 }
 
-int sys_setrlimit(int resource, struct rlimit *rlim)
+int sys_setrlimit(unsigned int resource, struct rlimit *rlim)
 {
 	struct rlimit new, *old;
 
