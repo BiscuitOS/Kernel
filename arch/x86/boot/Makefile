@@ -1,4 +1,4 @@
-obj-y += head.o
+obj-y += head2.o
 
 local_LDFLAGS += -Ttext 0
 
@@ -35,13 +35,16 @@ endif
 bootsect.o: bootsect.s
 	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<
 	
-setup.o: setup.s
+setup.o: setup.s head2.s
 	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<
+
+head2.s: head.S
+	$(Q)$(CPP) -traditional -I$(srctree)/include $< -o $@
 	
 ECHO:
 
 clean:
-	$(Q)rm -rf bootsect setup bootloader
+	$(Q)rm -rf bootsect setup bootloader head2.s
 ifdef CONFIG_DEBUG_BOOTLOADER
 	$(Q)rm -rf .debug_bootsect .debug_setup
 endif

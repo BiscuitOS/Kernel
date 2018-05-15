@@ -13,15 +13,13 @@
 	.globl empty_bad_page, empty_bad_page_table
 	.globl empty_zero_page
 
+#include <linux/tasks.h>
+#include <linux/segment.h>
+
 	.equ CL_MAGIC_ADDR, 0x90020
 	.equ CL_MAGIC, 0xA33F
 	.equ CL_BASE_ADDR, 0x90000
 	.equ CL_OFFSET, 0x90022
-	.equ KERNEL_DS, 0x10
-	.equ KERNEL_CS, 0x10
-	.equ NR_TASKS, 64
-	.equ __edata, 0
-	.equ __end, 0
 
 /*
  * swapper_pg_dir is the main page directory, address 0x00001000 (or at

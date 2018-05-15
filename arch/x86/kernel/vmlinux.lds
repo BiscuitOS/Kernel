@@ -15,3 +15,5 @@ SECTIONS
 	.bss		: { *(.bss) }
 	PROVIDE (end = .);
 }
+PROVIDE (__edata = .);
+PROVIDE (__end = .);
