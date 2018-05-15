@@ -20,7 +20,7 @@
 #define F_SETFD		2	/* set f_flags */
 #define F_GETFL		3	/* more flags (cloexec) */
 #define F_SETFL		4
-#define F_GETLK		5	/* not implemented */
+#define F_GETLK		5
 #define F_SETLK		6
 #define F_SETLKW	7
 
@@ -34,7 +34,10 @@
 #define F_WRLCK		1
 #define F_UNLCK		2
 
-/* Once again - not implemented, but ... */
+/* For bsd flock () */
+#define F_EXLCK		4	/* or 3 */
+#define F_SHLCK		8	/* or 4 */
+
 struct flock {
 	short l_type;
 	short l_whence;

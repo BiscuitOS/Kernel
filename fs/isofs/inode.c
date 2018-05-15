@@ -5,24 +5,34 @@
  *
  *  (C) 1991  Linus Torvalds - minix filesystem
  */
+
 #include <linux/config.h>
 #include <linux/stat.h>
 #include <linux/sched.h>
 #include <linux/iso_fs.h>
 #include <linux/kernel.h>
+#include <linux/major.h>
 #include <linux/mm.h>
 #include <linux/string.h>
 #include <linux/locks.h>
+#include <linux/malloc.h>
+#include <linux/errno.h>
 
 #include <asm/system.h>
 #include <asm/segment.h>
-#include <linux/errno.h>
 
-#ifndef CONFIG_BLK_DEV_SR
-#error The iso9660 filesystem can only be used with CDROM.
-#endif
-
+#if defined(CONFIG_BLK_DEV_SR)
 extern int check_cdrom_media_change(int, int);
+#endif
+#if defined(CONFIG_CDU31A)
+extern int check_cdu31a_media_change(int, int);
+#endif
+#if defined(CONFIG_MCD)
+extern int check_mcd_media_change(int, int);
+#endif
+#if defined (CONFIG_SBPCD)
+extern int check_sbpcd_media_change(int, int);
+#endif CONFIG_SBPCD
 
 #ifdef LEAK_CHECK
 static int check_malloc = 0;
@@ -49,39 +59,41 @@ static struct super_operations isofs_sops = {
 	NULL,			/* put_inode */
 	isofs_put_super,
 	NULL,			/* write_super */
-	isofs_statfs
+	isofs_statfs,
+	NULL
 };
 
 
 
-static int parse_options(char *options,char *map,char *conversion, char * rock, char * cruft)
+static int parse_options(char *options,char *map,char *conversion, char * rock, char * cruft, unsigned int * blocksize)
 {
-	char *this,*value;
+	char *this_char,*value;
 
 	*map = 'n';
 	*rock = 'y';
 	*cruft = 'n';
 	*conversion = 'a';
+	*blocksize = 1024;
 	if (!options) return 1;
-	for (this = strtok(options,","); this; this = strtok(NULL,",")) {
-	        if (strncmp(this,"norock",6) == 0) {
+	for (this_char = strtok(options,","); this_char; this_char = strtok(NULL,",")) {
+	        if (strncmp(this_char,"norock",6) == 0) {
 		  *rock = 'n';
 		  continue;
 		};
-	        if (strncmp(this,"cruft",5) == 0) {
+	        if (strncmp(this_char,"cruft",5) == 0) {
 		  *cruft = 'y';
 		  continue;
 		};
-		if ((value = strchr(this,'=')) != NULL)
+		if ((value = strchr(this_char,'=')) != NULL)
 			*value++ = 0;
-		if (!strcmp(this,"map") && value) {
+		if (!strcmp(this_char,"map") && value) {
 			if (value[0] && !value[1] && strchr("on",*value))
 				*map = *value;
 			else if (!strcmp(value,"off")) *map = 'o';
 			else if (!strcmp(value,"normal")) *map = 'n';
 			else return 0;
 		}
-		else if (!strcmp(this,"conv") && value) {
+		else if (!strcmp(this_char,"conv") && value) {
 			if (value[0] && !value[1] && strchr("bta",*value))
 				*conversion = *value;
 			else if (!strcmp(value,"binary")) *conversion = 'b';
@@ -90,15 +102,30 @@ static int parse_options(char *options,char *map,char *conversion, char * rock, 
 			else if (!strcmp(value,"auto")) *conversion = 'a';
 			else return 0;
 		}
+		else if (!strcmp(this_char,"block") && value) {
+		  char * vpnt = value;
+		  unsigned int ivalue;
+		  ivalue = 0;
+		  while(*vpnt){
+		    if(*vpnt <  '0' || *vpnt > '9') break;
+		    ivalue = ivalue * 10 + (*vpnt - '0');
+		    vpnt++;
+		  };
+		  if (*vpnt) return 0;
+		  if (ivalue != 1024 && ivalue != 2048) return 0;
+		  *blocksize = ivalue;
+		}
 		else return 0;
 	}
 	return 1;
 }
 
-struct super_block *isofs_read_super(struct super_block *s,void *data)
+struct super_block *isofs_read_super(struct super_block *s,void *data,
+				     int silent)
 {
 	struct buffer_head *bh;
 	int iso_blknum;
+	unsigned int blocksize, blocksize_bits;
 	int high_sierra;
 	int dev=s->s_dev;
 	struct iso_volume_descriptor *vdp;
@@ -111,17 +138,27 @@ struct super_block *isofs_read_super(struct super_block *s,void *data)
 
 	char map, conversion, rock, cruft;
 
-	if (!parse_options((char *) data,&map,&conversion, &rock, &cruft)) {
+	if (!parse_options((char *) data,&map,&conversion, &rock, &cruft, &blocksize)) {
 		s->s_dev = 0;
 		return NULL;
 	}
+
+	blocksize_bits = 0;
+	{
+	  int i = blocksize;
+	  while (i != 1){
+	    blocksize_bits++;
+	    i >>=1;
+	  };
+	};
+	set_blocksize(dev, blocksize);
 
 	lock_super(s);
 
 	s->u.isofs_sb.s_high_sierra = high_sierra = 0; /* default is iso9660 */
 
 	for (iso_blknum = 16; iso_blknum < 100; iso_blknum++) {
-		if (!(bh = bread(dev, iso_blknum << (ISOFS_BLOCK_BITS-ISOFS_BUFFER_BITS), ISOFS_BUFFER_SIZE))) {
+		if (!(bh = bread(dev, iso_blknum << (ISOFS_BLOCK_BITS-blocksize_bits), blocksize))) {
 			s->s_dev=0;
 			printk("isofs_read_super: bread failed, dev 0x%x iso_blknum %d\n",
 			       dev, iso_blknum);
@@ -159,7 +196,8 @@ struct super_block *isofs_read_super(struct super_block *s,void *data)
 		brelse(bh);
 	      }
 	if(iso_blknum == 100) {
-		printk("Unable to identify CD-ROM format.\n");
+		if (!silent)
+			printk("Unable to identify CD-ROM format.\n");
 		s->s_dev = 0;
 		unlock_super(s);
 		return NULL;
@@ -189,7 +227,7 @@ struct super_block *isofs_read_super(struct super_block *s,void *data)
 	s->u.isofs_sb.s_ninodes = 0; /* No way to figure this out easily */
 	
 	s->u.isofs_sb.s_firstdatazone = isonum_733( rootp->extent) << 
-		(ISOFS_BLOCK_BITS - ISOFS_BUFFER_BITS);
+		(ISOFS_BLOCK_BITS - blocksize_bits);
 	s->s_magic = ISOFS_SUPER_MAGIC;
 	
 	/* The CDROM is read-only, has no nodes (devices) on it, and since
@@ -206,9 +244,11 @@ struct super_block *isofs_read_super(struct super_block *s,void *data)
 	
 	brelse(bh);
 	
-	printk("Max size:%d   Log zone size:%d\n",s->u.isofs_sb.s_max_size, 
+	printk("Max size:%ld   Log zone size:%ld\n",
+	       s->u.isofs_sb.s_max_size, 
 	       s->u.isofs_sb.s_log_zone_size);
-	printk("First datazone:%d   Root inode number %d\n",s->u.isofs_sb.s_firstdatazone,
+	printk("First datazone:%ld   Root inode number %d\n",
+	       s->u.isofs_sb.s_firstdatazone,
 	       isonum_733 (rootp->extent) << ISOFS_BLOCK_BITS);
 	if(high_sierra) printk("Disc in High Sierra format.\n");
 	unlock_super(s);
@@ -220,7 +260,8 @@ struct super_block *isofs_read_super(struct super_block *s,void *data)
 	s->u.isofs_sb.s_rock = (rock == 'y' ? 1 : 0);
 	s->u.isofs_sb.s_conversion = conversion;
 	s->u.isofs_sb.s_cruft = cruft;
-	s->s_blocksize = ISOFS_BUFFER_SIZE;
+	s->s_blocksize = blocksize;
+	s->s_blocksize_bits = blocksize_bits;
 	s->s_mounted = iget(s, isonum_733 (rootp->extent) << ISOFS_BLOCK_BITS);
 	unlock_super(s);
 
@@ -229,11 +270,34 @@ struct super_block *isofs_read_super(struct super_block *s,void *data)
 		printk("get root inode failed\n");
 		return NULL;
 	}
-	if(MAJOR(s->s_dev) == 11) {
-		/* Chech this one more time. */
+#if defined(CONFIG_BLK_DEV_SR) && defined(CONFIG_SCSI)
+	if (MAJOR(s->s_dev) == SCSI_CDROM_MAJOR) {
+		/* Check this one more time. */
 		if(check_cdrom_media_change(s->s_dev, 0))
 		  goto out;
+	}
+#endif
+#if defined(CONFIG_CDU31A)
+	if (MAJOR(s->s_dev) == CDU31A_CDROM_MAJOR) {
+		/* Check this one more time. */
+		if(check_cdu31a_media_change(s->s_dev, 0))
+		  goto out;
+	}
+#endif
+#if defined(CONFIG_MCD)
+	if (MAJOR(s->s_dev) == MITSUMI_CDROM_MAJOR) {
+		/* Check this one more time. */
+		if(check_mcd_media_change(s->s_dev, 0))
+		  goto out;
+	}
+#endif
+#if defined(CONFIG_SBPCD)
+	if (MAJOR(s->s_dev) == MATSUSHITA_CDROM_MAJOR) {
+		if (check_sbpcd_media_change(s->s_dev,0))
+		  goto out;
 	};
+#endif CONFIG_SBPCD
+
 	return s;
  out: /* Kick out for various error conditions */
 	brelse(bh);
@@ -251,6 +315,7 @@ void isofs_statfs (struct super_block *sb, struct statfs *buf)
 	put_fs_long(0, &buf->f_bavail);
 	put_fs_long(sb->u.isofs_sb.s_ninodes, &buf->f_files);
 	put_fs_long(0, &buf->f_ffree);
+	put_fs_long(NAME_MAX, &buf->f_namelen);
 	/* Don't know what value to put in buf->f_fsid */
 }
 
@@ -266,43 +331,55 @@ int isofs_bmap(struct inode * inode,int block)
 
 void isofs_read_inode(struct inode * inode)
 {
+	unsigned long bufsize = ISOFS_BUFFER_SIZE(inode);
 	struct buffer_head * bh;
-	unsigned char * pnt, *cpnt = 0;
 	struct iso_directory_record * raw_inode;
+	unsigned char *pnt = NULL;
+	void *cpnt = NULL;
 	int high_sierra;
 	int block;
 	int i;
+
+	block = inode->i_ino >> ISOFS_BUFFER_BITS(inode);
+	if (!(bh=bread(inode->i_dev,block, bufsize))) {
+	  printk("unable to read i-node block");
+	  goto fail;
+	}
 	
-	block = inode->i_ino >> ISOFS_BUFFER_BITS;
-	if (!(bh=bread(inode->i_dev,block, ISOFS_BUFFER_SIZE)))
-		panic("unable to read i-node block");
-	
-	pnt = ((char *) bh->b_data) + (inode->i_ino & (ISOFS_BUFFER_SIZE - 1));
-	
+	pnt = ((unsigned char *) bh->b_data
+	       + (inode->i_ino & (bufsize - 1)));
 	raw_inode = ((struct iso_directory_record *) pnt);
 	high_sierra = inode->i_sb->u.isofs_sb.s_high_sierra;
 
-	if ((inode->i_ino & (ISOFS_BUFFER_SIZE - 1)) + *pnt > ISOFS_BUFFER_SIZE){
+	if ((inode->i_ino & (bufsize - 1)) + *pnt > bufsize){
 		cpnt = kmalloc(1 << ISOFS_BLOCK_BITS, GFP_KERNEL);
-		memcpy(cpnt, bh->b_data, ISOFS_BUFFER_SIZE);
+		if (cpnt == NULL) {
+			printk(KERN_INFO "NoMem ISO inode %d\n",inode->i_ino);
+			brelse(bh);
+			goto fail;
+		}
+		memcpy(cpnt, bh->b_data, bufsize);
 		brelse(bh);
-		if (!(bh = bread(inode->i_dev,++block, ISOFS_BUFFER_SIZE)))
-			panic("unable to read i-node block");
-		memcpy(cpnt+ISOFS_BUFFER_SIZE, bh->b_data, ISOFS_BUFFER_SIZE);
-		pnt = ((char *) cpnt) + (inode->i_ino & (ISOFS_BUFFER_SIZE - 1));
+		if (!(bh = bread(inode->i_dev,++block, bufsize))) {
+			kfree_s(cpnt, 1 << ISOFS_BLOCK_BITS);
+			printk("unable to read i-node block");
+			goto fail;
+		}
+		memcpy((char *)cpnt + bufsize, bh->b_data, bufsize);
+		pnt = ((unsigned char *) cpnt
+		       + (inode->i_ino & (bufsize - 1)));
 		raw_inode = ((struct iso_directory_record *) pnt);
-	};
-	
+	}
 
-	inode->i_mode = 0444; /* Everybody gets to read the file. */
+	inode->i_mode = S_IRUGO; /* Everybody gets to read the file. */
 	inode->i_nlink = 1;
 	
 	if (raw_inode->flags[-high_sierra] & 2) {
-		inode->i_mode = 0555 | S_IFDIR;
+		inode->i_mode = S_IRUGO | S_IXUGO | S_IFDIR;
 		inode->i_nlink = 2; /* There are always at least 2.  It is
 				       hard to figure out what is correct*/
 	} else {
-		inode->i_mode = 0444; /* Everybody gets to read the file. */
+		inode->i_mode = S_IRUGO; /* Everybody gets to read the file. */
 		inode->i_nlink = 1;
 	        inode->i_mode |= S_IFREG;
 /* If there are no periods in the name, then set the execute permission bit */
@@ -310,18 +387,19 @@ void isofs_read_inode(struct inode * inode)
 			if(raw_inode->name[i]=='.' || raw_inode->name[i]==';')
 				break;
 		if(i == raw_inode->name_len[0] || raw_inode->name[i] == ';') 
-			inode->i_mode |= 0111; /* execute permission */
-	};
+			inode->i_mode |= S_IXUGO; /* execute permission */
+	}
 	inode->i_uid = 0;
 	inode->i_gid = 0;
 	inode->i_size = isonum_733 (raw_inode->size);
 
 	/* There are defective discs out there - we do this to protect
 	   ourselves.  A cdrom will never contain more than 700Mb */
-	if(inode->i_size < 0 || inode->i_size > 700000000) {
+	if((inode->i_size < 0 || inode->i_size > 700000000) &&
+	    inode->i_sb->u.isofs_sb.s_cruft == 'n') {
 	  printk("Warning: defective cdrom.  Enabling \"cruft\" mount option.\n");
 	  inode->i_sb->u.isofs_sb.s_cruft = 'y';
-	};
+	}
 
 /* Some dipshit decided to store some other bit of information in the high
    byte of the file length.  Catch this and holler.  WARNING: this will make
@@ -331,22 +409,18 @@ void isofs_read_inode(struct inode * inode)
 	   inode->i_size & 0xff000000){
 /*	  printk("Illegal format on cdrom.  Pester manufacturer.\n"); */
 	  inode->i_size &= 0x00ffffff;
-	};
+	}
 	
-	if (isonum_723 (raw_inode->volume_sequence_number) != 1) {
-		panic("Multi volume CD somehow got mounted.\n");
-	};
-
 	if (raw_inode->interleave[0]) {
 		printk("Interleaved files not (yet) supported.\n");
 		inode->i_size = 0;
-	};
+	}
 
 #ifdef DEBUG
 	/* I have no idea what extended attributes are used for, so
 	   we will flag it for now */
 	if(raw_inode->ext_attr_length[0] != 0){
-		printk("Extended attributes present for ISO file (%d).\n",
+		printk("Extended attributes present for ISO file (%ld).\n",
 		       inode->i_ino);
 	}
 #endif
@@ -354,13 +428,13 @@ void isofs_read_inode(struct inode * inode)
 	/* I have no idea what file_unit_size is used for, so
 	   we will flag it for now */
 	if(raw_inode->file_unit_size[0] != 0){
-		printk("File unit size != 0 for ISO file.(%d)\n",inode->i_ino);
+		printk("File unit size != 0 for ISO file (%ld).\n",inode->i_ino);
 	}
 
 	/* I have no idea what other flag bits are used for, so
 	   we will flag it for now */
 	if((raw_inode->flags[-high_sierra] & ~2)!= 0){
-		printk("Unusual flag settings for ISO file.(%d %x)\n",
+		printk("Unusual flag settings for ISO file (%ld %x).\n",
 		       inode->i_ino, raw_inode->flags[-high_sierra]);
 	}
 
@@ -373,9 +447,9 @@ void isofs_read_inode(struct inode * inode)
 	  iso_date(raw_inode->date, high_sierra);
 
 	inode->u.isofs_i.i_first_extent = isonum_733 (raw_inode->extent) << 
-		(ISOFS_BLOCK_BITS - ISOFS_BUFFER_BITS);
+		(ISOFS_BLOCK_BITS - ISOFS_BUFFER_BITS(inode));
 	
-	inode->u.isofs_i.i_backlink = -1; /* Will be used for previous directory */
+	inode->u.isofs_i.i_backlink = 0xffffffff; /* Will be used for previous directory */
 	switch (inode->i_sb->u.isofs_sb.s_conversion){
 	case 'a':
 	  inode->u.isofs_i.i_file_format = ISOFS_FILE_UNKNOWN; /* File type */
@@ -389,8 +463,7 @@ void isofs_read_inode(struct inode * inode)
 	case 'm':
 	  inode->u.isofs_i.i_file_format = ISOFS_FILE_TEXT_M; /* File type */
 	  break;
-	};
-	
+	}
 
 /* Now test for possible Rock Ridge extensions which will override some of
    these numbers in the inode structure. */
@@ -403,30 +476,40 @@ void isofs_read_inode(struct inode * inode)
 #endif
 	brelse(bh);
 	
+	inode->i_op = NULL;
+	if (inode->i_sb->u.isofs_sb.s_cruft != 'y' && 
+	    isonum_723 (raw_inode->volume_sequence_number) != 1) {
+		printk("Multi volume CD somehow got mounted.\n");
+	} else {
+	  if (S_ISREG(inode->i_mode))
+	    inode->i_op = &isofs_file_inode_operations;
+	  else if (S_ISDIR(inode->i_mode))
+	    inode->i_op = &isofs_dir_inode_operations;
+	  else if (S_ISLNK(inode->i_mode))
+	    inode->i_op = &isofs_symlink_inode_operations;
+	  else if (S_ISCHR(inode->i_mode))
+	    inode->i_op = &chrdev_inode_operations;
+	  else if (S_ISBLK(inode->i_mode))
+	    inode->i_op = &blkdev_inode_operations;
+	  else if (S_ISFIFO(inode->i_mode))
+	    init_fifo(inode);
+	}
 	if (cpnt) {
 		kfree_s (cpnt, 1 << ISOFS_BLOCK_BITS);
-		cpnt = 0;
-	};
-	
-	inode->i_op = NULL;
-	if (S_ISREG(inode->i_mode))
-		inode->i_op = &isofs_file_inode_operations;
-	else if (S_ISDIR(inode->i_mode))
-		inode->i_op = &isofs_dir_inode_operations;
-	else if (S_ISLNK(inode->i_mode))
-		inode->i_op = &isofs_symlink_inode_operations;
-	else if (S_ISCHR(inode->i_mode))
-		inode->i_op = &isofs_chrdev_inode_operations;
-	else if (S_ISBLK(inode->i_mode))
-		inode->i_op = &isofs_blkdev_inode_operations;
-	else if (S_ISFIFO(inode->i_mode)) {
-		inode->i_op = &isofs_fifo_inode_operations;
-		inode->i_pipe = 1;
-		PIPE_BASE(*inode) = NULL;
-		PIPE_HEAD(*inode) = PIPE_TAIL(*inode) = 0;
-		PIPE_READ_WAIT(*inode) = PIPE_WRITE_WAIT(*inode) = NULL;
-		PIPE_READERS(*inode) = PIPE_WRITERS(*inode) = 0;
+		cpnt = NULL;
 	}
+	return;
+      fail:
+	/* With a data error we return this information */
+	inode->i_mtime = inode->i_atime = inode->i_ctime = 0;
+	inode->u.isofs_i.i_first_extent = 0;
+	inode->u.isofs_i.i_backlink = 0xffffffff;
+	inode->i_size = 0;
+	inode->i_nlink = 1;
+	inode->i_uid = inode->i_gid = 0;
+	inode->i_mode = S_IFREG;  /*Regular file, noone gets to read*/
+	inode->i_op = NULL;
+	return;
 }
 
 /* There are times when we need to know the inode number of a parent of
@@ -448,114 +531,125 @@ void isofs_read_inode(struct inode * inode)
    to change the inode numbers and eliminate this function.
 */
 
-int isofs_lookup_grandparent(struct inode * parent, int extent) {
+int isofs_lookup_grandparent(struct inode * parent, int extent)
+{
+	unsigned long bufsize = ISOFS_BUFFER_SIZE(parent);
+	unsigned char bufbits = ISOFS_BUFFER_BITS(parent);
 	unsigned int block,offset;
 	int parent_dir, inode_number;
 	int old_offset;
-	char * cpnt = 0;
+	void * cpnt = NULL;
 	int result;
 	struct buffer_head * bh;
 	struct iso_directory_record * de;
 	
 	offset = 0;
-	block = extent << (ISOFS_BLOCK_BITS - ISOFS_BUFFER_BITS);
-	if (!(bh = bread(parent->i_dev, block, ISOFS_BUFFER_SIZE)))  return 0;
+	block = extent << (ISOFS_BLOCK_BITS - bufbits);
+	if (!(bh = bread(parent->i_dev, block, bufsize)))  return -1;
 	
 	while (1 == 1) {
-		de = (struct iso_directory_record *) (offset + bh->b_data);
+		de = (struct iso_directory_record *) (bh->b_data + offset);
+		if (*((unsigned char *) de) == 0) 
+		{
+			brelse(bh);
+			return -1;
+		}
 		
-		if (*((char*) de) == 0) 
-			{
-				brelse(bh);
-				return -1;
-			}
-		
-		offset += *((unsigned char*) de);
-		
-		if (offset >=  ISOFS_BUFFER_SIZE) 
-			{
-				printk(".. Directory not in first block of directory.\n");
-				brelse(bh);
-				return -1;
-			}
+		offset += *((unsigned char *) de);
+
+		if (offset >= bufsize) 
+		{
+			printk(".. Directory not in first block"
+			       " of directory.\n");
+			brelse(bh);
+			return -1;
+		}
 		
 		if (de->name_len[0] == 1 && de->name[0] == 1) 
-			{
-				brelse(bh);
-				parent_dir = find_rock_ridge_relocation(de, parent);
-				break;
-			};
+		{
+			parent_dir = find_rock_ridge_relocation(de, parent);
+			brelse(bh);
+			break;
+		}
 	}
 #ifdef DEBUG
 	printk("Parent dir:%x\n",parent_dir);
 #endif
 	/* Now we know the extent where the parent dir starts on.  We have no
-	   idea how long it is, so we just start reading until we either find it
-	   or we find some kind of unreasonable circumstance. */
+	   idea how long it is, so we just start reading until we either find
+	   it or we find some kind of unreasonable circumstance. */
 	
 	result = -1;
-	
+
 	offset = 0;
-	block = parent_dir << (ISOFS_BLOCK_BITS - ISOFS_BUFFER_BITS);
-	if (!block || !(bh = bread(parent->i_dev,block, ISOFS_BUFFER_SIZE)))
-		return 0;
+	block = parent_dir << (ISOFS_BLOCK_BITS - bufbits);
+	if (!block || !(bh = bread(parent->i_dev,block, bufsize)))
+		return -1;
 	
-	while (1==1) {
-		de = (struct iso_directory_record *) (offset + bh->b_data);
-		inode_number = (block << ISOFS_BUFFER_BITS)+(offset & (ISOFS_BUFFER_SIZE - 1));
+	for(;;)
+	{
+		de = (struct iso_directory_record *) (bh->b_data + offset);
+		inode_number = (block << bufbits)+(offset & (bufsize - 1));
 		
-		/* If the length byte is zero, we should move on to the next CDROM sector.
-		   If we are at the end of the directory, we kick out of the while loop. */
+		/* If the length byte is zero, we should move on to the next
+		   CDROM sector.  If we are at the end of the directory, we
+		   kick out of the while loop. */
 		
-		if (*((char*) de) == 0) 
-			{
-				brelse(bh);
-				offset = 0;
-				block++;
-				if(block & 1) return -1;
-				if (!block || !(bh = bread(parent->i_dev,block, ISOFS_BUFFER_SIZE)))
-					return -1;
-				continue;
-			}
+		if (*((unsigned char *) de) == 0) 
+		{
+			brelse(bh);
+			offset = 0;
+			block++;
+			if(block & 1) return -1;
+			if (!block
+			    || !(bh = bread(parent->i_dev,block, bufsize)))
+				return -1;
+			continue;
+		}
 		
-		/* Make sure that the entire directory record is in the current bh block.
-		   If not, we malloc a buffer, and put the two halves together, so that
-		   we can cleanly read the block */
-		
+		/* Make sure that the entire directory record is in the current
+		   bh block.  If not, we malloc a buffer, and put the two
+		   halves together, so that we can cleanly read the block.  */
+
 		old_offset = offset;
-		offset += *((unsigned char*) de);
-		if (offset >=  ISOFS_BUFFER_SIZE) 
-			{
-				cpnt = kmalloc(1<<ISOFS_BLOCK_BITS,GFP_KERNEL);
-				memcpy(cpnt, bh->b_data, ISOFS_BUFFER_SIZE);
-				de = (struct iso_directory_record *) (old_offset + cpnt);
-				brelse(bh);
-				offset -= ISOFS_BUFFER_SIZE;
-				block++;
-				if((block & 1) == 0) return -1;
-				if (!(bh = bread(parent->i_dev,block, ISOFS_BUFFER_SIZE)))
-					return -1;
-				memcpy(cpnt+ISOFS_BUFFER_SIZE, bh->b_data, ISOFS_BUFFER_SIZE);
-			}
+		offset += *((unsigned char *) de);
+
+		if (offset >= bufsize)
+		{
+			if((block & 1) != 0) return -1;
+			cpnt = kmalloc(1<<ISOFS_BLOCK_BITS,GFP_KERNEL);
+			memcpy(cpnt, bh->b_data, bufsize);
+			de = (struct iso_directory_record *)
+				((char *)cpnt + old_offset);
+			brelse(bh);
+			offset -= bufsize;
+			block++;
+			if (!(bh = bread(parent->i_dev,block,bufsize))) {
+			        kfree_s(cpnt, 1 << ISOFS_BLOCK_BITS);
+				return -1;
+			};
+			memcpy((char *)cpnt+bufsize, bh->b_data, bufsize);
+		}
 		
 		if (find_rock_ridge_relocation(de, parent) == extent){
 			result = inode_number;
 			goto out;
-		};
+		}
 		
 		if (cpnt) {
 			kfree_s(cpnt, 1 << ISOFS_BLOCK_BITS);
-			cpnt = 0;
-		};
+			cpnt = NULL;
+		}
 	}
-	/* We go here for any condition we cannot handle.  We also drop through
-	   to here at the end of the directory. */
-	
+
+	/* We go here for any condition we cannot handle.
+	   We also drop through to here at the end of the directory. */
+
  out:
 	if (cpnt) {
 	        kfree_s(cpnt, 1 << ISOFS_BLOCK_BITS);
-		cpnt = 0;
-	};
+		cpnt = NULL;
+	}
 	brelse(bh);
 #ifdef DEBUG
 	printk("Resultant Inode %d\n",result);

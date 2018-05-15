@@ -15,10 +15,23 @@
 #include <asm/segment.h>
 
 /*
- * comment out this line if you want names > MINIX_NAME_LEN chars to be
- * truncated. Else they will be disallowed.
+ * comment out this line if you want names > info->s_namelen chars to be
+ * truncated. Else they will be disallowed (ENAMETOOLONG).
  */
 /* #define NO_TRUNCATE */
+
+static inline int namecompare(int len, int maxlen,
+	const char * name, const char * buffer)
+{
+	if (len >= maxlen || !buffer[len]) {
+		unsigned char same;
+		__asm__("repe ; cmpsb ; setz %0"
+			:"=q" (same)
+			:"S" ((long) name),"D" ((long) buffer),"c" (len));
+		return same;
+	}
+	return 0;
+}
 
 /*
  * ok, we cannot use strncmp, as the name is not in our data space.
@@ -27,23 +40,20 @@
  *
  * NOTE! unlike strncmp, minix_match returns 1 for success, 0 for failure.
  */
-static int minix_match(int len,const char * name,struct minix_dir_entry * de)
+static int minix_match(int len, const char * name,
+	struct buffer_head * bh, unsigned long * offset,
+	struct minix_sb_info * info)
 {
-	register int same __asm__("ax");
+	struct minix_dir_entry * de;
 
-	if (!de || !de->inode || len > MINIX_NAME_LEN)
+	de = (struct minix_dir_entry *) (bh->b_data + *offset);
+	*offset += info->s_dirsize;
+	if (!de->inode || len > info->s_namelen)
 		return 0;
 	/* "" means "." ---> so paths like "/usr/lib//libc.a" work */
 	if (!len && (de->name[0]=='.') && (de->name[1]=='\0'))
 		return 1;
-	if (len < MINIX_NAME_LEN && de->name[len])
-		return 0;
-	__asm__("cld\n\t"
-		"fs ; repe ; cmpsb\n\t"
-		"setz %%al"
-		:"=a" (same)
-		:"0" (0),"S" ((long) name),"D" ((long) de->name),"c" (len));
-	return same;
+	return namecompare(len,info->s_namelen,name,de->name);
 }
 
 /*
@@ -57,44 +67,43 @@ static int minix_match(int len,const char * name,struct minix_dir_entry * de)
 static struct buffer_head * minix_find_entry(struct inode * dir,
 	const char * name, int namelen, struct minix_dir_entry ** res_dir)
 {
-	int entries, i;
+	unsigned long block, offset;
 	struct buffer_head * bh;
-	struct minix_dir_entry * de;
+	struct minix_sb_info * info;
 
 	*res_dir = NULL;
-	if (!dir)
+	if (!dir || !dir->i_sb)
 		return NULL;
+	info = &dir->i_sb->u.minix_sb;
+	if (namelen > info->s_namelen) {
 #ifdef NO_TRUNCATE
-	if (namelen > MINIX_NAME_LEN)
 		return NULL;
 #else
-	if (namelen > MINIX_NAME_LEN)
-		namelen = MINIX_NAME_LEN;
+		namelen = info->s_namelen;
 #endif
-	entries = dir->i_size / (sizeof (struct minix_dir_entry));
-	bh = minix_bread(dir,0,0);
-	if (!bh)
-		return NULL;
-	i = 0;
-	de = (struct minix_dir_entry *) bh->b_data;
-	while (i < entries) {
-		if ((char *)de >= BLOCK_SIZE+bh->b_data) {
-			brelse(bh);
-			bh = minix_bread(dir,i/MINIX_DIR_ENTRIES_PER_BLOCK,0);
+	}
+	bh = NULL;
+	block = offset = 0;
+	while (block*BLOCK_SIZE+offset < dir->i_size) {
+		if (!bh) {
+			bh = minix_bread(dir,block,0);
 			if (!bh) {
-				i += MINIX_DIR_ENTRIES_PER_BLOCK;
+				block++;
 				continue;
 			}
-			de = (struct minix_dir_entry *) bh->b_data;
 		}
-		if (minix_match(namelen,name,de)) {
-			*res_dir = de;
+		*res_dir = (struct minix_dir_entry *) (bh->b_data + offset);
+		if (minix_match(namelen,name,bh,&offset,info))
 			return bh;
-		}
-		de++;
-		i++;
+		if (offset < bh->b_size)
+			continue;
+		brelse(bh);
+		bh = NULL;
+		offset = 0;
+		block++;
 	}
 	brelse(bh);
+	*res_dir = NULL;
 	return NULL;
 }
 
@@ -129,74 +138,81 @@ int minix_lookup(struct inode * dir,const char * name, int len,
 /*
  *	minix_add_entry()
  *
- * adds a file entry to the specified directory, using the same
- * semantics as minix_find_entry(). It returns NULL if it failed.
+ * adds a file entry to the specified directory, returning a possible
+ * error value if it fails.
  *
  * NOTE!! The inode part of 'de' is left at 0 - which means you
  * may not sleep between calling this and putting something into
  * the entry, as someone else might have used it while you slept.
- *
- * Arggh. To avoid race-conditions, we copy the name into kernel
- * space before actually writing it into the buffer...
  */
-static struct buffer_head * minix_add_entry(struct inode * dir,
-	const char * name, int namelen, struct minix_dir_entry ** res_dir)
+static int minix_add_entry(struct inode * dir,
+	const char * name, int namelen,
+	struct buffer_head ** res_buf,
+	struct minix_dir_entry ** res_dir)
 {
 	int i;
+	unsigned long block, offset;
 	struct buffer_head * bh;
 	struct minix_dir_entry * de;
-	char name_buffer[MINIX_NAME_LEN];
+	struct minix_sb_info * info;
 
+	*res_buf = NULL;
 	*res_dir = NULL;
-	if (!dir)
-		return NULL;
-	if (namelen > MINIX_NAME_LEN) {
+	if (!dir || !dir->i_sb)
+		return -ENOENT;
+	info = &dir->i_sb->u.minix_sb;
+	if (namelen > info->s_namelen) {
 #ifdef NO_TRUNCATE
-		return NULL;
+		return -ENAMETOOLONG;
 #else
-		namelen = MINIX_NAME_LEN;
+		namelen = info->s_namelen;
 #endif
 	}
 	if (!namelen)
-		return NULL;
-	bh =  minix_bread(dir,0,0);
-	if (!bh)
-		return NULL;
-	for (i = 0; i < MINIX_NAME_LEN ; i++)
-		name_buffer[i] = (i<namelen) ? get_fs_byte(name+i) : 0;
-	i = 0;
-	de = (struct minix_dir_entry *) bh->b_data;
+		return -ENOENT;
+	bh = NULL;
+	block = offset = 0;
 	while (1) {
-		if ((char *)de >= BLOCK_SIZE+bh->b_data) {
-			brelse(bh);
-			bh = minix_bread(dir,i/MINIX_DIR_ENTRIES_PER_BLOCK,1);
+		if (!bh) {
+			bh = minix_bread(dir,block,1);
 			if (!bh)
-				return NULL;
-			de = (struct minix_dir_entry *) bh->b_data;
+				return -ENOSPC;
 		}
-		if (i*sizeof(struct minix_dir_entry) >= dir->i_size) {
-			de->inode=0;
-			dir->i_size = (i+1)*sizeof(struct minix_dir_entry);
+		de = (struct minix_dir_entry *) (bh->b_data + offset);
+		offset += info->s_dirsize;
+		if (block*bh->b_size + offset > dir->i_size) {
+			de->inode = 0;
+			dir->i_size = block*bh->b_size + offset;
 			dir->i_dirt = 1;
-			dir->i_ctime = CURRENT_TIME;
 		}
-		if (!de->inode) {
-			dir->i_mtime = CURRENT_TIME;
-			memcpy(de->name,name_buffer,MINIX_NAME_LEN);
+		if (de->inode) {
+			if (namecompare(namelen, info->s_namelen, name, de->name)) {
+				brelse(bh);
+				return -EEXIST;
+			}
+		} else {
+			dir->i_mtime = dir->i_ctime = CURRENT_TIME;
+			for (i = 0; i < info->s_namelen ; i++)
+				de->name[i] = (i < namelen) ? name[i] : 0;
 			bh->b_dirt = 1;
 			*res_dir = de;
-			return bh;
+			break;
 		}
-		de++;
-		i++;
+		if (offset < bh->b_size)
+			continue;
+		brelse(bh);
+		bh = NULL;
+		offset = 0;
+		block++;
 	}
-	brelse(bh);
-	return NULL;
+	*res_buf = bh;
+	return 0;
 }
 
 int minix_create(struct inode * dir,const char * name, int len, int mode,
 	struct inode ** result)
 {
+	int error;
 	struct inode * inode;
 	struct buffer_head * bh;
 	struct minix_dir_entry * de;
@@ -212,13 +228,13 @@ int minix_create(struct inode * dir,const char * name, int len, int mode,
 	inode->i_op = &minix_file_inode_operations;
 	inode->i_mode = mode;
 	inode->i_dirt = 1;
-	bh = minix_add_entry(dir,name,len,&de);
-	if (!bh) {
+	error = minix_add_entry(dir,name,len, &bh ,&de);
+	if (error) {
 		inode->i_nlink--;
 		inode->i_dirt = 1;
 		iput(inode);
 		iput(dir);
-		return -ENOSPC;
+		return error;
 	}
 	de->inode = inode->i_ino;
 	bh->b_dirt = 1;
@@ -230,6 +246,7 @@ int minix_create(struct inode * dir,const char * name, int len, int mode,
 
 int minix_mknod(struct inode * dir, const char * name, int len, int mode, int rdev)
 {
+	int error;
 	struct inode * inode;
 	struct buffer_head * bh;
 	struct minix_dir_entry * de;
@@ -260,28 +277,21 @@ int minix_mknod(struct inode * dir, const char * name, int len, int mode, int rd
 	else if (S_ISLNK(inode->i_mode))
 		inode->i_op = &minix_symlink_inode_operations;
 	else if (S_ISCHR(inode->i_mode))
-		inode->i_op = &minix_chrdev_inode_operations;
+		inode->i_op = &chrdev_inode_operations;
 	else if (S_ISBLK(inode->i_mode))
-		inode->i_op = &minix_blkdev_inode_operations;
-	else if (S_ISFIFO(inode->i_mode)) {
-		inode->i_op = &minix_fifo_inode_operations;
-		inode->i_pipe = 1;
-		PIPE_BASE(*inode) = NULL;
-		PIPE_HEAD(*inode) = PIPE_TAIL(*inode) = 0;
-		PIPE_READ_WAIT(*inode) = PIPE_WRITE_WAIT(*inode) = NULL;
-		PIPE_READERS(*inode) = PIPE_WRITERS(*inode) = 0;
-	}
+		inode->i_op = &blkdev_inode_operations;
+	else if (S_ISFIFO(inode->i_mode))
+		init_fifo(inode);
 	if (S_ISBLK(mode) || S_ISCHR(mode))
 		inode->i_rdev = rdev;
-	inode->i_mtime = inode->i_atime = CURRENT_TIME;
 	inode->i_dirt = 1;
-	bh = minix_add_entry(dir,name,len,&de);
-	if (!bh) {
+	error = minix_add_entry(dir, name, len, &bh, &de);
+	if (error) {
 		inode->i_nlink--;
 		inode->i_dirt = 1;
 		iput(inode);
 		iput(dir);
-		return -ENOSPC;
+		return error;
 	}
 	de->inode = inode->i_ino;
 	bh->b_dirt = 1;
@@ -293,15 +303,26 @@ int minix_mknod(struct inode * dir, const char * name, int len, int mode, int rd
 
 int minix_mkdir(struct inode * dir, const char * name, int len, int mode)
 {
+	int error;
 	struct inode * inode;
 	struct buffer_head * bh, *dir_block;
 	struct minix_dir_entry * de;
-	
+	struct minix_sb_info * info;
+
+	if (!dir || !dir->i_sb) {
+		iput(dir);
+		return -EINVAL;
+	}
+	info = &dir->i_sb->u.minix_sb;
 	bh = minix_find_entry(dir,name,len,&de);
 	if (bh) {
 		brelse(bh);
 		iput(dir);
 		return -EEXIST;
+	}
+	if (dir->i_nlink >= MINIX_LINK_MAX) {
+		iput(dir);
+		return -EMLINK;
 	}
 	inode = minix_new_inode(dir);
 	if (!inode) {
@@ -309,8 +330,7 @@ int minix_mkdir(struct inode * dir, const char * name, int len, int mode)
 		return -ENOSPC;
 	}
 	inode->i_op = &minix_dir_inode_operations;
-	inode->i_size = 2 * sizeof (struct minix_dir_entry);
-	inode->i_mtime = inode->i_atime = CURRENT_TIME;
+	inode->i_size = 2 * info->s_dirsize;
 	dir_block = minix_bread(inode,0,1);
 	if (!dir_block) {
 		iput(dir);
@@ -322,7 +342,7 @@ int minix_mkdir(struct inode * dir, const char * name, int len, int mode)
 	de = (struct minix_dir_entry *) dir_block->b_data;
 	de->inode=inode->i_ino;
 	strcpy(de->name,".");
-	de++;
+	de = (struct minix_dir_entry *) (dir_block->b_data + info->s_dirsize);
 	de->inode = dir->i_ino;
 	strcpy(de->name,"..");
 	inode->i_nlink = 2;
@@ -332,12 +352,12 @@ int minix_mkdir(struct inode * dir, const char * name, int len, int mode)
 	if (dir->i_mode & S_ISGID)
 		inode->i_mode |= S_ISGID;
 	inode->i_dirt = 1;
-	bh = minix_add_entry(dir,name,len,&de);
-	if (!bh) {
+	error = minix_add_entry(dir, name, len, &bh, &de);
+	if (error) {
 		iput(dir);
 		inode->i_nlink=0;
 		iput(inode);
-		return -ENOSPC;
+		return error;
 	}
 	de->inode = inode->i_ino;
 	bh->b_dirt = 1;
@@ -354,41 +374,56 @@ int minix_mkdir(struct inode * dir, const char * name, int len, int mode)
  */
 static int empty_dir(struct inode * inode)
 {
-	int nr, len;
+	unsigned int block, offset;
 	struct buffer_head * bh;
 	struct minix_dir_entry * de;
+	struct minix_sb_info * info;
 
-	len = inode->i_size / sizeof (struct minix_dir_entry);
-	if (len<2 || !(bh = minix_bread(inode,0,0))) {
-	    	printk("warning - bad directory on dev %04x\n",inode->i_dev);
+	if (!inode || !inode->i_sb)
 		return 1;
-	}
+	info = &inode->i_sb->u.minix_sb;
+	block = 0;
+	bh = NULL;
+	offset = 2*info->s_dirsize;
+	if (inode->i_size & (info->s_dirsize-1))
+		goto bad_dir;
+	if (inode->i_size < offset)
+		goto bad_dir;
+	bh = minix_bread(inode,0,0);
+	if (!bh)
+		goto bad_dir;
 	de = (struct minix_dir_entry *) bh->b_data;
-	if (de[0].inode != inode->i_ino || !de[1].inode || 
-	    strcmp(".",de[0].name) || strcmp("..",de[1].name)) {
-	    	printk("warning - bad directory on dev %04x\n",inode->i_dev);
-		return 1;
-	}
-	nr = 2;
-	de += 2;
-	while (nr<len) {
-		if ((void *) de >= (void *) (bh->b_data+BLOCK_SIZE)) {
-			brelse(bh);
-			bh = minix_bread(inode,nr/MINIX_DIR_ENTRIES_PER_BLOCK,0);
+	if (!de->inode || strcmp(de->name,"."))
+		goto bad_dir;
+	de = (struct minix_dir_entry *) (bh->b_data + info->s_dirsize);
+	if (!de->inode || strcmp(de->name,".."))
+		goto bad_dir;
+	while (block*BLOCK_SIZE+offset < inode->i_size) {
+		if (!bh) {
+			bh = minix_bread(inode,block,0);
 			if (!bh) {
-				nr += MINIX_DIR_ENTRIES_PER_BLOCK;
+				block++;
 				continue;
 			}
-			de = (struct minix_dir_entry *) bh->b_data;
 		}
+		de = (struct minix_dir_entry *) (bh->b_data + offset);
+		offset += info->s_dirsize;
 		if (de->inode) {
 			brelse(bh);
 			return 0;
 		}
-		de++;
-		nr++;
+		if (offset < bh->b_size)
+			continue;
+		brelse(bh);
+		bh = NULL;
+		offset = 0;
+		block++;
 	}
 	brelse(bh);
+	return 1;
+bad_dir:
+	brelse(bh);
+	printk("Bad directory on device %04x\n",inode->i_dev);
 	return 1;
 }
 
@@ -422,6 +457,10 @@ int minix_rmdir(struct inode * dir, const char * name, int len)
 		retval = -ENOTEMPTY;
 		goto end_rmdir;
 	}
+	if (de->inode != inode->i_ino) {
+		retval = -ENOENT;
+		goto end_rmdir;
+	}
 	if (inode->i_count > 1) {
 		retval = -EBUSY;
 		goto end_rmdir;
@@ -433,7 +472,7 @@ int minix_rmdir(struct inode * dir, const char * name, int len)
 	inode->i_nlink=0;
 	inode->i_dirt=1;
 	dir->i_nlink--;
-	dir->i_ctime = dir->i_mtime = CURRENT_TIME;
+	inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
 	dir->i_dirt=1;
 	retval = 0;
 end_rmdir:
@@ -458,6 +497,9 @@ repeat:
 		goto end_unlink;
 	if (!(inode = iget(dir->i_sb, de->inode)))
 		goto end_unlink;
+	retval = -EPERM;
+	if (S_ISDIR(inode->i_mode))
+		goto end_unlink;
 	if (de->inode != inode->i_ino) {
 		iput(inode);
 		brelse(bh);
@@ -465,15 +507,16 @@ repeat:
 		schedule();
 		goto repeat;
 	}
-	retval = -EPERM;
 	if ((dir->i_mode & S_ISVTX) && !suser() &&
 	    current->euid != inode->i_uid &&
 	    current->euid != dir->i_uid)
 		goto end_unlink;
-	if (S_ISDIR(inode->i_mode))
+	if (de->inode != inode->i_ino) {
+		retval = -ENOENT;
 		goto end_unlink;
+	}
 	if (!inode->i_nlink) {
-		printk("Deleting nonexistent file (%04x:%d), %d\n",
+		printk("Deleting nonexistent file (%04x:%lu), %d\n",
 			inode->i_dev,inode->i_ino,inode->i_nlink);
 		inode->i_nlink=1;
 	}
@@ -482,7 +525,7 @@ repeat:
 	dir->i_ctime = dir->i_mtime = CURRENT_TIME;
 	dir->i_dirt = 1;
 	inode->i_nlink--;
-	inode->i_ctime = CURRENT_TIME;
+	inode->i_ctime = dir->i_ctime;
 	inode->i_dirt = 1;
 	retval = 0;
 end_unlink:
@@ -515,7 +558,7 @@ int minix_symlink(struct inode * dir, const char * name, int len, const char * s
 		return -ENOSPC;
 	}
 	i = 0;
-	while (i < 1023 && (c=get_fs_byte(symname++)))
+	while (i < 1023 && (c=*(symname++)))
 		name_block->b_data[i++] = c;
 	name_block->b_data[i] = 0;
 	name_block->b_dirt = 1;
@@ -531,13 +574,13 @@ int minix_symlink(struct inode * dir, const char * name, int len, const char * s
 		iput(dir);
 		return -EEXIST;
 	}
-	bh = minix_add_entry(dir,name,len,&de);
-	if (!bh) {
+	i = minix_add_entry(dir, name, len, &bh, &de);
+	if (i) {
 		inode->i_nlink--;
 		inode->i_dirt = 1;
 		iput(inode);
 		iput(dir);
-		return -ENOSPC;
+		return i;
 	}
 	de->inode = inode->i_ino;
 	bh->b_dirt = 1;
@@ -549,6 +592,7 @@ int minix_symlink(struct inode * dir, const char * name, int len, const char * s
 
 int minix_link(struct inode * oldinode, struct inode * dir, const char * name, int len)
 {
+	int error;
 	struct minix_dir_entry * de;
 	struct buffer_head * bh;
 
@@ -557,7 +601,7 @@ int minix_link(struct inode * oldinode, struct inode * dir, const char * name, i
 		iput(dir);
 		return -EPERM;
 	}
-	if (oldinode->i_nlink > 126) {
+	if (oldinode->i_nlink >= MINIX_LINK_MAX) {
 		iput(oldinode);
 		iput(dir);
 		return -EMLINK;
@@ -569,11 +613,11 @@ int minix_link(struct inode * oldinode, struct inode * dir, const char * name, i
 		iput(oldinode);
 		return -EEXIST;
 	}
-	bh = minix_add_entry(dir,name,len,&de);
-	if (!bh) {
+	error = minix_add_entry(dir, name, len, &bh, &de);
+	if (error) {
 		iput(dir);
 		iput(oldinode);
-		return -ENOSPC;
+		return error;
 	}
 	de->inode = oldinode->i_ino;
 	bh->b_dirt = 1;
@@ -586,39 +630,32 @@ int minix_link(struct inode * oldinode, struct inode * dir, const char * name, i
 	return 0;
 }
 
-static int subdir(struct inode * new, struct inode * old)
+static int subdir(struct inode * new_inode, struct inode * old_inode)
 {
-	unsigned short fs;
 	int ino;
 	int result;
 
-	__asm__("mov %%fs,%0":"=r" (fs));
-	__asm__("mov %0,%%fs"::"r" ((unsigned short) 0x10));
-	new->i_count++;
+	new_inode->i_count++;
 	result = 0;
 	for (;;) {
-		if (new == old) {
+		if (new_inode == old_inode) {
 			result = 1;
 			break;
 		}
-		if (new->i_dev != old->i_dev)
+		if (new_inode->i_dev != old_inode->i_dev)
 			break;
-		ino = new->i_ino;
-		if (minix_lookup(new,"..",2,&new))
+		ino = new_inode->i_ino;
+		if (minix_lookup(new_inode,"..",2,&new_inode))
 			break;
-		if (new->i_ino == ino)
+		if (new_inode->i_ino == ino)
 			break;
 	}
-	iput(new);
-	__asm__("mov %0,%%fs"::"r" (fs));
+	iput(new_inode);
 	return result;
 }
 
 #define PARENT_INO(buffer) \
-(((struct minix_dir_entry *) (buffer))[1].inode)
-
-#define PARENT_NAME(buffer) \
-(((struct minix_dir_entry *) (buffer))[1].name)
+(((struct minix_dir_entry *) ((buffer)+info->s_dirsize))->inode)
 
 /*
  * rename uses retrying to avoid race-conditions: at least they should be minimal.
@@ -636,8 +673,10 @@ static int do_minix_rename(struct inode * old_dir, const char * old_name, int ol
 	struct inode * old_inode, * new_inode;
 	struct buffer_head * old_bh, * new_bh, * dir_bh;
 	struct minix_dir_entry * old_de, * new_de;
+	struct minix_sb_info * info;
 	int retval;
 
+	info = &old_dir->i_sb->u.minix_sb;
 	goto start_up;
 try_again:
 	brelse(old_bh);
@@ -654,7 +693,7 @@ start_up:
 	retval = -ENOENT;
 	if (!old_bh)
 		goto end_rename;
-	old_inode = iget(old_dir->i_sb, old_de->inode);
+	old_inode = __iget(old_dir->i_sb, old_de->inode,0); /* don't cross mnt-points */
 	if (!old_inode)
 		goto end_rename;
 	retval = -EPERM;
@@ -664,7 +703,7 @@ start_up:
 		goto end_rename;
 	new_bh = minix_find_entry(new_dir,new_name,new_len,&new_de);
 	if (new_bh) {
-		new_inode = iget(new_dir->i_sb, new_de->inode);
+		new_inode = __iget(new_dir->i_sb, new_de->inode, 0);
 		if (!new_inode) {
 			brelse(new_bh);
 			new_bh = NULL;
@@ -675,15 +714,27 @@ start_up:
 		goto end_rename;
 	}
 	if (new_inode && S_ISDIR(new_inode->i_mode)) {
-		retval = -EEXIST;
-		goto end_rename;
-	}
-	if (S_ISDIR(old_inode->i_mode)) {
-		retval = -EEXIST;
-		if (new_bh)
+		retval = -EISDIR;
+		if (!S_ISDIR(old_inode->i_mode))
 			goto end_rename;
-		retval = -EACCES;
-		if (!permission(old_inode, MAY_WRITE))
+		retval = -EINVAL;
+		if (subdir(new_dir, old_inode))
+			goto end_rename;
+		retval = -ENOTEMPTY;
+		if (!empty_dir(new_inode))
+			goto end_rename;
+		retval = -EBUSY;
+		if (new_inode->i_count > 1)
+			goto end_rename;
+	}
+	retval = -EPERM;
+	if (new_inode && (new_dir->i_mode & S_ISVTX) && 
+	    current->euid != new_inode->i_uid &&
+	    current->euid != new_dir->i_uid && !suser())
+		goto end_rename;
+	if (S_ISDIR(old_inode->i_mode)) {
+		retval = -ENOTDIR;
+		if (new_inode && !S_ISDIR(new_inode->i_mode))
 			goto end_rename;
 		retval = -EINVAL;
 		if (subdir(new_dir, old_inode))
@@ -694,12 +745,15 @@ start_up:
 			goto end_rename;
 		if (PARENT_INO(dir_bh->b_data) != old_dir->i_ino)
 			goto end_rename;
+		retval = -EMLINK;
+		if (!new_inode && new_dir->i_nlink >= MINIX_LINK_MAX)
+			goto end_rename;
 	}
-	if (!new_bh)
-		new_bh = minix_add_entry(new_dir,new_name,new_len,&new_de);
-	retval = -ENOSPC;
-	if (!new_bh)
-		goto end_rename;
+	if (!new_bh) {
+		retval = minix_add_entry(new_dir,new_name,new_len,&new_bh,&new_de);
+		if (retval)
+			goto end_rename;
+	}
 /* sanity checking before doing the rename - avoid races */
 	if (new_inode && (new_de->inode != new_inode->i_ino))
 		goto try_again;
@@ -710,8 +764,13 @@ start_up:
 /* ok, that's it */
 	old_de->inode = 0;
 	new_de->inode = old_inode->i_ino;
+	old_dir->i_ctime = old_dir->i_mtime = CURRENT_TIME;
+	old_dir->i_dirt = 1;
+	new_dir->i_ctime = new_dir->i_mtime = CURRENT_TIME;
+	new_dir->i_dirt = 1;
 	if (new_inode) {
 		new_inode->i_nlink--;
+		new_inode->i_ctime = CURRENT_TIME;
 		new_inode->i_dirt = 1;
 	}
 	old_bh->b_dirt = 1;
@@ -720,9 +779,14 @@ start_up:
 		PARENT_INO(dir_bh->b_data) = new_dir->i_ino;
 		dir_bh->b_dirt = 1;
 		old_dir->i_nlink--;
-		new_dir->i_nlink++;
 		old_dir->i_dirt = 1;
-		new_dir->i_dirt = 1;
+		if (new_inode) {
+			new_inode->i_nlink--;
+			new_inode->i_dirt = 1;
+		} else {
+			new_dir->i_nlink++;
+			new_dir->i_dirt = 1;
+		}
 	}
 	retval = 0;
 end_rename:

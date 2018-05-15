@@ -18,9 +18,10 @@
 #include <linux/errno.h>
 #include <linux/locks.h>
 
-extern int close_fp(struct file *filp);
+extern int close_fp(struct file *filp, unsigned int fd);
 
-static int nfs_notify_change(struct inode *);
+static int nfs_notify_change(int, struct inode *);
+static void nfs_put_inode(struct inode *);
 static void nfs_put_super(struct super_block *);
 static void nfs_statfs(struct super_block *, struct statfs *);
 
@@ -28,15 +29,22 @@ static struct super_operations nfs_sops = {
 	NULL,			/* read inode */
 	nfs_notify_change,	/* notify change */
 	NULL,			/* write inode */
-	NULL,			/* put inode */
+	nfs_put_inode,		/* put inode */
 	nfs_put_super,		/* put superblock */
 	NULL,			/* write superblock */
-	nfs_statfs		/* stat filesystem */
+	nfs_statfs,		/* stat filesystem */
+	NULL
 };
+
+static void nfs_put_inode(struct inode * inode)
+{
+	clear_inode(inode);
+}
 
 void nfs_put_super(struct super_block *sb)
 {
-	close_fp(sb->u.nfs_sb.s_server.file);
+        /* No locks should be open on this, so 0 should be safe as a fd. */
+	close_fp(sb->u.nfs_sb.s_server.file, 0);
 	lock_super(sb);
 	sb->s_dev = 0;
 	unlock_super(sb);
@@ -50,7 +58,8 @@ void nfs_put_super(struct super_block *sb)
  * Later we can add other mount parameters like caching values.
  */
 
-struct super_block *nfs_read_super(struct super_block *sb, void *raw_data)
+struct super_block *nfs_read_super(struct super_block *sb, void *raw_data,
+				   int silent)
 {
 	struct nfs_mount_data *data = (struct nfs_mount_data *) raw_data;
 	struct nfs_server *server;
@@ -81,6 +90,7 @@ struct super_block *nfs_read_super(struct super_block *sb, void *raw_data)
 	filp->f_count++;
 	lock_super(sb);
 	sb->s_blocksize = 1024; /* XXX */
+	sb->s_blocksize_bits = 10;
 	sb->s_magic = NFS_SUPER_MAGIC;
 	sb->s_dev = dev;
 	sb->s_op = &nfs_sops;
@@ -125,21 +135,18 @@ void nfs_statfs(struct super_block *sb, struct statfs *buf)
 	error = nfs_proc_statfs(&sb->u.nfs_sb.s_server, &sb->u.nfs_sb.s_root,
 		&res);
 	if (error) {
-		if (error != -EINTR)
-			printk("nfs_statfs: statfs error = %d\n", -error);
+		printk("nfs_statfs: statfs error = %d\n", -error);
 		res.bsize = res.blocks = res.bfree = res.bavail = 0;
 	}
 	put_fs_long(res.bsize, &buf->f_bsize);
 	put_fs_long(res.blocks, &buf->f_blocks);
 	put_fs_long(res.bfree, &buf->f_bfree);
 	put_fs_long(res.bavail, &buf->f_bavail);
-#if 0
-	put_fs_long(-1, &buf->f_files);
-	put_fs_long(-1, &buf->f_ffree);
-#else
 	put_fs_long(0, &buf->f_files);
 	put_fs_long(0, &buf->f_ffree);
-#endif
+	/* We should really try to interrogate the remote server to find
+	   it's maximum name length here */
+	put_fs_long(NAME_MAX, &buf->f_namelen);
 }
 
 /*
@@ -186,20 +193,36 @@ struct inode *nfs_fhget(struct super_block *sb, struct nfs_fh *fhandle,
 	return inode;
 }
 
-int nfs_notify_change(struct inode *inode)
+int nfs_notify_change(int flags, struct inode *inode)
 {
 	struct nfs_sattr sattr;
 	struct nfs_fattr fattr;
 	int error;
 
-	sattr.mode = inode->i_mode;
-	sattr.uid = inode->i_uid;
-	sattr.gid = inode->i_gid;
-	sattr.size = S_ISREG(inode->i_mode) ? inode->i_size : -1;
-	sattr.mtime.seconds = inode->i_mtime;
-	sattr.mtime.useconds = 0;
-	sattr.atime.seconds = inode->i_atime;
-	sattr.atime.useconds = 0;
+	if (flags & NOTIFY_MODE)
+		sattr.mode = inode->i_mode;
+	else
+		sattr.mode = (unsigned) -1;
+	if (flags & NOTIFY_UIDGID) {
+		sattr.uid = inode->i_uid;
+		sattr.gid = inode->i_gid;
+	}
+	else
+		sattr.uid = sattr.gid = (unsigned) -1;
+	if (flags & NOTIFY_SIZE)
+		sattr.size = S_ISREG(inode->i_mode) ? inode->i_size : -1;
+	else
+		sattr.size = (unsigned) -1;
+	if (flags & NOTIFY_TIME) {
+		sattr.mtime.seconds = inode->i_mtime;
+		sattr.mtime.useconds = 0;
+		sattr.atime.seconds = inode->i_atime;
+		sattr.atime.useconds = 0;
+	}
+	else {
+		sattr.mtime.seconds = sattr.mtime.useconds = (unsigned) -1;
+		sattr.atime.seconds = sattr.atime.useconds = (unsigned) -1;
+	}
 	error = nfs_proc_setattr(NFS_SERVER(inode), NFS_FH(inode),
 		&sattr, &fattr);
 	if (!error)

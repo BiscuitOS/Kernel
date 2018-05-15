@@ -18,6 +18,8 @@
 #include <asm/segment.h>
 #include <asm/system.h>
 
+#define ROUND_UP(x,y) (((x)+(y)-1)/(y))
+
 /*
  * Ok, Peter made a complicated, but straightforward multiple_wait() function.
  * I have rewritten this, taking some shortcuts: This code may not be easy to
@@ -79,24 +81,30 @@ int do_select(int n, fd_set *in, fd_set *out, fd_set *ex,
 	int count;
 	select_table wait_table, *wait;
 	struct select_table_entry *entry;
-	int i;
-	int max;
+	unsigned long set;
+	int i,j;
+	int max = -1;
 
-	max = -1;
-	for (i = 0 ; i < n ; i++) {
-		if (!FD_ISSET(i, in) &&
-		    !FD_ISSET(i, out) &&
-		    !FD_ISSET(i, ex))
-			continue;
-		if (!current->filp[i])
-			return -EBADF;
-		if (!current->filp[i]->f_inode)
-			return -EBADF;
-		max = i;
+	for (j = 0 ; j < __FDSET_LONGS ; j++) {
+		i = j << 5;
+		if (i >= n)
+			break;
+		set = in->fds_bits[j] | out->fds_bits[j] | ex->fds_bits[j];
+		for ( ; set ; i++,set >>= 1) {
+			if (i >= n)
+				goto end_check;
+			if (!(set & 1))
+				continue;
+			if (!current->filp[i])
+				return -EBADF;
+			if (!current->filp[i]->f_inode)
+				return -EBADF;
+			max = i;
+		}
 	}
+end_check:
 	n = max + 1;
-	entry = (struct select_table_entry *) get_free_page(GFP_KERNEL);
-	if (!entry)
+	if(!(entry = (struct select_table_entry*) __get_free_page(GFP_KERNEL)))
 		return -ENOMEM;
 	FD_ZERO(res_in);
 	FD_ZERO(res_out);
@@ -135,24 +143,33 @@ repeat:
 	return count;
 }
 
-static void __get_fd_set(int nr, unsigned long * fs_pointer, unsigned long * fdset)
+/*
+ * We do a VERIFY_WRITE here even though we are only reading this time:
+ * we'll write to it eventually..
+ */
+static int __get_fd_set(int nr, unsigned long * fs_pointer, unsigned long * fdset)
 {
+	int error;
+
 	FD_ZERO(fdset);
 	if (!fs_pointer)
-		return;
+		return 0;
+	error = verify_area(VERIFY_WRITE,fs_pointer,sizeof(fd_set));
+	if (error)
+		return error;
 	while (nr > 0) {
 		*fdset = get_fs_long(fs_pointer);
 		fdset++;
 		fs_pointer++;
 		nr -= 32;
 	}
+	return 0;
 }
 
 static void __set_fd_set(int nr, unsigned long * fs_pointer, unsigned long * fdset)
 {
 	if (!fs_pointer)
 		return;
-	verify_area(fs_pointer, sizeof(fd_set));
 	while (nr > 0) {
 		put_fs_long(*fdset, fs_pointer);
 		fdset++;
@@ -171,8 +188,11 @@ __set_fd_set(nr, (unsigned long *) (fsp), (unsigned long *) (fdp))
  * We can actually return ERESTARTSYS insetad of EINTR, but I'd
  * like to be certain this leads to no problems. So I return
  * EINTR just for safety.
+ *
+ * Update: ERESTARTSYS breaks at least the xview clock binary, so
+ * I'm trying ERESTARTNOHAND which restart only when you want to.
  */
-int sys_select( unsigned long *buffer )
+asmlinkage int sys_select( unsigned long *buffer )
 {
 /* Perform the select(nd, in, out, ex, tv) system call. */
 	int i;
@@ -183,6 +203,9 @@ int sys_select( unsigned long *buffer )
 	struct timeval *tvp;
 	unsigned long timeout;
 
+	i = verify_area(VERIFY_READ, buffer, 20);
+	if (i)
+		return i;
 	n = get_fs_long(buffer++);
 	if (n < 0)
 		return -EINVAL;
@@ -192,16 +215,18 @@ int sys_select( unsigned long *buffer )
 	outp = (fd_set *) get_fs_long(buffer++);
 	exp = (fd_set *) get_fs_long(buffer++);
 	tvp = (struct timeval *) get_fs_long(buffer);
-	get_fd_set(n, inp, &in);
-	get_fd_set(n, outp, &out);
-	get_fd_set(n, exp, &ex);
-	timeout = 0xffffffff;
+	if ((i = get_fd_set(n, inp, &in)) ||
+	    (i = get_fd_set(n, outp, &out)) ||
+	    (i = get_fd_set(n, exp, &ex))) return i;
+	timeout = ~0UL;
 	if (tvp) {
-		timeout = jiffies;
-		timeout += get_fs_long((unsigned long *)&tvp->tv_usec)/(1000000/HZ);
+		i = verify_area(VERIFY_WRITE, tvp, sizeof(*tvp));
+		if (i)
+			return i;
+		timeout = ROUND_UP(get_fs_long((unsigned long *)&tvp->tv_usec),(1000000/HZ));
 		timeout += get_fs_long((unsigned long *)&tvp->tv_sec) * HZ;
-		if (timeout <= jiffies)
-			timeout = 0;
+		if (timeout)
+			timeout += jiffies + 1;
 	}
 	current->timeout = timeout;
 	i = do_select(n, &in, &out, &ex, &res_in, &res_out, &res_ex);
@@ -211,7 +236,6 @@ int sys_select( unsigned long *buffer )
 		timeout = 0;
 	current->timeout = 0;
 	if (tvp) {
-		verify_area(tvp, sizeof(*tvp));
 		put_fs_long(timeout/HZ, (unsigned long *) &tvp->tv_sec);
 		timeout %= HZ;
 		timeout *= (1000000/HZ);
@@ -220,7 +244,7 @@ int sys_select( unsigned long *buffer )
 	if (i < 0)
 		return i;
 	if (!i && (current->signal & ~current->blocked))
-		return -EINTR;
+		return -ERESTARTNOHAND;
 	set_fd_set(n, inp, &res_in);
 	set_fd_set(n, outp, &res_out);
 	set_fd_set(n, exp, &res_ex);

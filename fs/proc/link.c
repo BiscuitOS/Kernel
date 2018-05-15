@@ -34,7 +34,8 @@ struct inode_operations proc_link_inode_operations = {
 	proc_readlink,		/* readlink */
 	proc_follow_link,	/* follow_link */
 	NULL,			/* bmap */
-	NULL			/* truncate */
+	NULL,			/* truncate */
+	NULL			/* permission */
 };
 
 static int proc_follow_link(struct inode * dir, struct inode * inode,
@@ -49,6 +50,10 @@ static int proc_follow_link(struct inode * dir, struct inode * inode,
 		iput(dir);
 	if (!inode)
 		return -ENOENT;
+	if (!permission(inode, MAY_EXEC)) {
+		iput(inode);
+		return -EACCES;
+	}
 	ino = inode->i_ino;
 	pid = ino >> 16;
 	ino &= 0x0000ffff;
@@ -78,8 +83,19 @@ static int proc_follow_link(struct inode * dir, struct inode * inode,
 					break;
 				case 2:
 					ino &= 0xff;
-					if (ino < p->numlibraries)
-						inode = p->libraries[ino].library;
+					{ int j = ino;
+					  struct vm_area_struct * mpnt;
+					  for(mpnt = p->mmap; mpnt && j >= 0;
+					      mpnt = mpnt->vm_next){
+					    if(mpnt->vm_inode) {
+					      if(j == 0) {
+						inode = mpnt->vm_inode;
+						break;
+					      };
+					      j--;
+					    }
+					  }
+					};
 			}
 	}
 	if (!inode)
@@ -92,12 +108,26 @@ static int proc_follow_link(struct inode * dir, struct inode * inode,
 static int proc_readlink(struct inode * inode, char * buffer, int buflen)
 {
 	int i;
+	unsigned int dev,ino;
+	char buf[64];
 
+	if (!S_ISLNK(inode->i_mode)) {
+		iput(inode);
+		return -EINVAL;
+	}
+	i = proc_follow_link(NULL, inode, 0, 0, &inode);
+	if (i)
+		return i;
+	if (!inode)
+		return -EIO;
+	dev = inode->i_dev;
+	ino = inode->i_ino;
 	iput(inode);
-	if (buflen > 3)
-		buflen = 3;
+	i = sprintf(buf,"[%04x]:%u", dev, ino);
+	if (buflen > i)
+		buflen = i;
 	i = 0;
-	while (i++ < buflen)
-		put_fs_byte('-',buffer++);
+	while (i < buflen)
+		put_fs_byte(buf[i++],buffer++);
 	return i;
 }

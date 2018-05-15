@@ -5,3 +5,5 @@ obj-$(CONFIG_FS_PROC) += link.o
 obj-$(CONFIG_FS_PROC) += mem.o
 obj-$(CONFIG_FS_PROC) += root.o
 obj-$(CONFIG_FS_PROC) += array.o
+obj-$(CONFIG_FS_PROC) += kmsg.o
+obj-$(CONFIG_FS_PROC) += net.o

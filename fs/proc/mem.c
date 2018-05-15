@@ -12,11 +12,19 @@
 #include <asm/segment.h>
 #include <asm/io.h>
 
+/*
+ * mem_write isn't really a good idea right now. It needs
+ * to check a lot more: if the process we try to write to 
+ * dies in the middle right now, mem_write will overwrite
+ * kernel memory.. This disables it altogether.
+ */
+#define mem_write NULL
+
 static int mem_read(struct inode * inode, struct file * file,char * buf, int count)
 {
 	unsigned long addr, pid, cr3;
 	char *tmp;
-	unsigned long pde, pte, page;
+	unsigned long pte, page;
 	int i;
 
 	if (count < 0)
@@ -36,18 +44,17 @@ static int mem_read(struct inode * inode, struct file * file,char * buf, int cou
 	while (count > 0) {
 		if (current->signal & ~current->blocked)
 			break;
-		pde = cr3 + (addr >> 20 & 0xffc);
-		pte = *(unsigned long *) pde;
+		pte = *PAGE_DIR_OFFSET(cr3,addr);
 		if (!(pte & PAGE_PRESENT))
 			break;
-		pte &= 0xfffff000;
-		pte += (addr >> 10) & 0xffc;
+		pte &= PAGE_MASK;
+		pte += PAGE_PTR(addr);
 		page = *(unsigned long *) pte;
 		if (!(page & 1))
 			break;
-		page &= 0xfffff000;
-		page += addr & 0xfff;
-		i = 4096-(addr & 0xfff);
+		page &= PAGE_MASK;
+		page += addr & ~PAGE_MASK;
+		i = PAGE_SIZE-(addr & ~PAGE_MASK);
 		if (i > count)
 			i = count;
 		memcpy_tofs(tmp,(void *) page,i);
@@ -59,11 +66,13 @@ static int mem_read(struct inode * inode, struct file * file,char * buf, int cou
 	return tmp-buf;
 }
 
+#ifndef mem_write
+
 static int mem_write(struct inode * inode, struct file * file,char * buf, int count)
 {
 	unsigned long addr, pid, cr3;
 	char *tmp;
-	unsigned long pde, pte, page;
+	unsigned long pte, page;
 	int i;
 
 	if (count < 0)
@@ -83,12 +92,11 @@ static int mem_write(struct inode * inode, struct file * file,char * buf, int co
 	while (count > 0) {
 		if (current->signal & ~current->blocked)
 			break;
-		pde = cr3 + (addr >> 20 & 0xffc);
-		pte = *(unsigned long *) pde;
+		pte = *PAGE_DIR_OFFSET(cr3,addr);
 		if (!(pte & PAGE_PRESENT))
 			break;
-		pte &= 0xfffff000;
-		pte += (addr >> 10) & 0xffc;
+		pte &= PAGE_MASK;
+		pte += PAGE_PTR(addr);
 		page = *(unsigned long *) pte;
 		if (!(page & PAGE_PRESENT))
 			break;
@@ -96,9 +104,9 @@ static int mem_write(struct inode * inode, struct file * file,char * buf, int co
 			do_wp_page(0,addr,current,0);
 			continue;
 		}
-		page &= 0xfffff000;
-		page += addr & 0xfff;
-		i = 4096-(addr & 0xfff);
+		page &= PAGE_MASK;
+		page += addr & ~PAGE_MASK;
+		i = PAGE_SIZE-(addr & ~PAGE_MASK);
 		if (i > count)
 			i = count;
 		memcpy_fromfs((void *) page,tmp,i);
@@ -113,6 +121,8 @@ static int mem_write(struct inode * inode, struct file * file,char * buf, int co
 		return -ERESTARTSYS;
 	return 0;
 }
+
+#endif
 
 static int mem_lseek(struct inode * inode, struct file * file, off_t offset, int orig)
 {
@@ -137,7 +147,8 @@ static struct file_operations proc_mem_operations = {
 	NULL,		/* mem_ioctl */
 	NULL,		/* mmap */
 	NULL,		/* no special open code */
-	NULL		/* no special release code */
+	NULL,		/* no special release code */
+	NULL		/* can't fsync */
 };
 
 struct inode_operations proc_mem_inode_operations = {
@@ -154,5 +165,6 @@ struct inode_operations proc_mem_inode_operations = {
 	NULL,			/* readlink */
 	NULL,			/* follow_link */
 	NULL,			/* bmap */
-	NULL			/* truncate */
+	NULL,			/* truncate */
+	NULL			/* permission */
 };

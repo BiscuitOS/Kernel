@@ -4,8 +4,8 @@
 # rewrite for biscuitos by buddy <buddy.zhang@aliyun.com> at 180420
 #
 # SYS_SIZE is the number of clicks (16 bytes) to be loaded.
-# 0x8000 is 0x1000000 bytes = 10MB, more than enough for current
-# version of linux
+# 0x7F00 is 0x7F000 bytes = 508kB, more than enough for current
+# versions of linux which compress the kernel
 	.equ SYSSIZE, 0x8000
 
 #
@@ -19,10 +19,11 @@
 # It then load's 'setup' directly after itself (0x90200), and the system
 # at 0x10000, using BIOS interrupts.
 #
-# NOTE! currently system is at most 8*65536 bytes long. This should be no
-# problem, even in the future. I want to keep it simple. This 512 kB
-# kernel size should by enough, especially as this doesn't contain the 
-# buffer cache as in minix
+# NOTE! currently system is at most (8*65536-4096) bytes long. This should 
+# be no problem, even in the future. I want to keep it simple. This 508 kB
+# kernel size should be enough, especially as this doesn't contain the
+# buffer cache as in minix (and especially now that the kernel is 
+# compressed :-)
 #
 # The loader has been make as simple as possible, and continuos
 # read errors will result in a unbreakable loop. Reboot by hand. It
@@ -237,7 +238,8 @@ die:
 	xor %bx, %bx  # bx is starting address with segment
 rp_read:
 	mov %es, %ax
-	cmp $ENDSEG, %ax   # have we loaded all yet?
+	sub $SYSSEG, %ax
+	cmp $SYSSIZE, %ax   # have we loaded all yet?
 	jb ok1_read
 	ret
 
@@ -399,7 +401,6 @@ sectors:
 	.word 0
 
 msg1:
-	.byte 13,10
 	.ascii "Loading BiscuitOS ..."
 
 	.org 502

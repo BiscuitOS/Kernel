@@ -7,7 +7,6 @@
 #include <linux/errno.h>
 #include <linux/sched.h>
 #include <linux/minix_fs.h>
-#include <linux/tty.h>
 #include <linux/stat.h>
 #include <linux/fcntl.h>
 
@@ -37,7 +36,7 @@ repeat:
 		p = i + inode->u.minix_i.i_data;
 		if (!(tmp = *p))
 			continue;
-		bh = getblk(inode->i_dev,tmp,BLOCK_SIZE);
+		bh = get_hash_table(inode->i_dev,tmp,BLOCK_SIZE);
 		if (i < DIRECT_BLOCK) {
 			brelse(bh);
 			goto repeat;
@@ -86,7 +85,7 @@ repeat:
 		tmp = *ind;
 		if (!tmp)
 			continue;
-		bh = getblk(inode->i_dev,tmp,BLOCK_SIZE);
+		bh = get_hash_table(inode->i_dev,tmp,BLOCK_SIZE);
 		if (i < INDIRECT_BLOCK) {
 			brelse(bh);
 			goto repeat;

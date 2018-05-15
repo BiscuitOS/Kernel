@@ -1,146 +1,153 @@
-/* This file defines standard ELF types, structures, and macros.
-   Copyright (C) 1995-2014 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
-
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <http://www.gnu.org/licenses/>.  */
-
 #ifndef _ELF_H
-#define _ELF_H 1
+#define _ELF_H
 
-#include <stdint.h>
+/* THese constants are for the segment types stored in the image headers */
+#define PT_NULL    0
+#define PT_LOAD    1
+#define PT_DYNAMIC 2
+#define PT_INTERP  3
+#define PT_NOTE    4
+#define PT_SHLIB   5
+#define PT_PHDR    6
+#define PT_LOPROC  0x70000000
+#define PT_HIPROC  0x7fffffff
 
-/* Type for a 16-bit quantity */
-typedef uint16_t Elf32_Half;
+/* These constants define the different elf file types */
+#define ET_NONE   0
+#define ET_REL    1
+#define ET_EXEC   2
+#define ET_DYN    3
+#define ET_CORE   4
+#define ET_LOPROC 5
+#define ET_HIPROC 6
 
-/* Types for signed and unsigned 32-bit quantities. */
-typedef uint32_t Elf32_Word;
-typedef int32_t  Elf32_Sword;
+/* These constants define the various ELF target machines */
+#define EM_NONE  0
+#define EM_M32   1
+#define EM_SPARC 2
+#define EM_386   3
+#define EM_68K   4
+#define EM_88K   5
+#define EM_486   6   /* Perhaps disused */
+#define EM_860   7
 
-/* TRype of addresses. */
-typedef uint32_t Elf32_Addr;
+/* This is the info that is needed to parse the dynamic section of the file */
+#define DT_NULL		0
+#define DT_NEEDED	1
+#define DT_PLTRELSZ	2
+#define DT_PLTGOT	3
+#define DT_HASH		4
+#define DT_STRTAB	5
+#define DT_SYMTAB	6
+#define DT_RELA		7
+#define DT_RELASZ	8
+#define DT_RELAENT	9
+#define DT_STRSZ	10
+#define DT_SYMENT	11
+#define DT_INIT		12
+#define DT_FINI		13
+#define DT_SONAME	14
+#define DT_RPATH 	15
+#define DT_SYMBOLIC	16
+#define DT_REL	        17
+#define DT_RELSZ	18
+#define DT_RELENT	19
+#define DT_PLTREL	20
+#define DT_DEBUG	21
+#define DT_TEXTREL	22
+#define DT_JMPREL	23
+#define DT_LOPROC	0x70000000
+#define DT_HIPROC	0x7fffffff
 
-/* Type of file offsets */
-typedef uint32_t Elf32_Off;
+/* This info is needed when parsing the symbol table */
+#define STB_LOCAL  0
+#define STB_GLOBAL 1
+#define STB_WEAK   2
 
-/* Type of section indices, which are 16-bit quantities */
-typedef uint16_t Elf32_Section;
+#define STT_NOTYPE  0
+#define STT_OBJECT  1
+#define STT_FUNC    2
+#define STT_SECTION 3
+#define STT_FILE    4
 
-/* Type for version symbol information. */
-typedef Elf32_Half Elf32_Versym;
+#define ELF32_ST_BIND(x) ((x) >> 4)
+#define ELF32_ST_TYPE(x) (((unsigned int) x) & 0xf)
 
-/* The ELF file header. This appears at the start of every ELF file. */
 
-#define EI_NIDENT    (16)
 
-typedef struct
-{
-    unsigned char e_ident[EI_NIDENT];  /* Magic number and other info */
-    Elf32_Half    e_type;              /* Object file type */
-    Elf32_Half    e_machine;           /* Architecture */
-    Elf32_Word    e_version;           /* Object file version */
-    Elf32_Addr    e_entry;             /* Entry point virtual address */
-    Elf32_Off     e_phoff;             /* Program header table file offset */
-    Elf32_Off     e_shoff;             /* Section header table file offset */
-    Elf32_Word    e_flags;             /* Processor-specific flags */
-    Elf32_Half    e_ehsize;            /* ELF header size in bytes */
-    Elf32_Half    e_phentsize;         /* Program header table entry size */
-    Elf32_Half    e_phnum;             /* Program header table entry count */
-    Elf32_Half    e_shentsize;         /* Section header table entry size */
-    Elf32_Half    e_shnum;             /* Section header table entry count */
-    Elf32_Half    e_shstrndx;          /* Section header string table index */
-} Elf32_Ehdr;
+struct dynamic{
+  int d_tag;
+  union{
+    int d_val;
+    char * d_ptr;
+  } d_un;
+};
 
-/* Field in the e_ident array. The EI_ macros are indices into the array.
- * The macros under each EI_* macro are the values the byte may have. */
+/* THe following are used with relocations */
+#define ELF32_R_SYM(x) ((x) >> 8)
+#define ELF32_R_TYPE(x) ((x) & 0xff)
 
-#define EI_MAG0           0            /* File identification byte 0 index */
-#define ELFMAG0           0x7F         /* Magic number byte 0 */
+#define R_386_NONE	0
+#define R_386_32	1
+#define R_386_PC32	2
+#define R_386_GOT32	3
+#define R_386_PLT32	4
+#define R_386_COPY	5
+#define R_386_GLOB_DAT	6
+#define R_386_JMP_SLOT	7
+#define R_386_RELATIVE	8
+#define R_386_GOTOFF	9
+#define R_386_GOTPC	10
+#define R_386_NUM	11
 
-#define EI_MAG1           1            /* File identification byte 1 index */
-#define ELFMAG1           'E'          /* Magic number byte 1 */
+struct Elf32_Rel{
+  unsigned int * offset;
+  int info;
+};
 
-#define EI_MAG2           2            /* File identification byte 2 index */
-#define ELFMAG2           'L'          /* Magic number byte 2 */
+struct Elf32_Rela{
+  unsigned int * offset;
+  int info;
+  int addend;
+};
 
-#define EI_MAG3           3            /* File identification byte 3 index */
-#define ELFMAG3           'F'          /* Magic number byte 3 */
+struct Elf32_Sym{
+  int st_name;
+  unsigned int st_value;
+  int st_size;
+  unsigned char st_info;
+  unsigned char st_other;
+  short int st_shndx;
+};
 
-/* Conglomeration of the identification bytes, for easy testing as a word */
-#define ELFMAG            "\177ELF"
-#define SELFMAG           4
+struct elfhdr{
+  char	e_ident[16];
+  short int e_type;
+  short int e_machine;
+  int   e_version;
+  char *e_entry;  /* Entry point */
+  int   e_phoff;
+  int   e_shoff;
+  int   e_flags;
+  short int e_ehsize;
+  short int e_phentsize;
+  short int e_phnum;
+  short int e_shentsize;
+  short int e_shnum;
+  short int e_shstrndx;
+};
 
-#define EI_CLASS          4            /* File class byte index */
-#define ELFCLASSNONE      0            /* Invalid class */
-#define ELFCLASS32        1            /* 32-bit objects */
-#define ELFCLASS64        2            /* 64-bit objects */
-#define ELFCLASSNUM       3
+struct elf_phdr{
+  int p_type;
+  int p_offset;
+  int p_vaddr;
+  int p_paddr;
+  int p_filesz;
+  int p_memsz;
+  int p_flags;
+  int p_align;
+};
 
-#define EI_DATA           5            /* Data encoding byte idex */
-#define ELFDATANONE       0            /* Invalid data encoding */
-#define ELFDATA2LSB       1            /* 2's complement, little endian */
-#define ELFDATA2MSB       2            /* 2's complement, big endian */
-#define ELFDATANUM        3
+#define ELF_START_MMAP 0x80000000
 
-#define EI_VERSION        6            /* File version byte index */
-                                       /* Value must by EV_CURRENT */
-
-#define EI_OSABI          7            /* OS ABI identification */
-#define ELFOSABI_NONE     0            /* UNIX System V ABI */
-#define ELFOSABI_SYSV     0            /* Alias. */
-#define ELFOSABI_HPUX     1            /* HP-UX */
-#define ELFOSABI_NETBSD   2            /* NetBSD */
-#define ELFOSABI_GNU      3            /* Object uses GNU ELF extensions. */
-#define ELFOSABI_LINUX    ELFOSABI_GNU /* Compatibility alisa */
-
-#define EI_ABIVERSION     8            /* ABI version */
-
-/* Legal values for e_type (object file type) */
-
-#define ET_NONE           0            /* No file type */
-#define ET_REL            1            /* Relocatable file */
-#define ET_EXEC           2            /* Executable file */
-#define ET_DYN            3            /* Shared object file */
-#define ET_CORE           4            /* Core file */
-#define ET_NUM            5            /* Number of defined types */
-
-/* Legal values for e_machines (architecture). */
-
-#define EM_NONE           0            /* No machine */
-#define EM_M32            1            /* AT&T WE 32100 */
-#define EM_SPARC          2            /* SUN SPARC */
-#define EM_386            3            /* Intel 80386 */
-
-/* Legal values for e_version (version) */
-#define EV_NONE           0            /* Invalid ELF version */
-#define EV_CURRENT        1            /* Current version */
-#define EV_NUM            2
-
-/* Section header. */
-
-typedef struct
-{
-    Elf32_Word  sh_name;               /* Section name (String tbl index) */
-    Elf32_Word  sh_type;               /* Section type */
-    Elf32_Word  sh_flags;              /* Section flags */
-    Elf32_Addr  sh_addr;               /* Section virtual addr at execution */
-    Elf32_Off   sh_offset;             /* Section file offset */
-    Elf32_Word  sh_size;               /* Section size in bytes */
-    Elf32_Word  sh_link;               /* Link to another section */
-    Elf32_Word  sh_info;               /* Additional section information */
-    Elf32_Word  sh_addralign;          /* Section alignment */
-    Elf32_Word  sh_entsize;            /* Entry size if section holds table */
-} Elf32_Shdr;
-
-#endif 
+#endif

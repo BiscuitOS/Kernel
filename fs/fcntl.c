@@ -13,9 +13,9 @@
 #include <linux/fcntl.h>
 #include <linux/string.h>
 
-extern int sys_close(int fd);
 extern int fcntl_getlk(unsigned int, struct flock *);
 extern int fcntl_setlk(unsigned int, unsigned int, struct flock *);
+extern int sock_fcntl (struct file *, unsigned int cmd, unsigned long arg);
 
 static int dupfd(unsigned int fd, unsigned int arg)
 {
@@ -35,26 +35,38 @@ static int dupfd(unsigned int fd, unsigned int arg)
 	return arg;
 }
 
-int sys_dup2(unsigned int oldfd, unsigned int newfd)
+asmlinkage int sys_dup2(unsigned int oldfd, unsigned int newfd)
 {
 	if (oldfd >= NR_OPEN || !current->filp[oldfd])
 		return -EBADF;
 	if (newfd == oldfd)
 		return newfd;
+	/*
+	 * errno's for dup2() are slightly different than for fcntl(F_DUPFD)
+	 * for historical reasons.
+	 */
+	if (newfd > NR_OPEN)	/* historical botch - should have been >= */
+		return -EBADF;	/* dupfd() would return -EINVAL */
+#if 1
+	if (newfd == NR_OPEN)
+		return -EBADF;	/* dupfd() does return -EINVAL and that may
+				 * even be the standard!  But that is too
+				 * weird for now.
+				 */
+#endif
 	sys_close(newfd);
 	return dupfd(oldfd,newfd);
 }
 
-int sys_dup(unsigned int fildes)
+asmlinkage int sys_dup(unsigned int fildes)
 {
 	return dupfd(fildes,0);
 }
 
-int sys_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg)
+asmlinkage int sys_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg)
 {	
 	struct file * filp;
-	extern int sock_fcntl (struct file *, unsigned int cmd,
-			       unsigned long arg);
+
 	if (fd >= NR_OPEN || !(filp = current->filp[fd]))
 		return -EBADF;
 	switch (cmd) {
@@ -84,7 +96,9 @@ int sys_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg)
 			/* sockets need a few special fcntls. */
 			if (S_ISSOCK (filp->f_inode->i_mode))
 			  {
+#ifdef CONFIG_NET
 			     return (sock_fcntl (filp, cmd, arg));
+#endif
 			  }
 			return -EINVAL;
 	}

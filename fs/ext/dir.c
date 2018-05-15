@@ -27,7 +27,7 @@ static int ext_dir_read(struct inode * inode, struct file * filp, char * buf, in
 
 static int ext_readdir(struct inode *, struct file *, struct dirent *, int);
 
-struct file_operations ext_dir_operations = {
+static struct file_operations ext_dir_operations = {
 	NULL,			/* lseek - default */
 	ext_dir_read,		/* read */
 	NULL,			/* write - bad */
@@ -36,7 +36,8 @@ struct file_operations ext_dir_operations = {
 	NULL,			/* ioctl - default */
 	NULL,			/* mmap */
 	NULL,			/* no special open code */
-	NULL			/* no special release code */
+	NULL,			/* no special release code */
+	file_fsync		/* fsync */
 };
 
 /*
@@ -56,7 +57,8 @@ struct inode_operations ext_dir_inode_operations = {
 	NULL,			/* readlink */
 	NULL,			/* follow_link */
 	NULL,			/* bmap */
-	ext_truncate		/* truncate */
+	ext_truncate,		/* truncate */
+	NULL			/* permission */
 };
 
 static int ext_readdir(struct inode * inode, struct file * filp,
@@ -85,7 +87,7 @@ static int ext_readdir(struct inode * inode, struct file * filp,
 			    (de->rec_len + filp->f_pos - 1) / 1024 > (filp->f_pos / 1024)) {
 				printk ("ext_readdir: bad dir entry, skipping\n");
 				printk ("dev=%d, dir=%d, offset=%d, rec_len=%d, name_len=%d\n",
-					inode->i_dev, inode->i_ino, offset, de->rec_len, de->name_len);
+					(int)inode->i_dev, (int)inode->i_ino, (int)offset, (int)de->rec_len, (int)de->name_len);
 				filp->f_pos += 1024-offset;
 				if (filp->f_pos > inode->i_size)
 					filp->f_pos = inode->i_size;
@@ -100,9 +102,9 @@ static int ext_readdir(struct inode * inode, struct file * filp,
 					else
 						break;
 				if (i) {
-					put_fs_long(de->inode, (unsigned long *)&dirent->d_ino);
+					put_fs_long(de->inode,&dirent->d_ino);
 					put_fs_byte(0,i+dirent->d_name);
-					put_fs_word(i, (short *)&dirent->d_reclen);
+					put_fs_word(i,&dirent->d_reclen);
 					brelse(bh);
 					return i;
 				}

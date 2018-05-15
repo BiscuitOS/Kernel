@@ -21,7 +21,7 @@
 
 #include <linux/dirent.h>
 
-#define	NBUF	16
+#define	NBUF	32
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -42,8 +42,10 @@ static struct file_operations isofs_file_operations = {
 	NULL,			/* readdir - bad */
 	NULL,			/* select - default */
 	NULL,			/* ioctl - default */
+	generic_mmap,		/* mmap */
 	NULL,			/* no special open is needed */
-	NULL			/* release */
+	NULL,			/* release */
+	NULL			/* fsync */
 };
 
 struct inode_operations isofs_file_inode_operations = {
@@ -60,7 +62,8 @@ struct inode_operations isofs_file_inode_operations = {
 	NULL,			/* readlink */
 	NULL,			/* follow_link */
 	isofs_bmap,		/* bmap */
-	NULL	       		/* truncate */
+	NULL,	       		/* truncate */
+	NULL			/* permission */
 };
 
 /* This is a heuristic to determine if a file is text of binary.  If it
@@ -91,10 +94,10 @@ static void isofs_determine_filetype(struct inode * inode)
 	unsigned char * pnt;
 	
 	block = isofs_bmap(inode,0);
-	if (block && (bh = bread(inode->i_dev,block, ISOFS_BUFFER_SIZE))) {
-		pnt = (char*) bh->b_data;
+	if (block && (bh = bread(inode->i_dev,block, ISOFS_BUFFER_SIZE(inode)))) {
+		pnt = (unsigned char *) bh->b_data;
 		result = ISOFS_FILE_TEXT_M;
-		for(i=0;i<(inode->i_size < ISOFS_BUFFER_SIZE ? inode->i_size : ISOFS_BUFFER_SIZE);
+		for(i=0;i<(inode->i_size < ISOFS_BUFFER_SIZE(inode) ? inode->i_size : ISOFS_BUFFER_SIZE(inode));
 		    i++,pnt++){
 			if(*pnt & 0x80) {result = ISOFS_FILE_BINARY; break;};
 			if(*pnt >= 0x20 || *pnt == 0x1a) continue;
@@ -137,9 +140,9 @@ static int isofs_file_read(struct inode * inode, struct file * filp, char * buf,
 	if (left <= 0)
 		return 0;
 	read = 0;
-	block = filp->f_pos >> ISOFS_BUFFER_BITS;
-	offset = filp->f_pos & (ISOFS_BUFFER_SIZE-1);
-	blocks = (left + offset + ISOFS_BUFFER_SIZE - 1) / ISOFS_BUFFER_SIZE;
+	block = filp->f_pos >> ISOFS_BUFFER_BITS(inode);
+	offset = filp->f_pos & (ISOFS_BUFFER_SIZE(inode)-1);
+	blocks = (left + offset + ISOFS_BUFFER_SIZE(inode) - 1) / ISOFS_BUFFER_SIZE(inode);
 	bhb = bhe = buflist;
 
 	ra_blocks = read_ahead[MAJOR(inode->i_dev)] / (BLOCK_SIZE >> 9);
@@ -161,7 +164,7 @@ static int isofs_file_read(struct inode * inode, struct file * filp, char * buf,
 		while (blocks) {
 		        int uptodate;
 			--blocks;
-			*bhb = getblk(inode->i_dev,isofs_bmap(inode, block++), ISOFS_BUFFER_SIZE);
+			*bhb = getblk(inode->i_dev,isofs_bmap(inode, block++), ISOFS_BUFFER_SIZE(inode));
 			uptodate = 1;
 			if (*bhb && !(*bhb)->b_uptodate) {
 			        uptodate = 0;
@@ -187,7 +190,7 @@ static int isofs_file_read(struct inode * inode, struct file * filp, char * buf,
 		    if (block >= max_block) break;
 		    if(bhrequest == NBUF) break;  /* Block full */
 		    --ra_blocks;
-		    *bhb = getblk(inode->i_dev,isofs_bmap(inode, block++), ISOFS_BUFFER_SIZE);
+		    *bhb = getblk(inode->i_dev,isofs_bmap(inode, block++), ISOFS_BUFFER_SIZE(inode));
 
 		    if (*bhb && !(*bhb)->b_uptodate) {
 		      if((*bhb)->b_blocknr != nextblock) {
@@ -213,19 +216,18 @@ static int isofs_file_read(struct inode * inode, struct file * filp, char * buf,
 		  if (*bhe) {/* test for valid buffer */
 		    wait_on_buffer(*bhe);
 		    if (!(*bhe)->b_uptodate) {
-		      do {
-			brelse(*bhe);
-			if (++bhe == &buflist[NBUF])
-			  bhe = buflist;
-		      } while (bhe != bhb);
+		      brelse(*bhe);
+		      if (++bhe == &buflist[NBUF])
+			bhe = buflist;
+		      left = 0;
 		      break;
 		    }
 		  }
 		  
-		  if (left < ISOFS_BUFFER_SIZE - offset)
+		  if (left < ISOFS_BUFFER_SIZE(inode) - offset)
 		    chars = left;
 		  else
-		    chars = ISOFS_BUFFER_SIZE - offset;
+		    chars = ISOFS_BUFFER_SIZE(inode) - offset;
 		  filp->f_pos += chars;
 		  left -= chars;
 		  read += chars;

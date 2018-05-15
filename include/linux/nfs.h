@@ -1,8 +1,6 @@
 #ifndef _LINUX_NFS_H
 #define _LINUX_NFS_H
 
-#define RPC_VERSION 2
-
 #define NFS_PORT 2049
 #define NFS_MAXDATA 8192
 #define NFS_MAXPATHLEN 1024
@@ -10,7 +8,7 @@
 #define NFS_MAXGROUPS 16
 #define NFS_FHSIZE 32
 #define NFS_COOKIESIZE 4
-#define NFS_FIFO_DEV -1
+#define NFS_FIFO_DEV (-1)
 #define NFSMODE_FMT 0170000
 #define NFSMODE_DIR 0040000
 #define NFSMODE_CHR 0020000
@@ -20,20 +18,24 @@
 #define NFSMODE_SOCK 0140000
 #define NFSMODE_FIFO 0010000
 
+#ifdef __KERNEL__ /* user programs should get these from the rpc header files */
+
+#define RPC_VERSION 2
+
 enum rpc_auth_flavor {
 	RPC_AUTH_NULL = 0,
 	RPC_AUTH_UNIX = 1,
-	RPC_AUTH_SHORT = 2,
+	RPC_AUTH_SHORT = 2
 };
 
 enum rpc_msg_type {
 	RPC_CALL = 0,
-	RPC_REPLY = 1,
+	RPC_REPLY = 1
 };
 
 enum rpc_reply_stat {
 	RPC_MSG_ACCEPTED = 0,
-	RPC_MSG_DENIED,
+	RPC_MSG_DENIED = 1
 };
 
 enum rpc_accept_stat {
@@ -41,12 +43,12 @@ enum rpc_accept_stat {
 	RPC_PROG_UNAVAIL = 1,
 	RPC_PROG_MISMATCH = 2,
 	RPC_PROC_UNAVAIL = 3,
-	RPC_GARBAGE_ARGS = 4,
+	RPC_GARBAGE_ARGS = 4
 };
 
 enum rpc_reject_stat {
 	RPC_MISMATCH = 0,
-	RPC_AUTH_ERROR = 1,
+	RPC_AUTH_ERROR = 1
 };
 
 enum rpc_auth_stat {
@@ -54,8 +56,10 @@ enum rpc_auth_stat {
 	RPC_AUTH_REJECTEDCRED = 2,
 	RPC_AUTH_BADVERF = 3,
 	RPC_AUTH_REJECTEDVERF = 4,
-	RPC_AUTH_TOOWEAK = 5,
+	RPC_AUTH_TOOWEAK = 5
 };
+
+#endif /* __KERNEL__ */
 	
 enum nfs_stat {
 	NFS_OK = 0,
@@ -68,6 +72,7 @@ enum nfs_stat {
 	NFSERR_NODEV = 19,
 	NFSERR_NOTDIR = 20,
 	NFSERR_ISDIR = 21,
+	NFSERR_INVAL = 22,	/* that Sun forgot */
 	NFSERR_FBIG = 27,
 	NFSERR_NOSPC = 28,
 	NFSERR_ROFS = 30,
@@ -75,7 +80,7 @@ enum nfs_stat {
 	NFSERR_NOTEMPTY = 66,
 	NFSERR_DQUOT = 69,
 	NFSERR_STALE = 70,
-	NFSERR_WFLUSH = 99,
+	NFSERR_WFLUSH = 99
 };
 
 enum nfs_ftype {
@@ -87,7 +92,7 @@ enum nfs_ftype {
 	NFLNK = 5,
 	NFSOCK = 6,
 	NFBAD = 7,
-	NFFIFO = 8,
+	NFFIFO = 8
 };
 
 #define NFS_PROGRAM		100003

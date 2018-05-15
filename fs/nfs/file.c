@@ -16,9 +16,13 @@
 #include <linux/stat.h>
 #include <linux/mm.h>
 #include <linux/nfs_fs.h>
+#include <linux/malloc.h>
 
 static int nfs_file_read(struct inode *, struct file *, char *, int);
 static int nfs_file_write(struct inode *, struct file *, char *, int);
+static int nfs_fsync(struct inode *, struct file *);
+extern int nfs_mmap(struct inode * inode, struct file * file,
+	      unsigned long addr, size_t len, int prot, unsigned long off);
 
 static struct file_operations nfs_file_operations = {
 	NULL,			/* lseek - default */
@@ -27,9 +31,10 @@ static struct file_operations nfs_file_operations = {
 	NULL,			/* readdir - bad */
 	NULL,			/* select - default */
 	NULL,			/* ioctl - default */
-	NULL,			/* mmap */
+	nfs_mmap,		/* mmap */
 	NULL,			/* no special open is needed */
-	NULL			/* release */
+	NULL,			/* release */
+	nfs_fsync,		/* fsync */
 };
 
 struct inode_operations nfs_file_inode_operations = {
@@ -49,6 +54,11 @@ struct inode_operations nfs_file_inode_operations = {
 	NULL			/* truncate */
 };
 
+static int nfs_fsync(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
 static int nfs_file_read(struct inode *inode, struct file *file, char *buf,
 			 int count)
 {
@@ -58,6 +68,7 @@ static int nfs_file_read(struct inode *inode, struct file *file, char *buf,
 	int n;
 	struct nfs_fattr fattr;
 	char *data;
+	off_t pos;
 
 	if (!inode) {
 		printk("nfs_file_read: inode = NULL\n");
@@ -68,8 +79,9 @@ static int nfs_file_read(struct inode *inode, struct file *file, char *buf,
 			inode->i_mode);
 		return -EINVAL;
 	}
+	pos = file->f_pos;
 	if (file->f_pos + count > inode->i_size)
-		count = inode->i_size - file->f_pos;
+		count = inode->i_size - pos;
 	if (count <= 0)
 		return 0;
 	n = NFS_SERVER(inode)->rsize;
@@ -79,19 +91,20 @@ static int nfs_file_read(struct inode *inode, struct file *file, char *buf,
 		if (hunk > n)
 			hunk = n;
 		result = nfs_proc_read(NFS_SERVER(inode), NFS_FH(inode), 
-			file->f_pos, hunk, data, &fattr);
+			pos, hunk, data, &fattr);
 		if (result < 0) {
 			kfree_s(data, n);
 			return result;
 		}
 		memcpy_tofs(buf, data, result);
-		file->f_pos += result;
+		pos += result;
 		buf += result;
 		if (result < n) {
 			i += result;
 			break;
 		}
 	}
+	file->f_pos = pos;
 	kfree_s(data, n);
 	nfs_refresh_inode(inode, &fattr);
 	return i;
@@ -106,6 +119,7 @@ static int nfs_file_write(struct inode *inode, struct file *file, char *buf,
 	int n;
 	struct nfs_fattr fattr;
 	char *data;
+	int pos;
 
 	if (!inode) {
 		printk("nfs_file_write: inode = NULL\n");
@@ -118,8 +132,9 @@ static int nfs_file_write(struct inode *inode, struct file *file, char *buf,
 	}
 	if (count <= 0)
 		return 0;
+	pos = file->f_pos;
 	if (file->f_flags & O_APPEND)
-		file->f_pos = inode->i_size;
+		pos = inode->i_size;
 	n = NFS_SERVER(inode)->wsize;
 	data = (char *) kmalloc(n, GFP_KERNEL);
 	for (i = 0; i < count; i += n) {
@@ -128,18 +143,19 @@ static int nfs_file_write(struct inode *inode, struct file *file, char *buf,
 			hunk = n;
 		memcpy_fromfs(data, buf, hunk);
 		result = nfs_proc_write(NFS_SERVER(inode), NFS_FH(inode), 
-			file->f_pos, hunk, data, &fattr);
+			pos, hunk, data, &fattr);
 		if (result < 0) {
 			kfree_s(data, n);
 			return result;
 		}
-		file->f_pos += hunk;
+		pos += hunk;
 		buf += hunk;
 		if (hunk < n) {
 			i += hunk;
 			break;
 		}
 	}
+	file->f_pos = pos;
 	kfree_s(data, n);
 	nfs_refresh_inode(inode, &fattr);
 	return i;

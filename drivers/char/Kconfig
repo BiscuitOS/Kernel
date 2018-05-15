@@ -1,0 +1,6 @@
+#
+# Character device 
+#
+menu "Character device driver"
+
+endmenu

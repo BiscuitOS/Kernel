@@ -1,2 +1,2 @@
-obj-y += chr_drv/
-obj-y += blk_drv/
+obj-y += char/
+obj-y += block/

@@ -15,9 +15,8 @@ static void cp_old_stat(struct inode * inode, struct old_stat * statbuf)
 {
 	struct old_stat tmp;
 
-	printk("Warning: %s using old stat() call. Recompile your binary.\n",
+	printk("VFS: Warning: %s using old stat() call. Recompile your binary.\n",
 		current->comm);
-	verify_area(statbuf,sizeof (*statbuf));
 	tmp.st_dev = inode->i_dev;
 	tmp.st_ino = inode->i_ino;
 	tmp.st_mode = inode->i_mode;
@@ -37,7 +36,6 @@ static void cp_new_stat(struct inode * inode, struct new_stat * statbuf)
 	struct new_stat tmp = {0, };
 	unsigned int blocks, indirect;
 
-	verify_area(statbuf,sizeof (*statbuf));
 	tmp.st_dev = inode->i_dev;
 	tmp.st_ino = inode->i_ino;
 	tmp.st_mode = inode->i_mode;
@@ -57,18 +55,29 @@ static void cp_new_stat(struct inode * inode, struct new_stat * statbuf)
  * this simple algorithm to get a reasonable (although not 100% accurate)
  * value.
  */
+
+/*
+ * Use minix fs values for the number of direct and indirect blocks.  The
+ * count is now exact for the minix fs except that it counts zero blocks.
+ * Everything is in BLOCK_SIZE'd units until the assignment to
+ * tmp.st_blksize.
+ */
+#define D_B   7
+#define I_B   (BLOCK_SIZE / sizeof(unsigned short))
+
 	if (!inode->i_blksize) {
-		blocks = (tmp.st_size + 511) / 512;
-		if (blocks > 10) {
-			indirect = (blocks - 11)/256+1;
-			if (blocks > 10+256) {
-				indirect += (blocks - 267)/(256*256)+1;
-				if (blocks > 10+256+256*256)
-					indirect++;
-			}
+		blocks = (tmp.st_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+		if (blocks > D_B) {
+			indirect = (blocks - D_B + I_B - 1) / I_B;
 			blocks += indirect;
+			if (indirect > 1) {
+				indirect = (indirect - 1 + I_B - 1) / I_B;
+				blocks += indirect;
+				if (indirect > 1)
+					blocks++;
+			}
 		}
-		tmp.st_blocks = blocks;
+		tmp.st_blocks = (BLOCK_SIZE / 512) * blocks;
 		tmp.st_blksize = BLOCK_SIZE;
 	} else {
 		tmp.st_blocks = inode->i_blocks;
@@ -77,11 +86,14 @@ static void cp_new_stat(struct inode * inode, struct new_stat * statbuf)
 	memcpy_tofs(statbuf,&tmp,sizeof(tmp));
 }
 
-int sys_stat(char * filename, struct old_stat * statbuf)
+asmlinkage int sys_stat(char * filename, struct old_stat * statbuf)
 {
 	struct inode * inode;
 	int error;
 
+	error = verify_area(VERIFY_WRITE,statbuf,sizeof (*statbuf));
+	if (error)
+		return error;
 	error = namei(filename,&inode);
 	if (error)
 		return error;
@@ -90,11 +102,14 @@ int sys_stat(char * filename, struct old_stat * statbuf)
 	return 0;
 }
 
-int sys_newstat(char * filename, struct new_stat * statbuf)
+asmlinkage int sys_newstat(char * filename, struct new_stat * statbuf)
 {
 	struct inode * inode;
 	int error;
 
+	error = verify_area(VERIFY_WRITE,statbuf,sizeof (*statbuf));
+	if (error)
+		return error;
 	error = namei(filename,&inode);
 	if (error)
 		return error;
@@ -103,11 +118,14 @@ int sys_newstat(char * filename, struct new_stat * statbuf)
 	return 0;
 }
 
-int sys_lstat(char * filename, struct old_stat * statbuf)
+asmlinkage int sys_lstat(char * filename, struct old_stat * statbuf)
 {
 	struct inode * inode;
 	int error;
 
+	error = verify_area(VERIFY_WRITE,statbuf,sizeof (*statbuf));
+	if (error)
+		return error;
 	error = lnamei(filename,&inode);
 	if (error)
 		return error;
@@ -116,11 +134,14 @@ int sys_lstat(char * filename, struct old_stat * statbuf)
 	return 0;
 }
 
-int sys_newlstat(char * filename, struct new_stat * statbuf)
+asmlinkage int sys_newlstat(char * filename, struct new_stat * statbuf)
 {
 	struct inode * inode;
 	int error;
 
+	error = verify_area(VERIFY_WRITE,statbuf,sizeof (*statbuf));
+	if (error)
+		return error;
 	error = lnamei(filename,&inode);
 	if (error)
 		return error;
@@ -129,36 +150,46 @@ int sys_newlstat(char * filename, struct new_stat * statbuf)
 	return 0;
 }
 
-int sys_fstat(unsigned int fd, struct old_stat * statbuf)
+asmlinkage int sys_fstat(unsigned int fd, struct old_stat * statbuf)
 {
 	struct file * f;
 	struct inode * inode;
+	int error;
 
+	error = verify_area(VERIFY_WRITE,statbuf,sizeof (*statbuf));
+	if (error)
+		return error;
 	if (fd >= NR_OPEN || !(f=current->filp[fd]) || !(inode=f->f_inode))
 		return -EBADF;
 	cp_old_stat(inode,statbuf);
 	return 0;
 }
 
-int sys_newfstat(unsigned int fd, struct new_stat * statbuf)
+asmlinkage int sys_newfstat(unsigned int fd, struct new_stat * statbuf)
 {
 	struct file * f;
 	struct inode * inode;
+	int error;
 
+	error = verify_area(VERIFY_WRITE,statbuf,sizeof (*statbuf));
+	if (error)
+		return error;
 	if (fd >= NR_OPEN || !(f=current->filp[fd]) || !(inode=f->f_inode))
 		return -EBADF;
 	cp_new_stat(inode,statbuf);
 	return 0;
 }
 
-int sys_readlink(const char * path, char * buf, int bufsiz)
+asmlinkage int sys_readlink(const char * path, char * buf, int bufsiz)
 {
 	struct inode * inode;
 	int error;
 
 	if (bufsiz <= 0)
 		return -EINVAL;
-	verify_area(buf,bufsiz);
+	error = verify_area(VERIFY_WRITE,buf,bufsiz);
+	if (error)
+		return error;
 	error = lnamei(path,&inode);
 	if (error)
 		return error;

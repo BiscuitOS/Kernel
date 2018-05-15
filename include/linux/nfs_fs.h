@@ -11,7 +11,7 @@
 
 #include <linux/nfs.h>
 
-#include <netinet/in.h>
+#include <linux/in.h>
 #include <linux/nfs_mount.h>
 
 /*
@@ -40,6 +40,14 @@
 
 #define NFS_MAX_RPC_TIMEOUT		600
 
+/*
+ * Size of the lookup cache in units of number of entries cached.
+ * It is better not to make this too large although the optimimum
+ * depends on a usage and environment.
+ */
+
+#define NFS_LOOKUP_CACHE_SIZE		64
+
 #define NFS_SUPER_MAGIC			0x6969
 
 #define NFS_SERVER(inode)		(&(inode)->i_sb->u.nfs_sb.s_server)
@@ -52,7 +60,7 @@ extern int nfs_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
 extern int nfs_proc_setattr(struct nfs_server *server, struct nfs_fh *fhandle,
 			    struct nfs_sattr *sattr, struct nfs_fattr *fattr);
 extern int nfs_proc_lookup(struct nfs_server *server, struct nfs_fh *dir,
-			   char *name, struct nfs_fh *fhandle,
+			   const char *name, struct nfs_fh *fhandle,
 			   struct nfs_fattr *fattr);
 extern int nfs_proc_readlink(struct nfs_server *server, struct nfs_fh *fhandle,
 			     char *res);
@@ -63,22 +71,22 @@ extern int nfs_proc_write(struct nfs_server *server, struct nfs_fh *fhandle,
 			  int offset, int count, char *data,
 			  struct nfs_fattr *fattr);
 extern int nfs_proc_create(struct nfs_server *server, struct nfs_fh *dir,
-			   char *name, struct nfs_sattr *sattr,
+			   const char *name, struct nfs_sattr *sattr,
 			   struct nfs_fh *fhandle, struct nfs_fattr *fattr);
 extern int nfs_proc_remove(struct nfs_server *server, struct nfs_fh *dir,
-			   char *name);
+			   const char *name);
 extern int nfs_proc_rename(struct nfs_server *server,
-			   struct nfs_fh *old_dir, char *old_name,
-			   struct nfs_fh *new_dir, char *new_name);
+			   struct nfs_fh *old_dir, const char *old_name,
+			   struct nfs_fh *new_dir, const char *new_name);
 extern int nfs_proc_link(struct nfs_server *server, struct nfs_fh *fhandle,
-			 struct nfs_fh *dir, char *name);
+			 struct nfs_fh *dir, const char *name);
 extern int nfs_proc_symlink(struct nfs_server *server, struct nfs_fh *dir,
-			    char *name, char *path, struct nfs_sattr *sattr);
+			    const char *name, const char *path, struct nfs_sattr *sattr);
 extern int nfs_proc_mkdir(struct nfs_server *server, struct nfs_fh *dir,
-			  char *name, struct nfs_sattr *sattr,
+			  const char *name, struct nfs_sattr *sattr,
 			  struct nfs_fh *fhandle, struct nfs_fattr *fattr);
 extern int nfs_proc_rmdir(struct nfs_server *server, struct nfs_fh *dir,
-			  char *name);
+			  const char *name);
 extern int nfs_proc_readdir(struct nfs_server *server, struct nfs_fh *fhandle,
 			    int cookie, int count, struct nfs_entry *entry);
 extern int nfs_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
@@ -90,7 +98,8 @@ extern int nfs_rpc_call(struct nfs_server *server, int *start, int *end);
 
 /* linux/fs/nfs/inode.c */
 
-extern struct super_block *nfs_read_super(struct super_block *sb, void *data);
+extern struct super_block *nfs_read_super(struct super_block *sb, 
+					  void *data,int);
 extern struct inode *nfs_fhget(struct super_block *sb, struct nfs_fh *fhandle,
 			       struct nfs_fattr *fattr);
 extern void nfs_refresh_inode(struct inode *inode, struct nfs_fattr *fattr);
@@ -107,16 +116,9 @@ extern struct inode_operations nfs_dir_inode_operations;
 
 extern struct inode_operations nfs_symlink_inode_operations;
 
-/* linux/fs/nfs/chrdev.c */
+/* linux/fs/nfs/mmap.c */
 
-extern struct inode_operations nfs_chrdev_inode_operations;
-
-/* linux/fs/nfs/blkdev.c */
-
-extern struct inode_operations nfs_blkdev_inode_operations;
-
-/* linux/fs/nfs/fifo.c */
-
-extern struct inode_operations nfs_fifo_inode_operations;
+extern int nfs_mmap(struct inode * inode, struct file * file,
+               unsigned long addr, size_t len, int prot, unsigned long off);
 
 #endif

@@ -38,17 +38,26 @@
 #define TIOCPKT		0x5420
 #define FIONBIO		0x5421
 #define TIOCNOTTY	0x5422
+#define TIOCSETD	0x5423
+#define TIOCGETD	0x5424
+#define TCSBRKP		0x5425	/* Needed for POSIX tcsendbreak() */
 #define FIONCLEX	0x5450  /* these numbers need to be adjusted. */
 #define FIOCLEX		0x5451
 #define FIOASYNC	0x5452
+#define TIOCSERCONFIG	0x5453
+#define TIOCSERGWILD	0x5454
+#define TIOCSERSWILD	0x5455
+#define TIOCGLCKTRMIOS	0x5456
+#define TIOCSLCKTRMIOS	0x5457
 
 /* Used for packet mode */
+#define TIOCPKT_DATA		 0
 #define TIOCPKT_FLUSHREAD	 1
 #define TIOCPKT_FLUSHWRITE	 2
 #define TIOCPKT_STOP		 4
 #define TIOCPKT_START		 8
-#define TIOCPKT_DOSTOP		16
-#define TIOCPKT_NOSTOP		32
+#define TIOCPKT_NOSTOP		16
+#define TIOCPKT_DOSTOP		32
 
 struct winsize {
 	unsigned short ws_row;
@@ -67,7 +76,7 @@ struct termio {
 	unsigned char c_cc[NCC];	/* control characters */
 };
 
-#define NCCS 17
+#define NCCS 19
 struct termios {
 	tcflag_t c_iflag;		/* input mode flags */
 	tcflag_t c_oflag;		/* output mode flags */
@@ -141,9 +150,9 @@ struct termios {
 #define VTDLY	0040000
 #define   VT0	0000000
 #define   VT1	0040000
-#define FFDLY	0040000
+#define FFDLY	0100000
 #define   FF0	0000000
-#define   FF1	0040000
+#define   FF1	0100000
 
 /* c_cflag bit meaning */
 #define CBAUD	0000017
@@ -224,5 +233,11 @@ struct termios {
 #define	TCSANOW		0
 #define	TCSADRAIN	1
 #define	TCSAFLUSH	2
+
+/* line disciplines */
+#define N_TTY		0
+#define N_SLIP		1
+#define N_MOUSE		2
+#define N_PPP		3
 
 #endif

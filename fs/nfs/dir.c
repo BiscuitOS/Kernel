@@ -13,6 +13,7 @@
 #include <linux/fcntl.h>
 #include <linux/string.h>
 #include <linux/kernel.h>
+#include <linux/malloc.h>
 #include <linux/mm.h>
 
 #include <asm/segment.h>	/* for fs functions */
@@ -46,7 +47,8 @@ static struct file_operations nfs_dir_operations = {
 	NULL,			/* ioctl - default */
 	NULL,			/* mmap */
 	NULL,			/* no special open code */
-	NULL			/* no special release code */
+	NULL,			/* no special release code */
+	NULL			/* fsync */
 };
 
 struct inode_operations nfs_dir_inode_operations = {
@@ -64,6 +66,7 @@ struct inode_operations nfs_dir_inode_operations = {
 	NULL,			/* follow_link */
 	NULL,			/* bmap */
 	NULL,			/* truncate */
+	NULL			/* permission */
 };
 
 static int nfs_dir_read(struct inode *inode, struct file *filp, char *buf,
@@ -132,9 +135,6 @@ static int nfs_readdir(struct inode *inode, struct file *filp,
 			filp->f_pos, NFS_READDIR_CACHE_SIZE, c_entry);
 		if (result < 0) {
 			c_dev = 0;
-#if 0
-			printk("nfs_readdir: readdir error = %d\n", result);
-#endif
 			return result;
 		}
 		if (result > 0) {
@@ -171,8 +171,6 @@ static int nfs_readdir(struct inode *inode, struct file *filp,
  * though most of them will fail.
  */
 
-#define NFS_LOOKUP_CACHE_SIZE	16
-
 static struct nfs_lookup_cache_entry {
 	int dev;
 	int inode;
@@ -183,7 +181,7 @@ static struct nfs_lookup_cache_entry {
 } nfs_lookup_cache[NFS_LOOKUP_CACHE_SIZE];
 
 static struct nfs_lookup_cache_entry *nfs_lookup_cache_index(struct inode *dir,
-							     char *filename)
+							     const char *filename)
 {
 	struct nfs_lookup_cache_entry *entry;
 	int i;
@@ -191,13 +189,13 @@ static struct nfs_lookup_cache_entry *nfs_lookup_cache_index(struct inode *dir,
 	for (i = 0; i < NFS_LOOKUP_CACHE_SIZE; i++) {
 		entry = nfs_lookup_cache + i;
 		if (entry->dev == dir->i_dev && entry->inode == dir->i_ino
-		    && !strcmp(filename, entry->filename))
+		    && !strncmp(filename, entry->filename, NFS_MAXNAMLEN))
 			return entry;
 	}
 	return NULL;
 }
 
-static int nfs_lookup_cache_lookup(struct inode *dir, char *filename,
+static int nfs_lookup_cache_lookup(struct inode *dir, const char *filename,
 				   struct nfs_fh *fhandle,
 				   struct nfs_fattr *fattr)
 {
@@ -221,12 +219,11 @@ static int nfs_lookup_cache_lookup(struct inode *dir, char *filename,
 	return 0;
 }
 
-static void nfs_lookup_cache_add(struct inode *dir, char *filename,
+static void nfs_lookup_cache_add(struct inode *dir, const char *filename,
 				 struct nfs_fh *fhandle,
 				 struct nfs_fattr *fattr)
 {
 	static int nfs_lookup_cache_pos = 0;
-
 	struct nfs_lookup_cache_entry *entry;
 
 	/* compensate for bug in SGI NFS server */
@@ -243,39 +240,56 @@ static void nfs_lookup_cache_add(struct inode *dir, char *filename,
 	strcpy(entry->filename, filename);
 	entry->fhandle = *fhandle;
 	entry->fattr = *fattr;
-	entry->expiration_date = jiffies + NFS_SERVER(dir)->acregmax;
+	entry->expiration_date = jiffies + (S_ISDIR(fattr->mode)
+		? NFS_SERVER(dir)->acdirmax : NFS_SERVER(dir)->acregmax);
 }
 
-static void nfs_lookup_cache_remove(struct inode *dir, char *filename)
+static void nfs_lookup_cache_remove(struct inode *dir, struct inode *inode,
+				    const char *filename)
 {
 	struct nfs_lookup_cache_entry *entry;
+	int dev;
+	int fileid;
+	int i;
 
-	if ((entry = nfs_lookup_cache_index(dir, filename)))
-		entry->dev = 0;
+	if (inode) {
+		dev = inode->i_dev;
+		fileid = inode->i_ino;
+	}
+	else if ((entry = nfs_lookup_cache_index(dir, filename))) {
+		dev = entry->dev;
+		fileid = entry->fattr.fileid;
+	}
+	else
+		return;
+	for (i = 0; i < NFS_LOOKUP_CACHE_SIZE; i++) {
+		entry = nfs_lookup_cache + i;
+		if (entry->dev == dev && entry->fattr.fileid == fileid)
+			entry->dev = 0;
+	}
 }
 
 static void nfs_lookup_cache_refresh(struct inode *file,
 				     struct nfs_fattr *fattr)
 {
 	struct nfs_lookup_cache_entry *entry;
+	int dev = file->i_dev;
+	int fileid = file->i_ino;
 	int i;
 
 	for (i = 0; i < NFS_LOOKUP_CACHE_SIZE; i++) {
 		entry = nfs_lookup_cache + i;
-		if (entry->dev == file->i_dev
-		    && entry->fattr.fileid == file->i_ino) {
+		if (entry->dev == dev && entry->fattr.fileid == fileid)
 			entry->fattr = *fattr;
-			break;
-		}
 	}
 }
 
-static int nfs_lookup(struct inode *dir, const char *name, int len,
+static int nfs_lookup(struct inode *dir, const char *__name, int len,
 		      struct inode **result)
 {
-	char filename[NFS_MAXNAMLEN + 1];
 	struct nfs_fh fhandle;
 	struct nfs_fattr fattr;
+	char name[len > NFS_MAXNAMLEN? 1 : len+1];
 	int error;
 
 	*result = NULL;
@@ -288,20 +302,20 @@ static int nfs_lookup(struct inode *dir, const char *name, int len,
 		iput(dir);
 		return -ENAMETOOLONG;
 	}
-	memcpy_fromfs(filename, (char *) name, len);
-	filename[len] = '\0';
-	if (len == 1 && filename[0] == '.') { /* cheat for "." */
+	memcpy(name,__name,len);
+	name[len] = '\0';
+	if (len == 1 && name[0] == '.') { /* cheat for "." */
 		*result = dir;
 		return 0;
 	}
 	if ((NFS_SERVER(dir)->flags & NFS_MOUNT_NOAC)
-	    || !nfs_lookup_cache_lookup(dir, filename, &fhandle, &fattr)) {
+	    || !nfs_lookup_cache_lookup(dir, name, &fhandle, &fattr)) {
 		if ((error = nfs_proc_lookup(NFS_SERVER(dir), NFS_FH(dir),
-		    filename, &fhandle, &fattr))) {
+		    name, &fhandle, &fattr))) {
 			iput(dir);
 			return error;
 		}
-		nfs_lookup_cache_add(dir, filename, &fhandle, &fattr);
+		nfs_lookup_cache_add(dir, name, &fhandle, &fattr);
 	}
 	if (!(*result = nfs_fhget(dir->i_sb, &fhandle, &fattr))) {
 		iput(dir);
@@ -314,7 +328,6 @@ static int nfs_lookup(struct inode *dir, const char *name, int len,
 static int nfs_create(struct inode *dir, const char *name, int len, int mode,
 		      struct inode **result)
 {
-	char filename[NFS_MAXNAMLEN + 1];
 	struct nfs_sattr sattr;
 	struct nfs_fattr fattr;
 	struct nfs_fh fhandle;
@@ -330,17 +343,11 @@ static int nfs_create(struct inode *dir, const char *name, int len, int mode,
 		iput(dir);
 		return -ENAMETOOLONG;
 	}
-	memcpy_fromfs(filename, (char *) name, len);
-	filename[len] = '\0';
-#if 0
-	sattr.mode = mode & 0777;
-#else
 	sattr.mode = mode;
-#endif
-	sattr.uid = sattr.gid = sattr.size = -1;
-	sattr.atime.seconds = sattr.mtime.seconds = -1;
+	sattr.uid = sattr.gid = sattr.size = (unsigned) -1;
+	sattr.atime.seconds = sattr.mtime.seconds = (unsigned) -1;
 	if ((error = nfs_proc_create(NFS_SERVER(dir), NFS_FH(dir),
-		filename, &sattr, &fhandle, &fattr))) {
+		name, &sattr, &fhandle, &fattr))) {
 		iput(dir);
 		return error;
 	}
@@ -348,7 +355,7 @@ static int nfs_create(struct inode *dir, const char *name, int len, int mode,
 		iput(dir);
 		return -EACCES;
 	}
-	nfs_lookup_cache_add(dir, filename, &fhandle, &fattr);
+	nfs_lookup_cache_add(dir, name, &fhandle, &fattr);
 	iput(dir);
 	return 0;
 }
@@ -356,7 +363,6 @@ static int nfs_create(struct inode *dir, const char *name, int len, int mode,
 static int nfs_mknod(struct inode *dir, const char *name, int len,
 		     int mode, int rdev)
 {
-	char filename[NFS_MAXNAMLEN + 1];
 	struct nfs_sattr sattr;
 	struct nfs_fattr fattr;
 	struct nfs_fh fhandle;
@@ -371,26 +377,23 @@ static int nfs_mknod(struct inode *dir, const char *name, int len,
 		iput(dir);
 		return -ENAMETOOLONG;
 	}
-	memcpy_fromfs(filename, (char *) name, len);
-	filename[len] = '\0';
 	sattr.mode = mode;
-	sattr.uid = sattr.gid = -1;
+	sattr.uid = sattr.gid = (unsigned) -1;
 	if (S_ISCHR(mode) || S_ISBLK(mode))
 		sattr.size = rdev; /* get out your barf bag */
 	else
-		sattr.size = -1;
-	sattr.atime.seconds = sattr.mtime.seconds = -1;
+		sattr.size = (unsigned) -1;
+	sattr.atime.seconds = sattr.mtime.seconds = (unsigned) -1;
 	error = nfs_proc_create(NFS_SERVER(dir), NFS_FH(dir),
-		filename, &sattr, &fhandle, &fattr);
+		name, &sattr, &fhandle, &fattr);
 	if (!error)
-		nfs_lookup_cache_add(dir, filename, &fhandle, &fattr);
+		nfs_lookup_cache_add(dir, name, &fhandle, &fattr);
 	iput(dir);
 	return error;
 }
 
 static int nfs_mkdir(struct inode *dir, const char *name, int len, int mode)
 {
-	char filename[NFS_MAXNAMLEN + 1];
 	struct nfs_sattr sattr;
 	struct nfs_fattr fattr;
 	struct nfs_fh fhandle;
@@ -405,26 +408,19 @@ static int nfs_mkdir(struct inode *dir, const char *name, int len, int mode)
 		iput(dir);
 		return -ENAMETOOLONG;
 	}
-	memcpy_fromfs(filename, (char *) name, len);
-	filename[len] = '\0';
-#if 0
-	sattr.mode = mode & 0777;
-#else
 	sattr.mode = mode;
-#endif
-	sattr.uid = sattr.gid = sattr.size = -1;
-	sattr.atime.seconds = sattr.mtime.seconds = -1;
+	sattr.uid = sattr.gid = sattr.size = (unsigned) -1;
+	sattr.atime.seconds = sattr.mtime.seconds = (unsigned) -1;
 	error = nfs_proc_mkdir(NFS_SERVER(dir), NFS_FH(dir),
-		filename, &sattr, &fhandle, &fattr);
+		name, &sattr, &fhandle, &fattr);
 	if (!error)
-		nfs_lookup_cache_add(dir, filename, &fhandle, &fattr);
+		nfs_lookup_cache_add(dir, name, &fhandle, &fattr);
 	iput(dir);
 	return error;
 }
 
 static int nfs_rmdir(struct inode *dir, const char *name, int len)
 {
-	char filename[NFS_MAXNAMLEN + 1];
 	int error;
 
 	if (!dir || !S_ISDIR(dir->i_mode)) {
@@ -436,18 +432,15 @@ static int nfs_rmdir(struct inode *dir, const char *name, int len)
 		iput(dir);
 		return -ENAMETOOLONG;
 	}
-	memcpy_fromfs(filename, (char *) name, len);
-	filename[len] = '\0';
-	error = nfs_proc_rmdir(NFS_SERVER(dir), NFS_FH(dir), filename);
+	error = nfs_proc_rmdir(NFS_SERVER(dir), NFS_FH(dir), name);
 	if (!error)
-		nfs_lookup_cache_remove(dir, filename);
+		nfs_lookup_cache_remove(dir, NULL, name);
 	iput(dir);
 	return error;
 }
 
 static int nfs_unlink(struct inode *dir, const char *name, int len)
 {
-	char filename[NFS_MAXNAMLEN + 1];
 	int error;
 
 	if (!dir || !S_ISDIR(dir->i_mode)) {
@@ -459,11 +452,9 @@ static int nfs_unlink(struct inode *dir, const char *name, int len)
 		iput(dir);
 		return -ENAMETOOLONG;
 	}
-	memcpy_fromfs(filename, (char *) name, len);
-	filename[len] = '\0';
-	error = nfs_proc_remove(NFS_SERVER(dir), NFS_FH(dir), filename);
+	error = nfs_proc_remove(NFS_SERVER(dir), NFS_FH(dir), name);
 	if (!error)
-		nfs_lookup_cache_remove(dir, filename);
+		nfs_lookup_cache_remove(dir, NULL, name);
 	iput(dir);
 	return error;
 }
@@ -471,12 +462,8 @@ static int nfs_unlink(struct inode *dir, const char *name, int len)
 static int nfs_symlink(struct inode *dir, const char *name, int len,
 		       const char *symname)
 {
-	char filename[NFS_MAXNAMLEN + 1];
-	char *symfilename;
 	struct nfs_sattr sattr;
 	int error;
-	int i;
-	int c;
 
 	if (!dir || !S_ISDIR(dir->i_mode)) {
 		printk("nfs_symlink: inode is NULL or not a directory\n");
@@ -487,23 +474,15 @@ static int nfs_symlink(struct inode *dir, const char *name, int len,
 		iput(dir);
 		return -ENAMETOOLONG;
 	}
-	memcpy_fromfs(filename, (char *) name, len);
-	filename[len] = '\0';
-	symfilename = (char *) kmalloc(NFS_MAXPATHLEN + 1, GFP_KERNEL);
-	for (i = 0; i < NFS_MAXPATHLEN && (c = get_fs_byte(symname++)); i++)
-		symfilename[i] = c;
-	if (i == NFS_MAXPATHLEN && get_fs_byte(symname)) {
-		kfree_s(symfilename, NFS_MAXPATHLEN + 1);
+	if (strlen(symname) > NFS_MAXPATHLEN) {
 		iput(dir);
 		return -ENAMETOOLONG;
 	}
-	symfilename[i] = '\0';
-	sattr.mode = S_IFLNK | 0777; /* SunOS 4.1.2 crashes without this! */
-	sattr.uid = sattr.gid = sattr.size = -1;
-	sattr.atime.seconds = sattr.mtime.seconds = -1;
+	sattr.mode = S_IFLNK | S_IRWXUGO; /* SunOS 4.1.2 crashes without this! */
+	sattr.uid = sattr.gid = sattr.size = (unsigned) -1;
+	sattr.atime.seconds = sattr.mtime.seconds = (unsigned) -1;
 	error = nfs_proc_symlink(NFS_SERVER(dir), NFS_FH(dir),
-		filename, symfilename, &sattr);
-	kfree_s(symfilename, NFS_MAXPATHLEN + 1);
+		name, symname, &sattr);
 	iput(dir);
 	return error;
 }
@@ -511,7 +490,6 @@ static int nfs_symlink(struct inode *dir, const char *name, int len,
 static int nfs_link(struct inode *oldinode, struct inode *dir,
 		    const char *name, int len)
 {
-	char filename[NFS_MAXNAMLEN + 1];
 	int error;
 
 	if (!oldinode) {
@@ -531,10 +509,10 @@ static int nfs_link(struct inode *oldinode, struct inode *dir,
 		iput(dir);
 		return -ENAMETOOLONG;
 	}
-	memcpy_fromfs(filename, (char *) name, len);
-	filename[len] = '\0';
 	error = nfs_proc_link(NFS_SERVER(oldinode), NFS_FH(oldinode),
-		NFS_FH(dir), filename);
+		NFS_FH(dir), name);
+	if (!error)
+		nfs_lookup_cache_remove(dir, oldinode, NULL);
 	iput(oldinode);
 	iput(dir);
 	return error;
@@ -543,8 +521,6 @@ static int nfs_link(struct inode *oldinode, struct inode *dir,
 static int nfs_rename(struct inode *old_dir, const char *old_name, int old_len,
 		      struct inode *new_dir, const char *new_name, int new_len)
 {
-	char old_filename[NFS_MAXNAMLEN + 1];
-	char new_filename[NFS_MAXNAMLEN + 1];
 	int error;
 
 	if (!old_dir || !S_ISDIR(old_dir->i_mode)) {
@@ -564,15 +540,13 @@ static int nfs_rename(struct inode *old_dir, const char *old_name, int old_len,
 		iput(new_dir);
 		return -ENAMETOOLONG;
 	}
-	memcpy_fromfs(old_filename, (char *) old_name, old_len);
-	old_filename[old_len] = '\0';
-	memcpy_fromfs(new_filename, (char *) new_name, new_len);
-	new_filename[new_len] = '\0';
 	error = nfs_proc_rename(NFS_SERVER(old_dir),
-		NFS_FH(old_dir), old_filename,
-		NFS_FH(new_dir), new_filename);
-	if (!error)
-		nfs_lookup_cache_remove(old_dir, old_filename);
+		NFS_FH(old_dir), old_name,
+		NFS_FH(new_dir), new_name);
+	if (!error) {
+		nfs_lookup_cache_remove(old_dir, NULL, old_name);
+		nfs_lookup_cache_remove(new_dir, NULL, new_name);
+	}
 	iput(old_dir);
 	iput(new_dir);
 	return error;
@@ -597,10 +571,6 @@ void nfs_refresh_inode(struct inode *inode, struct nfs_fattr *fattr)
 		return;
 	}
 	was_empty = inode->i_mode == 0;
-#if 0
-	if (!was_empty && inode->i_atime > fattr->atime.seconds)
-		return;
-#endif
 	inode->i_mode = fattr->mode;
 	inode->i_nlink = fattr->nlink;
 	inode->i_uid = fattr->uid;
@@ -623,16 +593,11 @@ void nfs_refresh_inode(struct inode *inode, struct nfs_fattr *fattr)
 		else if (S_ISLNK(inode->i_mode))
 			inode->i_op = &nfs_symlink_inode_operations;
 		else if (S_ISCHR(inode->i_mode))
-			inode->i_op = &nfs_chrdev_inode_operations;
+			inode->i_op = &chrdev_inode_operations;
 		else if (S_ISBLK(inode->i_mode))
-			inode->i_op = &nfs_blkdev_inode_operations;
-		else if (S_ISFIFO(inode->i_mode)) {
-			inode->i_op = &nfs_fifo_inode_operations;
-			inode->i_pipe = 1;
-			PIPE_BASE(*inode) = NULL;
-			PIPE_HEAD(*inode) = PIPE_TAIL(*inode) = 0;
-			PIPE_READERS(*inode) = PIPE_WRITERS(*inode) = 0;
-		}
+			inode->i_op = &blkdev_inode_operations;
+		else if (S_ISFIFO(inode->i_mode))
+			init_fifo(inode);
 		else
 			inode->i_op = NULL;
 	}

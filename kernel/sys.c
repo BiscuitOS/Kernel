@@ -4,11 +4,10 @@
  *  Copyright (C) 1991, 1992  Linus Torvalds
  */
 
+#include <linux/config.h>
 #include <linux/errno.h>
 #include <linux/sched.h>
-#include <linux/tty.h>
 #include <linux/kernel.h>
-#include <linux/config.h>
 #include <linux/times.h>
 #include <linux/utsname.h>
 #include <linux/param.h>
@@ -16,21 +15,18 @@
 #include <linux/signal.h>
 #include <linux/string.h>
 #include <linux/ptrace.h>
+#include <linux/stat.h>
+#include <linux/mman.h>
 
 #include <asm/segment.h>
+#include <asm/io.h>
 
 /*
  * this indicates wether you can reboot with ctrl-alt-del: the default is yes
  */
 static int C_A_D = 1;
 
-/* 
- * The timezone where the local system is located.  Used as a default by some
- * programs who obtain this value by using gettimeofday.
- */
-struct timezone sys_tz = { 0, 0};
-
-extern int session_of_pgrp(int pgrp);
+extern void adjust_clock(void);
 
 #define	PZERO	15
 
@@ -53,7 +49,7 @@ static int proc_sel(struct task_struct *p, int which, int who)
 	return 0;
 }
 
-int sys_setpriority(int which, int who, int niceval)
+asmlinkage int sys_setpriority(int which, int who, int niceval)
 {
 	struct task_struct **p;
 	int error = ESRCH;
@@ -83,7 +79,7 @@ int sys_setpriority(int which, int who, int niceval)
 	return -error;
 }
 
-int sys_getpriority(int which, int who)
+asmlinkage int sys_getpriority(int which, int who)
 {
 	struct task_struct **p;
 	int max_prio = 0;
@@ -100,37 +96,37 @@ int sys_getpriority(int which, int who)
 	return(max_prio ? max_prio : -ESRCH);
 }
 
-int sys_profil()
+asmlinkage int sys_profil(void)
 {
 	return -ENOSYS;
 }
 
-int sys_ftime()
+asmlinkage int sys_ftime(void)
 {
 	return -ENOSYS;
 }
 
-int sys_break()
+asmlinkage int sys_break(void)
 {
 	return -ENOSYS;
 }
 
-int sys_stty()
+asmlinkage int sys_stty(void)
 {
 	return -ENOSYS;
 }
 
-int sys_gtty()
+asmlinkage int sys_gtty(void)
 {
 	return -ENOSYS;
 }
 
-int sys_prof()
+asmlinkage int sys_prof(void)
 {
 	return -ENOSYS;
 }
 
-unsigned long save_v86_state(int signr,struct vm86_regs * regs)
+asmlinkage unsigned long save_v86_state(struct vm86_regs * regs)
 {
 	unsigned long stack;
 
@@ -154,7 +150,7 @@ static void mark_screen_rdonly(struct task_struct * tsk)
 	if ((tmp = tsk->tss.cr3) != 0) {
 		tmp = *(unsigned long *) tmp;
 		if (tmp & PAGE_PRESENT) {
-			tmp &= 0xfffff000;
+			tmp &= PAGE_MASK;
 			pg_table = (0xA0000 >> PAGE_SHIFT) + (unsigned long *) tmp;
 			tmp = 32;
 			while (tmp--) {
@@ -166,7 +162,7 @@ static void mark_screen_rdonly(struct task_struct * tsk)
 	}
 }
 
-int sys_vm86(struct vm86_struct * v86)
+asmlinkage int sys_vm86(struct vm86_struct * v86)
 {
 	struct vm86_struct info;
 	struct pt_regs * pt_regs = (struct pt_regs *) &v86;
@@ -187,7 +183,7 @@ int sys_vm86(struct vm86_struct * v86)
  * inherited from protected mode.
  */
 	info.regs.eflags &= 0x00000dd5;
-	info.regs.eflags |= 0xfffff22a & pt_regs->eflags;
+	info.regs.eflags |= ~0x00000dd5 & pt_regs->eflags;
 	info.regs.eflags |= VM_MASK;
 	current->saved_kernel_stack = current->tss.esp0;
 	current->tss.esp0 = (unsigned long) pt_regs;
@@ -197,7 +193,9 @@ int sys_vm86(struct vm86_struct * v86)
 		mark_screen_rdonly(current);
 	__asm__ __volatile__("movl %0,%%esp\n\t"
 		"pushl $ret_from_sys_call\n\t"
-		"ret"::"g" ((long) &(info.regs)),"a" (info.regs.eax));
+		"ret"
+		: /* no outputs */
+		:"g" ((long) &(info.regs)),"a" (info.regs.eax));
 	return 0;
 }
 
@@ -211,7 +209,7 @@ extern void hard_reset_now(void);
  *
  * reboot doesn't sync: do that yourself before calling this.
  */
-int sys_reboot(int magic, int magic_too, int flag)
+asmlinkage int sys_reboot(int magic, int magic_too, int flag)
 {
 	if (!suser())
 		return -EPERM;
@@ -253,7 +251,7 @@ void ctrl_alt_del(void)
  * 100% compatible with BSD.  A program which uses just setgid() will be
  * 100% compatible with POSIX w/ Saved ID's. 
  */
-int sys_setregid(gid_t rgid, gid_t egid)
+asmlinkage int sys_setregid(gid_t rgid, gid_t egid)
 {
 	int old_rgid = current->gid;
 
@@ -282,7 +280,7 @@ int sys_setregid(gid_t rgid, gid_t egid)
 /*
  * setgid() is implemeneted like SysV w/ SAVED_IDS 
  */
-int sys_setgid(gid_t gid)
+asmlinkage int sys_setgid(gid_t gid)
 {
 	if (suser())
 		current->gid = current->egid = current->sgid = gid;
@@ -293,41 +291,34 @@ int sys_setgid(gid_t gid)
 	return 0;
 }
 
-int sys_acct()
+asmlinkage int sys_acct(void)
 {
 	return -ENOSYS;
 }
 
-int sys_phys()
+asmlinkage int sys_phys(void)
 {
 	return -ENOSYS;
 }
 
-int sys_lock()
+asmlinkage int sys_lock(void)
 {
 	return -ENOSYS;
 }
 
-int sys_mpx()
+asmlinkage int sys_mpx(void)
 {
 	return -ENOSYS;
 }
 
-int sys_ulimit()
+asmlinkage int sys_ulimit(void)
 {
 	return -ENOSYS;
 }
 
-int sys_time(long * tloc)
+asmlinkage int sys_old_syscall(void)
 {
-	int i;
-
-	i = CURRENT_TIME;
-	if (tloc) {
-		verify_area(tloc,4);
-		put_fs_long(i,(unsigned long *)tloc);
-	}
-	return i;
+	return -ENOSYS;
 }
 
 /*
@@ -343,7 +334,7 @@ int sys_time(long * tloc)
  * 100% compatible with BSD.  A program which uses just setuid() will be
  * 100% compatible with POSIX w/ Saved ID's. 
  */
-int sys_setreuid(uid_t ruid, uid_t euid)
+asmlinkage int sys_setreuid(uid_t ruid, uid_t euid)
 {
 	int old_ruid = current->uid;
 	
@@ -380,7 +371,7 @@ int sys_setreuid(uid_t ruid, uid_t euid)
  * will allow a root program to temporarily drop privileges and be able to
  * regain them by swapping the real and effective uid.  
  */
-int sys_setuid(uid_t uid)
+asmlinkage int sys_setuid(uid_t uid)
 {
 	if (suser())
 		current->uid = current->euid = current->suid = uid;
@@ -391,19 +382,12 @@ int sys_setuid(uid_t uid)
 	return(0);
 }
 
-int sys_stime(long * tptr)
-{
-	if (!suser())
-		return -EPERM;
-	startup_time = get_fs_long((unsigned long *)tptr) - jiffies/HZ;
-	jiffies_offset = 0;
-	return 0;
-}
-
-int sys_times(struct tms * tbuf)
+asmlinkage int sys_times(struct tms * tbuf)
 {
 	if (tbuf) {
-		verify_area(tbuf,sizeof *tbuf);
+		int error = verify_area(VERIFY_WRITE,tbuf,sizeof *tbuf);
+		if (error)
+			return error;
 		put_fs_long(current->utime,(unsigned long *)&tbuf->tms_utime);
 		put_fs_long(current->stime,(unsigned long *)&tbuf->tms_stime);
 		put_fs_long(current->cutime,(unsigned long *)&tbuf->tms_cutime);
@@ -412,12 +396,61 @@ int sys_times(struct tms * tbuf)
 	return jiffies;
 }
 
-int sys_brk(unsigned long end_data_seg)
+asmlinkage int sys_brk(unsigned long brk)
 {
-	if (end_data_seg >= current->end_code &&
-	    end_data_seg < current->start_stack - 16384)
-		current->brk = end_data_seg;
-	return current->brk;
+	int freepages;
+	unsigned long rlim;
+	unsigned long newbrk, oldbrk;
+
+	if (brk < current->end_code)
+		return current->brk;
+	newbrk = PAGE_ALIGN(brk);
+	oldbrk = PAGE_ALIGN(current->brk);
+	if (oldbrk == newbrk)
+		return current->brk = brk;
+
+	/*
+	 * Always allow shrinking brk
+	 */
+	if (brk <= current->brk) {
+		current->brk = brk;
+		do_munmap(newbrk, oldbrk-newbrk);
+		return brk;
+	}
+	/*
+	 * Check against rlimit and stack..
+	 */
+	rlim = current->rlim[RLIMIT_DATA].rlim_cur;
+	if (rlim >= RLIM_INFINITY)
+		rlim = ~0;
+	if (brk - current->end_code > rlim || brk >= current->start_stack - 16384)
+		return current->brk;
+	/*
+	 * stupid algorithm to decide if we have enough memory: while
+	 * simple, it hopefully works in most obvious cases.. Easy to
+	 * fool it, but this should catch most mistakes.
+	 */
+	freepages = buffermem >> 12;
+	freepages += nr_free_pages;
+	freepages += nr_swap_pages;
+	freepages -= (high_memory - 0x100000) >> 16;
+	freepages -= (newbrk-oldbrk) >> 12;
+	if (freepages < 0)
+		return current->brk;
+#if 0
+	freepages += current->rss;
+	freepages -= oldbrk >> 12;
+	if (freepages < 0)
+		return current->brk;
+#endif
+	/*
+	 * Ok, we have probably got enough memory - let it rip.
+	 */
+	current->brk = brk;
+	do_mmap(NULL, oldbrk, newbrk-oldbrk,
+		PROT_READ|PROT_WRITE|PROT_EXEC,
+		MAP_FIXED|MAP_PRIVATE, 0);
+	return brk;
 }
 
 /*
@@ -428,41 +461,72 @@ int sys_brk(unsigned long end_data_seg)
  * OK, I think I have the protection semantics right.... this is really
  * only important on a multi-user system anyway, to make sure one user
  * can't send a signal to a process owned by another.  -TYT, 12/12/91
+ *
+ * Auch. Had to add the 'did_exec' flag to conform completely to POSIX.
+ * LBT 04.03.94
  */
-int sys_setpgid(pid_t pid, pid_t pgid)
+asmlinkage int sys_setpgid(pid_t pid, pid_t pgid)
 {
-	int i; 
+	struct task_struct * p;
 
 	if (!pid)
 		pid = current->pid;
 	if (!pgid)
-		pgid = current->pid;
+		pgid = pid;
 	if (pgid < 0)
 		return -EINVAL;
-	for (i=0 ; i<NR_TASKS ; i++)
-		if (task[i] && (task[i]->pid == pid) &&
-		    ((task[i]->p_pptr == current) || 
-		     (task[i] == current))) {
-			if (task[i]->leader)
-				return -EPERM;
-			if ((task[i]->session != current->session) ||
-			    ((pgid != pid) && 
-			     (session_of_pgrp(pgid) != current->session)))
-				return -EPERM;
-			task[i]->pgrp = pgid;
-			return 0;
+	for_each_task(p) {
+		if (p->pid == pid)
+			goto found_task;
+	}
+	return -ESRCH;
+
+found_task:
+	if (p->p_pptr == current || p->p_opptr == current) {
+		if (p->session != current->session)
+			return -EPERM;
+		if (p->did_exec)
+			return -EACCES;
+	} else if (p != current)
+		return -ESRCH;
+	if (p->leader)
+		return -EPERM;
+	if (pgid != pid) {
+		struct task_struct * tmp;
+		for_each_task (tmp) {
+			if (tmp->pgrp == pgid &&
+			 tmp->session == current->session)
+				goto ok_pgid;
 		}
+		return -EPERM;
+	}
+
+ok_pgid:
+	p->pgrp = pgid;
+	return 0;
+}
+
+asmlinkage int sys_getpgid(pid_t pid)
+{
+	struct task_struct * p;
+
+	if (!pid)
+		return current->pgrp;
+	for_each_task(p) {
+		if (p->pid == pid)
+			return p->pgrp;
+	}
 	return -ESRCH;
 }
 
-int sys_getpgrp(void)
+asmlinkage int sys_getpgrp(void)
 {
 	return current->pgrp;
 }
 
-int sys_setsid(void)
+asmlinkage int sys_setsid(void)
 {
-	if (current->leader && !suser())
+	if (current->leader)
 		return -EPERM;
 	current->leader = 1;
 	current->session = current->pgrp = current->pid;
@@ -473,25 +537,27 @@ int sys_setsid(void)
 /*
  * Supplementary group ID's
  */
-int sys_getgroups(int gidsetsize, gid_t *grouplist)
+asmlinkage int sys_getgroups(int gidsetsize, gid_t *grouplist)
 {
-	int	i;
+	int i;
 
-	if (gidsetsize)
-		verify_area(grouplist, sizeof(gid_t) * gidsetsize);
-
-	for (i = 0; (i < NGROUPS) && (current->groups[i] != NOGROUP);
-	     i++, grouplist++) {
-		if (gidsetsize) {
-			if (i >= gidsetsize)
-				return -EINVAL;
-			put_fs_word(current->groups[i], (short *) grouplist);
-		}
+	if (gidsetsize) {
+		i = verify_area(VERIFY_WRITE, grouplist, sizeof(gid_t) * gidsetsize);
+		if (i)
+			return i;
+	}
+	for (i = 0 ; (i < NGROUPS) && (current->groups[i] != NOGROUP) ; i++) {
+		if (!gidsetsize)
+			continue;
+		if (i >= gidsetsize)
+			break;
+		put_fs_word(current->groups[i], (short *) grouplist);
+		grouplist++;
 	}
 	return(i);
 }
 
-int sys_setgroups(int gidsetsize, gid_t *grouplist)
+asmlinkage int sys_setgroups(int gidsetsize, gid_t *grouplist)
 {
 	int	i;
 
@@ -523,20 +589,47 @@ int in_group_p(gid_t grp)
 	return 0;
 }
 
-int sys_newuname(struct new_utsname * name)
+asmlinkage int sys_newuname(struct new_utsname * name)
 {
+	int error;
+
 	if (!name)
 		return -EFAULT;
-	verify_area(name, sizeof *name);
-	memcpy_tofs(name,&system_utsname,sizeof *name);
+	error = verify_area(VERIFY_WRITE, name, sizeof *name);
+	if (!error)
+		memcpy_tofs(name,&system_utsname,sizeof *name);
+	return error;
+}
+
+asmlinkage int sys_uname(struct old_utsname * name)
+{
+	int error;
+	if (!name)
+		return -EFAULT;
+	error = verify_area(VERIFY_WRITE, name,sizeof *name);
+	if (error)
+		return error;
+	memcpy_tofs(&name->sysname,&system_utsname.sysname,
+		sizeof (system_utsname.sysname));
+	memcpy_tofs(&name->nodename,&system_utsname.nodename,
+		sizeof (system_utsname.nodename));
+	memcpy_tofs(&name->release,&system_utsname.release,
+		sizeof (system_utsname.release));
+	memcpy_tofs(&name->version,&system_utsname.version,
+		sizeof (system_utsname.version));
+	memcpy_tofs(&name->machine,&system_utsname.machine,
+		sizeof (system_utsname.machine));
 	return 0;
 }
 
-int sys_uname(struct old_utsname * name)
+asmlinkage int sys_olduname(struct oldold_utsname * name)
 {
+	int error;
 	if (!name)
-		return -EINVAL;
-	verify_area(name,sizeof *name);
+		return -EFAULT;
+	error = verify_area(VERIFY_WRITE, name,sizeof *name);
+	if (error)
+		return error;
 	memcpy_tofs(&name->sysname,&system_utsname.sysname,__OLD_UTS_LEN);
 	put_fs_byte(0,name->sysname+__OLD_UTS_LEN);
 	memcpy_tofs(&name->nodename,&system_utsname.nodename,__OLD_UTS_LEN);
@@ -553,7 +646,7 @@ int sys_uname(struct old_utsname * name)
 /*
  * Only sethostname; gethostname can be implemented by calling uname()
  */
-int sys_sethostname(char *name, int len)
+asmlinkage int sys_sethostname(char *name, int len)
 {
 	int	i;
 	
@@ -569,11 +662,35 @@ int sys_sethostname(char *name, int len)
 	return 0;
 }
 
-int sys_getrlimit(unsigned int resource, struct rlimit *rlim)
+/*
+ * Only setdomainname; getdomainname can be implemented by calling
+ * uname()
+ */
+asmlinkage int sys_setdomainname(char *name, int len)
 {
+	int	i;
+	
+	if (!suser())
+		return -EPERM;
+	if (len > __NEW_UTS_LEN)
+		return -EINVAL;
+	for (i=0; i < len; i++) {
+		if ((system_utsname.domainname[i] = get_fs_byte(name+i)) == 0)
+			return 0;
+	}
+	system_utsname.domainname[i] = 0;
+	return 0;
+}
+
+asmlinkage int sys_getrlimit(unsigned int resource, struct rlimit *rlim)
+{
+	int error;
+
 	if (resource >= RLIM_NLIMITS)
 		return -EINVAL;
-	verify_area(rlim,sizeof *rlim);
+	error = verify_area(VERIFY_WRITE,rlim,sizeof *rlim);
+	if (error)
+		return error;
 	put_fs_long(current->rlim[resource].rlim_cur, 
 		    (unsigned long *) rlim);
 	put_fs_long(current->rlim[resource].rlim_max, 
@@ -581,20 +698,20 @@ int sys_getrlimit(unsigned int resource, struct rlimit *rlim)
 	return 0;	
 }
 
-int sys_setrlimit(unsigned int resource, struct rlimit *rlim)
+asmlinkage int sys_setrlimit(unsigned int resource, struct rlimit *rlim)
 {
-	struct rlimit new, *old;
+	struct rlimit new_rlim, *old_rlim;
 
 	if (resource >= RLIM_NLIMITS)
 		return -EINVAL;
-	old = current->rlim + resource;
-	new.rlim_cur = get_fs_long((unsigned long *) rlim);
-	new.rlim_max = get_fs_long(((unsigned long *) rlim)+1);
-	if (((new.rlim_cur > old->rlim_max) ||
-	     (new.rlim_max > old->rlim_max)) &&
+	old_rlim = current->rlim + resource;
+	new_rlim.rlim_cur = get_fs_long((unsigned long *) rlim);
+	new_rlim.rlim_max = get_fs_long(((unsigned long *) rlim)+1);
+	if (((new_rlim.rlim_cur > old_rlim->rlim_max) ||
+	     (new_rlim.rlim_max > old_rlim->rlim_max)) &&
 	    !suser())
 		return -EPERM;
-	*old = new;
+	*old_rlim = new_rlim;
 	return 0;
 }
 
@@ -606,12 +723,15 @@ int sys_setrlimit(unsigned int resource, struct rlimit *rlim)
  * a lot simpler!  (Which we're not doing right now because we're not
  * measuring them yet).
  */
-void getrusage(struct task_struct *p, int who, struct rusage *ru)
+int getrusage(struct task_struct *p, int who, struct rusage *ru)
 {
+	int error;
 	struct rusage r;
 	unsigned long	*lp, *lpend, *dest;
 
-	verify_area(ru, sizeof *ru);
+	error = verify_area(VERIFY_WRITE, ru, sizeof *ru);
+	if (error)
+		return error;
 	memset((char *) &r, 0, sizeof(r));
 	switch (who) {
 		case RUSAGE_SELF:
@@ -644,96 +764,20 @@ void getrusage(struct task_struct *p, int who, struct rusage *ru)
 	dest = (unsigned long *) ru;
 	for (; lp < lpend; lp++, dest++) 
 		put_fs_long(*lp, dest);
+	return 0;
 }
 
-int sys_getrusage(int who, struct rusage *ru)
+asmlinkage int sys_getrusage(int who, struct rusage *ru)
 {
 	if (who != RUSAGE_SELF && who != RUSAGE_CHILDREN)
 		return -EINVAL;
-	getrusage(current, who, ru);
-	return(0);
+	return getrusage(current, who, ru);
 }
 
-int sys_gettimeofday(struct timeval *tv, struct timezone *tz)
-{
-	if (tv) {
-		verify_area(tv, sizeof *tv);
-		put_fs_long(startup_time + CT_TO_SECS(jiffies+jiffies_offset),
-			    (unsigned long *) tv);
-		put_fs_long(CT_TO_USECS(jiffies+jiffies_offset), 
-			    ((unsigned long *) tv)+1);
-	}
-	if (tz) {
-		verify_area(tz, sizeof *tz);
-		put_fs_long(sys_tz.tz_minuteswest, (unsigned long *) tz);
-		put_fs_long(sys_tz.tz_dsttime, ((unsigned long *) tz)+1);
-	}
-	return 0;
-}
-
-/*
- * The first time we set the timezone, we will warp the clock so that
- * it is ticking GMT time instead of local time.  Presumably, 
- * if someone is setting the timezone then we are running in an
- * environment where the programs understand about timezones.
- * This should be done at boot time in the /etc/rc script, as
- * soon as possible, so that the clock can be set right.  Otherwise,
- * various programs will get confused when the clock gets warped.
- */
-int sys_settimeofday(struct timeval *tv, struct timezone *tz)
-{
-	static int	firsttime = 1;
-	void 		adjust_clock();
-
-	if (!suser())
-		return -EPERM;
-	if (tz) {
-		sys_tz.tz_minuteswest = get_fs_long((unsigned long *) tz);
-		sys_tz.tz_dsttime = get_fs_long(((unsigned long *) tz)+1);
-		if (firsttime) {
-			firsttime = 0;
-			if (!tv)
-				adjust_clock();
-		}
-	}
-	if (tv) {
-		int sec, usec;
-
-		sec = get_fs_long((unsigned long *)tv);
-		usec = get_fs_long(((unsigned long *)tv)+1);
-	
-		startup_time = sec - jiffies/HZ;
-		jiffies_offset = usec * HZ / 1000000 - jiffies%HZ;
-	}
-	return 0;
-}
-
-/*
- * Adjust the time obtained from the CMOS to be GMT time instead of
- * local time.
- * 
- * This is ugly, but preferable to the alternatives.  Otherwise we
- * would either need to write a program to do it in /etc/rc (and risk
- * confusion if the program gets run more than once; it would also be 
- * hard to make the program warp the clock precisely n hours)  or
- * compile in the timezone information into the kernel.  Bad, bad....
- *
- * XXX Currently does not adjust for daylight savings time.  May not
- * need to do anything, depending on how smart (dumb?) the BIOS
- * is.  Blast it all.... the best thing to do not depend on the CMOS
- * clock at all, but get the time via NTP or timed if you're on a 
- * network....				- TYT, 1/1/92
- */
-void adjust_clock()
-{
-	startup_time += sys_tz.tz_minuteswest*60;
-}
-
-int sys_umask(int mask)
+asmlinkage int sys_umask(int mask)
 {
 	int old = current->umask;
 
-	current->umask = mask & 0777;
+	current->umask = mask & S_IRWXUGO;
 	return (old);
 }
-

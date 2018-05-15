@@ -29,7 +29,7 @@ unsigned long simple_strtoul(const char *cp,char **endp,unsigned int base)
 			}
 		}
 	}
-	while (isxdigit((unsigned char)*cp) && ((value = isdigit((unsigned char)*cp)) ? *cp-'0' : (islower((unsigned char)*cp)
+	while (isxdigit((unsigned char)*cp) && (value = isdigit((unsigned char)*cp) ? *cp-'0' : (islower((unsigned char)*cp)
 	    ? toupper(*cp) : *cp)-'A'+10) < base) {
 		result = result*base + value;
 		cp++;
@@ -131,6 +131,7 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 	int field_width;	/* width of output field */
 	int precision;		/* min. # of digits for integers; max
 				   number of chars for from string */
+
 	for (str=buf ; *fmt ; ++fmt) {
 		if (*fmt != '%') {
 			*str++ = *fmt;
@@ -193,6 +194,8 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 
 		case 's':
 			s = va_arg(args, char *);
+			if (!s)
+				s = "<NULL>";
 			len = strlen(s);
 			if (precision < 0)
 				precision = len;

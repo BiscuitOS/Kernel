@@ -5,21 +5,19 @@
  *  of the iso 9660 standard in which they are described.  isonum_733 will
  *  convert numbers according to section 7.3.3, etc.
  *
- *  isofs special functions.  This file was lifted in it's entirety from
+ *  isofs special functions.  This file was lifted in its entirety from
  * the bsd386 iso9660 filesystem, by Pace Williamson.
  */
 
 
 int
-isonum_711 (p)
-char *p;
+isonum_711 (char * p)
 {
 	return (*p & 0xff);
 }
 
 int
-isonum_712 (p)
-char *p;
+isonum_712 (char * p)
 {
 	int val;
 	
@@ -30,22 +28,19 @@ char *p;
 }
 
 int
-isonum_721 (p)
-char *p;
+isonum_721 (char * p)
 {
 	return ((p[0] & 0xff) | ((p[1] & 0xff) << 8));
 }
 
 int
-isonum_722 (p)
-char *p;
+isonum_722 (char * p)
 {
 	return (((p[0] & 0xff) << 8) | (p[1] & 0xff));
 }
 
 int
-isonum_723 (p)
-char *p;
+isonum_723 (char * p)
 {
 #if 0
 	if (p[0] != p[3] || p[1] != p[2]) {
@@ -57,8 +52,7 @@ char *p;
 }
 
 int
-isonum_731 (p)
-char *p;
+isonum_731 (char * p)
 {
 	return ((p[0] & 0xff)
 		| ((p[1] & 0xff) << 8)
@@ -67,8 +61,7 @@ char *p;
 }
 
 int
-isonum_732 (p)
-char *p;
+isonum_732 (char * p)
 {
 	return (((p[0] & 0xff) << 24)
 		| ((p[1] & 0xff) << 16)
@@ -77,8 +70,7 @@ char *p;
 }
 
 int
-isonum_733 (p)
-char *p;
+isonum_733 (char * p)
 {
 #if 0
 	int i;
@@ -93,9 +85,11 @@ char *p;
 	return (isonum_731 (p));
 }
 
-int iso_date(p, flag)
-char * p;
-int flag;
+/* We have to convert from a MM/DD/YY format to the unix ctime format.  We have to
+   take into account leap years and all of that good stuff.  Unfortunately, the kernel
+   does not have the information on hand to take into account daylight savings time,
+   so there will be cases (roughly half the time) where the dates are off by one hour. */
+int iso_date(char * p, int flag)
 {
 	int year, month, day, hour ,minute, second, tz;
 	int crtime, days, i;
@@ -115,7 +109,7 @@ int flag;
 		int monlen[12] = {31,28,31,30,31,30,31,31,30,31,30,31};
 		days = year * 365;
 		if (year > 2)
-			days += (year+2) / 4;
+			days += (year+1) / 4;
 		for (i = 1; i < month; i++)
 			days += monlen[i-1];
 		if (((year+2) % 4) == 0 && month > 2)

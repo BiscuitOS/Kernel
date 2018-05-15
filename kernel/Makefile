@@ -15,7 +15,9 @@ obj-y += irq.o
 obj-y += itimer.o
 obj-y += version.o
 obj-y += info.o
+obj-y += ldt.o
+obj-y += module.o
+obj-y += time.o
 
 $(obj)/%.o: $(obj)/%.s FORCE
 	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<
-

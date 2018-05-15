@@ -37,13 +37,16 @@ static struct super_operations proc_sops = {
 	proc_put_inode,
 	proc_put_super,
 	NULL,
-	proc_statfs
+	proc_statfs,
+	NULL
 };
 
-struct super_block *proc_read_super(struct super_block *s,void *data)
+struct super_block *proc_read_super(struct super_block *s,void *data, 
+				    int silent)
 {
 	lock_super(s);
 	s->s_blocksize = 1024;
+	s->s_blocksize_bits = 10;
 	s->s_magic = PROC_SUPER_MAGIC;
 	s->s_op = &proc_sops;
 	unlock_super(s);
@@ -57,24 +60,15 @@ struct super_block *proc_read_super(struct super_block *s,void *data)
 
 void proc_statfs(struct super_block *sb, struct statfs *buf)
 {
-	put_fs_long(PROC_SUPER_MAGIC, (unsigned long *)&buf->f_type);
-	put_fs_long(1024, (unsigned long *)&buf->f_bsize);
-	put_fs_long(0, (unsigned long *)&buf->f_blocks);
-	put_fs_long(0, (unsigned long *)&buf->f_bfree);
-	put_fs_long(0, (unsigned long *)&buf->f_bavail);
-	put_fs_long(0, (unsigned long *)&buf->f_files);
-	put_fs_long(0, (unsigned long *)&buf->f_ffree);
+	put_fs_long(PROC_SUPER_MAGIC, &buf->f_type);
+	put_fs_long(PAGE_SIZE/sizeof(long), &buf->f_bsize);
+	put_fs_long(0, &buf->f_blocks);
+	put_fs_long(0, &buf->f_bfree);
+	put_fs_long(0, &buf->f_bavail);
+	put_fs_long(0, &buf->f_files);
+	put_fs_long(0, &buf->f_ffree);
+	put_fs_long(NAME_MAX, &buf->f_namelen);
 	/* Don't know what value to put in buf->f_fsid */
-}
-
-int proc_bmap(struct inode * inode,int block)
-{
-	return 0;
-}
-
-int proc_create_block(struct inode * inode, int block)
-{
-	return 0;
 }
 
 void proc_read_inode(struct inode * inode)
@@ -90,7 +84,8 @@ void proc_read_inode(struct inode * inode)
 	inode->i_nlink = 1;
 	inode->i_size = 0;
 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME;
-	inode->i_blocks = inode->i_blksize = 0;
+	inode->i_blocks = 0;
+	inode->i_blksize = 1024;
 	ino = inode->i_ino;
 	pid = ino >> 16;
 	p = task[0];
@@ -100,7 +95,7 @@ void proc_read_inode(struct inode * inode)
 	if (!p || i >= NR_TASKS)
 		return;
 	if (ino == PROC_ROOT_INO) {
-		inode->i_mode = S_IFDIR | 0555;
+		inode->i_mode = S_IFDIR | S_IRUGO | S_IXUGO;
 		inode->i_nlink = 2;
 		for (i = 1 ; i < NR_TASKS ; i++)
 			if (task[i])
@@ -108,9 +103,32 @@ void proc_read_inode(struct inode * inode)
 		inode->i_op = &proc_root_inode_operations;
 		return;
 	}
+	if ((ino >= 128) && (ino <= 160)) { /* files within /proc/net */
+		inode->i_mode = S_IFREG | S_IRUGO;
+		inode->i_op = &proc_net_inode_operations;
+		return;
+	}
 	if (!pid) {
-		inode->i_mode = S_IFREG | 0444;
-		inode->i_op = &proc_array_inode_operations;
+		switch (ino) {
+			case 5:
+				inode->i_mode = S_IFREG | S_IRUGO;
+				inode->i_op = &proc_kmsg_inode_operations;
+				break;
+			case 8: /* for the net directory */
+				inode->i_mode = S_IFDIR | S_IRUGO | S_IXUGO;
+				inode->i_nlink = 2;
+				inode->i_op = &proc_net_inode_operations;
+				break;
+			case 14:
+				inode->i_mode = S_IFREG | S_IRUSR;
+				inode->i_op = &proc_array_inode_operations;
+				inode->i_size = high_memory + PAGE_SIZE;
+				break;
+			default:
+				inode->i_mode = S_IFREG | S_IRUGO;
+				inode->i_op = &proc_array_inode_operations;
+				break;
+		}
 		return;
 	}
 	ino &= 0x0000ffff;
@@ -119,31 +137,32 @@ void proc_read_inode(struct inode * inode)
 	switch (ino) {
 		case 2:
 			inode->i_nlink = 4;
-			inode->i_mode = S_IFDIR | 0555;
+			inode->i_mode = S_IFDIR | S_IRUGO | S_IXUGO;
 			inode->i_op = &proc_base_inode_operations;
 			return;
 		case 3:
 			inode->i_op = &proc_mem_inode_operations;
-			inode->i_mode = S_IFCHR | 0600;
-			inode->i_rdev = 0x0101;
+			inode->i_mode = S_IFREG | S_IRUSR | S_IWUSR;
 			return;
 		case 4:
 		case 5:
 		case 6:
 			inode->i_op = &proc_link_inode_operations;
-			inode->i_size = 3;
-			inode->i_mode = S_IFLNK | 0700;
+			inode->i_size = 64;
+			inode->i_mode = S_IFLNK | S_IRWXU;
 			return;
 		case 7:
 		case 8:
-			inode->i_mode = S_IFDIR | 0500;
+			inode->i_mode = S_IFDIR | S_IRUSR | S_IXUSR;
 			inode->i_op = &proc_fd_inode_operations;
 			inode->i_nlink = 2;
 			return;
 		case 9:
 		case 10:
 		case 11:
-			inode->i_mode = S_IFREG | 0444;
+		case 12:
+		case 15:
+			inode->i_mode = S_IFREG | S_IRUGO;
 			inode->i_op = &proc_array_inode_operations;
 			return;
 	}
@@ -153,16 +172,23 @@ void proc_read_inode(struct inode * inode)
 			if (ino >= NR_OPEN || !p->filp[ino])
 				return;
 			inode->i_op = &proc_link_inode_operations;
-			inode->i_size = 3;
-			inode->i_mode = S_IFLNK | 0700;
+			inode->i_size = 64;
+			inode->i_mode = S_IFLNK | S_IRWXU;
 			return;
 		case 2:
 			ino &= 0xff;
-			if (ino >= p->numlibraries)
-				return;
+			{
+				int j = 0;
+				struct vm_area_struct * mpnt;
+				for (mpnt = p->mmap ; mpnt ; mpnt = mpnt->vm_next)
+					if(mpnt->vm_inode)
+						j++;
+				if (ino >= j)
+					return;
+			}
 			inode->i_op = &proc_link_inode_operations;
-			inode->i_size = 3;
-			inode->i_mode = S_IFLNK | 0700;
+			inode->i_size = 64;
+			inode->i_mode = S_IFLNK | S_IRWXU;
 			return;
 	}
 	return;

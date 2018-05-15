@@ -50,16 +50,19 @@ static struct super_operations ext_sops = {
 	ext_put_inode,
 	ext_put_super,
 	ext_write_super,
-	ext_statfs
+	ext_statfs,
+	NULL
 };
 
-struct super_block *ext_read_super(struct super_block *s,void *data)
+struct super_block *ext_read_super(struct super_block *s,void *data, 
+				   int silent)
 {
 	struct buffer_head *bh;
 	struct ext_super_block *es;
 	int dev = s->s_dev,block;
 
 	lock_super(s);
+	set_blocksize(dev, BLOCK_SIZE);
 	if (!(bh = bread(dev, 1, BLOCK_SIZE))) {
 		s->s_dev=0;
 		unlock_super(s);
@@ -68,6 +71,7 @@ struct super_block *ext_read_super(struct super_block *s,void *data)
 	}
 	es = (struct ext_super_block *) bh->b_data;
 	s->s_blocksize = 1024;
+	s->s_blocksize_bits = 10;
 	s->u.ext_sb.s_ninodes = es->s_ninodes;
 	s->u.ext_sb.s_nzones = es->s_nzones;
 	s->u.ext_sb.s_firstdatazone = es->s_firstdatazone;
@@ -82,7 +86,9 @@ struct super_block *ext_read_super(struct super_block *s,void *data)
 	if (s->s_magic != EXT_SUPER_MAGIC) {
 		s->s_dev = 0;
 		unlock_super(s);
-		printk("EXT-fs: magic match failed\n");
+		if (!silent)
+			printk("VFS: Can't find an extfs filesystem on dev 0x%04x.\n",
+				   dev);
 		return NULL;
 	}
 	if (!s->u.ext_sb.s_firstfreeblocknumber)
@@ -142,15 +148,16 @@ void ext_statfs (struct super_block *sb, struct statfs *buf)
 {
 	long tmp;
 
-	put_fs_long(EXT_SUPER_MAGIC, (unsigned long *)&buf->f_type);
-	put_fs_long(1024, (unsigned long *)&buf->f_bsize);
+	put_fs_long(EXT_SUPER_MAGIC, &buf->f_type);
+	put_fs_long(1024, &buf->f_bsize);
 	put_fs_long(sb->u.ext_sb.s_nzones << sb->u.ext_sb.s_log_zone_size,
-		(unsigned long *)&buf->f_blocks);
+		&buf->f_blocks);
 	tmp = ext_count_free_blocks(sb);
-	put_fs_long(tmp, (unsigned long *)&buf->f_bfree);
-	put_fs_long(tmp, (unsigned long *)&buf->f_bavail);
-	put_fs_long(sb->u.ext_sb.s_ninodes, (unsigned long *)&buf->f_files);
-	put_fs_long(ext_count_free_inodes(sb), (unsigned long *)&buf->f_ffree);
+	put_fs_long(tmp, &buf->f_bfree);
+	put_fs_long(tmp, &buf->f_bavail);
+	put_fs_long(sb->u.ext_sb.s_ninodes, &buf->f_files);
+	put_fs_long(ext_count_free_inodes(sb), &buf->f_ffree);
+	put_fs_long(EXT_NAME_LEN, &buf->f_namelen);
 	/* Don't know what value to put in buf->f_fsid */
 }
 
@@ -372,20 +379,14 @@ void ext_read_inode(struct inode * inode)
 	else if (S_ISLNK(inode->i_mode))
 		inode->i_op = &ext_symlink_inode_operations;
 	else if (S_ISCHR(inode->i_mode))
-		inode->i_op = &ext_chrdev_inode_operations;
+		inode->i_op = &chrdev_inode_operations;
 	else if (S_ISBLK(inode->i_mode))
-		inode->i_op = &ext_blkdev_inode_operations;
-	else if (S_ISFIFO(inode->i_mode)) {
-		inode->i_op = &ext_fifo_inode_operations;
-		inode->i_pipe = 1;
-		PIPE_BASE(*inode) = NULL;
-		PIPE_HEAD(*inode) = PIPE_TAIL(*inode) = 0;
-		PIPE_READ_WAIT(*inode) = PIPE_WRITE_WAIT(*inode) = NULL;
-		PIPE_READERS(*inode) = PIPE_WRITERS(*inode) = 0;
-	}
+		inode->i_op = &blkdev_inode_operations;
+	else if (S_ISFIFO(inode->i_mode))
+		init_fifo(inode);
 }
 
-void ext_write_inode(struct inode * inode)
+static struct buffer_head * ext_update_inode(struct inode * inode)
 {
 	struct buffer_head * bh;
 	struct ext_inode * raw_inode;
@@ -408,5 +409,36 @@ void ext_write_inode(struct inode * inode)
 		raw_inode->i_zone[block] = inode->u.ext_i.i_data[block];
 	bh->b_dirt=1;
 	inode->i_dirt=0;
+	return bh;
+}
+
+void ext_write_inode(struct inode * inode)
+{
+	struct buffer_head *bh;
+	bh = ext_update_inode (inode);
 	brelse(bh);
 }
+
+int ext_sync_inode (struct inode *inode)
+{
+	int err = 0;
+	struct buffer_head *bh;
+
+	bh = ext_update_inode(inode);
+	if (bh && bh->b_dirt)
+	{
+		ll_rw_block(WRITE, 1, &bh);
+		wait_on_buffer(bh);
+		if (bh->b_req && !bh->b_uptodate)
+		{
+			printk ("IO error syncing ext inode [%04x:%08x]\n",
+				(int)inode->i_dev, (int)inode->i_ino);
+			err = -1;
+		}
+	}
+	else if (!bh)
+		err = -1;
+	brelse (bh);
+	return err;
+}
+

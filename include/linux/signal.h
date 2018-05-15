@@ -51,8 +51,22 @@ typedef unsigned int sigset_t;		/* 32 bits */
 /*
 #define SIGLOST		29
 */
+#define SIGPWR		30
 
+/* Arggh. Bad user source code wants this.. */
+#define SIGBUS		SIGUNUSED
+
+/*
+ * sa_flags values: SA_STACK is not currently supported, but will allow the
+ * usage of signal stacks by using the (now obsolete) sa_restorer field in
+ * the sigaction structure as a stack pointer. This is now possible due to
+ * the changes in signal handling. LBT 010493.
+ * SA_INTERRUPT is a no-op, but left due to historical reasons. Use the
+ * SA_RESTART flag to get restarting signals (which were the default long ago)
+ */
 #define SA_NOCLDSTOP	1
+#define SA_STACK	0x08000000
+#define SA_RESTART	0x10000000
 #define SA_INTERRUPT	0x20000000
 #define SA_NOMASK	0x40000000
 #define SA_ONESHOT	0x80000000

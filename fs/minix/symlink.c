@@ -34,14 +34,14 @@ struct inode_operations minix_symlink_inode_operations = {
 	minix_readlink,		/* readlink */
 	minix_follow_link,	/* follow_link */
 	NULL,			/* bmap */
-	NULL			/* truncate */
+	NULL,			/* truncate */
+	NULL			/* permission */
 };
 
 static int minix_follow_link(struct inode * dir, struct inode * inode,
 	int flag, int mode, struct inode ** res_inode)
 {
 	int error;
-	unsigned short fs;
 	struct buffer_head * bh;
 
 	*res_inode = NULL;
@@ -69,12 +69,9 @@ static int minix_follow_link(struct inode * dir, struct inode * inode,
 		return -EIO;
 	}
 	iput(inode);
-	__asm__("mov %%fs,%0":"=r" (fs));
-	__asm__("mov %0,%%fs"::"r" ((unsigned short) 0x10));
 	current->link_count++;
 	error = open_namei(bh->b_data,flag,mode,res_inode,dir);
 	current->link_count--;
-	__asm__("mov %0,%%fs"::"r" (fs));
 	brelse(bh);
 	return error;
 }

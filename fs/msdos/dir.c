@@ -1,14 +1,13 @@
 /*
  *  linux/fs/msdos/dir.c
  *
- *  Written 1992 by Werner Almesberger
+ *  Written 1992,1993 by Werner Almesberger
  *
  *  MS-DOS directory handling functions
  */
 
 #include <asm/segment.h>
 
-#include <linux/sched.h>
 #include <linux/fs.h>
 #include <linux/msdos_fs.h>
 #include <linux/errno.h>
@@ -23,7 +22,8 @@ static int msdos_dir_read(struct inode * inode,struct file * filp, char * buf,in
 static int msdos_readdir(struct inode *inode,struct file *filp,
     struct dirent *dirent,int count);
 
-struct file_operations msdos_dir_operations = {
+
+static struct file_operations msdos_dir_operations = {
 	NULL,			/* lseek - default */
 	msdos_dir_read,		/* read */
 	NULL,			/* write - bad */
@@ -32,7 +32,8 @@ struct file_operations msdos_dir_operations = {
 	NULL,			/* ioctl - default */
 	NULL,			/* mmap */
 	NULL,			/* no special open code */
-	NULL			/* no special release code */
+	NULL,			/* no special release code */
+	file_fsync		/* fsync */
 };
 
 struct inode_operations msdos_dir_inode_operations = {
@@ -49,7 +50,8 @@ struct inode_operations msdos_dir_inode_operations = {
 	NULL,			/* readlink */
 	NULL,			/* follow_link */
 	msdos_bmap,		/* bmap */
-	NULL			/* truncate */
+	NULL,			/* truncate */
+	NULL			/* permission */
 };
 
 static int msdos_readdir(struct inode *inode,struct file *filp,
@@ -68,17 +70,16 @@ static int msdos_readdir(struct inode *inode,struct file *filp,
 				walk = filp->f_pos++ ? ".." : ".";
 				for (i = 0; *walk; walk++)
 					put_fs_byte(*walk,dirent->d_name+i++);
-				put_fs_long(MSDOS_ROOT_INO, (unsigned long *)&dirent->d_ino);
+				put_fs_long(MSDOS_ROOT_INO,&dirent->d_ino);
 				put_fs_byte(0,dirent->d_name+i);
-				put_fs_word(i, (short *)&dirent->d_reclen);
+				put_fs_word(i,&dirent->d_reclen);
 				return i;
 			}
 	}
 	if (filp->f_pos & (sizeof(struct msdos_dir_entry)-1)) return -ENOENT;
 	bh = NULL;
-	while ((ino = msdos_get_entry(inode, (int *)&filp->f_pos,&bh,&de)) > -1) {
-		if (de->name[0] && ((unsigned char *) (de->name))[0] !=
-		    DELETED_FLAG && !(de->attr & ATTR_VOLUME)) {
+	while ((ino = msdos_get_entry(inode,&filp->f_pos,&bh,&de)) > -1) {
+		if (!IS_FREE(de->name) && !(de->attr & ATTR_VOLUME)) {
 			for (i = last = 0; i < 8; i++) {
 				if (!(c = de->name[i])) break;
 				if (c >= 'A' && c <= 'Z') c += 32;
@@ -100,9 +101,9 @@ static int msdos_readdir(struct inode *inode,struct file *filp,
 					ino = inode->i_ino;
 				else if (!strcmp(de->name,MSDOS_DOTDOT))
 						ino = msdos_parent_ino(inode,0);
-				put_fs_long(ino, (unsigned long *)&dirent->d_ino);
+				put_fs_long(ino,&dirent->d_ino);
 				put_fs_byte(0,i+dirent->d_name);
-				put_fs_word(i, (short *)&dirent->d_reclen);
+				put_fs_word(i,&dirent->d_reclen);
 				brelse(bh);
 				return i;
 			}

@@ -8,24 +8,6 @@
  */
 
 /*
- * This our internal structure for keeping track of interrupt service
- * routines. 
- */
-typedef struct struct_ISR *async_ISR;
-struct struct_ISR {
-	int		irq;		/* The IRQ assigned for this device */
-	int		port;		/* The base port for this device */
-					/* (use is ISR specific) */
-	void		(*ISR_proc)(async_ISR, int);
-	int		line;		/* The serial line (or base */
-					/* serial line)  */
-	int		refcnt;		/* How many devices are depending on */
-					/* this interrupt (multiport boards) */
-	async_ISR	next_ISR; /* For the linked list */
-	async_ISR	prev_ISR;
-};
-
-/*
  * This is our internal structure for each serial port's state.
  * 
  * Many fields are paralleled by the structure used by the serial_struct
@@ -33,21 +15,37 @@ struct struct_ISR {
  *
  * For definitions of the flags field, see tty.h
  */
+#ifndef _LINUX_SERIAL_H
+#define _LINUX_SERIAL_H
 
 struct async_struct {
 	int			baud_base;
 	int			port;
-	async_ISR		ISR;
-	int			flags;
-	int			type;
+	int			irq;
+	int			flags; 		/* defined in tty.h */
+	int			hub6;		/* HUB6 plus one */
+	int			type; 		/* UART type */
 	struct tty_struct 	*tty;
-	unsigned long 		timer;
+	int			read_status_mask;
 	int			timeout;
 	int			xmit_fifo_size;
 	int			custom_divisor;
 	int			x_char;	/* xon/xoff characater */
+	int			close_delay;
+	int			IER; 	/* Interrupt Enable Register */
 	int			event;
 	int			line;
+	int			count;	    /* # of fd on device */
+	int			blocked_open; /* # of blocked opens */
+	long			session; /* Session of opening process */
+	long			pgrp; /* pgrp of opening process */
+	struct termios		normal_termios;
+	struct termios		callout_termios;
+	struct wait_queue	*open_wait;
+	struct wait_queue	*close_wait;
+	struct wait_queue	*xmit_wait;
+	struct async_struct	*next_port; /* For the linked list */
+	struct async_struct	*prev_port;
 };
 
 /*
@@ -56,9 +54,9 @@ struct async_struct {
  */
 #define RS_EVENT_READ_PROCESS	0
 #define RS_EVENT_WRITE_WAKEUP	1
-#define RS_EVENT_HUP_PGRP	2
-#define RS_EVENT_BREAK_INT	3
-#define RS_EVENT_DO_SAK		4
+#define RS_EVENT_HANGUP		2
+#define RS_EVENT_BREAK		3
+#define RS_EVENT_OPEN_WAKEUP	4
 
 /*
  * These are the UART port assignments, expressed as offsets from the base
@@ -91,9 +89,6 @@ struct async_struct {
 #define UART_FCR_TRIGGER_8	0x80 /* Mask for trigger set at 8 */
 #define UART_FCR_TRIGGER_14	0xC0 /* Mask for trigger set at 14 */
 
-#define UART_FCR_CLEAR_CMD	(UART_FCR_CLEAR_RCVR | UART_FCR_CLEAR_XMIT)
-#define UART_FCR_SETUP_CMD	(UART_FCR_ENABLE_FIFO | UART_FCR_TRIGGER_14)
-	
 /*
  * These are the definitions for the Line Control Register
  * 
@@ -162,3 +157,5 @@ struct async_struct {
 #define UART_MSR_DDSR	0x02	/* Delta DSR */
 #define UART_MSR_DCTS	0x01	/* Delta CTS */
 #define UART_MSR_ANY_DELTA 0x0F	/* Any of the delta bits! */
+
+#endif /* _LINUX_SERIAL_H */

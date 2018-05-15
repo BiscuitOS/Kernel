@@ -1,6 +1,8 @@
 #ifndef _LINUX_SCHED_H
 #define _LINUX_SCHED_H
 
+#define NEW_SWAP
+
 /*
  * define DEBUG if you want the wait-queues to have some extra
  * debugging code. It's not normally used, but might catch some
@@ -9,13 +11,25 @@
  *  #define DEBUG
  */
 
-
 #define HZ 100
 
 /*
- * This is the maximum nr of tasks - change it if you need to
+ * System setup flags..
  */
-#define NR_TASKS	64
+extern int hard_math;
+extern int x86;
+extern int ignore_irq13;
+extern int wp_works_ok;
+
+/*
+ * Bus types (default is ISA, but people can check others with these..)
+ * MCA_bus hardcoded to 0 for now.
+ */
+extern int EISA_bus;
+#define MCA_bus 0
+
+#include <linux/tasks.h>
+#include <asm/system.h>
 
 /*
  * User space process size: 3GB. This is hardcoded into a few places,
@@ -79,51 +93,55 @@ extern unsigned long avenrun[];		/* Load averages */
 #define NULL ((void *) 0)
 #endif
 
-#define MAX_SHARED_LIBS 16
+#ifdef __KERNEL__
 
 extern void sched_init(void);
 extern void show_state(void);
-extern void schedule(void);
 extern void trap_init(void);
-extern void panic(const char * str);
 
-typedef int (*fn_ptr)();
+asmlinkage void schedule(void);
+
+#endif /* __KERNEL__ */
+
+struct i387_hard_struct {
+	long	cwd;
+	long	swd;
+	long	twd;
+	long	fip;
+	long	fcs;
+	long	foo;
+	long	fos;
+	long	st_space[20];	/* 8*10 bytes for each FP-reg = 80 bytes */
+};
+
+struct i387_soft_struct {
+	long	cwd;
+	long	swd;
+	long	twd;
+	long	fip;
+	long	fcs;
+	long	foo;
+	long	fos;
+	long    top;
+	struct fpu_reg	regs[8];	/* 8*16 bytes for each FP-reg = 128 bytes */
+	unsigned char	lookahead;
+	struct info	*info;
+	unsigned long	entry_eip;
+};
 
 union i387_union {
-	struct i387_hard_struct {
-		long	cwd;
-		long	swd;
-		long	twd;
-		long	fip;
-		long	fcs;
-		long	foo;
-		long	fos;
-		long	st_space[20];	/* 8*10 bytes for each FP-reg = 80 bytes */
-	} hard;
-	struct i387_soft_struct {
-		long	cwd;
-		long	swd;
-		long	twd;
-		long	fip;
-		long	fcs;
-		long	foo;
-		long	fos;
-		long    top;
-		struct fpu_reg	regs[8];	/* 8*16 bytes for each FP-reg = 128 bytes */
-		unsigned char	lookahead;
-		struct info	*info;
-		unsigned long	entry_eip;
-	} soft;
+	struct i387_hard_struct hard;
+	struct i387_soft_struct soft;
 };
 
 struct tss_struct {
-	unsigned long	back_link;	/* 16 high bits zero */
+	unsigned short	back_link,__blh;
 	unsigned long	esp0;
-	unsigned long	ss0;		/* 16 high bits zero */
+	unsigned short	ss0,__ss0h;
 	unsigned long	esp1;
-	unsigned long	ss1;		/* 16 high bits zero */
+	unsigned short	ss1,__ss1h;
 	unsigned long	esp2;
-	unsigned long	ss2;		/* 16 high bits zero */
+	unsigned short	ss2,__ss2h;
 	unsigned long	cr3;
 	unsigned long	eip;
 	unsigned long	eflags;
@@ -132,36 +150,43 @@ struct tss_struct {
 	unsigned long	ebp;
 	unsigned long	esi;
 	unsigned long	edi;
-	unsigned long	es;		/* 16 high bits zero */
-	unsigned long	cs;		/* 16 high bits zero */
-	unsigned long	ss;		/* 16 high bits zero */
-	unsigned long	ds;		/* 16 high bits zero */
-	unsigned long	fs;		/* 16 high bits zero */
-	unsigned long	gs;		/* 16 high bits zero */
-	unsigned long	ldt;		/* 16 high bits zero */
-	unsigned long	trace_bitmap;	/* bits: trace 0, bitmap 16-31 */
-	unsigned long	io_bitmap[IO_BITMAP_SIZE];
+	unsigned short	es, __esh;
+	unsigned short	cs, __csh;
+	unsigned short	ss, __ssh;
+	unsigned short	ds, __dsh;
+	unsigned short	fs, __fsh;
+	unsigned short	gs, __gsh;
+	unsigned short	ldt, __ldth;
+	unsigned short	trace, bitmap;
+	unsigned long	io_bitmap[IO_BITMAP_SIZE+1];
+	unsigned long	tr;
+	unsigned long	cr2, trap_no, error_code;
 	union i387_union i387;
 };
 
 struct task_struct {
 /* these are hardcoded - don't touch */
-	long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
+	volatile long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
 	long counter;
 	long priority;
-	long signal;
+	unsigned long signal;
+	unsigned long blocked;	/* bitmap of masked signals */
+	unsigned long flags;	/* per process flags, defined below */
+	int errno;
+	int debugreg[8];  /* Hardware debugging registers */
+/* various fields */
+	struct task_struct *next_task, *prev_task;
 	struct sigaction sigaction[32];
-	long blocked;	/* bitmap of masked signals */
 	unsigned long saved_kernel_stack;
 	unsigned long kernel_stack_page;
-	unsigned int flags;	/* per process flags, defined below */
-/* various fields */
-	int exit_code;
+	int exit_code, exit_signal;
+	int elf_executable:1;
 	int dumpable:1;
 	int swappable:1;
-	unsigned long start_code,end_code,end_data,brk,start_stack;
+	int did_exec:1;
+	unsigned long start_code,end_code,end_data,start_brk,brk,start_stack,start_mmap;
 	unsigned long arg_start, arg_end, env_start, env_end;
-	long pid,pgrp,session,leader;
+	int pid,pgrp,session,leader;
 	int	groups[NGROUPS];
 	/* 
 	 * pointers to (original) parent process, youngest child, younger sibling,
@@ -169,9 +194,10 @@ struct task_struct {
 	 * p->p_pptr->pid)
 	 */
 	struct task_struct *p_opptr,*p_pptr, *p_cptr, *p_ysptr, *p_osptr;
+	struct wait_queue *wait_chldexit;	/* for wait4() */
 	/*
 	 * For ease of programming... Normal sleeps don't need to
-	 * keep track of a wait-queue: every task has an entry of it's own
+	 * keep track of a wait-queue: every task has an entry of its own
 	 */
 	unsigned short uid,euid,suid;
 	unsigned short gid,egid,sgid;
@@ -184,7 +210,7 @@ struct task_struct {
 	struct rlimit rlim[RLIM_NLIMITS]; 
 	unsigned short used_math;
 	unsigned short rss;	/* number of resident pages */
-	char comm[8];
+	char comm[16];
 	struct vm86_struct * vm86_info;
 	unsigned long screen_bitmap;
 /* file system info */
@@ -195,19 +221,22 @@ struct task_struct {
 	struct inode * root;
 	struct inode * executable;
 	struct vm_area_struct * mmap;
-	struct {
-		struct inode * library;
-		unsigned long start;
-		unsigned long length;
-		unsigned long bss;
-	} libraries[MAX_SHARED_LIBS];
-	int numlibraries;
+	struct shm_desc *shm;
+	struct sem_undo *semun;
 	struct file * filp[NR_OPEN];
 	fd_set close_on_exec;
-/* ldt for this task 0 - zero 1 - cs 2 - ds&ss, rest unused */
-	struct desc_struct ldt[32];
+/* ldt for this task - used by Wine.  If NULL, default_ldt is used */
+	struct desc_struct *ldt;
 /* tss for this task */
 	struct tss_struct tss;
+#ifdef NEW_SWAP
+	unsigned long old_maj_flt;	/* old value of maj_flt */
+	unsigned long dec_flt;		/* page fault count of the last time */
+	unsigned long swap_cnt;		/* number of pages to swap on next pass */
+	short swap_table;		/* current page table */
+	short swap_page;		/* current page */
+#endif //NEW_SWAP
+	struct vm_area_struct *stk_vma;
 };
 
 /*
@@ -219,81 +248,100 @@ struct task_struct {
 #define PF_TRACESYS	0x00000020	/* tracing system calls */
 
 /*
+ * cloning flags:
+ */
+#define CSIGNAL		0x000000ff	/* signal mask to be sent at exit */
+#define COPYVM		0x00000100	/* set if VM copy desired (like normal fork()) */
+#define COPYFD		0x00000200	/* set if fd's should be copied, not shared (NI) */
+
+/*
  *  INIT_TASK is used to set up the first task table, touch at
- * your own risk!. Base=0, limit=0x9ffff (=640kB)
+ * your own risk!. Base=0, limit=0x1fffff (=2MB)
  */
 #define INIT_TASK \
-/* state etc */	{ 0,15,15, \
-/* signals */	0,{{ 0, },},0,0,0, \
-/* flags */	0, \
-/* ec,brk... */	0,0,0,0,0,0,0,0, \
+/* state etc */	{ 0,15,15,0,0,0,0, \
+/* debugregs */ { 0, },            \
+/* schedlink */	&init_task,&init_task, \
+/* signals */	{{ 0, },}, \
+/* stack */	0,(unsigned long) &init_kernel_stack, \
+/* ec,brk... */	0,0,0,0,0,0,0,0,0,0,0,0,0, \
 /* argv.. */	0,0,0,0, \
 /* pid etc.. */	0,0,0,0, \
 /* suppl grps*/ {NOGROUP,}, \
-/* proc links*/ &init_task,&init_task,NULL,NULL,NULL, \
+/* proc links*/ &init_task,&init_task,NULL,NULL,NULL,NULL, \
 /* uid etc */	0,0,0,0,0,0, \
 /* timeout */	0,0,0,0,0,0,0,0,0,0,0,0, \
 /* min_flt */	0,0,0,0, \
-/* rlimits */   { {0x7fffffff, 0x7fffffff}, {0x7fffffff, 0x7fffffff},  \
-		  {0x7fffffff, 0x7fffffff}, {0x7fffffff, 0x7fffffff}, \
-		  {0x7fffffff, 0x7fffffff}, {0x7fffffff, 0x7fffffff}}, \
+/* rlimits */   { {LONG_MAX, LONG_MAX}, {LONG_MAX, LONG_MAX},  \
+		  {LONG_MAX, LONG_MAX}, {LONG_MAX, LONG_MAX},  \
+		  {       0, LONG_MAX}, {LONG_MAX, LONG_MAX}}, \
 /* math */	0, \
 /* rss */	2, \
 /* comm */	"swapper", \
 /* vm86_info */	NULL, 0, \
 /* fs info */	0,-1,0022,NULL,NULL,NULL,NULL, \
-/* libraries */	{ { NULL, 0, 0, 0}, }, 0, \
+/* ipc */	NULL, NULL, \
 /* filp */	{NULL,}, \
 /* cloe */	{{ 0, }}, \
-		{ \
-			{0,0}, \
-/* ldt */		{0x9f,0xc0c0fa00}, \
-			{0x9f,0xc0c0f200}, \
-		}, \
-/*tss*/	{0,sizeof(init_kernel_stack) + (long) &init_kernel_stack, \
-	 0x10,0,0,0,0,(long) &swapper_pg_dir,\
-	 0,0,0,0,0,0,0,0, \
-	 0,0,0x17,0x17,0x17,0x17,0x17,0x17, \
-	 _LDT(0),0x80000000,{0xffffffff}, \
-		{ { 0, }, } \
+/* ldt */	NULL, \
+/*tss*/	{0,0, \
+	 sizeof(init_kernel_stack) + (long) &init_kernel_stack, KERNEL_DS, 0, \
+	 0,0,0,0,0,0, \
+	 (long) &swapper_pg_dir, \
+	 0,0,0,0,0,0,0,0,0,0, \
+	 USER_DS,0,USER_DS,0,USER_DS,0,USER_DS,0,USER_DS,0,USER_DS,0, \
+	 _LDT(0),0, \
+	 0, 0x8000, \
+/* ioperm */ 	{~0, }, \
+	 _TSS(0), 0, 0,0, \
+/* 387 state */	{ { 0, }, } \
 	} \
 }
 
+extern struct task_struct init_task;
 extern struct task_struct *task[NR_TASKS];
 extern struct task_struct *last_task_used_math;
 extern struct task_struct *current;
 extern unsigned long volatile jiffies;
-extern unsigned long startup_time;
-extern int jiffies_offset;
+extern unsigned long itimer_ticks;
+extern unsigned long itimer_next;
+extern struct timeval xtime;
 extern int need_resched;
-extern int hard_math;
 
-#define CURRENT_TIME (startup_time+(jiffies+jiffies_offset)/HZ)
-
-extern void add_timer(long jiffies, void (*fn)(void));
+#define CURRENT_TIME (xtime.tv_sec)
 
 extern void sleep_on(struct wait_queue ** p);
 extern void interruptible_sleep_on(struct wait_queue ** p);
 extern void wake_up(struct wait_queue ** p);
 extern void wake_up_interruptible(struct wait_queue ** p);
 
-extern int send_sig(long sig,struct task_struct * p,int priv);
+extern void notify_parent(struct task_struct * tsk);
+extern int send_sig(unsigned long sig,struct task_struct * p,int priv);
 extern int in_group_p(gid_t grp);
 
 extern int request_irq(unsigned int irq,void (*handler)(int));
 extern void free_irq(unsigned int irq);
-extern int irqaction(unsigned int irq,struct sigaction * new);
+extern int irqaction(unsigned int irq,struct sigaction * sa);
 
 /*
- * Entry into gdt where to find first TSS. 0-nul, 1-cs, 2-ds, 3-syscall
- * 4-TSS0, 5-LDT0, 6-TSS1 etc ...
+ * Entry into gdt where to find first TSS. GDT layout:
+ *   0 - nul
+ *   1 - kernel code segment
+ *   2 - kernel data segment
+ *   3 - user code segment
+ *   4 - user data segment
+ * ...
+ *   8 - TSS #0
+ *   9 - LDT #0
+ *  10 - TSS #1
+ *  11 - LDT #1
  */
-#define FIRST_TSS_ENTRY 4
+#define FIRST_TSS_ENTRY 8
 #define FIRST_LDT_ENTRY (FIRST_TSS_ENTRY+1)
 #define _TSS(n) ((((unsigned long) n)<<4)+(FIRST_TSS_ENTRY<<3))
 #define _LDT(n) ((((unsigned long) n)<<4)+(FIRST_LDT_ENTRY<<3))
-#define load_TR(n) __asm__("ltr %%ax"::"a" (_TSS(n)))
-#define load_ldt(n) __asm__("lldt %%ax"::"a" (_LDT(n)))
+#define load_TR(n) __asm__("ltr %%ax": /* no output */ :"a" (_TSS(n)))
+#define load_ldt(n) __asm__("lldt %%ax": /* no output */ :"a" (_LDT(n)))
 #define store_TR(n) \
 __asm__("str %%ax\n\t" \
 	"subl %2,%%eax\n\t" \
@@ -306,11 +354,9 @@ __asm__("str %%ax\n\t" \
  * This also clears the TS-flag if the task we switched to has used
  * tha math co-processor latest.
  */
-#define switch_to(n) {\
-struct {long a,b;} __tmp; \
+#define switch_to(tsk) \
 __asm__("cmpl %%ecx,current\n\t" \
 	"je 1f\n\t" \
-	"movw %%dx,%1\n\t" \
 	"cli\n\t" \
 	"xchgl %%ecx,current\n\t" \
 	"ljmp *%0\n\t" \
@@ -319,21 +365,21 @@ __asm__("cmpl %%ecx,current\n\t" \
 	"jne 1f\n\t" \
 	"clts\n" \
 	"1:" \
-	::"m" (*&__tmp.a),"m" (*&__tmp.b), \
-	"d" (_TSS(n)),"c" ((long) task[n])); \
-}
-
-#define PAGE_ALIGN(n) (((n)+0xfff)&0xfffff000)
+	: /* no output */ \
+	:"m" (*(((char *)&tsk->tss.tr)-4)), \
+	 "c" (tsk))
 
 #define _set_base(addr,base) \
 __asm__("movw %%dx,%0\n\t" \
 	"rorl $16,%%edx\n\t" \
 	"movb %%dl,%1\n\t" \
 	"movb %%dh,%2" \
-	::"m" (*((addr)+2)), \
-	  "m" (*((addr)+4)), \
-	  "m" (*((addr)+7)), \
-	  "d" (base))
+	: /* no output */ \
+	:"m" (*((addr)+2)), \
+	 "m" (*((addr)+4)), \
+	 "m" (*((addr)+7)), \
+	 "d" (base) \
+	:"dx")
 
 #define _set_limit(addr,limit) \
 __asm__("movw %%dx,%0\n\t" \
@@ -342,9 +388,11 @@ __asm__("movw %%dx,%0\n\t" \
 	"andb $0xf0,%%dh\n\t" \
 	"orb %%dh,%%dl\n\t" \
 	"movb %%dl,%1" \
-	::"m" (*(addr)), \
-	  "m" (*((addr)+6)), \
-	  "d" (limit))
+	: /* no output */ \
+	:"m" (*(addr)), \
+	 "m" (*((addr)+6)), \
+	 "d" (limit) \
+	:"dx")
 
 #define set_base(ldt,base) _set_base( ((char *)&(ldt)) , base )
 #define set_limit(ldt,limit) _set_limit( ((char *)&(ldt)) , (limit-1)>>12 )
@@ -363,10 +411,11 @@ static inline void add_wait_queue(struct wait_queue ** p, struct wait_queue * wa
 		unsigned long pc;
 		__asm__ __volatile__("call 1f\n"
 			"1:\tpopl %0":"=r" (pc));
-		printk("add_wait_queue (%08x): wait->next = %08x\n",pc,wait->next);
+		printk("add_wait_queue (%08x): wait->next = %08x\n",pc,(unsigned long) wait->next);
 	}
 #endif
-	__asm__ __volatile__("pushfl ; popl %0 ; cli":"=r" (flags));
+	save_flags(flags);
+	cli();
 	if (!*p) {
 		wait->next = wait;
 		*p = wait;
@@ -374,7 +423,7 @@ static inline void add_wait_queue(struct wait_queue ** p, struct wait_queue * wa
 		wait->next = (*p)->next;
 		(*p)->next = wait;
 	}
-	__asm__ __volatile__("pushl %0 ; popfl"::"r" (flags));
+	restore_flags(flags);
 }
 
 static inline void remove_wait_queue(struct wait_queue ** p, struct wait_queue * wait)
@@ -385,7 +434,8 @@ static inline void remove_wait_queue(struct wait_queue ** p, struct wait_queue *
 	unsigned long ok = 0;
 #endif
 
-	__asm__ __volatile__("pushfl ; popl %0 ; cli":"=r" (flags));
+	save_flags(flags);
+	cli();
 	if ((*p == wait) &&
 #ifdef DEBUG
 	    (ok = 1) &&
@@ -404,11 +454,11 @@ static inline void remove_wait_queue(struct wait_queue ** p, struct wait_queue *
 		tmp->next = wait->next;
 	}
 	wait->next = NULL;
-	__asm__ __volatile__("pushl %0 ; popfl"::"r" (flags));
+	restore_flags(flags);
 #ifdef DEBUG
 	if (!ok) {
 		printk("removed wait_queue not on list.\n");
-		printk("list = %08x, queue = %08x\n",p,wait);
+		printk("list = %08x, queue = %08x\n",(unsigned long) p, (unsigned long) wait);
 		__asm__("call 1f\n1:\tpopl %0":"=r" (ok));
 		printk("eip = %08x\n",ok);
 	}
@@ -430,6 +480,21 @@ static inline void select_wait(struct wait_queue ** wait_address, select_table *
 	add_wait_queue(wait_address,&entry->wait);
 	p->nr++;
 }
+
+extern void __down(struct semaphore * sem);
+
+static inline void down(struct semaphore * sem)
+{
+	if (sem->count <= 0)
+		__down(sem);
+	sem->count--;
+}
+
+static inline void up(struct semaphore * sem)
+{
+	sem->count++;
+	wake_up(&sem->wait);
+}	
 
 static inline unsigned long _get_base(char * addr)
 {
@@ -455,18 +520,48 @@ static inline unsigned long get_limit(unsigned long segment)
 	return __limit+1;
 }
 
-#define REMOVE_LINKS(p) \
+#define REMOVE_LINKS(p) do { unsigned long flags; \
+	save_flags(flags) ; cli(); \
+	(p)->next_task->prev_task = (p)->prev_task; \
+	(p)->prev_task->next_task = (p)->next_task; \
+	restore_flags(flags); \
 	if ((p)->p_osptr) \
 		(p)->p_osptr->p_ysptr = (p)->p_ysptr; \
 	if ((p)->p_ysptr) \
 		(p)->p_ysptr->p_osptr = (p)->p_osptr; \
 	else \
-		(p)->p_pptr->p_cptr = (p)->p_osptr
+		(p)->p_pptr->p_cptr = (p)->p_osptr; \
+	} while (0)
 
-#define SET_LINKS(p) \
+#define SET_LINKS(p) do { unsigned long flags; \
+	save_flags(flags); cli(); \
+	(p)->next_task = &init_task; \
+	(p)->prev_task = init_task.prev_task; \
+	init_task.prev_task->next_task = (p); \
+	init_task.prev_task = (p); \
+	restore_flags(flags); \
 	(p)->p_ysptr = NULL; \
 	if (((p)->p_osptr = (p)->p_pptr->p_cptr) != NULL) \
 		(p)->p_osptr->p_ysptr = p; \
-	(p)->p_pptr->p_cptr = p
+	(p)->p_pptr->p_cptr = p; \
+	} while (0)
+
+#define for_each_task(p) \
+	for (p = &init_task ; (p = p->next_task) != &init_task ; )
+
+/*
+ * This is the ldt that every process will get unless we need
+ * something other than this.
+ */
+extern struct desc_struct default_ldt;
+
+/* This special macro can be used to load a debugging register */
+
+#define loaddebug(register) \
+		__asm__("movl %0,%%edx\n\t" \
+			"movl %%edx,%%db" #register "\n\t" \
+			: /* no output */ \
+			:"m" (current->debugreg[register]) \
+			:"dx");
 
 #endif

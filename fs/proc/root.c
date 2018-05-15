@@ -12,6 +12,7 @@
 #include <linux/sched.h>
 #include <linux/proc_fs.h>
 #include <linux/stat.h>
+#include <linux/config.h>
 
 static int proc_readroot(struct inode *, struct file *, struct dirent *, int);
 static int proc_lookuproot(struct inode *,const char *,int,struct inode **);
@@ -25,7 +26,8 @@ static struct file_operations proc_root_operations = {
 	NULL,			/* ioctl - default */
 	NULL,			/* mmap */
 	NULL,			/* no special open code */
-	NULL			/* no special release code */
+	NULL,			/* no special release code */
+	NULL			/* no fsync */
 };
 
 /*
@@ -45,7 +47,8 @@ struct inode_operations proc_root_inode_operations = {
 	NULL,			/* readlink */
 	NULL,			/* follow_link */
 	NULL,			/* bmap */
-	NULL			/* truncate */
+	NULL,			/* truncate */
+	NULL			/* permission */
 };
 
 static struct proc_dir_entry root_dir[] = {
@@ -54,7 +57,16 @@ static struct proc_dir_entry root_dir[] = {
 	{ 2,7,"loadavg" },
 	{ 3,6,"uptime" },
 	{ 4,7,"meminfo" },
-	{ 5,4,"self" }	/* will change inode # */
+	{ 5,4,"kmsg" },
+	{ 6,7,"version" },
+	{ 7,4,"self" },	/* will change inode # */
+	{ 8,3,"net" },
+#ifdef CONFIG_DEBUG_MALLOC
+	{13,6,"malloc" },
+#endif
+	{14,5,"kcore" },
+   	{16,7,"modules" },
+   	{17,4,"stat" },
 };
 
 #define NR_ROOT_DIRENTRY ((sizeof (root_dir))/(sizeof (root_dir[0])))
@@ -81,12 +93,12 @@ static int proc_lookuproot(struct inode * dir,const char * name, int len,
 			*result = dir;
 			return 0;
 		}
-		if (ino == 5) /* self modifying inode ... */
+		if (ino == 7) /* self modifying inode ... */
 			ino = (current->pid << 16) + 2;
 	} else {
 		pid = 0;
 		while (len-- > 0) {
-			c = get_fs_byte(name) - '0';
+			c = *name - '0';
 			name++;
 			if (c > 9) {
 				pid = 0;
@@ -132,8 +144,8 @@ repeat:
 
 		filp->f_pos++;
 		i = de->namelen;
-		put_fs_long(de->low_ino, (unsigned long *)&dirent->d_ino);
-		put_fs_word(i, (short *)&dirent->d_reclen);
+		put_fs_long(de->low_ino, &dirent->d_ino);
+		put_fs_word(i,&dirent->d_reclen);
 		put_fs_byte(0,i+dirent->d_name);
 		j = i;
 		while (i--)
@@ -156,8 +168,8 @@ repeat:
 		i++;
 	}
 	j = i;
-	put_fs_long((pid << 16)+2, (unsigned long *)&dirent->d_ino);
-	put_fs_word(i, (short *)&dirent->d_reclen);
+	put_fs_long((pid << 16)+2, &dirent->d_ino);
+	put_fs_word(i, &dirent->d_reclen);
 	put_fs_byte(0, i+dirent->d_name);
 	while (i--) {
 		put_fs_byte('0'+(pid % 10), i+dirent->d_name);

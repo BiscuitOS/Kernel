@@ -25,7 +25,8 @@ static struct file_operations proc_fd_operations = {
 	NULL,			/* ioctl - default */
 	NULL,			/* mmap */
 	NULL,			/* no special open code */
-	NULL			/* no special release code */
+	NULL,			/* no special release code */
+	NULL			/* can't fsync */
 };
 
 /*
@@ -45,7 +46,8 @@ struct inode_operations proc_fd_inode_operations = {
 	NULL,			/* readlink */
 	NULL,			/* follow_link */
 	NULL,			/* bmap */
-	NULL			/* truncate */
+	NULL,			/* truncate */
+	NULL			/* permission */
 };
 
 static int proc_lookupfd(struct inode * dir,const char * name, int len,
@@ -68,8 +70,8 @@ static int proc_lookupfd(struct inode * dir,const char * name, int len,
 		iput(dir);
 		return -ENOENT;
 	}
-	if (!len || (get_fs_byte(name) == '.' && (len == 1 ||
-	    (get_fs_byte(name+1) == '.' && len == 2)))) {
+	if (!len || (name[0] == '.' && (len == 1 ||
+	    (name[1] == '.' && len == 2)))) {
 		if (len < 2) {
 			*result = dir;
 			return 0;
@@ -84,7 +86,7 @@ static int proc_lookupfd(struct inode * dir,const char * name, int len,
 	iput(dir);
 	fd = 0;
 	while (len-- > 0) {
-		c = get_fs_byte(name) - '0';
+		c = *name - '0';
 		name++;
 		if (c > 9) {
 			fd = 0xfffff;
@@ -107,7 +109,12 @@ static int proc_lookupfd(struct inode * dir,const char * name, int len,
 			return -ENOENT;
 		ino = (pid << 16) + 0x100 + fd;
 	} else {
-		if (fd >= p->numlibraries)
+		int j = 0;
+		struct vm_area_struct * mpnt;
+		for (mpnt = p->mmap; mpnt; mpnt = mpnt->vm_next)
+			if (mpnt->vm_inode)
+				j++;
+		if (fd >= j)
 			return -ENOENT;
 		ino = (pid << 16) + 0x200 + fd;
 	}
@@ -140,8 +147,8 @@ static int proc_readfd(struct inode * inode, struct file * filp,
 				fd = inode->i_ino;
 			else
 				fd = (inode->i_ino & 0xffff0000) | 2;
-			put_fs_long(fd, (unsigned long *)&dirent->d_ino);
-			put_fs_word(i, (short *)&dirent->d_reclen);
+			put_fs_long(fd, &dirent->d_ino);
+			put_fs_word(i, &dirent->d_reclen);
 			put_fs_byte(0, i+dirent->d_name);
 			while (i--)
 				put_fs_byte('.', i+dirent->d_name);
@@ -158,9 +165,15 @@ static int proc_readfd(struct inode * inode, struct file * filp,
 				break;
 			if (!p->filp[fd] || !p->filp[fd]->f_inode)
 				continue;
-		} else
-			if (fd >= p->numlibraries)
+		} else {
+			int j = 0;
+			struct vm_area_struct * mpnt;
+			for (mpnt = p->mmap ; mpnt ; mpnt = mpnt->vm_next)
+				if (mpnt->vm_inode)
+					j++;
+			if (fd >= j)
 				break;
+		}
 		j = 10;
 		i = 1;
 		while (fd >= j) {
@@ -172,8 +185,8 @@ static int proc_readfd(struct inode * inode, struct file * filp,
 			ino = (pid << 16) + 0x100 + fd;
 		else
 			ino = (pid << 16) + 0x200 + fd;
-		put_fs_long(ino, (unsigned long *)&dirent->d_ino);
-		put_fs_word(i, (short *)&dirent->d_reclen);
+		put_fs_long(ino, &dirent->d_ino);
+		put_fs_word(i, &dirent->d_reclen);
 		put_fs_byte(0, i+dirent->d_name);
 		while (i--) {
 			put_fs_byte('0'+(fd % 10), i+dirent->d_name);

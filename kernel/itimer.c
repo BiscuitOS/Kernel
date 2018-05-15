@@ -53,17 +53,19 @@ int _getitimer(int which, struct itimerval *value)
 	return(0);
 }
 
-int sys_getitimer(int which, struct itimerval *value)
+asmlinkage int sys_getitimer(int which, struct itimerval *value)
 {
+	int error;
 	struct itimerval get_buffer;
-	int k;
 
 	if (!value)
 		return -EFAULT;
-	k = _getitimer(which, &get_buffer);
-	if (k < 0)
-		return k;
-	verify_area(value, sizeof(struct itimerval));
+	error = _getitimer(which, &get_buffer);
+	if (error)
+		return error;
+	error = verify_area(VERIFY_WRITE, value, sizeof(struct itimerval));
+	if (error)
+		return error;
 	memcpy_tofs(value, &get_buffer, sizeof(get_buffer));
 	return 0;
 }
@@ -79,14 +81,23 @@ int _setitimer(int which, struct itimerval *value, struct itimerval *ovalue)
 		return k;
 	switch (which) {
 		case ITIMER_REAL:
+			if (j) {
+				j += 1+itimer_ticks;
+				if (j < itimer_next)
+					itimer_next = j;
+			}
 			current->it_real_value = j;
 			current->it_real_incr = i;
 			break;
 		case ITIMER_VIRTUAL:
+			if (j)
+				j++;
 			current->it_virt_value = j;
 			current->it_virt_incr = i;
 			break;
 		case ITIMER_PROF:
+			if (j)
+				j++;
 			current->it_prof_value = j;
 			current->it_prof_incr = i;
 			break;
@@ -96,19 +107,20 @@ int _setitimer(int which, struct itimerval *value, struct itimerval *ovalue)
 	return 0;
 }
 
-int sys_setitimer(int which, struct itimerval *value, struct itimerval *ovalue)
+asmlinkage int sys_setitimer(int which, struct itimerval *value, struct itimerval *ovalue)
 {
+	int error;
 	struct itimerval set_buffer, get_buffer;
-	int k;
 
 	if (!value)
 		memset((char *) &set_buffer, 0, sizeof(set_buffer));
 	else
 		memcpy_fromfs(&set_buffer, value, sizeof(set_buffer));
-	k = _setitimer(which, &set_buffer, ovalue ? &get_buffer : 0);
-	if (k < 0 || !ovalue)
-		return k;
-	verify_area(ovalue, sizeof(struct itimerval));
-	memcpy_tofs(ovalue, &get_buffer, sizeof(get_buffer));
-	return 0;
+	error = _setitimer(which, &set_buffer, ovalue ? &get_buffer : 0);
+	if (error || !ovalue)
+		return error;
+	error = verify_area(VERIFY_WRITE, ovalue, sizeof(struct itimerval));
+	if (!error)
+		memcpy_tofs(ovalue, &get_buffer, sizeof(get_buffer));
+	return error;
 }

@@ -14,15 +14,38 @@
 #include <linux/resource.h>
 #include <linux/mm.h>
 #include <linux/tty.h>
+#include <linux/malloc.h>
 
 #include <asm/segment.h>
+extern void shm_exit (void);
+extern void sem_exit (void);
 
-int sys_close(int fd);
-void getrusage(struct task_struct *, int, struct rusage *);
+int getrusage(struct task_struct *, int, struct rusage *);
 
-int send_sig(long sig,struct task_struct * p,int priv)
+static int generate(unsigned long sig, struct task_struct * p)
 {
-	if (!p || (sig < 0) || (sig > 32))
+	unsigned long mask = 1 << (sig-1);
+	struct sigaction * sa = sig + p->sigaction - 1;
+
+	/* always generate signals for traced processes ??? */
+	if (p->flags & PF_PTRACED) {
+		p->signal |= mask;
+		return 1;
+	}
+	/* don't bother with ignored signals (but SIGCHLD is special) */
+	if (sa->sa_handler == SIG_IGN && sig != SIGCHLD)
+		return 0;
+	/* some signals are ignored by default.. (but SIGCONT already did its deed) */
+	if ((sa->sa_handler == SIG_DFL) &&
+	    (sig == SIGCONT || sig == SIGCHLD || sig == SIGWINCH))
+		return 0;
+	p->signal |= mask;
+	return 1;
+}
+
+int send_sig(unsigned long sig,struct task_struct * p,int priv)
+{
+	if (!p || sig > 32)
 		return -EINVAL;
 	if (!priv && ((sig != SIGCONT) || (current->session != p->session)) &&
 	    (current->euid != p->euid) && (current->uid != p->uid) && !suser())
@@ -35,25 +58,21 @@ int send_sig(long sig,struct task_struct * p,int priv)
 		p->exit_code = 0;
 		p->signal &= ~( (1<<(SIGSTOP-1)) | (1<<(SIGTSTP-1)) |
 				(1<<(SIGTTIN-1)) | (1<<(SIGTTOU-1)) );
-	} 
+	}
 	/* Depends on order SIGSTOP, SIGTSTP, SIGTTIN, SIGTTOU */
 	if ((sig >= SIGSTOP) && (sig <= SIGTTOU)) 
 		p->signal &= ~(1<<(SIGCONT-1));
-	/* Actually deliver the signal */
-	p->signal |= (1<<(sig-1));
-	if (p->flags & PF_PTRACED) {
-		/* save the signal number for wait. */
-		p->exit_code = sig;
-
-		/* we have to make sure the parent process is awake. */
-		if (p->p_pptr != NULL && p->p_pptr->state == TASK_INTERRUPTIBLE)
-			p->p_pptr->state = TASK_RUNNING;
-
-		/* we have to make sure that the process stops. */
-		if (p->state == TASK_INTERRUPTIBLE || p->state == TASK_RUNNING)
-			p->state = TASK_STOPPED;
-	}
+	/* Actually generate the signal */
+	generate(sig,p);
 	return 0;
+}
+
+void notify_parent(struct task_struct * tsk)
+{
+	if (tsk->p_pptr == task[1])
+		tsk->exit_signal = SIGCHLD;
+	send_sig(tsk->exit_signal, tsk->p_pptr, 1);
+	wake_up_interruptible(&tsk->p_pptr->wait_chldexit);
 }
 
 void release(struct task_struct * p)
@@ -63,7 +82,7 @@ void release(struct task_struct * p)
 	if (!p)
 		return;
 	if (p == current) {
-		printk("task releasing itself\n\r");
+		printk("task releasing itself\n");
 		return;
 	}
 	for (i=1 ; i<NR_TASKS ; i++)
@@ -98,12 +117,12 @@ int bad_task_ptr(struct task_struct *p)
  * This routine scans the pid tree and make sure the rep invarient still
  * holds.  Used for debugging only, since it's very slow....
  *
- * It looks a lot scarier than it really is.... we're doing ænothing more
+ * It looks a lot scarier than it really is.... we're doing nothing more
  * than verifying the doubly-linked list found in p_ysptr and p_osptr, 
  * and checking it corresponds with the process tree defined by p_cptr and 
  * p_pptr;
  */
-void audit_ptree()
+void audit_ptree(void)
 {
 	int	i;
 
@@ -123,13 +142,17 @@ void audit_ptree()
 			printk("Warning, pid %d's os link is bad\n",
 				task[i]->pid);
 		if (task[i]->p_pptr == task[i])
-			printk("Warning, pid %d parent link points to self\n");
+			printk("Warning, pid %d parent link points to self\n",
+				task[i]->pid);
 		if (task[i]->p_cptr == task[i])
-			printk("Warning, pid %d child link points to self\n");
+			printk("Warning, pid %d child link points to self\n",
+				task[i]->pid);
 		if (task[i]->p_ysptr == task[i])
-			printk("Warning, pid %d ys link points to self\n");
+			printk("Warning, pid %d ys link points to self\n",
+				task[i]->pid);
 		if (task[i]->p_osptr == task[i])
-			printk("Warning, pid %d os link points to self\n");
+			printk("Warning, pid %d os link points to self\n",
+				task[i]->pid);
 		if (task[i]->p_osptr) {
 			if (task[i]->p_pptr != task[i]->p_osptr->p_pptr)
 				printk(
@@ -173,17 +196,17 @@ void audit_ptree()
  */
 int session_of_pgrp(int pgrp)
 {
-	struct task_struct **p;
+	struct task_struct *p;
 	int fallback;
 
 	fallback = -1;
- 	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p) {
- 		if (!*p || (*p)->session <= 0)
+	for_each_task(p) {
+ 		if (p->session <= 0)
  			continue;
-		if ((*p)->pgrp == pgrp)
-			return (*p)->session;
-		if ((*p)->pid == pgrp)
-			fallback = (*p)->session;
+		if (p->pgrp == pgrp)
+			return p->session;
+		if (p->pid == pgrp)
+			fallback = p->session;
 	}
 	return fallback;
 }
@@ -194,19 +217,20 @@ int session_of_pgrp(int pgrp)
  */
 int kill_pg(int pgrp, int sig, int priv)
 {
-	struct task_struct **p;
+	struct task_struct *p;
 	int err,retval = -ESRCH;
 	int found = 0;
 
 	if (sig<0 || sig>32 || pgrp<=0)
 		return -EINVAL;
- 	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p)
-		if (*p && (*p)->pgrp == pgrp) {
-			if ((err = send_sig(sig,*p,priv)) != 0)
+	for_each_task(p) {
+		if (p->pgrp == pgrp) {
+			if ((err = send_sig(sig,p,priv)) != 0)
 				retval = err;
 			else
 				found++;
 		}
+	}
 	return(found ? 0 : retval);
 }
 
@@ -217,31 +241,33 @@ int kill_pg(int pgrp, int sig, int priv)
  */
 int kill_sl(int sess, int sig, int priv)
 {
-	struct task_struct **p;
+	struct task_struct *p;
 	int err,retval = -ESRCH;
 	int found = 0;
 
 	if (sig<0 || sig>32 || sess<=0)
 		return -EINVAL;
- 	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p)
-		if (*p && (*p)->session == sess && (*p)->leader) {
-			if ((err = send_sig(sig,*p,priv)) != 0)
+	for_each_task(p) {
+		if (p->session == sess && p->leader) {
+			if ((err = send_sig(sig,p,priv)) != 0)
 				retval = err;
 			else
 				found++;
 		}
+	}
 	return(found ? 0 : retval);
 }
 
 int kill_proc(int pid, int sig, int priv)
 {
- 	struct task_struct **p;
+ 	struct task_struct *p;
 
 	if (sig<0 || sig>32)
 		return -EINVAL;
-	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p)
-		if (*p && (*p)->pid == pid)
-			return send_sig(sig,*p,priv);
+	for_each_task(p) {
+		if (p && p->pid == pid)
+			return send_sig(sig,p,priv);
+	}
 	return(-ESRCH);
 }
 
@@ -249,20 +275,21 @@ int kill_proc(int pid, int sig, int priv)
  * POSIX specifies that kill(-1,sig) is unspecified, but what we have
  * is probably wrong.  Should make it like BSD or SYSV.
  */
-int sys_kill(int pid,int sig)
+asmlinkage int sys_kill(int pid,int sig)
 {
-	struct task_struct **p = NR_TASKS + task;
 	int err, retval = 0, count = 0;
 
 	if (!pid)
 		return(kill_pg(current->pgrp,sig,0));
 	if (pid == -1) {
-		while (--p > &FIRST_TASK)
-			if (*p && (*p)->pid > 1 && *p != current) {
+		struct task_struct * p;
+		for_each_task(p) {
+			if (p->pid > 1 && p != current) {
 				++count;
-				if ((err = send_sig(sig,*p,0)) != -EPERM)
+				if ((err = send_sig(sig,p,0)) != -EPERM)
 					retval = err;
 			}
+		}
 		return(count ? retval : -ESRCH);
 	}
 	if (pid < 0) 
@@ -281,16 +308,15 @@ int sys_kill(int pid,int sig)
  */
 int is_orphaned_pgrp(int pgrp)
 {
-	struct task_struct **p;
+	struct task_struct *p;
 
-	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p) {
-		if (!(*p) ||
-		    ((*p)->pgrp != pgrp) || 
-		    ((*p)->state == TASK_ZOMBIE) ||
-		    ((*p)->p_pptr->pid == 1))
+	for_each_task(p) {
+		if ((p->pgrp != pgrp) || 
+		    (p->state == TASK_ZOMBIE) ||
+		    (p->p_pptr->pid == 1))
 			continue;
-		if (((*p)->p_pptr->pgrp != pgrp) &&
-		    ((*p)->p_pptr->session == (*p)->session))
+		if ((p->p_pptr->pgrp != pgrp) &&
+		    (p->p_pptr->session == p->session))
 			return 0;
 	}
 	return(1);	/* (sighing) "Often!" */
@@ -298,12 +324,12 @@ int is_orphaned_pgrp(int pgrp)
 
 static int has_stopped_jobs(int pgrp)
 {
-	struct task_struct ** p;
+	struct task_struct * p;
 
-	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p) {
-		if (!*p || (*p)->pgrp != pgrp)
+	for_each_task(p) {
+		if (p->pgrp != pgrp)
 			continue;
-		if ((*p)->state == TASK_STOPPED)
+		if (p->state == TASK_STOPPED)
 			return(1);
 	}
 	return(0);
@@ -311,23 +337,28 @@ static int has_stopped_jobs(int pgrp)
 
 static void forget_original_parent(struct task_struct * father)
 {
-	struct task_struct ** p;
+	struct task_struct * p;
 
-	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p)
-		if (*p && (*p)->p_opptr == father) {
+	for_each_task(p) {
+		if (p->p_opptr == father) {
 			if (task[1])
-				(*p)->p_opptr = task[1];
+				p->p_opptr = task[1];
 			else
-				(*p)->p_opptr = task[0];
+				p->p_opptr = task[0];
 		}
+	}
 }
 
-void do_exit(long code)
+NORET_TYPE void do_exit(long code)
 {
 	struct task_struct *p;
 	int i;
 
 fake_volatile:
+	if (current->semun)
+		sem_exit();
+	if (current->shm)
+		shm_exit();
 	free_page_tables(current);
 	for (i=0 ; i<NR_OPEN ; i++)
 		if (current->filp[i])
@@ -339,10 +370,32 @@ fake_volatile:
 	current->root = NULL;
 	iput(current->executable);
 	current->executable = NULL;
-	for (i=0; i < current->numlibraries; i++) {
-		iput(current->libraries[i].library);
-		current->libraries[i].library = NULL;
-	}	
+	/* Release all of the old mmap stuff. */
+	
+	{
+		struct vm_area_struct * mpnt, *mpnt1;
+		mpnt = current->mmap;
+		current->mmap = NULL;
+		while (mpnt) {
+			mpnt1 = mpnt->vm_next;
+			if (mpnt->vm_ops && mpnt->vm_ops->close)
+				mpnt->vm_ops->close(mpnt);
+			kfree(mpnt);
+			mpnt = mpnt1;
+		}
+	}
+
+	if (current->ldt) {
+		vfree(current->ldt);
+		current->ldt = NULL;
+		for (i=1 ; i<NR_TASKS ; i++) {
+			if (task[i] == current) {
+				set_ldt_desc(gdt+(i<<1)+FIRST_LDT_ENTRY, &default_ldt, 1);
+				load_ldt(i);
+			}
+		}
+	}
+
 	current->state = TASK_ZOMBIE;
 	current->exit_code = code;
 	current->rss = 0;
@@ -363,7 +416,7 @@ fake_volatile:
 		kill_pg(current->pgrp,SIGCONT,1);
 	}
 	/* Let father know we died */
-	send_sig (SIGCHLD, current->p_pptr, 1);
+	notify_parent(current);
 	
 	/*
 	 * This loop does two things:
@@ -377,7 +430,7 @@ fake_volatile:
 		current->p_cptr = p->p_osptr;
 		p->p_ysptr = NULL;
 		p->flags &= ~(PF_PTRACED|PF_TRACESYS);
-		if (task[1])
+		if (task[1] && task[1] != current)
 			p->p_pptr = task[1];
 		else
 			p->p_pptr = task[0];
@@ -385,7 +438,7 @@ fake_volatile:
 		p->p_osptr->p_ysptr = p;
 		p->p_pptr->p_cptr = p;
 		if (p->state == TASK_ZOMBIE)
-			send_sig(SIGCHLD,p->p_pptr,1);
+			notify_parent(p);
 		/*
 		 * process group orphan check
 		 * Case ii: Our child is in a different pgrp 
@@ -400,23 +453,8 @@ fake_volatile:
 			kill_pg(p->pgrp,SIGCONT,1);
 		}
 	}
-	if (current->leader) {
-		struct task_struct **p;
-		struct tty_struct *tty;
-
-		if (current->tty >= 0) {
-			tty = TTY_TABLE(current->tty);
-			if (tty) {
-				if (tty->pgrp > 0)
-					kill_pg(tty->pgrp, SIGHUP, 1);
-				tty->pgrp = -1;
-				tty->session = 0;
-			}
-		}
-	 	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p)
-			if (*p && (*p)->session == current->session)
-				(*p)->tty = -1;
-	}
+	if (current->leader)
+		disassociate_ctty(1);
 	if (last_task_used_math == current)
 		last_task_used_math = NULL;
 #ifdef DEBUG_PROC_TREE
@@ -439,22 +477,24 @@ fake_volatile:
 	goto fake_volatile;
 }
 
-int sys_exit(int error_code)
+asmlinkage int sys_exit(int error_code)
 {
 	do_exit((error_code&0xff)<<8);
-	return 0;
 }
 
-int sys_wait4(pid_t pid,unsigned long * stat_addr, int options, struct rusage * ru)
+asmlinkage int sys_wait4(pid_t pid,unsigned long * stat_addr, int options, struct rusage * ru)
 {
-	int flag;
+	int flag, retval;
+	struct wait_queue wait = { current, NULL };
 	struct task_struct *p;
-	unsigned long oldblocked;
 
-	if (stat_addr)
-		verify_area(stat_addr,4);
+	if (stat_addr) {
+		flag = verify_area(VERIFY_WRITE, stat_addr, 4);
+		if (flag)
+			return flag;
+	}
+	add_wait_queue(&current->wait_chldexit,&wait);
 repeat:
-	current->signal &= ~(1<<(SIGCHLD-1));
 	flag=0;
  	for (p = current->p_cptr ; p ; p = p->p_osptr) {
 		if (pid>0) {
@@ -467,6 +507,10 @@ repeat:
 			if (p->pgrp != -pid)
 				continue;
 		}
+		/* wait for cloned processes iff the __WCLONE flag is set */
+		if ((p->exit_signal != SIGCHLD) ^ ((options & __WCLONE) != 0))
+			continue;
+		flag = 1;
 		switch (p->state) {
 			case TASK_STOPPED:
 				if (!p->exit_code)
@@ -479,7 +523,8 @@ repeat:
 				p->exit_code = 0;
 				if (ru != NULL)
 					getrusage(p, RUSAGE_BOTH, ru);
-				return p->pid;
+				retval = p->pid;
+				goto end_wait4;
 			case TASK_ZOMBIE:
 				current->cutime += p->utime + p->cutime;
 				current->cstime += p->stime + p->cstime;
@@ -494,39 +539,41 @@ repeat:
 					REMOVE_LINKS(p);
 					p->p_pptr = p->p_opptr;
 					SET_LINKS(p);
-					send_sig(SIGCHLD,p->p_pptr,1);
+					notify_parent(p);
 				} else
 					release(p);
 #ifdef DEBUG_PROC_TREE
 				audit_ptree();
 #endif
-				return flag;
+				retval = flag;
+				goto end_wait4;
 			default:
-				flag=1;
 				continue;
 		}
 	}
 	if (flag) {
+		retval = 0;
 		if (options & WNOHANG)
-			return 0;
+			goto end_wait4;
 		current->state=TASK_INTERRUPTIBLE;
-		oldblocked = current->blocked;
-		current->blocked &= ~(1<<(SIGCHLD-1));
 		schedule();
-		current->blocked = oldblocked;
-		if (current->signal & ~(current->blocked | (1<<(SIGCHLD-1))))
-			return -ERESTARTSYS;
-		else
-			goto repeat;
+		current->signal &= ~(1<<(SIGCHLD-1));
+		retval = -ERESTARTSYS;
+		if (current->signal & ~current->blocked)
+			goto end_wait4;
+		goto repeat;
 	}
-	return -ECHILD;
+	retval = -ECHILD;
+end_wait4:
+	remove_wait_queue(&current->wait_chldexit,&wait);
+	return retval;
 }
 
 /*
  * sys_waitpid() remains for compatibility. waitpid() should be
  * implemented by calling sys_wait4() from libc.a.
  */
-int sys_waitpid(pid_t pid,unsigned long * stat_addr, int options)
+asmlinkage int sys_waitpid(pid_t pid,unsigned long * stat_addr, int options)
 {
 	return sys_wait4(pid, stat_addr, options, NULL);
 }

@@ -1,0 +1,16 @@
+obj-y += tty_io.o
+obj-y += serial.o
+obj-y += console.o
+obj-y += keyboard.o
+obj-y += tty_ioctl.o
+obj-y += pty.o
+obj-y += lp.o
+obj-y += mem.o
+obj-y += vt.o
+obj-y += mouse.o
+obj-y += busmouse.o
+obj-y += psaux.o
+obj-y += msbusmouse.o
+obj-y += atixlmouse.o
+obj-y += defkeymap.o
+obj-y += tpqic02.o

@@ -1,7 +1,7 @@
 /*
  *  linux/fs/msdos/file.c
  *
- *  Written 1992 by Werner Almesberger
+ *  Written 1992,1993 by Werner Almesberger
  *
  *  MS-DOS regular file handling primitives
  */
@@ -25,7 +25,7 @@ static int msdos_file_write(struct inode *inode,struct file *filp,char *buf,
     int count);
 
 
-struct file_operations msdos_file_operations = {
+static struct file_operations msdos_file_operations = {
 	NULL,			/* lseek - default */
 	msdos_file_read,	/* read */
 	msdos_file_write,	/* write */
@@ -34,7 +34,8 @@ struct file_operations msdos_file_operations = {
 	NULL,			/* ioctl - default */
 	NULL,			/* mmap */
 	NULL,			/* no special open is needed */
-	NULL			/* release */
+	NULL,			/* release */
+	file_fsync		/* fsync */
 };
 
 struct inode_operations msdos_file_inode_operations = {
@@ -51,7 +52,8 @@ struct inode_operations msdos_file_inode_operations = {
 	NULL,			/* readlink */
 	NULL,			/* follow_link */
 	msdos_bmap,		/* bmap */
-	msdos_truncate		/* truncate */
+	msdos_truncate,		/* truncate */
+	NULL			/* permission */
 };
 
 /* No bmap for MS-DOS FS' that don't align data at kByte boundaries. */
@@ -70,7 +72,8 @@ struct inode_operations msdos_file_inode_operations_no_bmap = {
 	NULL,			/* readlink */
 	NULL,			/* follow_link */
 	NULL,			/* bmap */
-	msdos_truncate		/* truncate */
+	msdos_truncate,		/* truncate */
+	NULL			/* permission */
 };
 
 
@@ -112,6 +115,10 @@ static int msdos_file_read(struct inode *inode,struct file *filp,char *buf,
 					else {
 						filp->f_pos = inode->i_size;
 						brelse(bh);
+						if (start != buf
+						    && !IS_RDONLY(inode))
+							inode->i_atime
+							    = CURRENT_TIME;
 						return buf-start;
 					}
 				}
@@ -119,6 +126,8 @@ static int msdos_file_read(struct inode *inode,struct file *filp,char *buf,
 		brelse(bh);
 	}
 	if (start == buf) return -EIO;
+	if (!IS_RDONLY(inode))
+		inode->i_atime = CURRENT_TIME;
 	return buf-start;
 }
 
@@ -167,7 +176,7 @@ static int msdos_file_write(struct inode *inode,struct file *filp,char *buf,
 		}
 		else {
 			written = left = SECTOR_SIZE-offset;
-			to = data+(filp->f_pos & (SECTOR_SIZE-1));
+			to = (char *) data+(filp->f_pos & (SECTOR_SIZE-1));
 			if (carry) {
 				*to++ = '\n';
 				left--;
@@ -194,10 +203,12 @@ static int msdos_file_write(struct inode *inode,struct file *filp,char *buf,
 		bh->b_dirt = 1;
 		brelse(bh);
 	}
+	if (start == buf)
+		return error;
 	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
 	MSDOS_I(inode)->i_attrs |= ATTR_ARCH;
 	inode->i_dirt = 1;
-	return start == buf ? error : buf-start;
+	return buf-start;
 }
 
 

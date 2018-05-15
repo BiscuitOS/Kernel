@@ -89,11 +89,13 @@ extern struct buffer_head * ext_bread(struct inode *, int, int);
 extern void ext_truncate(struct inode *);
 extern void ext_put_super(struct super_block *);
 extern void ext_write_super(struct super_block *);
-extern struct super_block *ext_read_super(struct super_block *,void *);
+extern struct super_block *ext_read_super(struct super_block *,void *,int);
 extern void ext_read_inode(struct inode *);
 extern void ext_write_inode(struct inode *);
 extern void ext_put_inode(struct inode *);
 extern void ext_statfs(struct super_block *, struct statfs *);
+extern int ext_sync_inode(struct inode *);
+extern int ext_sync_file(struct inode *, struct file *);
 
 extern int ext_lseek(struct inode *, struct file *, off_t, int);
 extern int ext_read(struct inode *, struct file *, char *, int);
@@ -102,11 +104,5 @@ extern int ext_write(struct inode *, struct file *, char *, int);
 extern struct inode_operations ext_file_inode_operations;
 extern struct inode_operations ext_dir_inode_operations;
 extern struct inode_operations ext_symlink_inode_operations;
-extern struct inode_operations ext_chrdev_inode_operations;
-extern struct inode_operations ext_blkdev_inode_operations;
-extern struct inode_operations ext_fifo_inode_operations;
-
-extern struct file_operations ext_file_operations;
-extern struct file_operations ext_dir_operations;
 
 #endif

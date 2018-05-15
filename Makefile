@@ -344,7 +344,7 @@ endif # $(dot-config)
 # Defaults to vmlinux, but the arch makefile usually adds further targets
 all: vmlinux 
 
-objs-y          := arch/ mm/ fs/ kernel/ drivers/ init/ net/
+objs-y          := arch/ mm/ fs/ kernel/ drivers/ init/ ipc/
 libs-y          := lib/
 
 ifdef CONFIG_TESTCASE

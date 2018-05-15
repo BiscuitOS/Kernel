@@ -20,6 +20,11 @@
 # system to read them from there before the area is overwritten
 # for buffer-blocks.
 #
+# Move PS/2 aux init code to psaux.c
+# (troyer@saifr00.cfsat.Honeywell.COM) 03Oct92
+#
+# some changes and additional features by Christoph Niemann, March 1993
+# (niemann@rubdv15.ETDV.Ruhr-Uni-Bochum.De)
 
 # NOTE! These had better be the same as in bootsect.s!
 
@@ -57,7 +62,7 @@ _start:
 
 # set the keyboard repeat rate to the max
 	mov	$0x0305, %ax
-	mov	$0x0000, %bx
+	xor	%bx, %bx
 	int	$0x16
 
 # Get video-card data:
@@ -89,7 +94,7 @@ _start:
 novga:
 	mov	%ax, %ds:14
 	mov	$0x03, %ah	# read cursor pos
-	xor	%bh, %bh
+	xor	%bh, %bh	# clear bh
 	int	$0x10		# save it in know place, con_init fetches
 	mov	%dx, %ds:0	# it from 0x90000.
 
@@ -103,7 +108,7 @@ novideo_check:
 
 # Get hd0 data
 
-	mov	$0x0000, %ax
+	xor	%ax, %ax	# Clear ax
 	mov	%ax, %ds
 	lds	%ds:4*0x41, %si
 	mov	$INITSEG, %ax
@@ -116,7 +121,7 @@ novideo_check:
 
 # Get hd1 data
 
-	mov	$0x0000, %ax
+	xor	%ax, %ax	# Clear ax
 	mov	%ax, %ds
 	lds	%ds:4*0x46, %si
 	mov	$INITSEG, %ax
@@ -140,7 +145,7 @@ no_disk1:
 	mov	%ax, %es
 	mov	$0x0090, %di
 	mov	$0x10, %cx
-	mov	$0x00, %ax
+	xor	%ax, %ax	# clear ax
 	cld
 	rep
 	stosb
@@ -156,24 +161,27 @@ is_disk1:
 	jz	no_psmouse
 #	mov	$0xaa, %ds:0x1ff	# device present
 no_psmouse:
-
 # now we want to move to protected mode ...
 
 	cli			# no interrupts allowed ! 
+	mov	$0x80, %al	# disable NMI for the bootup sequence
+	out	%al, $0x70
 
 # first we move the system to it's rightful place
 
-	mov	$0x0000, %ax
+	mov	$0x100, %ax	# start of destination segment
+	mov	$0x1000, %bx	# start of source segment
 	cld			# 'direction'=0, movs moves forward
 do_move:
 	mov	%ax, %es	# destination segment
-	add	$0x1000, %ax
+	add	$0x100, %ax
 	cmp	$0x9000, %ax
 	jz	end_move
-	mov	%ax, %ds	# source segment
+	mov	%bx, %ds	# source segment
+	add	$0x100, %bx
 	sub	%di, %di
 	sub	%si, %si
-	mov 	$0x8000, %cx
+	mov 	$0x800, %cx
 	rep
 	movsw
 	jmp	do_move
@@ -199,6 +207,14 @@ end_move:
 	orb     $0b00000010, %al
 	outb    %al, $0x92
 
+# make sure any possible coprocessor is properly reset..
+
+	xor	%ax, %ax
+	out	%al, $0xf0
+	call	delay
+	out	%al, $0xf1
+	call	delay
+
 # well, that went ok, I hope. Now we have to reprogram the interrupts :-(
 # we put them right after the intel-reserved hardware interrupts, at
 # int 0x20-0x2F. There they won't mess up anything. Sadly IBM really
@@ -210,29 +226,29 @@ end_move:
 	mov	$0x11, %al		# initialization sequence(ICW1)
 					# ICW4 needed(1),CASCADE mode,Level-triggered
 	out	%al, $0x20		# send it to 8259A-1
-	.word	0x00eb,0x00eb		# jmp $+2, jmp $+2
+	call	delay
 	out	%al, $0xA0		# and to 8259A-2
-	.word	0x00eb,0x00eb
+	call	delay
 	mov	$0x20, %al		# start of hardware int's (0x20)(ICW2)
 	out	%al, $0x21		# from 0x20-0x27
-	.word	0x00eb,0x00eb
+	call	delay
 	mov	$0x28, %al		# start of hardware int's 2 (0x28)
 	out	%al, $0xA1		# from 0x28-0x2F
-	.word	0x00eb,0x00eb		#               IR 7654 3210
+	call	delay
 	mov	$0x04, %al		# 8259-1 is master(0000 0100) --\
 	out	%al, $0x21		#				|
-	.word	0x00eb,0x00eb		#			 INT	/
+	call	delay
 	mov	$0x02, %al		# 8259-2 is slave(       010 --> 2)
 	out	%al, $0xA1
-	.word	0x00eb,0x00eb
+	call	delay
 	mov	$0x01, %al		# 8086 mode for both
 	out	%al, $0x21
-	.word	0x00eb,0x00eb
+	call	delay
 	out	%al, $0xA1
-	.word	0x00eb,0x00eb
+	call	delay
 	mov	$0xFF, %al		# mask off all interrupts for now
 	out	%al, $0xA1
-	.word	0x00eb,0x00eb
+	call	delay
 	mov	$0xFB, %al
 	out	%al, $0x21
 
@@ -245,27 +261,31 @@ end_move:
 # things as simple as possible, we do no register set-up or anything,
 # we let the gnu-compiled 32-bit programs do that. We just jump to
 # absolute address 0x00000, in 32-bit protected mode.
+#
+# Note that the short jump isn't strictly needed, althought there are
+# reasons why it might be a good idea. It won't hurt in any case.
+#
 	#mov	$0x0001, %ax	# protected mode (PE) bit
 	#lmsw	%ax		# This is it!
 	mov	%cr0, %eax	# get machine status(cr0|MSW)	
 	bts	$0, %eax	# turn on the PE-bit 
 	mov	%eax, %cr0	# protection enabled
 				
-				# segment-descriptor        (INDEX:TI:RPL)
-	.equ	sel_cs0, 0x0008 # select for code segment 0 (  001:0 :00) 
-	ljmp	$sel_cs0, $0	# jmp offset 0 of code segment 0 in gdt
 
+	jmp	flush_instr
+flush_instr:
+	ljmp	$0x10, $0x1000	# jmp offset 1000 of segment 0x10 (cs)
 # This routine checks that the keyboard command queue is empty
 # (after emptying the output buffers)
 #
 # No timeout is used - if this hangs there is something wrong with
 # the machine, and we probably couldn't proceed anyway.
 empty_8042:
-	.word	0x00eb,0x00eb
+	call	delay
 	in	$0x64, %al	# 8042 status port
 	test	$0x1, %al	# output buffer?
 	jz	no_output
-	.word	0x00eb, 0x00eb
+	call	delay
 	in	$0x60, %al	# read it
 	jmp	empty_8042
 no_output:
@@ -273,20 +293,67 @@ no_output:
 	jnz	empty_8042	# yes - loop
 	ret
 
+#
+# Read a key and return the (US-)ascii code in al, scan code in ah
+#
 getkey:
-	in	$0x60, %al	# Quick and dirty...
-	.word	0x00eb,0x00eb	# jmp $+2, jmp $+2
-	mov	%al,%bl
-	in	$0x61, %al
-	.word	0x00eb,0x00eb
-	mov	%ah, %al
-	or	$0x80, %al
-	out	%al, $0x61
-	.word	0x00eb,0x00eb
-	mov	%ah, %al
-	out	%al, $0x61
-	.word	0x00eb,0x00eb
-	mov	%bl, %al
+	xor	%ah, %ah
+	int	$0x16
+	ret
+
+#
+# Read a key with a timeout of 30 seconds. The cmos clock is used to get
+# the time.
+#
+getkt:
+	call	gettime
+	add	$30, %al	# wait 30 seconds
+	cmp	$60, %al
+	jl	lminute
+	sub	$60, %al
+lminute:
+	mov	%al, %cl
+again:	mov	$0x01, %ah
+	int	$0x16
+	jnz	getkey		# key pressed, so get it
+	call	gettime
+	cmp	%cl, %al
+	jne	again
+	mov	$0x20, %al	# timeout, return default char `space'
+	ret
+
+#
+# Flush the keyboard buffer
+#
+flush:	mov	$0x01, %ah
+	int	$0x16
+	jz	empty
+	xor	%ah, %ah
+	int	$0x16
+	jmp	flush
+empty:	ret
+
+#
+# Read the cmos clock. Return the seconds in al
+#
+gettime:
+	push	%cx
+	mov	$0x02, %ah
+	int	$0x1a
+	mov	%dh, %al	# dh contains the seconds
+	and	$0x0f, %al
+	mov	%dh, %ah
+	mov	$0x04, %cl
+	shr	%cl, %ah
+	aad
+	pop	%cx
+	ret
+
+#
+# Delay is needed after doing i/o
+#
+delay:
+	.word	0x00eb		# jmp $+2
 	ret
 
 # Routine trying to recognize type of SVGA-board present (if any)
@@ -302,11 +369,6 @@ chsvga:
 	mov	%ax, %es
 	lea	msg1, %si
 	call	prtstr
-flush:
-	in	$0x60, %al	# Flush the keyboard buffer
-	cmp	$0x82, %al
-	jb	nokey
-	jmp	flush
 nokey:
 	call	getkey
 # I don't care press buttom, so skip this routine.

@@ -90,6 +90,9 @@ struct port_io_arg {
 #define GIO_FONT8x16	0x4B2C	/* gets current 8x16 font used */
 #define PIO_FONT8x16	0x4B2D	/* use supplied 8x16 font */
 
+#define GIO_FONT	0x4B60	/* gets font in expanded form */
+#define PIO_FONT	0x4B61	/* use font in expanded form */
+
 #define MKDIOADDR	32	/* io bitmap size from <linux/sched.h> */
 struct kd_disparam {
 	long type;			/* type of display */
@@ -160,13 +163,20 @@ typedef char scrnmap_t;
 
 #define		K_RAW		0x00
 #define		K_XLATE		0x01
+#define		K_MEDIUMRAW	0x02
 #define KDGKBMODE	0x4B44	/* gets current keyboard mode */
 #define KDSKBMODE	0x4B45	/* sets current keyboard mode */
+
+/* merge with previous pair of ioctls? */
+#define		K_METABIT	0x03
+#define		K_ESCPREFIX	0x04
+#define KDGKBMETA	0x4B62	/* gets meta key handling mode */
+#define KDSKBMETA	0x4B63	/* sets meta key handling mode */
 
 struct kbentry {
 	u_char kb_table;
 	u_char kb_index;
-	u_char kb_value;
+	u_short kb_value;
 };
 #define		K_NORMTAB	0x00
 #define		K_SHIFTTAB	0x01
@@ -175,5 +185,25 @@ struct kbentry {
 #define		K_SRQTAB	0x04
 #define KDGKBENT	0x4B46	/* gets one entry in translation table */
 #define KDSKBENT	0x4B47	/* sets one entry in translation table */
+
+struct kbsentry {
+	u_char kb_func;
+	u_char kb_string[512];	/* FUNC_BUFSIZE from keyboard.h */
+};
+#define KDGKBSENT	0x4B48	/* gets one function key string entry */
+#define KDSKBSENT	0x4B49	/* sets one function key string entry */
+
+struct kbdiacr {
+        u_char diacr, base, result;
+};
+struct kbdiacrs {
+        unsigned int kb_cnt;    /* number of entries in following array */
+	struct kbdiacr kbdiacr[256];    /* MAX_DIACR from keyboard.h */
+};
+#define KDGKBDIACR      0x4B4A  /* read kernel accent table */
+#define KDSKBDIACR      0x4B4B  /* write kernel accent table */
+
+/* note: 0x4B60 and 0x4B61 used above for GIO_FONT and PIO_FONT
+         0x4B62 and 0x4B63 used above for KDGKBMETA and KDSKBMETA */
 
 #endif /* _LINUX_KD_H */

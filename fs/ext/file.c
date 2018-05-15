@@ -23,7 +23,7 @@
 #include <linux/stat.h>
 #include <linux/locks.h>
 
-#define	NBUF	16
+#define	NBUF	32
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -38,16 +38,17 @@ static int ext_file_write(struct inode *, struct file *, char *, int);
  * We have mostly NULL's here: the current defaults are ok for
  * the ext filesystem.
  */
-struct file_operations ext_file_operations = {
+static struct file_operations ext_file_operations = {
 	NULL,			/* lseek - default */
 	ext_file_read,	/* read */
 	ext_file_write,	/* write */
 	NULL,			/* readdir - bad */
 	NULL,			/* select - default */
 	NULL,			/* ioctl - default */
-	NULL,			/* mmap */
+	generic_mmap,  		/* mmap */
 	NULL,			/* no special open is needed */
-	NULL			/* release */
+	NULL,			/* release */
+	ext_sync_file			/* fsync */
 };
 
 struct inode_operations ext_file_inode_operations = {
@@ -64,7 +65,8 @@ struct inode_operations ext_file_inode_operations = {
 	NULL,			/* readlink */
 	NULL,			/* follow_link */
 	ext_bmap,		/* bmap */
-	ext_truncate		/* truncate */
+	ext_truncate,		/* truncate */
+	NULL			/* permission */
 };
 
 static int ext_file_read(struct inode * inode, struct file * filp, char * buf, int count)
@@ -118,14 +120,14 @@ static int ext_file_read(struct inode * inode, struct file * filp, char * buf, i
 	   buffers and caches. */
 
 	do {
-	        bhrequest = 0;
-	        uptodate = 1;
+		bhrequest = 0;
+		uptodate = 1;
 		while (blocks) {
 			--blocks;
 			*bhb = ext_getblk(inode, block++, 0);
 			if (*bhb && !(*bhb)->b_uptodate) {
-			        uptodate = 0;
-			        bhreq[bhrequest++] = *bhb;
+				uptodate = 0;
+				bhreq[bhrequest++] = *bhb;
 			}
 
 			if (++bhb == &buflist[NBUF])
@@ -147,6 +149,9 @@ static int ext_file_read(struct inode * inode, struct file * filp, char * buf, i
 			if (*bhe) {
 				wait_on_buffer(*bhe);
 				if (!(*bhe)->b_uptodate) {	/* read error? */
+				        brelse(*bhe);
+					if (++bhe == &buflist[NBUF])
+					  bhe = buflist;
 					left = 0;
 					break;
 				}
@@ -245,8 +250,7 @@ static int ext_file_write(struct inode * inode, struct file * filp, char * buf, 
 		bh->b_dirt = 1;
 		brelse(bh);
 	}
-	inode->i_mtime = CURRENT_TIME;
-	inode->i_ctime = CURRENT_TIME;
+	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
 	filp->f_pos = pos;
 	inode->i_dirt = 1;
 	return written;
