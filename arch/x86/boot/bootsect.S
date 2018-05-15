@@ -6,6 +6,7 @@
 # SYS_SIZE is the number of clicks (16 bytes) to be loaded.
 # 0x7F00 is 0x7F000 bytes = 508kB, more than enough for current
 # versions of linux which compress the kernel
+#include <linux/config.h>
 	.equ SYSSIZE, 0x8000
 
 #
@@ -39,22 +40,13 @@
 	begbss:
 	.text
 
-
-	# BiscuitOS support boot from floppy and hard disk
-	# Boot from first hard disk
-	# .equ DEVICE_NR, 0x80
-	# Boot from first floppy
-	.equ DEVICE_NR, 0x00
-
-	.equ SETUPLEN, 4        # nr of setup-sectors
-	.equ BOOTSEG, 0x07C0    # original address of boot-sector
-	.equ INITSEG, 0x9000    # we move boot here - out of the way
-	.equ SETUPSEG, 0x9020   # setup starts here
-	.equ SYSSEG, 0x1000     # system loaded at 0x10000 (65536).
-	.equ ENDSEG, SYSSEG + SYSSIZE # where to stop loading
-
-	.equ	ROOT_DEV, 0x301
-	.equ	SWAP_DEV, 0x302
+.equ ROOT_DEV,	DEF_ROOT_DEV	# Root-device 
+.equ SWAP_DEV,	DEF_SWAP_DEV	# SWAP-device
+.equ SETUPLEN,	4		# nr of setup-sectors
+.equ BOOTSEG,	0x07C0		# original address of boot-sector
+.equ INITSEG,	DEF_INITSEG	# we move boot here - out of the way
+.equ SETUPSEG,	DEF_SETUPSEG	# setup starts here
+.equ SYSSEG,	DEF_SYSSEG	# system loaded at 0x10000 (65536).
 
 	# Normalize the start address
 	ljmp	$BOOTSEG, $_start
@@ -401,7 +393,7 @@ sectors:
 	.word 0
 
 msg1:
-	.ascii "Loading BiscuitOS ..."
+	.ascii DEF_BOOT_LOGO
 
 	.org 502
 swap_dev:

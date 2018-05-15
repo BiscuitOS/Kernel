@@ -1,7 +1,7 @@
 #ifndef _LINUX_CONFIG_H
 #define _LINUX_CONFIG_H
 
-#include <linux/autoconf.h>
+#include <generated/autoconf.h>
 
 /*
  * Defines for what uname() should return 
@@ -27,10 +27,34 @@
  */
 
 /* Don't touch these, unless you really know what your doing. */
+
+/* INIT-Segment */
+#ifdef CONFIG_BOOT_INITSEG
+#define DEF_INITSEG	CONFIG_BOOT_INITSEG
+#else
 #define DEF_INITSEG	0x9000
+#endif
+
+/* SYS-Segment */
+#ifdef CONFIG_BOOT_SYSSEG
+#define DEF_SYSSEG	CONFIG_BOOT_SYSSEG
+#else
 #define DEF_SYSSEG	0x1000
+#endif
+
+/* SETUP-Segment */
+#ifdef CONFIG_BOOT_SETUPSEG
+#define DEF_SETUPSEG	CONFIG_BOOT_SETUPSEG
+#else
 #define DEF_SETUPSEG	0x9020
+#endif
+
+/* SYS-Size */
+#ifdef CONFIG_SYSTEM_SIZE
+#define DEF_SYSSIZE	CONFIG_SYSTEM_SIZE
+#else
 #define DEF_SYSSIZE	0x7F00
+#endif
 
 /* internal svga startup constants */
 #define NORMAL_VGA	0xffff		/* 80x25 mode */
@@ -41,6 +65,30 @@
  * The root-device is no longer hard-coded. You can change the default
  * root-device by changing the line ROOT_DEV = XXX in boot/bootsect.s
  */
+#ifdef CONFIG_ROOT_DEV
+#define DEF_ROOT_DEV	CONFIG_ROOT_DEV
+#else
+#define DEF_ROOT_DEV	0x301
+#endif
+
+/*
+ * The swap-device is no longer hard-coded. You can change the default
+ * swap-device by 'make menuconfig'.
+ */
+#ifdef CONFIG_SWAP_DEV
+#define DEF_SWAP_DEV	CONFIG_SWAP_DEV
+#else
+#define DEF_SWAP_DEV	0x302
+#endif
+
+/* 
+ * Logo message display via serial
+ */
+#ifdef CONFIG_BOOT_LOGO
+#define DEF_BOOT_LOGO CONFIG_BOOT_LOGO
+#else
+#define DEF_BOOT_LOGO "Loading BiscuitOS ..."
+#endif
 
 /*
  * The keyboard is now defined in kernel/chr_dev/keyboard.S

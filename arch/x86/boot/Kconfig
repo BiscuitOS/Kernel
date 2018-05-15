@@ -1,20 +1,66 @@
 #
-# Bootloader configure for x86
+# Simulate X86 Architecuture
 #
-menu "Bootloader configure"
+menu "Board configure"
 
-config BOOTLOADER
-	bool "support bootloader"
+config X86_SIMULATE_BOOTLOADER
+	bool "Simulate bootloader for X86 Architecture"
 	default y
 	help
-	  Support bootloader on source code
+	  Simulate bootloader to load system image into
+	  ram on X86 Architecture.
 
-if BOOTLOADER
+if X86_SIMULATE_BOOTLOADER
 
 config DEBUG_BOOTLOADER
 	bool "debug bootloade utilize gdb"
 	help
 	  Debug bootloader with gdb
+
+config BOOT_LOGO
+	string "Logo message"
+	default "Loading BiscuitOS"
+	help
+	  Output logo information on bootloader.
+
+config BOOT_INITSEG
+	hex "INIT-Segment load address"
+	default 0x9000
+	help
+	  Setup load address for INIT segment.
+
+config BOOT_SYSSEG
+	hex "SYS-Segment load address"
+	default 0x1000
+	help
+	  Setup load address for SYSTEM segment.
+
+config BOOT_SETUPSEG
+	hex "SETUP-Segment load address"
+	default 0x9020
+	help
+	  Setup load address for SETUP segment.
+
+config SYSTEM_SIZE
+	hex "Setup system image size"
+	default 0x8000
+	help
+	  Setup system image size.
+
+config ROOT_DEV
+	hex "Root-device partition number"
+	default 0x301
+	help
+	  Setup Root-device partition number. (default 0x301,
+	  First hard-disk partition)
+
+config SWAP_DEV
+	hex "SWAP-device partition number"
+	default 0x302
+	help
+	  Setup SWAP-device partition number. (default 0x302,
+	  Second hard-disk partition)
+
 endif
 
 endmenu # "General setup"

@@ -1,7 +1,10 @@
-obj-y += head2.o
+obj-y += head.o
 
 local_LDFLAGS += -Ttext 0
 
+head2.s: head.S
+	$(Q)$(CPP) -traditional -I$(srctree)/include $< -o $@
+	
 -include include/config/auto.conf
 
 ifdef CONFIG_DEBUG_BOOTLOADER
@@ -10,7 +13,7 @@ endif
 
 ####
 # Build bootloader
-bootloader: bootsect setup ECHO
+bootloader: head2.s bootsect setup ECHO
 	$(Q)dd if=/dev/zero bs=512 count=5 of=$@ \
 	       conv=notrunc > /dev/null 2>&1
 	$(Q)dd if=bootsect bs=512 count=1 of=$@ \
@@ -35,16 +38,19 @@ endif
 bootsect.o: bootsect.s
 	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<
 	
-setup.o: setup.s head2.s
+setup.o: setup.s
 	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<
 
-head2.s: head.S
+setup.s: setup.S
+	$(Q)$(CPP) -traditional -I$(srctree)/include $< -o $@
+	
+bootsect.s: bootsect.S
 	$(Q)$(CPP) -traditional -I$(srctree)/include $< -o $@
 	
 ECHO:
 
 clean:
-	$(Q)rm -rf bootsect setup bootloader head2.s
+	$(Q)rm -rf bootsect setup bootloader *.s
 ifdef CONFIG_DEBUG_BOOTLOADER
 	$(Q)rm -rf .debug_bootsect .debug_setup
 endif
