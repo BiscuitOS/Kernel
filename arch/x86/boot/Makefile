@@ -1,10 +1,7 @@
-obj-y += head.o
+obj-y += head2.o
 
 local_LDFLAGS += -Ttext 0
 
-head2.s: head.S
-	$(Q)$(CPP) -traditional -I$(srctree)/include $< -o $@
-	
 -include include/config/auto.conf
 
 ifdef CONFIG_DEBUG_BOOTLOADER
@@ -41,10 +38,13 @@ bootsect.o: bootsect.s
 setup.o: setup.s
 	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<
 
-setup.s: setup.S
-	$(Q)$(CPP) -traditional -I$(srctree)/include $< -o $@
+setup.s: setup.S head2.s
+	$(Q)$(CPP) -traditional -I$(srctree)/include setup.S -o $@
 	
 bootsect.s: bootsect.S
+	$(Q)$(CPP) -traditional -I$(srctree)/include $< -o $@
+	
+head2.s: head.S
 	$(Q)$(CPP) -traditional -I$(srctree)/include $< -o $@
 	
 ECHO:

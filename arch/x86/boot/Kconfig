@@ -1,16 +1,16 @@
 #
 # Simulate X86 Architecuture
 #
-menu "Board configure"
+menu "boot option"
 
-config X86_SIMULATE_BOOTLOADER
+config BOOTLOADER
 	bool "Simulate bootloader for X86 Architecture"
 	default y
 	help
 	  Simulate bootloader to load system image into
 	  ram on X86 Architecture.
 
-if X86_SIMULATE_BOOTLOADER
+if BOOTLOADER
 
 config DEBUG_BOOTLOADER
 	bool "debug bootloade utilize gdb"
@@ -24,25 +24,25 @@ config BOOT_LOGO
 	  Output logo information on bootloader.
 
 config BOOT_INITSEG
-	hex "INIT-Segment load address"
+	hex "INITSEG load address"
 	default 0x9000
 	help
 	  Setup load address for INIT segment.
 
 config BOOT_SYSSEG
-	hex "SYS-Segment load address"
+	hex "SYSSEG load address"
 	default 0x1000
 	help
 	  Setup load address for SYSTEM segment.
 
 config BOOT_SETUPSEG
-	hex "SETUP-Segment load address"
+	hex "SETUPSEG load address"
 	default 0x9020
 	help
 	  Setup load address for SETUP segment.
 
 config SYSTEM_SIZE
-	hex "Setup system image size"
+	hex "System image size"
 	default 0x8000
 	help
 	  Setup system image size.
