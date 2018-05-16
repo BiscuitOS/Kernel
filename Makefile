@@ -416,6 +416,7 @@ include/config/kernel.release: include/config/auto.conf FORCE
 	$(Q)rm -f $@
 	$(Q)echo "$(KERNELVERSION)$$($(CONFIG_SHELL) $(srctree)/scripts/setlocalversion $(srctree))" > $@
 	$(Q)echo "$(NAME)" >> $@
+	$(Q)echo "`date`" >> $@
 
 
 ###

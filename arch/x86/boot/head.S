@@ -16,10 +16,10 @@
 #include <linux/tasks.h>
 #include <linux/segment.h>
 
-	.equ CL_MAGIC_ADDR, 0x90020
-	.equ CL_MAGIC, 0xA33F
-	.equ CL_BASE_ADDR, 0x90000
-	.equ CL_OFFSET, 0x90022
+#define CL_MAGIC_ADDR	0x90020
+#define CL_MAGIC	0xA33F
+#define CL_BASE_ADDR	0x90000
+#define CL_OFFSET	0x90022
 
 /*
  * swapper_pg_dir is the main page directory, address 0x00001000 (or at
@@ -28,13 +28,15 @@
 	.globl startup_32
 
 startup_32:
+	mov %ax, %ax
+	mov %ax, %ax
 	cld
-	movl $(KERNEL_DS), %eax  # 0x10, Global data segment.
-	mov %ax, %ds
-	mov %ax, %es
-	mov %ax, %fs
-	mov %ax, %gs
-	lss stack_start, %esp
+	movl $(KERNEL_DS),%eax
+	mov %ax,%ds
+	mov %ax,%es
+	mov %ax,%fs
+	mov %ax,%gs
+	lss stack_start,%esp
 /*
  * Clear BSS first so that there are no surprises...
  */
@@ -50,11 +52,10 @@ startup_32:
  * in 16-bit mode for the "real" operations.
  */
 	call setup_idt
-	xorl %eax, %eax
-1:
-	incl %eax                # Check that A20 really is enabled
-	movl %eax, 0x000000      # loop forever if it isn't
-	cmpl %eax, 0x100000
+	xorl %eax,%eax
+1:	incl %eax		# check that A20 really IS enabled
+	movl %eax,0x000000	# loop forever if it isn't
+	cmpl %eax,0x100000
 	je 1b
 /*
  * Initialize eflags.  Some BIOS's leave bits like NT set.  This would
@@ -172,12 +173,12 @@ check_x87:
 	movl $0,hard_math
 	clts
 	fninit
-	fstsw	%ax
-	cmpb	$0, %al
-	je	1f		/* no coprocessor: have to set bits */
-	movl	%cr0, %eax
-	xorl	$4, %eax	/* reset MP, set EM */
-	movl	%eax, %cr0
+	fstsw %ax
+	cmpb $0,%al
+	je 1f
+	movl %cr0,%eax		/* no coprocessor: have to set bits */
+	xorl $4,%eax		/* set EM */
+	movl %eax,%cr0
 	ret
 
 .align 2
@@ -279,7 +280,7 @@ empty_zero_page:
 /*
  * tmp_floppy_area is used by the floppy-driver when DMA cannot
  * reach to a buffer-block. It needs to be aligned, so that it isn't
- * on a 64KB border.
+ * on a 64kB border.
  */
 tmp_floppy_area:
 	.fill 1024,1,0
@@ -293,9 +294,9 @@ tmp_floppy_area:
 floppy_track_buffer:
 	.fill 512*2*18,1,0
 
-/* This is the default interrupt "handler" */
+/* This is the default interrupt "handler" :-) */
 int_msg:
-	.asciz "Unknown Interrupt\n"
+	.asciz "Unknown interrupt\n"
 .align 2
 ignore_int:
 	cld
@@ -305,10 +306,10 @@ ignore_int:
 	push %ds
 	push %es
 	push %fs
-	movl $(KERNEL_DS), %eax
-	mov %ax, %ds
-	mov %ax, %es
-	mov %ax, %fs
+	movl $(KERNEL_DS),%eax
+	mov %ax,%ds
+	mov %ax,%es
+	mov %ax,%fs
 	pushl $int_msg
 	call printk
 	popl %eax

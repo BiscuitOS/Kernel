@@ -63,4 +63,56 @@ config SWAP_DEV
 
 endif
 
+config KERNEL_CS
+	hex "Kernel code segment selector"
+	default 0x10
+	help
+	  In computing, a code segment, also known as a text 
+	  segment or simply as text, is a portion of an object
+	  file or the corresponding section of the program's 
+	  virtual address space that contains executable 
+	  instructions. The term "segment" comes from the memory 
+	  segment, which is a historical approach to memory 
+	  management that has been succeeded by paging. 
+	  KERNEL_CS used to store kernel code segment selector.
+
+config KERNEL_DS
+	hex "Kernel data segment selector"
+	default 0x18
+	help
+	  In computing, a data segment (often denoted .data) 
+	  is a portion of an object file or the corresponding 
+	  virtual address space of a program that contains 
+	  initialized static variables, that is, global variables
+	  and static local variables. The size of this segment is
+	  determined by the size of the values in the program's 
+	  source code, and does not change at run time. KERNEL_DS
+	  is used to specil data segment selector.
+
+config USER_CS
+        hex "Userland code segment selector"
+        default 0x23
+        help
+          In computing, a code segment, also known as a text
+          segment or simply as text, is a portion of an object
+          file or the corresponding section of the program's
+          virtual address space that contains executable
+          instructions. The term "segment" comes from the memory
+          segment, which is a historical approach to memory
+          management that has been succeeded by paging.
+          USER_CS used to store user code segment selector.
+
+config USER_DS
+        hex "Userland data segment selector"
+        default 0x2B
+        help
+          In computing, a data segment (often denoted .data)
+          is a portion of an object file or the corresponding
+          virtual address space of a program that contains
+          initialized static variables, that is, global variables
+          and static local variables. The size of this segment is
+          determined by the size of the values in the program's
+          source code, and does not change at run time. USER_DS
+          is used to specil data segment selector.
+
 endmenu # "General setup"

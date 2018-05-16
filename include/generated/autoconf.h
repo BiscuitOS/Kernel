@@ -1,14 +1,15 @@
 /*
  * Automatically generated C config: don't edit
- * BiscuitOS/x86  Kernel Configuration
+ * BiscuitOS/x86 1.0.1 Kernel Configuration
  */
 #define CONFIG_FS_EXT 1
 #define CONFIG_BOOT_SYSSEG 0x1000
 #define CONFIG_X86 1
+#define CONFIG_KERNEL_DS 0x18
 #define CONFIG_FS_MINIX 1
-#define CONFIG_QEMU_MEMORY_SIZE 16
+#define CONFIG_QEMU_MEMORY_SIZE 32
 #define CONFIG_HARDDISK 1
-#define CONFIG_SWAP_DEV 0x303
+#define CONFIG_SWAP_DEV 0x302
 #define CONFIG_QEMU_BOOT_FLOPPY 1
 #define CONFIG_BOOT_SETUPSEG 0x9020
 #define CONFIG_FS_MSDOS 1
@@ -16,10 +17,15 @@
 #define CONFIG_FS_PROC 1
 #define CONFIG_GDB 1
 #define CONFIG_DEBUG_KERNEL 1
+#define CONFIG_LOCALVERSION ""
 #define CONFIG_BOOT_LOGO "Loading BiscuitOS"
 #define CONFIG_DEBUG_BOOTLOADER 1
+#define CONFIG_KERNEL_CS 0x10
+#define CONFIG_USER_DS 0x2B
 #define CONFIG_QEMU 1
 #define CONFIG_BOOT_INITSEG 0x9000
 #define CONFIG_SYSTEM_SIZE 0x8000
 #define CONFIG_ROOT_DEV 0x301
+#define CONFIG_CROSS_COMPILE ""
+#define CONFIG_USER_CS 0x23
 #define CONFIG_EMULATE_RUNNING_SYSTEM 1

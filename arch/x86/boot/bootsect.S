@@ -168,7 +168,7 @@ ok_load_setup:
 
 	mov $20, %cx
 	mov $0x0007, %bx   # page 0, attribute 7 (normal)
-	xor %dx, %dx
+	mov $0x0100, %dx
 #	lea msg1, %bp
 	mov $msg1, %bp
 	mov $0x1301, %ax

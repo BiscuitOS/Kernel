@@ -27,11 +27,12 @@
 # (niemann@rubdv15.ETDV.Ruhr-Uni-Bochum.De)
 
 # NOTE! These had better be the same as in bootsect.s!
+#include <linux/config.h>
+#include <linux/segment.h>
 
-	.equ INITSEG, 0x9000	# we move boot here - out of the way
-	.equ SYSSEG, 0x1000	# system loaded at 0x10000 (65536).
-	.equ SETUPSEG, 0x9020	# this is the current segment
-	.equ NORMAL_VGA, 0xffff
+.equ INITSEG,	DEF_INITSEG	# we move boot here - out of the way
+.equ SYSSEG,	DEF_SYSSEG	# system loaded at 0x10000 (65536).
+.equ SETUPSEG,	DEF_SETUPSEG	# this is the current segment
 
 	.global _start, begtext, begdata, begbss, endtext, enddata, endbss
 	.text
@@ -50,10 +51,7 @@ _start:
 
 	mov	$INITSEG, %ax	# this is done in bootsect already, but...
 	mov	%ax, %ds
-	mov	$0x03, %ah
-	xor	%bh, %bh
-	int	$0x10
-	mov	%dx, %ds:0
+
 # Get memory size (extended mem, kB)
 
 	mov	$0x88, %ah 
@@ -141,6 +139,8 @@ novideo_check:
 	cmp	$3, %ah
 	je	is_disk1
 no_disk1:
+	mov	%ax, %ax
+	mov	%ax, %ax
 	mov	$INITSEG, %ax
 	mov	%ax, %es
 	mov	$0x0090, %di
@@ -155,10 +155,14 @@ is_disk1:
 
 	mov	$INITSEG, %ax
 	mov	%ax, %ds
+	xor	%ax, %ax
+	mov	%ax, %ds:0x1ff
 #	mov	$0x0, %ds:0x1ff	# default is no pointing device
 	int	$0x11		# int 0x11: equipment determination
 	test	$0x04, %al	# check if pointing device installed
 	jz	no_psmouse
+	mov	$0xaa, %ax
+	mov	%ax, %ds:0x1ff
 #	mov	$0xaa, %ds:0x1ff	# device present
 no_psmouse:
 # now we want to move to protected mode ...
@@ -169,19 +173,19 @@ no_psmouse:
 
 # first we move the system to it's rightful place
 
-	mov	$0x100, %ax	# start of destination segment
+	mov	$0x0, %ax	# start of destination segment
 	mov	$0x1000, %bx	# start of source segment
 	cld			# 'direction'=0, movs moves forward
 do_move:
 	mov	%ax, %es	# destination segment
-	add	$0x100, %ax
+	add	$0x1000, %ax
 	cmp	$0x9000, %ax
 	jz	end_move
 	mov	%bx, %ds	# source segment
-	add	$0x100, %bx
+	add	$0x1000, %bx
 	sub	%di, %di
 	sub	%si, %si
-	mov 	$0x800, %cx
+	mov 	$0x8000, %cx
 	rep
 	movsw
 	jmp	do_move
@@ -196,16 +200,13 @@ end_move:
 
 # that was painless, now we enable A20
 
-	#call	empty_8042	# 8042 is the keyboard controller
-	#mov	$0xD1, %al	# command write
-	#out	%al, $0x64
-	#call	empty_8042
-	#mov	$0xDF, %al	# A20 on
-	#out	%al, $0x60
-	#call	empty_8042
-	inb     $0x92, %al	# open A20 line(Fast Gate A20).
-	orb     $0b00000010, %al
-	outb    %al, $0x92
+	call	empty_8042
+	mov	$0xD1, %al	# command write
+	out	%al, $0x64
+	call	empty_8042
+	mov	$0xDF, %al	# A20 on
+	out	%al, $0x60
+	call	empty_8042
 
 # make sure any possible coprocessor is properly reset..
 
@@ -271,10 +272,9 @@ end_move:
 	bts	$0, %eax	# turn on the PE-bit 
 	mov	%eax, %cr0	# protection enabled
 				
-
 	jmp	flush_instr
 flush_instr:
-	ljmp	$0x10, $0x1000	# jmp offset 1000 of segment 0x10 (cs)
+	ljmp	$KERNEL_CS, $0x0	# jmp offset 1000 of segment 0x10 (cs)
 # This routine checks that the keyboard command queue is empty
 # (after emptying the output buffers)
 #
@@ -818,6 +818,8 @@ dscoakvga:	.word	0x2819, 0x5019, 0x843c, 0x8419, 0x842C
 
 gdt:
 	.word	0,0,0,0		# dummy
+
+	.word	0,0,0,0		# unused
 
 	.word	0x07FF		# 8Mb - limit=2047 (2048*4096=8Mb)
 	.word	0x0000		# base address=0
