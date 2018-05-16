@@ -2,8 +2,12 @@
 config X86
 	def_bool y
 
+source "init/Kconfig"
+
 source "arch/x86/boot/Kconfig"
 
 source "drivers/Kconfig"
 
 source "tools/Kconfig"
+
+source "fs/Kconfig"

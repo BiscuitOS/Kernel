@@ -8,11 +8,10 @@
 # it under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 
-VERSION = 0
-PATCHLEVEL = 1
+VERSION = 1
+PATCHLEVEL = 0
 SUBLEVEL = 1
-BOSLEVEL = 3
-NAME = Jon Snow
+NAME = GOKU
 
 # Do not:
 # o  use make's built-in rules and variables
@@ -212,10 +211,10 @@ KBUILD_AFLAGS   := -D__ASSEMBLY__
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
 KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
-KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)$(if $(BOSLEVEL),.$(BOSLEVEL))))$(EXTRAVERSION)
+KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
 
 export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
-export CPP AR NM STRIP OBJCOPY OBJDUMP
+export CPP AR NM STRIP OBJCOPY OBJDUMP KERNELVERSION
 export MAKE AWK GENKSYMS INSTALLKERNEL PERL UTS_MACHINE
 export HOSTCXX HOSTCXXFLAGS ASFLAGS CPPFLAGS
 
@@ -377,7 +376,7 @@ quiet_cmd_map = NM      System.map
       cmd_map = $(NM) $@ | grep -v \
                     '\(compiled\)\|\(\.o$$\)\|\( [aU] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)'| sort > System.map
 
-vmlinux: bootloader $(vmlinux-all)
+vmlinux: bootloader $(vmlinux-all) include/config/kernel.release
 	$(Q)$(call if_changed,vmlinux)
 	$(Q)$(call if_changed,map)
 	$(Q)$(call cmd_mkimage)
@@ -411,6 +410,13 @@ ifdef CONFIG_DEBUG_KERNEL
 # Running or Debugging BiscuitOS
   include tools/Makefile
 endif
+
+# Store (new) KERNELRELASE string in include/config/kernel.release
+include/config/kernel.release: include/config/auto.conf FORCE
+	$(Q)rm -f $@
+	$(Q)echo "$(KERNELVERSION)$$($(CONFIG_SHELL) $(srctree)/scripts/setlocalversion $(srctree))" > $@
+	$(Q)echo "$(NAME)" >> $@
+
 
 ###
 # Cleaning is done on three levels.
