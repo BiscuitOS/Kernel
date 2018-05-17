@@ -10,18 +10,16 @@ ENTRY(startup_32)
 SECTIONS
 {
 	. = 0x00;
-	. = ALIGN(4);
 	.text	: {
 		*(.text) 
-		PROVIDE (end = .);
 	}
-	. = ALIGN(4);
 	.data	: { 
 		*(.data) 
-		PROVIDE (__edata = .);
 	}
+	PROVIDE (__edata = .);
 	.bss	: { 
 		*(.bss) 
 	}
+	PROVIDE (end = .);
 	PROVIDE (__end = .);
 }

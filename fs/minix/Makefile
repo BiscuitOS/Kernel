@@ -1,8 +1,8 @@
-obj-$(CONFIG_FS_MINIX) += bitmap.o
-obj-$(CONFIG_FS_MINIX) += inode.o
-obj-$(CONFIG_FS_MINIX) += namei.o
-obj-$(CONFIG_FS_MINIX) += truncate.o
-obj-$(CONFIG_FS_MINIX) += dir.o
-obj-$(CONFIG_FS_MINIX) += file.o
-obj-$(CONFIG_FS_MINIX) += symlink.o
-obj-$(CONFIG_FS_MINIX) += fsync.o
+obj-$(CONFIG_MINIX_FS) += bitmap.o
+obj-$(CONFIG_MINIX_FS) += inode.o
+obj-$(CONFIG_MINIX_FS) += namei.o
+obj-$(CONFIG_MINIX_FS) += truncate.o
+obj-$(CONFIG_MINIX_FS) += dir.o
+obj-$(CONFIG_MINIX_FS) += file.o
+obj-$(CONFIG_MINIX_FS) += symlink.o
+obj-$(CONFIG_MINIX_FS) += fsync.o

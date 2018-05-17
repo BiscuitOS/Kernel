@@ -4,7 +4,7 @@
 
 menu "MINIX Filesystem"
 
-config FS_MINIX
+config MINIX_FS
 	bool "MINIX V1 Filesystem"
 	help
 	  MINIX was written from scratch by Andrew S. Tanenbaum in the 

@@ -126,6 +126,22 @@ bad_bh:
  * flag when installing a handler. Finally, one "bad interrupt" handler, that
  * is used when no handler is present.
  */
+BUILD_IRQ(FIRST,0,0x01)
+BUILD_IRQ(FIRST,1,0x02)
+BUILD_IRQ(FIRST,2,0x04)
+BUILD_IRQ(FIRST,3,0x08)
+BUILD_IRQ(FIRST,4,0x10)
+BUILD_IRQ(FIRST,5,0x20)
+BUILD_IRQ(FIRST,6,0x40)
+BUILD_IRQ(FIRST,7,0x80)
+BUILD_IRQ(SECOND,8,0x01)
+BUILD_IRQ(SECOND,9,0x02)
+BUILD_IRQ(SECOND,10,0x04)
+BUILD_IRQ(SECOND,11,0x08)
+BUILD_IRQ(SECOND,12,0x10)
+BUILD_IRQ(SECOND,13,0x20)
+BUILD_IRQ(SECOND,14,0x40)
+BUILD_IRQ(SECOND,15,0x80)
 
 /*
  * Pointers to the low-level handlers: first the general ones, then the

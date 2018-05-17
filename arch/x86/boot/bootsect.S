@@ -7,7 +7,7 @@
 # 0x7F00 is 0x7F000 bytes = 508kB, more than enough for current
 # versions of linux which compress the kernel
 #include <linux/config.h>
-	.equ SYSSIZE, 0x8000
+.equ SYSSIZE,	DEF_SYSSIZE
 
 #
 #	bootsect.s		Copyright (C) 1991, 1992 Linus Torvalds
@@ -40,22 +40,31 @@
 	begbss:
 	.text
 
-.equ ROOT_DEV,	DEF_ROOT_DEV	# Root-device 
-.equ SWAP_DEV,	DEF_SWAP_DEV	# SWAP-device
 .equ SETUPLEN,	4		# nr of setup-sectors
 .equ BOOTSEG,	0x07C0		# original address of boot-sector
 .equ INITSEG,	DEF_INITSEG	# we move boot here - out of the way
 .equ SETUPSEG,	DEF_SETUPSEG	# setup starts here
 .equ SYSSEG,	DEF_SYSSEG	# system loaded at 0x10000 (65536).
 
+#ifdef CONFIG_ROOT_DEV
+.equ	ROOT_DEV, CONFIG_ROOT_DEV
+#else
+.equ	ROOT_DEV, 0x301
+#endif
+#ifdef CONFIG_SWAP_DEV
+.equ	SWAP_DEV, CONFIG_SWAP_DEV
+#else
+.equ	SWAP_DEV, 0x302
+#endif
+
 	# Normalize the start address
 	ljmp	$BOOTSEG, $_start
 
 _start:
 	mov	$BOOTSEG, %ax
-	mov	%ax, %ds
+	mov	%ax, %ds	# Source
 	mov	$INITSEG, %ax
-	mov	%ax, %es
+	mov	%ax, %es	# Destination 
 	mov	$256, %cx
 	sub	%si, %si
 	sub	%di, %di
@@ -65,13 +74,19 @@ _start:
 	ljmp	$INITSEG, $go
 go:
 	mov	%cs, %ax
-	mov	$0x3FF4, %dx
+	mov	$0x3FF4, %dx	# 0x4000 is arbitrary value >= length of
+                                # bootsect + length of setup + room for stack
+                                # 12 is disk parm size
+
+# bde - changed 0xff00 to 0x4000 to use debugger at 0x6400 up (bde).  We
+# wouldn't have to worry about this if we checked the top of memory.  Also
+# my BIOS can be configured to put the wini drive tables in high memory
+# instead of in the vector table.  The old stack might have clobbered the
+# drive table.
 	mov	%ax, %ds
 	mov	%ax, %es
-	push	%ax
 
-# put stack at 0x9ff00 - 12
-	mov	%ax, %ss
+	mov	%ax, %ss	# put stack at INITSEG:0x4000-12.
 	mov	%dx, %sp
 
 #
@@ -113,7 +128,6 @@ go:
 	#seg	%ds
 	mov	%es, %ds:2(%bx)
 
-	pop	%ax	# Bad pop operation!
 	push	%cs
 	pop	%ax
 	mov	%ax, %ds
@@ -127,10 +141,9 @@ go:
 # Note that 'es' is already set up
 
 load_setup:
-	# If use hard disk, dirver is 0x80
-	xor %dx, %dx       # head 0
-	mov $0x0002, %cx   # sector 2, track 0
-	mov $0x0200, %bx   # address = 512, in INITSEG
+	xor	%dx, %dx	# drive 0, head 0
+	mov	$0x0002, %cx	# sector 2, track 0
+	mov	$0x0200, %bx	# address = 512, in INITSEG
 	.equ     AX, 0x200+SETUPLEN
 	mov     $AX, %ax   # service 2, nr of sectors
 	int $0x13          # read it

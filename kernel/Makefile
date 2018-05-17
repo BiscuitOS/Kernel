@@ -3,7 +3,7 @@ obj-y += vsprintf.o
 obj-y += printk.o
 obj-y += panic.o
 obj-y += traps.o
-obj-y += sys_call.o
+obj-y += system.o
 obj-y += signal.o
 obj-y += mktime.o
 obj-y += fork.o
@@ -21,3 +21,9 @@ obj-y += time.o
 
 $(obj)/%.o: $(obj)/%.s FORCE
 	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<
+
+$(obj)/system.s: $(obj)/sys_call.S FORCE
+	$(Q)$(CPP) -traditional -I$(srctree)/include $< -o $@
+
+clean:
+	$(Q)rm -rf system.*

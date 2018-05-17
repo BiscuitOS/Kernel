@@ -40,6 +40,8 @@
  *	40(%esp) - %oldss
  */
 
+#include <linux/segment.h>
+
 EBX		= 0x00
 ECX		= 0x04
 EDX		= 0x08
@@ -78,47 +80,59 @@ dbgreg7		= 56
 
 ENOSYS = 38
 
-	.equ KERNEL_DS, 0x10
-	.equ KERNEL_CS, 0x10
-	.equ USER_DS, 0x17
-
-.globl system_call, lcall7
+.globl system_call,lcall7
 .globl device_not_available, coprocessor_error
-.globl divide_error, debug, nmi, int3, overflow, bounds, invalid_op
-.globl double_fault, coprocessor_segment_overrun
-.globl invalid_TSS, segment_not_present, stack_segment
-.globl general_protection, reserved
-.globl alignment_check, page_fault
-.globl ret_from_sys_call
-.globl symbol_table_size, symbol_table
+.globl divide_error,debug,nmi,int3,overflow,bounds,invalid_op
+.globl double_fault,coprocessor_segment_overrun
+.globl invalid_TSS,segment_not_present,stack_segment
+.globl general_protection,reserved
+.globl alignment_check,page_fault
+.globl ret_from_sys_call, symbol_table_size, symbol_table
 
-symbol_table_size:
-        .long 20
+#define SAVE_ALL \
+	cld; \
+	push %gs; \
+	push %fs; \
+	push %es; \
+	push %ds; \
+	pushl %eax; \
+	pushl %ebp; \
+	pushl %edi; \
+	pushl %esi; \
+	pushl %edx; \
+	pushl %ecx; \
+	pushl %ebx; \
+	movl $(KERNEL_DS),%edx; \
+	mov %dx,%ds; \
+	mov %dx,%es; \
+	movl $(USER_DS),%edx; \
+	mov %dx,%fs;
 
-symbol_table:
-	.long 40
+#define RESTORE_ALL \
+	cmpw $(KERNEL_CS),CS(%esp); \
+	je 1f;   \
+	movl current,%eax; \
+	movl dbgreg7(%eax),%ebx; \
+	movl %ebx,%db7;	\
+1:	popl %ebx; \
+	popl %ecx; \
+	popl %edx; \
+	popl %esi; \
+	popl %edi; \
+	popl %ebp; \
+	popl %eax; \
+	pop %ds; \
+	pop %es; \
+	pop %fs; \
+	pop %gs; \
+	addl $4,%esp; \
+	iret
 
 .align 4
 lcall7:
 	pushfl			# We get a different stack layout with call gates,
 	pushl %eax		# which has to be cleaned up later..
-	cld
-	push %gs
-	push %fs
-	push %es
-	push %ds
-	pushl %eax
-	pushl %ebp
-	pushl %edi
-	pushl %esi
-	pushl %edx
-	pushl %ecx
-	pushl %ebx
-	movl $(KERNEL_DS),%edx
-	mov %dx,%ds
-	mov %dx,%es
-	movl $(USER_DS),%edx
-	mov %dx,%fs;
+	SAVE_ALL
 	movl EIP(%esp),%eax	# due to call gates, this is eflags, not eip..
 	movl CS(%esp),%edx	# this is eip..
 	movl EFLAGS(%esp),%ecx	# and this is cs..
@@ -127,7 +141,7 @@ lcall7:
 	movl %ecx,CS(%esp)	#
 	movl %esp,%eax
 	pushl %eax
-//	call iABI_emulate
+#	call iABI_emulate
 	popl %eax
 	jmp ret_from_sys_call
 
@@ -140,32 +154,14 @@ handle_bottom_half:
 	popfl
 	decl intr_count
 	jmp 9f
-
 .align 4
 reschedule:
 	pushl $ret_from_sys_call
 	jmp schedule
 .align 4
 system_call:
-	pushl %eax		# save orig_eax
-        cld
-        push %gs
-        push %fs
-        push %es
-        push %ds
-        pushl %eax
-        pushl %ebp
-        pushl %edi
-        pushl %esi
-        pushl %edx
-        pushl %ecx
-        pushl %ebx
-        movl $(KERNEL_DS),%edx
-        mov %dx,%ds
-        mov %dx,%es
-        movl $(USER_DS),%edx
-        mov %dx,%fs
-
+	pushl %eax			# save orig_eax
+	SAVE_ALL
 	movl $-ENOSYS,EAX(%esp)
 	cmpl NR_syscalls,%eax
 	jae ret_from_sys_call
@@ -227,25 +223,7 @@ ret_from_sys_call:
 	notl %ecx
 	andl signal(%eax),%ecx
 	jne signal_return
-2:	
-	cmpw $(KERNEL_CS),CS(%esp)
-	je 1f
-	movl current,%eax
-	movl dbgreg7(%eax),%ebx
-	movl %ebx,%db7
-1:	popl %ebx
-	popl %ecx
-	popl %edx
-	popl %esi
-	popl %edi
-	popl %ebp
-	popl %eax
-	pop %ds
-	pop %es
-	pop %fs
-	pop %gs
-	addl $4,%esp
-	iret
+2:	RESTORE_ALL
 .align 4
 signal_return:
 	movl %esp,%ecx
@@ -256,24 +234,7 @@ signal_return:
 	call do_signal
 	popl %ebx
 	popl %ebx
-        cmpw $(KERNEL_CS),CS(%esp)
-        je 1f
-        movl current,%eax
-        movl dbgreg7(%eax),%ebx
-        movl %ebx,%db7
-1:      popl %ebx
-        popl %ecx
-        popl %edx
-        popl %esi
-        popl %edi
-        popl %ebp
-        popl %eax
-        pop %ds
-        pop %es
-        pop %fs
-        pop %gs
-        addl $4,%esp
-        iret
+	RESTORE_ALL
 .align 4
 v86_signal_return:
 	call save_v86_state
@@ -283,28 +244,11 @@ v86_signal_return:
 	call do_signal
 	popl %ebx
 	popl %ebx
-        cmpw $(KERNEL_CS),CS(%esp)
-        je 1f
-        movl current,%eax
-        movl dbgreg7(%eax),%ebx
-        movl %ebx,%db7
-1:      popl %ebx
-        popl %ecx
-        popl %edx
-        popl %esi
-        popl %edi
-        popl %ebp
-        popl %eax
-        pop %ds
-        pop %es
-        pop %fs
-        pop %gs
-        addl $4,%esp
-        iret
+	RESTORE_ALL
 
 .align 4
 divide_error:
-	pushl $0 		# no error code
+	pushl $0		# no error code
 	pushl $do_divide_error
 .align 4,0x90
 error_code:
@@ -352,36 +296,20 @@ coprocessor_error:
 .align 4
 device_not_available:
 	pushl $-1		# mark this as an int
-        cld
-        push %gs
-        push %fs
-        push %es
-        push %ds
-        pushl %eax
-        pushl %ebp
-        pushl %edi
-        pushl %esi
-        pushl %edx
-        pushl %ecx
-        pushl %ebx
-        movl $(KERNEL_DS),%edx
-        mov %dx,%ds
-        mov %dx,%es
-        movl $(USER_DS),%edx
-        mov %dx,%fs
+	SAVE_ALL
 	pushl $ret_from_sys_call
 	movl %cr0,%eax
 	testl $0x4,%eax			# EM (math emulation bit)
 	je math_state_restore
 	pushl $0		# temporary storage for ORIG_EIP
-	#call math_emulate
+	call math_emulate
 	addl $4,%esp
 	ret
 
 .align 4
 debug:
 	pushl $0
-	pushl $do_debug		# _do_debug
+	pushl $do_debug
 	jmp error_code
 
 .align 4
@@ -460,3 +388,9 @@ alignment_check:
 page_fault:
 	pushl $do_page_fault
 	jmp error_code
+
+.align 4
+symbol_table_size:
+
+.align 4
+symbol_table:

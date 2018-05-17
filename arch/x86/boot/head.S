@@ -28,8 +28,6 @@
 	.globl startup_32
 
 startup_32:
-	mov %ax, %ax
-	mov %ax, %ax
 	cld
 	movl $(KERNEL_DS),%eax
 	mov %ax,%ds

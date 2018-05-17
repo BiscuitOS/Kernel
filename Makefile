@@ -456,6 +456,7 @@ clean: $(clean-dirs) clean-bootloader
 
 clean-bootloader:
 	$(Q)$(MAKE) -C $(srctree)/arch/$(SRCARCH)/boot clean
+	$(Q)$(MAKE) -C $(srctree)/kernel clean
 
 # mrproper - Delete all generated files, including .config
 #

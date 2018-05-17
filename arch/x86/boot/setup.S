@@ -173,19 +173,19 @@ no_psmouse:
 
 # first we move the system to it's rightful place
 
-	mov	$0x0, %ax	# start of destination segment
+	mov	$0x0000, %ax	# start of destination segment
 	mov	$0x1000, %bx	# start of source segment
 	cld			# 'direction'=0, movs moves forward
 do_move:
 	mov	%ax, %es	# destination segment
-	add	$0x1000, %ax
+	add	$0x100, %ax
 	cmp	$0x9000, %ax
 	jz	end_move
 	mov	%bx, %ds	# source segment
-	add	$0x1000, %bx
+	add	$0x100, %bx
 	sub	%di, %di
 	sub	%si, %si
-	mov 	$0x8000, %cx
+	mov 	$0x800, %cx
 	rep
 	movsw
 	jmp	do_move
