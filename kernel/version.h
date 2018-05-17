@@ -1,5 +1,5 @@
-#define UTS_RELEASE "0.99-01"
-#define UTS_VERSION "10/16/92"
+#define UTS_RELEASE "1.0-1"
+#define UTS_VERSION "10/18/92"
 #define LINUX_COMPILE_TIME "20:36:17"
 #define LINUX_COMPILE_BY "root"
 #define LINUX_COMPILE_HOST "home"

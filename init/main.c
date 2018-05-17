@@ -177,9 +177,7 @@ struct {
 #ifdef CONFIG_INET
 	{ "ether=", eth_setup },
 #endif
-#ifdef CONFIG_BLK_DEV_HD
 	{ "hd=", hd_setup },
-#endif
 #ifdef CONFIG_BUSMOUSE
 	{ "bmouse=", bmouse_setup },
 #endif
