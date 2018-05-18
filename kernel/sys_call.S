@@ -388,9 +388,3 @@ alignment_check:
 page_fault:
 	pushl $do_page_fault
 	jmp error_code
-
-.align 4
-symbol_table_size:
-
-.align 4
-symbol_table:

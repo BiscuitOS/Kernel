@@ -18,6 +18,7 @@ obj-y += info.o
 obj-y += ldt.o
 obj-y += module.o
 obj-y += time.o
+obj-y += ksyms2.o
 
 $(obj)/%.o: $(obj)/%.s FORCE
 	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<
@@ -25,5 +26,11 @@ $(obj)/%.o: $(obj)/%.s FORCE
 $(obj)/system.s: $(obj)/sys_call.S FORCE
 	$(Q)$(CPP) -traditional -I$(srctree)/include $< -o $@
 
+$(obj)/ksyms.list: $(obj)/ksyms.S FORCE
+	$(Q)$(CPP) -traditional -I$(srctree)/include $< -o $@
+
+$(obj)/ksyms2.s: $(obj)/ksyms.sh $(obj)/ksyms.list FORCE
+	$(Q)$(CONFIG_SHELL) $(obj)/ksyms.sh $(obj)/ksyms.list > $@
+
 clean:
-	$(Q)rm -rf system.*
+	$(Q)rm -rf *.s
