@@ -376,7 +376,7 @@ quiet_cmd_map = NM      System.map
       cmd_map = $(NM) $@ | grep -v \
                     '\(compiled\)\|\(\.o$$\)\|\( [aU] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)'| sort > System.map
 
-vmlinux: bootloader $(vmlinux-all) include/config/kernel.release
+vmlinux: vmlinux.lds bootloader $(vmlinux-all) include/config/kernel.release
 	$(Q)$(call if_changed,vmlinux)
 	$(Q)$(call if_changed,map)
 	$(Q)$(call cmd_mkimage)
@@ -392,6 +392,14 @@ bootloader: FORCE
 else
 bootloader: ;
 endif
+
+#### 
+# Vmlinux lds
+vmlinux.lds:
+	$(Q)$(CPP) -traditional -I$(srctree)/include \
+           -P -C -U$(ARCH) -D__ASSEMBLY__ -DLINKER_SCRIPT \
+           arch/$(SRCARCH)/kernel/vmlinux.lds.S \
+	-o arch/$(SRCARCH)/kernel/vmlinux.lds
 
 # The actual objects are generated when descending, 
 # make sure no implicit rule kicks in
@@ -444,19 +452,19 @@ PHONY += $(clean-dirs) clean archclean
 $(clean-dirs):
 	$(Q)$(MAKE) $(clean)=$(patsubst _clean_%,%,$@)
 
-clean: $(clean-dirs) clean-bootloader
+clean: $(clean-dirs)
 	$(call cmd,rmdirs)
 	$(call cmd,rmfiles)
 	@find . $(RCS_FIND_IGNORE) \
 		\( -name '*.[oa]' -o -name '.*.cmd' \
 		-o -name '.*.d' -o -name '.*.tmp' -o -name '*.mod.c' \
 		-o -name modules.builtin -o -name '.tmp_*.o.*' \
-		-o -name .debug.vmlinux \
+		-o -name '.debug.*' \
+		-o -name vmlinux.lds \
+		-o -name 'bootsect' -o -name 'setup' \
+		-o -name '.debug_*' -o -name 'bootloader' \
+		-o -name '*.s' -o -name '*.list'\
 		-o -name '*.gcno' \) -type f -print | xargs rm -f
-
-clean-bootloader:
-	$(Q)$(MAKE) -C $(srctree)/arch/$(SRCARCH)/boot clean
-	$(Q)$(MAKE) -C $(srctree)/kernel clean
 
 # mrproper - Delete all generated files, including .config
 #

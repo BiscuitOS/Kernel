@@ -18,6 +18,9 @@ vmlinux.bin
 *.cmd
 *.img
 *.bin
+*.lds
+*.s
+*.list
 
 # Execte file
 

@@ -144,7 +144,10 @@ static char * envp_rc[] = { "HOME=/", term, NULL };
 static char * argv[] = { "-/bin/sh",NULL };
 static char * envp[] = { "HOME=/usr/root", term, NULL };
 
-struct drive_info_struct { char dummy[32]; } drive_info;
+struct drive_info_struct { 
+    char dummy[32]; 
+} drive_info;
+
 struct screen_info screen_info;
 
 unsigned char aux_device_present;
@@ -351,17 +354,18 @@ static void copro_timeout(void)
 
 asmlinkage void start_kernel(void)
 {
-/*
- * Interrupts are still disabled. Do necessary setups, then
- * enable them
- */
-	set_call_gate(&default_ldt,lcall7);
- 	ROOT_DEV = ORIG_ROOT_DEV;
- 	drive_info = DRIVE_INFO;
- 	screen_info = SCREEN_INFO;
-	aux_device_present = AUX_DEVICE_INFO;
-	memory_end = (1<<20) + (EXT_MEM_K<<10);
-	memory_end &= PAGE_MASK;
+    /*
+     * Interrupts are still disabled. Do necessary setups, then
+     * enable them
+     */
+    printk("\n\n\n\n\n");
+    set_call_gate(&default_ldt,lcall7);
+    ROOT_DEV = ORIG_ROOT_DEV;
+    drive_info = DRIVE_INFO;
+    screen_info = SCREEN_INFO;
+    aux_device_present = AUX_DEVICE_INFO;
+    memory_end = (1<<20) + (EXT_MEM_K<<10);
+    memory_end &= PAGE_MASK;
 	ramdisk_size = RAMDISK_SIZE;
 	copy_options(command_line,COMMAND_LINE);
 #ifdef CONFIG_MAX_16M

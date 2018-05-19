@@ -1,9 +1,11 @@
 /*
- * vmlinux.ld
+ * vmlinux.lds.S
  *
  * Linker script for the i386 vmlinux.
  */
-OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
+#include <linux/config.h>
+
+OUTPUT_FORMAT(CONFIG_OUTPUT_FORMAT, CONFIG_OUTPUT_FORMAT, CONFIG_OUTPUT_FORMAT)
 OUTPUT_ARCH(i386)
 ENTRY(startup_32)
 

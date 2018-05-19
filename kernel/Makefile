@@ -31,6 +31,3 @@ $(obj)/ksyms.list: $(obj)/ksyms.S FORCE
 
 $(obj)/ksyms2.s: $(obj)/ksyms.sh $(obj)/ksyms.list FORCE
 	$(Q)$(CONFIG_SHELL) $(obj)/ksyms.sh $(obj)/ksyms.list > $@
-
-clean:
-	$(Q)rm -rf *.s *.list
