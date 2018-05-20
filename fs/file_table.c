@@ -63,8 +63,8 @@ void grow_files(void)
 
 unsigned long file_table_init(unsigned long start, unsigned long end)
 {
-	first_file = NULL;
-	return start;
+    first_file = NULL;
+    return start;
 }
 
 struct file * get_empty_filp(void)

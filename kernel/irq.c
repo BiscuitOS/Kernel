@@ -218,7 +218,7 @@ asmlinkage void do_fast_IRQ(int irq)
 	sa->sa_handler(irq);
 }
 
-int irqaction(unsigned int irq, struct sigaction * new_sa)
+int irqaction(unsigned int irq, struct sigaction *new_sa)
 {
 	struct sigaction * sa;
 	unsigned long flags;
@@ -322,20 +322,20 @@ static struct sigaction ignore_IRQ = {
 
 void init_IRQ(void)
 {
-	int i;
+    int i;
 
-	for (i = 0; i < 16 ; i++)
-		set_intr_gate(0x20+i,bad_interrupt[i]);
-	if (irqaction(2,&ignore_IRQ))
-		printk("Unable to get IRQ2 for cascade\n");
+    for (i = 0; i < 16 ; i++)
+        set_intr_gate(0x20 + i, bad_interrupt[i]);
+    if (irqaction(2, &ignore_IRQ))
+        printk("Unable to get IRQ2 for cascade\n");
 	if (request_irq(13,math_error_irq))
-		printk("Unable to get IRQ13 for math-error handler\n");
+            printk("Unable to get IRQ13 for math-error handler\n");
 
-	/* intialize the bottom half routines. */
-	for (i = 0; i < 32; i++) {
-		bh_base[i].routine = NULL;
-		bh_base[i].data = NULL;
-	}
-	bh_active = 0;
-	intr_count = 0;
+     /* intialize the bottom half routines. */
+     for (i = 0; i < 32; i++) {
+         bh_base[i].routine = NULL;
+         bh_base[i].data = NULL;
+     }
+     bh_active = 0;
+     intr_count = 0;
 }

@@ -220,15 +220,19 @@ void invalidate_buffers(dev_t dev)
 void check_disk_change(dev_t dev)
 {
 	int i;
+#ifdef CONFIG_FLOPPY
 	struct buffer_head * bh;
+#endif
 
 	switch(MAJOR(dev)){
+#ifdef CONFIG_FLOPPY
 	case FLOPPY_MAJOR:
 		if (!(bh = getblk(dev,0,1024)))
 			return;
 		i = floppy_change(bh);
 		brelse(bh);
 		break;
+#endif
 
 #if defined(CONFIG_BLK_DEV_SD) && defined(CONFIG_SCSI)
          case SCSI_DISK_MAJOR:
@@ -1010,17 +1014,17 @@ void show_buffers(void)
  */
 void buffer_init(void)
 {
-	int i;
+    int i;
 
-	if (high_memory >= 4*1024*1024)
-		min_free_pages = 200;
-	else
-		min_free_pages = 20;
-	for (i = 0 ; i < NR_HASH ; i++)
-		hash_table[i] = NULL;
-	free_list = 0;
-	grow_buffers(GFP_KERNEL, BLOCK_SIZE);
-	if (!free_list)
-		panic("VFS: Unable to initialize buffer free list!");
-	return;
+    if (high_memory >= 4*1024*1024)
+        min_free_pages = 200;
+    else
+        min_free_pages = 20;
+    for (i = 0 ; i < NR_HASH ; i++)
+        hash_table[i] = NULL;
+    free_list = 0;
+    grow_buffers(GFP_KERNEL, BLOCK_SIZE);
+    if (!free_list)
+        panic("VFS: Unable to initialize buffer free list!");
+    return;
 }

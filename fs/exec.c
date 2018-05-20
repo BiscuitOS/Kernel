@@ -535,173 +535,174 @@ void flush_old_exec(struct linux_binprm * bprm)
 /*
  * sys_execve() executes a new program.
  */
-static int do_execve(char * filename, char ** argv, char ** envp, struct pt_regs * regs)
+static int do_execve(char *filename, char **argv, char **envp, 
+                     struct pt_regs *regs)
 {
-	struct linux_binprm bprm;
-	struct linux_binfmt * fmt;
-	unsigned long old_fs;
-	int i;
-	int retval;
-	int sh_bang = 0;
+    struct linux_binprm bprm;
+    struct linux_binfmt * fmt;
+    unsigned long old_fs;
+    int i;
+    int retval;
+    int sh_bang = 0;
 
-	if (regs->cs != USER_CS)
-		return -EINVAL;
-	bprm.p = PAGE_SIZE*MAX_ARG_PAGES-4;
-	for (i=0 ; i<MAX_ARG_PAGES ; i++)	/* clear page-table */
-		bprm.page[i] = 0;
-	retval = open_namei(filename, 0, 0, &bprm.inode, NULL);
-	if (retval)
-		return retval;
-	bprm.filename = filename;
-	bprm.argc = count(argv);
-	bprm.envc = count(envp);
+    if (regs->cs != USER_CS)
+        return -EINVAL;
+    bprm.p = PAGE_SIZE * MAX_ARG_PAGES - 4;
+    for (i=0 ; i<MAX_ARG_PAGES ; i++)	/* clear page-table */
+        bprm.page[i] = 0;
+    retval = open_namei(filename, 0, 0, &bprm.inode, NULL);
+    if (retval)
+        return retval;
+    bprm.filename = filename;
+    bprm.argc = count(argv);
+    bprm.envc = count(envp);
 	
 restart_interp:
-	if (!S_ISREG(bprm.inode->i_mode)) {	/* must be regular file */
-		retval = -EACCES;
-		goto exec_error2;
-	}
-	if (IS_NOEXEC(bprm.inode)) {		/* FS mustn't be mounted noexec */
-		retval = -EPERM;
-		goto exec_error2;
-	}
-	if (!bprm.inode->i_sb) {
-		retval = -EACCES;
-		goto exec_error2;
-	}
-	i = bprm.inode->i_mode;
-	if (IS_NOSUID(bprm.inode) && (((i & S_ISUID) && bprm.inode->i_uid != current->
-	    euid) || ((i & S_ISGID) && !in_group_p(bprm.inode->i_gid))) &&
+    if (!S_ISREG(bprm.inode->i_mode)) {	/* must be regular file */
+        retval = -EACCES;
+        goto exec_error2;
+    }
+    if (IS_NOEXEC(bprm.inode)) { /* FS mustn't be mounted noexec */
+        retval = -EPERM;
+        goto exec_error2;
+    }
+    if (!bprm.inode->i_sb) {
+        retval = -EACCES;
+        goto exec_error2;
+    }
+    i = bprm.inode->i_mode;
+    if (IS_NOSUID(bprm.inode) && (((i & S_ISUID) && 
+            bprm.inode->i_uid != current->euid) || 
+            ((i & S_ISGID) && !in_group_p(bprm.inode->i_gid))) &&
 	    !suser()) {
-		retval = -EPERM;
-		goto exec_error2;
-	}
-	/* make sure we don't let suid, sgid files be ptraced. */
-	if (current->flags & PF_PTRACED) {
-		bprm.e_uid = current->euid;
-		bprm.e_gid = current->egid;
-	} else {
-		bprm.e_uid = (i & S_ISUID) ? bprm.inode->i_uid : current->euid;
-		bprm.e_gid = (i & S_ISGID) ? bprm.inode->i_gid : current->egid;
-	}
-	if (current->euid == bprm.inode->i_uid)
-		i >>= 6;
-	else if (in_group_p(bprm.inode->i_gid))
-		i >>= 3;
-	if (!(i & 1) &&
-	    !((bprm.inode->i_mode & 0111) && suser())) {
-		retval = -EACCES;
-		goto exec_error2;
-	}
-	memset(bprm.buf,0,sizeof(bprm.buf));
-	old_fs = get_fs();
-	set_fs(get_ds());
-	retval = read_exec(bprm.inode,0,bprm.buf,128);
-	set_fs(old_fs);
-	if (retval < 0)
-		goto exec_error2;
-	if ((bprm.buf[0] == '#') && (bprm.buf[1] == '!') && (!sh_bang)) {
-		/*
-		 * This section does the #! interpretation.
-		 * Sorta complicated, but hopefully it will work.  -TYT
-		 */
+        retval = -EPERM;
+        goto exec_error2;
+    }
+    /* make sure we don't let suid, sgid files be ptraced. */
+    if (current->flags & PF_PTRACED) {
+        bprm.e_uid = current->euid;
+        bprm.e_gid = current->egid;
+    } else {
+        bprm.e_uid = (i & S_ISUID) ? bprm.inode->i_uid : current->euid;
+        bprm.e_gid = (i & S_ISGID) ? bprm.inode->i_gid : current->egid;
+    }
+    if (current->euid == bprm.inode->i_uid)
+        i >>= 6;
+    else if (in_group_p(bprm.inode->i_gid))
+        i >>= 3;
+    if (!(i & 1) && !((bprm.inode->i_mode & 0111) && suser())) {
+        retval = -EACCES;
+        goto exec_error2;
+    }
+    memset(bprm.buf,0,sizeof(bprm.buf));
+    old_fs = get_fs();
+    set_fs(get_ds());
+    retval = read_exec(bprm.inode, 0, bprm.buf,128);
+    set_fs(old_fs);
+    if (retval < 0)
+        goto exec_error2;
+    if ((bprm.buf[0] == '#') && (bprm.buf[1] == '!') && (!sh_bang)) {
+        /*
+         * This section does the #! interpretation.
+         * Sorta complicated, but hopefully it will work.  -TYT
+         */
+        char *cp, *interp, *i_name, *i_arg;
 
-		char *cp, *interp, *i_name, *i_arg;
+        iput(bprm.inode);
+        bprm.buf[127] = '\0';
+        if ((cp = strchr(bprm.buf, '\n')) == NULL)
+            cp = bprm.buf+127;
+        *cp = '\0';
+        while (cp > bprm.buf) {
+            cp--;
+            if ((*cp == ' ') || (*cp == '\t'))
+                *cp = '\0';
+            else
+                break;
+        }
+        for (cp = bprm.buf + 2; (*cp == ' ') || (*cp == '\t'); cp++);
+        if (!cp || *cp == '\0') {
+            retval = -ENOEXEC; /* No interpreter name found */
+            goto exec_error1;
+        }
+        interp = i_name = cp;
+        i_arg = 0;
+        for ( ; *cp && (*cp != ' ') && (*cp != '\t'); cp++) {
+            if (*cp == '/')
+                i_name = cp+1;
+        }
+        while ((*cp == ' ') || (*cp == '\t'))
+            *cp++ = '\0';
+        if (*cp)
+            i_arg = cp;
+        /*
+         * OK, we've parsed out the interpreter name and
+         * (optional) argument.
+         */
+        if (sh_bang++ == 0) {
+            bprm.p = copy_strings(bprm.envc, envp, bprm.page, bprm.p, 0);
+            bprm.p = copy_strings(--bprm.argc, argv+1, bprm.page, bprm.p, 0);
+        }
+        /*
+         * Splice in (1) the interpreter's name for argv[0]
+         *           (2) (optional) argument to interpreter
+         *           (3) filename of shell script
+         *
+         * This is done in reverse order, because of how the
+         * user environment and arguments are stored.
+         */
+        bprm.p = copy_strings(1, &bprm.filename, bprm.page, bprm.p, 2);
+        bprm.argc++;
+        if (i_arg) {
+            bprm.p = copy_strings(1, &i_arg, bprm.page, bprm.p, 2);
+            bprm.argc++;
+        }
+        bprm.p = copy_strings(1, &i_name, bprm.page, bprm.p, 2);
+        bprm.argc++;
+        if (!bprm.p) {
+            retval = -E2BIG;
+            goto exec_error1;
+        }
+        /*
+         * OK, now restart the process with the interpreter's inode.
+         * Note that we use open_namei() as the name is now in kernel
+         * space, and we don't need to copy it.
+         */
+        retval = open_namei(interp, 0, 0, &bprm.inode, NULL);
+        if (retval)
+            goto exec_error1;
+        goto restart_interp;
+    }
+    if (!sh_bang) {
+        bprm.p = copy_strings(bprm.envc,envp,bprm.page,bprm.p,0);
+        bprm.p = copy_strings(bprm.argc,argv,bprm.page,bprm.p,0);
+        if (!bprm.p) {
+            retval = -E2BIG;
+            goto exec_error2;
+        }
+    }
 
-		iput(bprm.inode);
-		bprm.buf[127] = '\0';
-		if ((cp = strchr(bprm.buf, '\n')) == NULL)
-			cp = bprm.buf+127;
-		*cp = '\0';
-		while (cp > bprm.buf) {
-			cp--;
-			if ((*cp == ' ') || (*cp == '\t'))
-				*cp = '\0';
-			else
-				break;
-		}
-		for (cp = bprm.buf+2; (*cp == ' ') || (*cp == '\t'); cp++);
-		if (!cp || *cp == '\0') {
-			retval = -ENOEXEC; /* No interpreter name found */
-			goto exec_error1;
-		}
-		interp = i_name = cp;
-		i_arg = 0;
-		for ( ; *cp && (*cp != ' ') && (*cp != '\t'); cp++) {
- 			if (*cp == '/')
-				i_name = cp+1;
-		}
-		while ((*cp == ' ') || (*cp == '\t'))
-			*cp++ = '\0';
-		if (*cp)
-			i_arg = cp;
-		/*
-		 * OK, we've parsed out the interpreter name and
-		 * (optional) argument.
-		 */
-		if (sh_bang++ == 0) {
-			bprm.p = copy_strings(bprm.envc, envp, bprm.page, bprm.p, 0);
-			bprm.p = copy_strings(--bprm.argc, argv+1, bprm.page, bprm.p, 0);
-		}
-		/*
-		 * Splice in (1) the interpreter's name for argv[0]
-		 *           (2) (optional) argument to interpreter
-		 *           (3) filename of shell script
-		 *
-		 * This is done in reverse order, because of how the
-		 * user environment and arguments are stored.
-		 */
-		bprm.p = copy_strings(1, &bprm.filename, bprm.page, bprm.p, 2);
-		bprm.argc++;
-		if (i_arg) {
-			bprm.p = copy_strings(1, &i_arg, bprm.page, bprm.p, 2);
-			bprm.argc++;
-		}
-		bprm.p = copy_strings(1, &i_name, bprm.page, bprm.p, 2);
-		bprm.argc++;
-		if (!bprm.p) {
-			retval = -E2BIG;
-			goto exec_error1;
-		}
-		/*
-		 * OK, now restart the process with the interpreter's inode.
-		 * Note that we use open_namei() as the name is now in kernel
-		 * space, and we don't need to copy it.
-		 */
-		retval = open_namei(interp, 0, 0, &bprm.inode, NULL);
-		if (retval)
-			goto exec_error1;
-		goto restart_interp;
-	}
-	if (!sh_bang) {
-		bprm.p = copy_strings(bprm.envc,envp,bprm.page,bprm.p,0);
-		bprm.p = copy_strings(bprm.argc,argv,bprm.page,bprm.p,0);
-		if (!bprm.p) {
-			retval = -E2BIG;
-			goto exec_error2;
-		}
-	}
+    bprm.sh_bang = sh_bang;
+    fmt = formats;
+    do {
+        int (*fn)(struct linux_binprm *, struct pt_regs *) = fmt->load_binary;
 
-	bprm.sh_bang = sh_bang;
-	fmt = formats;
-	do {
-		int (*fn)(struct linux_binprm *, struct pt_regs *) = fmt->load_binary;
-		if (!fn)
-			break;
-		retval = fn(&bprm, regs);
-		if (retval == 0) {
-			iput(bprm.inode);
-			current->did_exec = 1;
-			return 0;
-		}
-		fmt++;
-	} while (retval == -ENOEXEC);
+        if (!fn)
+            break;
+        retval = fn(&bprm, regs);
+        if (retval == 0) {
+            iput(bprm.inode);
+            current->did_exec = 1;
+            return 0;
+        }
+        fmt++;
+    } while (retval == -ENOEXEC);
 exec_error2:
-	iput(bprm.inode);
+    iput(bprm.inode);
 exec_error1:
-	for (i=0 ; i<MAX_ARG_PAGES ; i++)
-		free_page(bprm.page[i]);
-	return(retval);
+    for (i=0 ; i < MAX_ARG_PAGES ; i++)
+        free_page(bprm.page[i]);
+    return(retval);
 }
 
 /*
@@ -709,15 +710,15 @@ exec_error1:
  */
 asmlinkage int sys_execve(struct pt_regs regs)
 {
-	int error;
-	char * filename;
+    int error;
+    char *filename;
 
-	error = getname((char *) regs.ebx, &filename);
-	if (error)
-		return error;
-	error = do_execve(filename, (char **) regs.ecx, (char **) regs.edx, &regs);
-	putname(filename);
-	return error;
+    error = getname((char *) regs.ebx, &filename);
+    if (error)
+        return error;
+    error = do_execve(filename, (char **) regs.ecx, (char **) regs.edx, &regs);
+    putname(filename);
+    return error;
 }
 
 /*
@@ -760,98 +761,98 @@ struct linux_binfmt formats[] = {
 
 int load_aout_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 {
-	struct exec ex;
-	struct file * file;
-	int fd, error;
-	unsigned long p = bprm->p;
+    struct exec ex;
+    struct file * file;
+    int fd, error;
+    unsigned long p = bprm->p;
 
-	ex = *((struct exec *) bprm->buf);		/* exec-header */
-	if ((N_MAGIC(ex) != ZMAGIC && N_MAGIC(ex) != OMAGIC && 
-	     N_MAGIC(ex) != QMAGIC) ||
-	    ex.a_trsize || ex.a_drsize ||
-	    bprm->inode->i_size < ex.a_text+ex.a_data+ex.a_syms+N_TXTOFF(ex)) {
-		return -ENOEXEC;
-	}
+    ex = *((struct exec *) bprm->buf);    /* exec-header */
+    if ((N_MAGIC(ex) != ZMAGIC && N_MAGIC(ex) != OMAGIC && 
+         N_MAGIC(ex) != QMAGIC) || ex.a_trsize || ex.a_drsize ||
+         bprm->inode->i_size < ex.a_text+ex.a_data+ex.a_syms +
+         N_TXTOFF(ex)) {
+         return -ENOEXEC;
+    }
 
-	if (N_MAGIC(ex) == ZMAGIC &&
-	    (N_TXTOFF(ex) < bprm->inode->i_sb->s_blocksize)) {
-		printk("N_TXTOFF < BLOCK_SIZE. Please convert binary.");
-		return -ENOEXEC;
-	}
+    if (N_MAGIC(ex) == ZMAGIC &&
+       (N_TXTOFF(ex) < bprm->inode->i_sb->s_blocksize)) {
+        printk("N_TXTOFF < BLOCK_SIZE. Please convert binary.");
+        return -ENOEXEC;
+    }
 
-	if (N_TXTOFF(ex) != BLOCK_SIZE && N_MAGIC(ex) == ZMAGIC) {
-		printk("N_TXTOFF != BLOCK_SIZE. See a.out.h.");
-		return -ENOEXEC;
-	}
+    if (N_TXTOFF(ex) != BLOCK_SIZE && N_MAGIC(ex) == ZMAGIC) {
+        printk("N_TXTOFF != BLOCK_SIZE. See a.out.h.");
+        return -ENOEXEC;
+    }
 	
-	/* OK, This is the point of no return */
-	flush_old_exec(bprm);
+    /* OK, This is the point of no return */
+    flush_old_exec(bprm);
 
-	current->end_code = N_TXTADDR(ex) + ex.a_text;
-	current->end_data = ex.a_data + current->end_code;
-	current->start_brk = current->brk = current->end_data;
-	current->start_code += N_TXTADDR(ex);
-	current->rss = 0;
-	current->suid = current->euid = bprm->e_uid;
-	current->mmap = NULL;
-	current->executable = NULL;  /* for OMAGIC files */
-	current->sgid = current->egid = bprm->e_gid;
-	if (N_MAGIC(ex) == OMAGIC) {
-		do_mmap(NULL, 0, ex.a_text+ex.a_data,
-			PROT_READ|PROT_WRITE|PROT_EXEC,
-			MAP_FIXED|MAP_PRIVATE, 0);
-		read_exec(bprm->inode, 32, (char *) 0, ex.a_text+ex.a_data);
-	} else {
-		if (ex.a_text & 0xfff || ex.a_data & 0xfff)
-			printk("%s: executable not page aligned\n", current->comm);
+    current->end_code = N_TXTADDR(ex) + ex.a_text;
+    current->end_data = ex.a_data + current->end_code;
+    current->start_brk = current->brk = current->end_data;
+    current->start_code += N_TXTADDR(ex);
+    current->rss = 0;
+    current->suid = current->euid = bprm->e_uid;
+    current->mmap = NULL;
+    current->executable = NULL;  /* for OMAGIC files */
+    current->sgid = current->egid = bprm->e_gid;
+    if (N_MAGIC(ex) == OMAGIC) {
+        do_mmap(NULL, 0, ex.a_text + ex.a_data,
+                PROT_READ|PROT_WRITE|PROT_EXEC,
+                MAP_FIXED|MAP_PRIVATE, 0);
+        read_exec(bprm->inode, 32, (char *) 0, ex.a_text+ex.a_data);
+    } else {
+        if (ex.a_text & 0xfff || ex.a_data & 0xfff)
+            printk("%s: executable not page aligned\n", current->comm);
 		
-		fd = open_inode(bprm->inode, O_RDONLY);
+        fd = open_inode(bprm->inode, O_RDONLY);
 		
-		if (fd < 0)
-			return fd;
-		file = current->filp[fd];
-		if (!file->f_op || !file->f_op->mmap) {
-			sys_close(fd);
-			do_mmap(NULL, 0, ex.a_text+ex.a_data,
-				PROT_READ|PROT_WRITE|PROT_EXEC,
-				MAP_FIXED|MAP_PRIVATE, 0);
-			read_exec(bprm->inode, N_TXTOFF(ex),
-				  (char *) N_TXTADDR(ex), ex.a_text+ex.a_data);
-			goto beyond_if;
-		}
-		error = do_mmap(file, N_TXTADDR(ex), ex.a_text,
-				PROT_READ | PROT_EXEC,
-				MAP_FIXED | MAP_SHARED, N_TXTOFF(ex));
+        if (fd < 0)
+            return fd;
+        file = current->filp[fd];
+        if (!file->f_op || !file->f_op->mmap) {
+            sys_close(fd);
+            do_mmap(NULL, 0, ex.a_text + ex.a_data,
+                    PROT_READ | PROT_WRITE | PROT_EXEC,
+                    MAP_FIXED | MAP_PRIVATE, 0);
+            read_exec(bprm->inode, N_TXTOFF(ex),
+                     (char *) N_TXTADDR(ex), ex.a_text+ex.a_data);
+            goto beyond_if;
+        }
+        error = do_mmap(file, N_TXTADDR(ex), ex.a_text,
+                        PROT_READ | PROT_EXEC,
+                        MAP_FIXED | MAP_SHARED, N_TXTOFF(ex));
 
-		if (error != N_TXTADDR(ex)) {
-			sys_close(fd);
-			send_sig(SIGSEGV, current, 0);
-			return 0;
-		};
+        if (error != N_TXTADDR(ex)) {
+            sys_close(fd);
+            send_sig(SIGSEGV, current, 0);
+            return 0;
+        };
 		
- 		error = do_mmap(file, N_TXTADDR(ex) + ex.a_text, ex.a_data,
-				PROT_READ | PROT_WRITE | PROT_EXEC,
-				MAP_FIXED | MAP_PRIVATE, N_TXTOFF(ex) + ex.a_text);
-		sys_close(fd);
-		if (error != N_TXTADDR(ex) + ex.a_text) {
-			send_sig(SIGSEGV, current, 0);
-			return 0;
-		};
-		current->executable = bprm->inode;
-		bprm->inode->i_count++;
-	}
+        error = do_mmap(file, N_TXTADDR(ex) + ex.a_text, ex.a_data,
+                        PROT_READ | PROT_WRITE | PROT_EXEC,
+                        MAP_FIXED | MAP_PRIVATE, N_TXTOFF(ex) + ex.a_text);
+        sys_close(fd);
+        if (error != N_TXTADDR(ex) + ex.a_text) {
+            send_sig(SIGSEGV, current, 0);
+            return 0;
+        };
+        current->executable = bprm->inode;
+        bprm->inode->i_count++;
+    }
 beyond_if:
-	sys_brk(current->brk+ex.a_bss);
-	
-	p += change_ldt(ex.a_text,bprm->page);
-	p -= MAX_ARG_PAGES*PAGE_SIZE;
-	p = (unsigned long) create_tables((char *)p,bprm->argc,bprm->envc,0);
-	current->start_stack = p;
-	regs->eip = ex.a_entry;		/* eip, magic happens :-) */
-	regs->esp = p;			/* stack pointer */
-	if (current->flags & PF_PTRACED)
-		send_sig(SIGTRAP, current, 0);
-	return 0;
+    sys_brk(current->brk+ex.a_bss);
+
+    p += change_ldt(ex.a_text,bprm->page);
+    p -= MAX_ARG_PAGES*PAGE_SIZE;
+    p = (unsigned long) create_tables((char *)p, bprm->argc, bprm->envc,0);
+    current->start_stack = p;
+    regs->eip = ex.a_entry;		/* eip, magic happens :-) */
+    regs->esp = p;			/* stack pointer */
+    if (current->flags & PF_PTRACED)
+        send_sig(SIGTRAP, current, 0);
+    return 0;
 }
 
 

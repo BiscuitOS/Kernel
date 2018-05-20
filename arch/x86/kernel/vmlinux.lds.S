@@ -15,13 +15,19 @@ SECTIONS
 	.text	: {
 		*(.text) 
 	}
+	__kernel_debug_func = .;
+
+	__kernel_debug_func_end = .;
 	.data	: { 
 		*(.data) 
 	}
-	PROVIDE (__edata = .);
+	__edata = .;
 	.bss	: { 
 		*(.bss) 
 	}
-	PROVIDE (end = .);
-	PROVIDE (__end = .);
+	__end = .;
+	end = .;
 }
+EXTERN(end)
+EXTERN(__end)
+EXTERN(__edata)

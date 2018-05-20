@@ -26,7 +26,7 @@
 
 extern unsigned long * prof_buffer;
 extern unsigned long prof_len;
-extern char edata, end;
+extern char edata[], end[];
 extern char *linux_banner;
 asmlinkage void lcall7(void);
 struct desc_struct default_ldt;
@@ -228,30 +228,34 @@ int checksetup(char *line)
 	return(1);
 }
 
-unsigned long loops_per_sec = 1;
+#ifdef CONFIG_BOOT_KERNEL_DELAY
+unsigned long loops_per_sec = CONFIG_BOOT_KERNEL_DELAY;
+#else
+unsigned long loops_per_sec = 0;
+#endif
 
 static void calibrate_delay(void)
 {
-	int ticks;
+    int ticks;
 
-	printk("Calibrating delay loop.. ");
-	while (loops_per_sec <<= 1) {
-		ticks = jiffies;
-		__delay(loops_per_sec);
-		ticks = jiffies - ticks;
-		if (ticks >= HZ) {
-			__asm__("mull %1 ; divl %2"
-				:"=a" (loops_per_sec)
-				:"d" (HZ),
-				 "r" (ticks),
-				 "0" (loops_per_sec));
-			printk("ok - %lu.%02lu BogoMips\n",
-				loops_per_sec/500000,
-				(loops_per_sec/5000) % 100);
-			return;
-		}
-	}
-	printk("failed\n");
+    printk("Calibrating delay loop.. ");
+    while (loops_per_sec <<= 1) {
+        ticks = jiffies;
+        __delay(loops_per_sec);
+        ticks = jiffies - ticks;
+        if (ticks >= HZ) {
+            __asm__("mull %1 ; divl %2"
+                   :"=a" (loops_per_sec)
+                   :"d" (HZ),
+                    "r" (ticks),
+                    "0" (loops_per_sec));
+        printk("ok - %lu.%02lu BogoMips\n",
+               loops_per_sec/500000,
+              (loops_per_sec/5000) % 100);
+        return;
+        }
+    }
+    printk("failed\n");
 }
 	
 
@@ -330,15 +334,15 @@ static void parse_options(char *line)
 	envp_init[envs+1] = NULL;
 }
 
-static void copy_options(char * to, char * from)
+static void copy_options(char *to, char *from)
 {
-	char c = ' ';
+    char c = ' ';
 
-	do {
-		if (c == ' ' && !memcmp("mem=", from, 4))
-			memory_end = simple_strtoul(from+4, &from, 0);
-		c = *(to++) = *(from++);
-	} while (c);
+    do {
+        if (c == ' ' && !memcmp("mem=", from, 4))
+            memory_end = simple_strtoul(from + 4, &from, 0);
+        c = *(to++) = *(from++);
+    } while (c);
 }
 
 static void copro_timeout(void)
@@ -366,102 +370,105 @@ asmlinkage void start_kernel(void)
     aux_device_present = AUX_DEVICE_INFO;
     memory_end = (1<<20) + (EXT_MEM_K<<10);
     memory_end &= PAGE_MASK;
-	ramdisk_size = RAMDISK_SIZE;
-	copy_options(command_line,COMMAND_LINE);
-#ifdef CONFIG_MAX_16M
-	if (memory_end > 16*1024*1024)
-		memory_end = 16*1024*1024;
+    ramdisk_size = RAMDISK_SIZE;
+    copy_options(command_line, COMMAND_LINE);
+#if CONFIG_MEMORY_SIZE > 16
+    if (memory_end > 16*1024*1024)
+        memory_end = 16*1024*1024;
 #endif
-	if (MOUNT_ROOT_RDONLY)
-		root_mountflags |= MS_RDONLY;
-	if ((unsigned long)&end >= (1024*1024)) {
-		memory_start = (unsigned long) &end;
-		low_memory_start = PAGE_SIZE;
-	} else {
-		memory_start = 1024*1024;
-		low_memory_start = (unsigned long) &end;
-	}
-	low_memory_start = PAGE_ALIGN(low_memory_start);
-	memory_start = paging_init(memory_start,memory_end);
-	if (strncmp((char*)0x0FFFD9, "EISA", 4) == 0)
-		EISA_bus = 1;
-	trap_init();
-	init_IRQ();
-	sched_init();
-	parse_options(command_line);
+    if (MOUNT_ROOT_RDONLY)
+        root_mountflags |= MS_RDONLY;
+    if ((unsigned long)end >= (1024 * 1024)) {
+        memory_start = (unsigned long)end;
+        low_memory_start = PAGE_SIZE;
+    } else {
+        memory_start = 1024*1024;
+        low_memory_start = (unsigned long)end;
+    }
+    low_memory_start = PAGE_ALIGN(low_memory_start);
+    memory_start = paging_init(memory_start, memory_end);
+    if (strncmp((char*)0x0FFFD9, "EISA", 4) == 0)
+        EISA_bus = 1;
+    trap_init();
+    init_IRQ();
+    sched_init();
+    parse_options(command_line);
 #ifdef CONFIG_PROFILE
-	prof_buffer = (unsigned long *) memory_start;
-	prof_len = (unsigned long) &end;
-	prof_len >>= 2;
-	memory_start += prof_len * sizeof(unsigned long);
+    prof_buffer = (unsigned long *) memory_start;
+    prof_len = (unsigned long)end;
+    prof_len >>= 2;
+    memory_start += prof_len * sizeof(unsigned long);
 #endif
-	memory_start = kmalloc_init(memory_start,memory_end);
-	memory_start = chr_dev_init(memory_start,memory_end);
-	memory_start = blk_dev_init(memory_start,memory_end);
-	sti();
-	calibrate_delay();
+    memory_start = kmalloc_init(memory_start, memory_end);
+    memory_start = chr_dev_init(memory_start,memory_end);
+    memory_start = blk_dev_init(memory_start,memory_end);
+    sti();
+    calibrate_delay();
 #ifdef CONFIG_INET
-	memory_start = net_dev_init(memory_start,memory_end);
+    memory_start = net_dev_init(memory_start,memory_end);
 #endif
 #ifdef CONFIG_SCSI
-	memory_start = scsi_dev_init(memory_start,memory_end);
+    memory_start = scsi_dev_init(memory_start,memory_end);
 #endif
-	memory_start = inode_init(memory_start,memory_end);
-	memory_start = file_table_init(memory_start,memory_end);
-	mem_init(low_memory_start,memory_start,memory_end);
-	buffer_init();
-	time_init();
+    memory_start = inode_init(memory_start, memory_end);
+    memory_start = file_table_init(memory_start, memory_end);
+    mem_init(low_memory_start,memory_start,memory_end);
+    buffer_init();
+    time_init();
 #ifdef CONFIG_FLOPPY
-	floppy_init();
+    floppy_init();
 #endif
 #ifdef CONFIG_NET_SOCKET
-	sock_init();
+    sock_init();
 #endif
 #ifdef CONFIG_SYSVIPC
-	ipc_init();
+    ipc_init();
 #endif
-	sti();
+    sti();
 	
-	/*
-	 * check if exception 16 works correctly.. This is truly evil
-	 * code: it disables the high 8 interrupts to make sure that
-	 * the irq13 doesn't happen. But as this will lead to a lockup
-	 * if no exception16 arrives, it depends on the fact that the
-	 * high 8 interrupts will be re-enabled by the next timer tick.
-	 * So the irq13 will happen eventually, but the exception 16
-	 * should get there first..
-	 */
-	if (hard_math) {
-		unsigned short control_word;
+    /*
+     * check if exception 16 works correctly.. This is truly evil
+     * code: it disables the high 8 interrupts to make sure that
+     * the irq13 doesn't happen. But as this will lead to a lockup
+     * if no exception16 arrives, it depends on the fact that the
+     * high 8 interrupts will be re-enabled by the next timer tick.
+     * So the irq13 will happen eventually, but the exception 16
+     * should get there first..
+     */
+    if (hard_math) {
+        unsigned short control_word;
 
-		printk("Checking 386/387 coupling... ");
-		timer_table[COPRO_TIMER].expires = jiffies+50;
-		timer_table[COPRO_TIMER].fn = copro_timeout;
-		timer_active |= 1<<COPRO_TIMER;
-		__asm__("clts ; fninit ; fnstcw %0 ; fwait":"=m" (*&control_word));
-		control_word &= 0xffc0;
-		__asm__("fldcw %0 ; fwait": :"m" (*&control_word));
-		outb_p(inb_p(0x21) | (1 << 2), 0x21);
-		__asm__("fldz ; fld1 ; fdiv %st,%st(1) ; fwait");
-		timer_active &= ~(1<<COPRO_TIMER);
-		if (!fpu_error)
-			printk("Ok, fpu using %s error reporting.\n",
-				ignore_irq13?"exception 16":"irq13");
-	}
+        printk("Checking 386/387 coupling... ");
+        timer_table[COPRO_TIMER].expires = jiffies+50;
+        timer_table[COPRO_TIMER].fn = copro_timeout;
+        timer_active |= 1<<COPRO_TIMER;
+        __asm__("clts ; fninit ; fnstcw %0 ; fwait":
+                "=m" (*&control_word));
+        control_word &= 0xffc0;
+        __asm__("fldcw %0 ; fwait"
+                : :"m" (*&control_word));
+        outb_p(inb_p(0x21) | (1 << 2), 0x21);
+        __asm__("fldz ; fld1 ; fdiv %st,%st(1) ; fwait");
+        timer_active &= ~(1<<COPRO_TIMER);
+        if (!fpu_error)
+            printk("Ok, fpu using %s error reporting.\n",
+                   ignore_irq13?"exception 16":"irq13");
+    }
 #ifndef CONFIG_MATH_EMULATION
-	else {
-		printk("No coprocessor found and no math emulation present.\n");
-		printk("Giving up.\n");
-		for (;;) ;
-	}
+    else {
+        printk("No coprocessor found and no math emulation present.\n");
+        printk("Giving up.\n");
+        for (;;) 
+            ;
+    }
 #endif
 
-	system_utsname.machine[1] = '0' + x86;
-	printk(linux_banner);
+    system_utsname.machine[1] = '0' + x86;
+    printk(linux_banner);
 
-	move_to_user_mode();
-	if (!fork())		/* we count on this going ok */
-		init();
+    move_to_user_mode();
+    if (!fork())    /* we count on this going ok */
+        init();
 /*
  * task[0] is meant to be used as an "idle" task: it may not sleep, but
  * it might do some general things like count free pages or it could be
@@ -471,35 +478,35 @@ asmlinkage void start_kernel(void)
  *
  * Right now task[0] just does a infinite idle loop.
  */
-	for(;;)
-		idle();
+    for(;;)
+        idle();
 }
 
 static int printf(const char *fmt, ...)
 {
-	va_list args;
-	int i;
+    va_list args;
+    int i;
 
-	va_start(args, fmt);
-	write(1,printbuf,i=vsprintf(printbuf, fmt, args));
-	va_end(args);
-	return i;
+    va_start(args, fmt);
+    write(1, printbuf, i = vsprintf(printbuf, fmt, args));
+    va_end(args);
+    return i;
 }
 
 void init(void)
 {
-	int pid,i;
+    int pid,i;
 
-	setup((void *) &drive_info);
-	sprintf(term, "TERM=con%dx%d", ORIG_VIDEO_COLS, ORIG_VIDEO_LINES);
-	(void) open("/dev/tty1",O_RDWR,0);
-	(void) dup(0);
-	(void) dup(0);
+    setup((void *) &drive_info);
+    sprintf(term, "TERM=con%dx%d", ORIG_VIDEO_COLS, ORIG_VIDEO_LINES);
+    (void) open("/dev/tty1", O_RDWR, 0);
+    (void) dup(0);
+    (void) dup(0);
 
-	execve("/etc/init",argv_init,envp_init);
-	execve("/bin/init",argv_init,envp_init);
-	execve("/sbin/init",argv_init,envp_init);
-	/* if this fails, fall through to original stuff */
+    execve("/etc/init", argv_init, envp_init);
+    execve("/bin/init",argv_init,envp_init);
+    execve("/sbin/init",argv_init,envp_init);
+    /* if this fails, fall through to original stuff */
 
 	if (!(pid=fork())) {
 		close(0);

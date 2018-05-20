@@ -7,11 +7,11 @@
 /*
  *  head.S contains the 32-bit startup code.
  */
-	.text
-	.globl idt, gdt, swapper_pg_dir, pg0
-	.globl tmp_floppy_area, _floppy_track_buffer
-	.globl empty_bad_page, empty_bad_page_table
-	.globl empty_zero_page
+.text
+.globl idt, gdt, swapper_pg_dir, pg0
+.globl tmp_floppy_area, _floppy_track_buffer
+.globl empty_bad_page, empty_bad_page_table
+.globl empty_zero_page
 
 #include <linux/tasks.h>
 #include <linux/segment.h>
@@ -25,23 +25,23 @@
  * swapper_pg_dir is the main page directory, address 0x00001000 (or at
  * address 0x00101000 for a compressed boot).
  */
-	.globl startup_32
+.globl startup_32
 
 startup_32:
 	cld
-	movl $(KERNEL_DS),%eax
-	mov %ax,%ds
-	mov %ax,%es
-	mov %ax,%fs
-	mov %ax,%gs
-	lss stack_start,%esp
+	movl	$(KERNEL_DS), %eax
+	mov	%ax, %ds
+	mov	%ax, %es
+	mov	%ax, %fs
+	mov	%ax, %gs
+	lss	stack_start, %esp
 /*
  * Clear BSS first so that there are no surprises...
  */
-	xorl %eax,%eax
-	movl $__edata,%edi
-	movl $__end,%ecx
-	subl %edi,%ecx
+	xorl	%eax, %eax
+	movl	$__edata, %edi
+	movl	$__end, %ecx
+	subl	%edi,%ecx
 	cld
 	rep
 	stosb
@@ -49,40 +49,40 @@ startup_32:
  * start system 32-bit setup. We need to re-do some of the things done
  * in 16-bit mode for the "real" operations.
  */
-	call setup_idt
-	xorl %eax,%eax
-1:	incl %eax		# check that A20 really IS enabled
-	movl %eax,0x000000	# loop forever if it isn't
-	cmpl %eax,0x100000
-	je 1b
+	call	setup_idt
+	xorl	%eax, %eax
+1:	incl	%eax		# check that A20 really IS enabled
+	movl	%eax, 0x000000	# loop forever if it isn't
+	cmpl	%eax, 0x100000
+	je	1b
 /*
  * Initialize eflags.  Some BIOS's leave bits like NT set.  This would
  * confuse the debugger if this code is traced.
  * XXX - best to initialize before switching to protected mode.
  */
-	pushl $0
+	pushl	$0
 	popfl
 /*
  * Copy bootup parameters out of the way. First 2kB of
- * _empty_zero_page is for boot parameters, second 2kB
+ * empty_zero_page is for boot parameters, second 2kB
  * is for the command line.
  */
-	movl $0x90000,%esi
-	movl $empty_zero_page,%edi
-	movl $512,%ecx
+	movl	$0x90000, %esi
+	movl	$empty_zero_page, %edi
+	movl	$512, %ecx
 	cld
 	rep
 	movsl
-	xorl %eax,%eax
-	movl $512,%ecx
+	xorl	%eax, %eax
+	movl	$512,%ecx
 	rep
 	stosl
-	cmpw $(CL_MAGIC),CL_MAGIC_ADDR
-	jne 1f
-	movl $empty_zero_page+2048,%edi
-	movzwl CL_OFFSET,%esi
-	addl $(CL_BASE_ADDR),%esi
-	movl $2048,%ecx
+	cmpw	$(CL_MAGIC), CL_MAGIC_ADDR
+	jne	1f
+	movl	$empty_zero_page + 2048, %edi
+	movzwl	CL_OFFSET, %esi
+	addl	$(CL_BASE_ADDR), %esi
+	movl	$2048, %ecx
 	rep
 	movsb
 1:
@@ -92,33 +92,34 @@ startup_32:
  * apply at our cpl of 0 and the stack ought to be aligned already, and
  * we don't need to preserve eflags.
  */
-	movl %esp,%edi		# save stack pointer
-	andl $0xfffffffc,%esp	# align stack to avoid AC fault
-	movl $3,x86
+	movl	%esp, %edi	# save stack pointer
+	andl	$0xfffffffc, %esp	# align stack to avoid AC fault
+	movl	$3, x86
 	pushfl			# push EFLAGS
-	popl %eax		# get EFLAGS
-	movl %eax,%ecx		# save original EFLAGS
-	xorl $0x40000,%eax	# flip AC bit in EFLAGS
-	pushl %eax		# copy to EFLAGS
+	popl	%eax		# get EFLAGS
+	movl	%eax, %ecx	# save original EFLAGS
+	xorl	$0x40000, %eax	# flip AC bit in EFLAGS
+	pushl	%eax		# copy to EFLAGS
 	popfl			# set EFLAGS
 	pushfl			# get new EFLAGS
-	popl %eax		# put it in eax
-	xorl %ecx,%eax		# change in flags
-	andl $0x40000,%eax	# check if AC bit changed
-	je is386
-	movl $4,x86
-	movl %ecx,%eax
-	xorl $0x200000,%eax	# check ID flag
-	pushl %eax
+	popl	%eax		# put it in eax
+	xorl	%ecx,	%eax	# change in flags
+	andl	$0x40000, %eax	# check if AC bit changed
+	je	is386
+	movl	$4, x86
+	movl	%ecx, %eax
+	xorl	$0x200000, %eax	# check ID flag
+	pushl	%eax
 	popfl			# if we are on a straight 486DX, SX, or
 	pushfl			# 487SX we can't change it
-	popl %eax
-	xorl %ecx,%eax
-	andl $0x200000,%eax
-	je is486
-isnew:	pushl %ecx		# restore original EFLAGS
+	popl	%eax
+	xorl	%ecx, %eax
+	andl	$0x200000, %eax
+	je	is486
+isnew:	
+	pushl	%ecx		# restore original EFLAGS
 	popfl
-	movl $1, %eax		# Use the CPUID instruction to 
+	movl	$1, %eax	# Use the CPUID instruction to 
 	.byte 0x0f, 0xa2	# check the processor type
 	andl $0xf00, %eax	# Set _x86 with the family
 	shrl $8, %eax		# returned.	
@@ -196,19 +197,20 @@ check_x87:
  *  sure everything is ok.
  */
 setup_idt:
-	lea ignore_int,%edx
-	movl $(KERNEL_CS << 16),%eax
-	movw %dx,%ax		/* selector = 0x0010 = cs */
-	movw $0x8E00,%dx	/* interrupt gate - dpl=0, present */
+	cld
+	lea	ignore_int, %edx
+	movl	$(KERNEL_CS << 16), %eax
+	movw	%dx, %ax	/* selector = 0x0010 = cs */
+	movw	$0x8E00, %dx	/* interrupt gate - dpl=0, present */
 
-	lea idt, %edi
-	mov $256, %ecx
+	lea	idt, %edi
+	mov	$256, %ecx
 rp_sidt:
-	movl %eax, (%edi)
-	movl %edx, 4(%edi)
-	addl $8, %edi
-	dec %ecx
-	jne rp_sidt
+	movl	%eax, (%edi)
+	movl	%edx, 4(%edi)
+	addl	$8, %edi
+	dec	%ecx
+	jne	rp_sidt
 	ret
 
 /*

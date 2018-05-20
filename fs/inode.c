@@ -109,9 +109,9 @@ void grow_inodes(void)
 
 unsigned long inode_init(unsigned long start, unsigned long end)
 {
-	memset(hash_table, 0, sizeof(hash_table));
-	first_inode = NULL;
-	return start;
+    memset(hash_table, 0, sizeof(hash_table));
+    first_inode = NULL;
+    return start;
 }
 
 static void __wait_on_inode(struct inode *);

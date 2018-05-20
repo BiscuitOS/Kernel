@@ -1004,10 +1004,10 @@ void show_mem(void)
  */
 unsigned long paging_init(unsigned long start_mem, unsigned long end_mem)
 {
-	unsigned long * pg_dir;
-	unsigned long * pg_table;
-	unsigned long tmp;
-	unsigned long address;
+    unsigned long * pg_dir;
+    unsigned long * pg_table;
+    unsigned long tmp;
+    unsigned long address;
 
 /*
  * Physical page 0 is special; it's not touched by Linux since BIOS
@@ -1015,32 +1015,29 @@ unsigned long paging_init(unsigned long start_mem, unsigned long end_mem)
  * and write protected to detect null pointer references in the
  * kernel.
  */
-#if 0
-	memset((void *) 0, 0, PAGE_SIZE);
-#endif
-	start_mem = PAGE_ALIGN(start_mem);
-	address = 0;
-	pg_dir = swapper_pg_dir;
-	while (address < end_mem) {
-		tmp = *(pg_dir + 768);		/* at virtual addr 0xC0000000 */
-		if (!tmp) {
-			tmp = start_mem | PAGE_TABLE;
-			*(pg_dir + 768) = tmp;
-			start_mem += PAGE_SIZE;
-		}
-		*pg_dir = tmp;			/* also map it in at 0x0000000 for init */
-		pg_dir++;
-		pg_table = (unsigned long *) (tmp & PAGE_MASK);
-		for (tmp = 0 ; tmp < PTRS_PER_PAGE ; tmp++,pg_table++) {
-			if (address < end_mem)
-				*pg_table = address | PAGE_SHARED;
-			else
-				*pg_table = 0;
-			address += PAGE_SIZE;
-		}
-	}
-	invalidate();
-	return start_mem;
+    start_mem = PAGE_ALIGN(start_mem);
+    address = 0;
+    pg_dir = swapper_pg_dir;
+    while (address < end_mem) {
+        tmp = *(pg_dir + 768);    /* at virtual addr 0xC0000000 */
+        if (!tmp) {
+            tmp = start_mem | PAGE_TABLE;
+            *(pg_dir + 768) = tmp;
+            start_mem += PAGE_SIZE;
+        }
+        *pg_dir = tmp;    /* also map it in at 0x0000000 for init */
+        pg_dir++;
+        pg_table = (unsigned long *)(tmp & PAGE_MASK);
+        for (tmp = 0; tmp < PTRS_PER_PAGE; tmp++, pg_table++) {
+            if (address < end_mem)
+                *pg_table = address | PAGE_SHARED;
+            else
+                *pg_table = 0;
+            address += PAGE_SIZE;
+        }
+    }
+    invalidate();
+    return start_mem;
 }
 
 void mem_init(unsigned long start_low_mem,

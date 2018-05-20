@@ -395,32 +395,32 @@ char* ftape_big_buffer;
 
 long chr_dev_init(long mem_start, long mem_end)
 {
-	if (register_chrdev(MEM_MAJOR,"mem",&memory_fops))
-		printk("unable to get major %d for memory devs\n", MEM_MAJOR);
-	mem_start = tty_init(mem_start);
+    if (register_chrdev(MEM_MAJOR, "mem", &memory_fops))
+        printk("unable to get major %d for memory devs\n", MEM_MAJOR);
+    mem_start = tty_init(mem_start);
 #ifdef CONFIG_PRINTER
-	mem_start = lp_init(mem_start);
+    mem_start = lp_init(mem_start);
 #endif
 #if defined (CONFIG_BUSMOUSE) || defined (CONFIG_82C710_MOUSE) || \
     defined (CONFIG_PSMOUSE) || defined (CONFIG_MS_BUSMOUSE) || \
     defined (CONFIG_ATIXL_BUSMOUSE)
-	mem_start = mouse_init(mem_start);
+    mem_start = mouse_init(mem_start);
 #endif
 #ifdef CONFIG_SOUND
-	mem_start = soundcard_init(mem_start);
+    mem_start = soundcard_init(mem_start);
 #endif
 #ifdef CONFIG_TAPE_QIC02
-	mem_start = tape_qic02_init(mem_start);
+    mem_start = tape_qic02_init(mem_start);
 #endif
 /*
  *      Rude way to allocate kernel memory buffer for tape device
  */
 #ifdef CONFIG_FTAPE
-        /* allocate NR_FTAPE_BUFFERS 32Kb buffers at aligned address */
-        ftape_big_buffer= (char*) ((mem_start + 0x7fff) & ~0x7fff);
-        printk( "ftape: allocated %d buffers alligned at: %p\n",
-               NR_FTAPE_BUFFERS, ftape_big_buffer);
-        mem_start = (long) ftape_big_buffer + NR_FTAPE_BUFFERS * 0x8000;
+    /* allocate NR_FTAPE_BUFFERS 32Kb buffers at aligned address */
+    ftape_big_buffer= (char*) ((mem_start + 0x7fff) & ~0x7fff);
+    printk("ftape: allocated %d buffers alligned at: %p\n",
+            NR_FTAPE_BUFFERS, ftape_big_buffer);
+    mem_start = (long) ftape_big_buffer + NR_FTAPE_BUFFERS * 0x8000;
 #endif 
-	return mem_start;
+    return mem_start;
 }

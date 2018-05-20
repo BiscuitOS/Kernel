@@ -128,37 +128,37 @@ void put_super(dev_t dev)
 static struct super_block * read_super(dev_t dev,char *name,int flags,
 				       void *data, int silent)
 {
-	struct super_block * s;
-	struct file_system_type *type;
+    struct super_block *s;
+    struct file_system_type *type;
 
-	if (!dev)
-		return NULL;
-	check_disk_change(dev);
-	s = get_super(dev);
-	if (s)
-		return s;
-	if (!(type = get_fs_type(name))) {
-		printk("VFS: on device %d/%d: get_fs_type(%s) failed\n",
-						MAJOR(dev), MINOR(dev), name);
-		return NULL;
-	}
-	for (s = 0+super_blocks ;; s++) {
-		if (s >= NR_SUPER+super_blocks)
-			return NULL;
-		if (!s->s_dev)
-			break;
-	}
-	s->s_dev = dev;
-	s->s_flags = flags;
-	if (!type->read_super(s,data, silent)) {
-		s->s_dev = 0;
-		return NULL;
-	}
-	s->s_dev = dev;
-	s->s_covered = NULL;
-	s->s_rd_only = 0;
-	s->s_dirt = 0;
-	return s;
+    if (!dev)
+        return NULL;
+    check_disk_change(dev);
+    s = get_super(dev);
+    if (s)
+        return s;
+    if (!(type = get_fs_type(name))) {
+        printk("VFS: on device %d/%d: get_fs_type(%s) failed\n",
+                MAJOR(dev), MINOR(dev), name);
+        return NULL;
+    }
+    for (s = 0 + super_blocks; ; s++) {
+        if (s >= NR_SUPER + super_blocks)
+            return NULL;
+        if (!s->s_dev)
+            break;
+    }
+    s->s_dev = dev;
+    s->s_flags = flags;
+    if (!type->read_super(s, data, silent)) {
+        s->s_dev = 0;
+        return NULL;
+    }
+    s->s_dev = dev;
+    s->s_covered = NULL;
+    s->s_rd_only = 0;
+    s->s_dirt = 0;
+    return s;
 }
 
 /*
@@ -506,32 +506,33 @@ asmlinkage int sys_mount(char * dev_name, char * dir_name, char * type,
 
 void mount_root(void)
 {
-	struct file_system_type * fs_type;
-	struct super_block * sb;
-	struct inode * inode;
+    struct file_system_type * fs_type;
+    struct super_block * sb;
+    struct inode * inode;
 
-	memset(super_blocks, 0, sizeof(super_blocks));
-	fcntl_init_locks();
-	if (MAJOR(ROOT_DEV) == FLOPPY_MAJOR) {
-		printk(KERN_NOTICE "VFS: Insert root floppy and press ENTER\n");
-		wait_for_keypress();
-	}
-	for (fs_type = file_systems; fs_type->read_super; fs_type++) {
-		if (!fs_type->requires_dev)
-			continue;
-		sb = read_super(ROOT_DEV,fs_type->name,root_mountflags,NULL,1);
-		if (sb) {
-			inode = sb->s_mounted;
-			inode->i_count += 3 ;	/* NOTE! it is logically used 4 times, not 1 */
-			sb->s_covered = inode;
-			sb->s_flags = root_mountflags;
-			current->pwd = inode;
-			current->root = inode;
-			printk ("VFS: Mounted root (%s filesystem)%s.\n",
-				fs_type->name,
-				(sb->s_flags & MS_RDONLY) ? " readonly" : "");
-			return;
-		}
-	}
-	panic("VFS: Unable to mount root");
+    memset(super_blocks, 0, sizeof(super_blocks));
+    fcntl_init_locks();
+    if (MAJOR(ROOT_DEV) == FLOPPY_MAJOR) {
+        printk(KERN_NOTICE "VFS: Insert root floppy and press ENTER\n");
+        wait_for_keypress();
+    }
+    for (fs_type = file_systems; fs_type->read_super; fs_type++) {
+        if (!fs_type->requires_dev)
+            continue;
+        sb = read_super(ROOT_DEV, fs_type->name, root_mountflags, NULL, 1);
+        if (sb) {
+            inode = sb->s_mounted;
+            /* NOTE! it is logically used 4 times, not 1 */
+            inode->i_count += 3;
+            sb->s_covered = inode;
+            sb->s_flags = root_mountflags;
+            current->pwd = inode;
+            current->root = inode;
+            printk("VFS: Mounted root (%s filesystem)%s.\n",
+                  fs_type->name,
+                  (sb->s_flags & MS_RDONLY) ? " readonly" : "");
+            return;
+        }
+    }
+    panic("VFS: Unable to mount root");
 }

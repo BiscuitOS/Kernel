@@ -28,35 +28,35 @@
  */
 int getname(const char * filename, char **result)
 {
-	int error;
-	unsigned long i, page;
-	char * tmp, c;
+    int error;
+    unsigned long i, page;
+    char * tmp, c;
 
-	i = (unsigned long) filename;
-	if (!i || i >= TASK_SIZE)
-		return -EFAULT;
-	i = TASK_SIZE - i;
-	error = -EFAULT;
-	if (i > PAGE_SIZE) {
-		i = PAGE_SIZE;
-		error = -ENAMETOOLONG;
-	}
-	c = get_fs_byte(filename++);
-	if (!c)
-		return -ENOENT;
-	if(!(page = __get_free_page(GFP_KERNEL)))
-		return -ENOMEM;
+    i = (unsigned long) filename;
+    if (!i || i >= TASK_SIZE)
+        return -EFAULT;
+    i = TASK_SIZE - i;
+    error = -EFAULT;
+    if (i > PAGE_SIZE) {
+        i = PAGE_SIZE;
+        error = -ENAMETOOLONG;
+    }
+    c = get_fs_byte(filename++);
+    if (!c)
+        return -ENOENT;
+    if(!(page = __get_free_page(GFP_KERNEL)))
+        return -ENOMEM;
 	*result = tmp = (char *) page;
-	while (--i) {
-		*(tmp++) = c;
-		c = get_fs_byte(filename++);
-		if (!c) {
-			*tmp = '\0';
-			return 0;
-		}
-	}
-	free_page(page);
-	return error;
+    while (--i) {
+        *(tmp++) = c;
+        c = get_fs_byte(filename++);
+        if (!c) {
+            *tmp = '\0';
+            return 0;
+        }
+    }
+    free_page(page);
+    return error;
 }
 
 void putname(char * name)

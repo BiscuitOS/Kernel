@@ -105,30 +105,27 @@ struct size_descriptor sizes[] = {
 #define NBLOCKS(order)          (sizes[order].nblocks)
 #define BLOCKSIZE(order)        (sizes[order].size)
 
-
-
-long kmalloc_init (long start_mem,long end_mem)
+long kmalloc_init (long start_mem, long end_mem)
 {
-	int order;
+    int order;
 
 /* 
  * Check the static info array. Things will blow up terribly if it's
  * incorrect. This is a late "compile time" check.....
  */
-for (order = 0;BLOCKSIZE(order);order++)
-    {
-    if ((NBLOCKS (order)*BLOCKSIZE(order) + sizeof (struct page_descriptor)) >
-        PAGE_SIZE) 
-        {
-        printk ("Cannot use %d bytes out of %d in order = %d block mallocs\n",
-                NBLOCKS (order) * BLOCKSIZE(order) + 
-                        sizeof (struct page_descriptor),
-                (int) PAGE_SIZE,
-                BLOCKSIZE (order));
-        panic ("This only happens if someone messes with kmalloc");
+    for (order = 0; BLOCKSIZE(order); order++) {
+        if ((NBLOCKS (order)*BLOCKSIZE(order) + 
+             sizeof(struct page_descriptor)) > PAGE_SIZE) {
+            printk ("Cannot use %d bytes out of %d in order = %d "
+                    "block mallocs\n",
+                    NBLOCKS (order) * BLOCKSIZE(order) + 
+                    sizeof(struct page_descriptor),
+                    (int) PAGE_SIZE,
+                    BLOCKSIZE (order));
+            panic ("This only happens if someone messes with kmalloc");
         }
     }
-return start_mem;
+    return start_mem;
 }
 
 

@@ -26,4 +26,10 @@ config LOCALVERSION
 	  object and source tree, in that order. Your total string can
 	  be a maximum of 64 characters.
 
+config BOOT_KERNEL_DELAY
+	int "Delay n second on boot kernel"
+	default 0
+	help
+	  Delay x seconds on boot kernel...
+
 endmenu # "General setup"

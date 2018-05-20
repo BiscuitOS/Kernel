@@ -9,4 +9,10 @@ config MMU
 	help
 	  Support paging and segmenting on MMU.
 
+config MEMORY_SIZE
+	int
+	default QEMU_MEMORY_SIZE
+	help
+	  System memory size.
+
 endmenu

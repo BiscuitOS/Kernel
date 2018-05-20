@@ -474,30 +474,30 @@ void ll_rw_swap_file(int rw, int dev, unsigned int *b, int nb, char *buf)
 
 long blk_dev_init(long mem_start, long mem_end)
 {
-	struct request * req;
+    struct request * req;
 
-	req = all_requests + NR_REQUEST;
-	while (--req >= all_requests) {
-		req->dev = -1;
-		req->next = NULL;
-	}
-	memset(ro_bits,0,sizeof(ro_bits));
-	mem_start = hd_init(mem_start,mem_end);
+    req = all_requests + NR_REQUEST;
+    while (--req >= all_requests) {
+        req->dev = -1;
+        req->next = NULL;
+    }
+    memset(ro_bits,0,sizeof(ro_bits));
+    mem_start = hd_init(mem_start,mem_end);
 #ifdef CONFIG_BLK_DEV_XD
-	mem_start = xd_init(mem_start,mem_end);
+    mem_start = xd_init(mem_start,mem_end);
 #endif
 #ifdef CONFIG_CDU31A
-	mem_start = cdu31a_init(mem_start,mem_end);
+    mem_start = cdu31a_init(mem_start,mem_end);
 #endif
 #ifdef CONFIG_MCD
-	mem_start = mcd_init(mem_start,mem_end);
+    mem_start = mcd_init(mem_start,mem_end);
 #endif
 #ifdef CONFIG_SBPCD
-	mem_start = sbpcd_init(mem_start, mem_end);
-#endif //CONFIG_SBPCD
-#ifdef CONFIG_RAMDISK
-	if (ramdisk_size)
-		mem_start += rd_init(mem_start, ramdisk_size*1024);
+    mem_start = sbpcd_init(mem_start, mem_end);
 #endif
-	return mem_start;
+#ifdef CONFIG_RAMDISK
+    if (ramdisk_size)
+        mem_start += rd_init(mem_start, ramdisk_size*1024);
+#endif
+    return mem_start;
 }

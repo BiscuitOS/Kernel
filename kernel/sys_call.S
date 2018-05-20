@@ -87,7 +87,7 @@ ENOSYS = 38
 .globl invalid_TSS,segment_not_present,stack_segment
 .globl general_protection,reserved
 .globl alignment_check,page_fault
-.globl ret_from_sys_call, symbol_table_size, symbol_table
+.globl ret_from_sys_call
 
 #define SAVE_ALL \
 	cld; \

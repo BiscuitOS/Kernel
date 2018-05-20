@@ -103,19 +103,19 @@ unsigned long read_timer(void)
 
 void hd_setup(char *str, int *ints)
 {
-	int hdind = 0;
+    int hdind = 0;
 
-	if (ints[0] != 3)
-		return;
-	if (hd_info[0].head != 0)
-		hdind=1;
-	hd_info[hdind].head = ints[2];
-	hd_info[hdind].sect = ints[3];
-	hd_info[hdind].cyl = ints[1];
-	hd_info[hdind].wpcom = 0;
-	hd_info[hdind].lzone = ints[1];
-	hd_info[hdind].ctl = (ints[2] > 8 ? 8 : 0);
-	NR_HD = hdind+1;
+    if (ints[0] != 3)
+        return;
+    if (hd_info[0].head != 0)
+        hdind=1;
+    hd_info[hdind].head = ints[2];
+    hd_info[hdind].sect = ints[3];
+    hd_info[hdind].cyl = ints[1];
+    hd_info[hdind].wpcom = 0;
+    hd_info[hdind].lzone = ints[1];
+    hd_info[hdind].ctl = (ints[2] > 8 ? 8 : 0);
+    NR_HD = hdind+1;
 }
 
 static int win_result(void)
@@ -636,78 +636,78 @@ static struct sigaction hd_sigaction = {
 
 static void hd_geninit(void)
 {
-	int drive, i;
-	extern struct drive_info drive_info;
-	unsigned char *BIOS = (unsigned char *) &drive_info;
-	int cmos_disks;
+    int drive, i;
+    extern struct drive_info drive_info;
+    unsigned char *BIOS = (unsigned char *) &drive_info;
+    int cmos_disks;
 
-	if (!NR_HD) {	   
-		for (drive=0 ; drive<2 ; drive++) {
-			hd_info[drive].cyl = *(unsigned short *) BIOS;
-			hd_info[drive].head = *(2+BIOS);
-			hd_info[drive].wpcom = *(unsigned short *) (5+BIOS);
-			hd_info[drive].ctl = *(8+BIOS);
-			hd_info[drive].lzone = *(unsigned short *) (12+BIOS);
-			hd_info[drive].sect = *(14+BIOS);
-			BIOS += 16;
-		}
+    if (!NR_HD) {	   
+        for (drive=0 ; drive<2 ; drive++) {
+            hd_info[drive].cyl = *(unsigned short *) BIOS;
+            hd_info[drive].head = *(2+BIOS);
+            hd_info[drive].wpcom = *(unsigned short *) (5+BIOS);
+            hd_info[drive].ctl = *(8+BIOS);
+            hd_info[drive].lzone = *(unsigned short *) (12+BIOS);
+            hd_info[drive].sect = *(14+BIOS);
+            BIOS += 16;
+        }
 
-	/*
-		We querry CMOS about hard disks : it could be that 
-		we have a SCSI/ESDI/etc controller that is BIOS
-		compatable with ST-506, and thus showing up in our
-		BIOS table, but not register compatable, and therefore
-		not present in CMOS.
+        /*
+         * We querry CMOS about hard disks : it could be that 
+         * we have a SCSI/ESDI/etc controller that is BIOS
+         * compatable with ST-506, and thus showing up in our
+         * BIOS table, but not register compatable, and therefore
+         * not present in CMOS.
+         *
+         * Furthurmore, we will assume that our ST-506 drives
+         * <if any> are the primary drives in the system, and 
+         * the ones reflected as drive 1 or 2.
+         * 
+         * The first drive is stored in the high nibble of CMOS
+         * byte 0x12, the second in the low nibble.  This will be
+         * either a 4 bit drive type or 0xf indicating use byte 0x19 
+         * for an 8 bit type, drive 1, 0x1a for drive 2 in CMOS.
+         *
+         * Needless to say, a non-zero value means we have 
+         * an AT controller hard disk for that drive.
+         */
+        if ((cmos_disks = CMOS_READ(0x12)) & 0xf0) {
+            if (cmos_disks & 0x0f)
+                NR_HD = 2;
+            else
+                NR_HD = 1;
+        }
+    }
+    i = NR_HD;
+    while (i-- > 0) {
+        hd[i<<6].nr_sects = 0;
+        if (hd_info[i].head > 16) {
+            printk("hd.c: ST-506 interface disk with more "
+                   "than 16 heads detected,\n");
+            printk("  probably due to non-standard sector "
+                   "translation. Giving up.\n");
+            printk("  (disk %d: cyl=%d, sect=%d, head=%d)\n", i,
+                   hd_info[i].cyl, hd_info[i].sect,
+                   hd_info[i].head);
+            if (i + 1 == NR_HD)
+                NR_HD--;
+            continue;
+        }
+        hd[i<<6].nr_sects = hd_info[i].head *
+                            hd_info[i].sect*hd_info[i].cyl;
+    }
+    if (NR_HD) {
+        if (irqaction(HD_IRQ, &hd_sigaction)) {
+            printk("hd.c: unable to get IRQ%d for the "
+                   "harddisk driver\n", HD_IRQ);
+            NR_HD = 0;
+        }
+    }
+    hd_gendisk.nr_real = NR_HD;
 
-		Furthurmore, we will assume that our ST-506 drives
-		<if any> are the primary drives in the system, and 
-		the ones reflected as drive 1 or 2.
-
-		The first drive is stored in the high nibble of CMOS
-		byte 0x12, the second in the low nibble.  This will be
-		either a 4 bit drive type or 0xf indicating use byte 0x19 
-		for an 8 bit type, drive 1, 0x1a for drive 2 in CMOS.
-
-		Needless to say, a non-zero value means we have 
-		an AT controller hard disk for that drive.
-
-		
-	*/
-
-		if ((cmos_disks = CMOS_READ(0x12)) & 0xf0) {
-			if (cmos_disks & 0x0f)
-				NR_HD = 2;
-			else
-				NR_HD = 1;
-		}
-	}
-	i = NR_HD;
-	while (i-- > 0) {
-		hd[i<<6].nr_sects = 0;
-		if (hd_info[i].head > 16) {
-			printk("hd.c: ST-506 interface disk with more than 16 heads detected,\n");
-			printk("  probably due to non-standard sector translation. Giving up.\n");
-			printk("  (disk %d: cyl=%d, sect=%d, head=%d)\n", i,
-				hd_info[i].cyl,
-				hd_info[i].sect,
-				hd_info[i].head);
-			if (i+1 == NR_HD)
-				NR_HD--;
-			continue;
-		}
-		hd[i<<6].nr_sects = hd_info[i].head*
-				hd_info[i].sect*hd_info[i].cyl;
-	}
-	if (NR_HD) {
-		if (irqaction(HD_IRQ,&hd_sigaction)) {
-			printk("hd.c: unable to get IRQ%d for the harddisk driver\n",HD_IRQ);
-			NR_HD = 0;
-		}
-	}
-	hd_gendisk.nr_real = NR_HD;
-
-	for(i=0;i<(MAX_HD << 6);i++) hd_blocksizes[i] = 1024;
-	blksize_size[MAJOR_NR] = hd_blocksizes;
+    for(i=0;i<(MAX_HD << 6);i++) 
+        hd_blocksizes[i] = 1024;
+    blksize_size[MAJOR_NR] = hd_blocksizes;
 }
 
 static struct file_operations hd_fops = {

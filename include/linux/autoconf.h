@@ -8,8 +8,6 @@
 #define CONFIG_BLK_DEV_HD 1
 #define CONFIG_TCPIP 1
 #define CONFIG_PROFILE 1
-#define CONFIG_MAX_16M 1
-
 /*
  * SCSI support
  */
