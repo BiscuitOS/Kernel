@@ -373,8 +373,8 @@ asmlinkage void start_kernel(void)
     ramdisk_size = RAMDISK_SIZE;
     copy_options(command_line, COMMAND_LINE);
 #if CONFIG_MEMORY_SIZE > 16
-    if (memory_end > 16*1024*1024)
-        memory_end = 16*1024*1024;
+    if (memory_end > 16 * 1024 * 1024)
+        memory_end = 16 * 1024 * 1024;
 #endif
     if (MOUNT_ROOT_RDONLY)
         root_mountflags |= MS_RDONLY;
@@ -382,7 +382,7 @@ asmlinkage void start_kernel(void)
         memory_start = (unsigned long)end;
         low_memory_start = PAGE_SIZE;
     } else {
-        memory_start = 1024*1024;
+        memory_start = 1024 * 1024;
         low_memory_start = (unsigned long)end;
     }
     low_memory_start = PAGE_ALIGN(low_memory_start);

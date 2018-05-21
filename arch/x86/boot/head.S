@@ -120,47 +120,47 @@ isnew:
 	pushl	%ecx		# restore original EFLAGS
 	popfl
 	movl	$1, %eax	# Use the CPUID instruction to 
-	.byte 0x0f, 0xa2	# check the processor type
-	andl $0xf00, %eax	# Set _x86 with the family
-	shrl $8, %eax		# returned.	
-	movl %eax, x86
-	movl %edi,%esp		# restore esp
-	movl %cr0,%eax		# 486+
-	andl $0x80000011,%eax	# Save PG,PE,ET
-	orl $0x50022,%eax	# set AM, WP, NE and MP
-	jmp 2f
-is486:	pushl %ecx		# restore original EFLAGS
+	.byte	0x0f, 0xa2	# check the processor type
+	andl	$0xf00, %eax	# Set _x86 with the family
+	shrl	$8, %eax	# returned.	
+	movl	%eax, x86
+	movl	%edi, %esp	# restore esp
+	movl	%cr0, %eax	# 486+
+	andl	$0x80000011, %eax	# Save PG,PE,ET
+	orl	$0x50022, %eax	# set AM, WP, NE and MP
+	jmp	2f
+is486:	pushl	%ecx		# restore original EFLAGS
 	popfl
-	movl %edi,%esp		# restore esp
-	movl %cr0,%eax		# 486
-	andl $0x80000011,%eax	# Save PG,PE,ET
-	orl $0x50022,%eax	# set AM, WP, NE and MP
-	jmp 2f
-is386:	pushl %ecx		# restore original EFLAGS
+	movl	%edi, %esp	# restore esp
+	movl	%cr0, %eax	# 486
+	andl	$0x80000011, %eax	# Save PG,PE,ET
+	orl	$0x50022, %eax	# set AM, WP, NE and MP
+	jmp	2f
+is386:	pushl	%ecx		# restore original EFLAGS
 	popfl
-	movl %edi,%esp		# restore esp
-	movl %cr0,%eax		# 386
-	andl $0x80000011,%eax	# Save PG,PE,ET
-	orl $2,%eax		# set MP
-2:	movl %eax,%cr0
-	call check_x87
-	call setup_paging
-	lgdt gdt_descr
-	lidt idt_descr
-	ljmp $(KERNEL_CS),$1f
-1:	movl $(KERNEL_DS),%eax	# reload all the segment registers
-	mov %ax,%ds		# after changing gdt.
-	mov %ax,%es
-	mov %ax,%fs
-	mov %ax,%gs
-	lss stack_start,%esp
-	xorl %eax,%eax
-	lldt %ax
-	pushl %eax		# These are the parameters to main :-)
-	pushl %eax
-	pushl %eax
-	cld			# gcc2 wants the direction flag cleared at all times
-	call start_kernel
+	movl	%edi, %esp	# restore esp
+	movl	%cr0, %eax	# 386
+	andl	$0x80000011, %eax	# Save PG,PE,ET
+	orl	$2, %eax	# set MP
+2:	movl	%eax, %cr0
+	call	check_x87
+	call	setup_paging
+	lgdt	gdt_descr
+	lidt	idt_descr
+	ljmp	$(KERNEL_CS), $1f
+1:	movl	$(KERNEL_DS), %eax	# reload all the segment registers
+	mov	%ax, %ds		# after changing gdt.
+	mov	%ax, %es
+	mov	%ax, %fs
+	mov	%ax, %gs
+	lss	stack_start, %esp
+	xorl	%eax, %eax
+	lldt	%ax
+	pushl	%eax		# These are the parameters to main :-)
+	pushl	%eax
+	pushl	%eax
+	cld	# gcc2 wants the direction flag cleared at all times
+	call	start_kernel
 L6:
 	jmp L6			# main should never return here, but
 				# just in case, we know what happens.

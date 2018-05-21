@@ -419,39 +419,39 @@ unsigned long change_ldt(unsigned long text_size,unsigned long * page)
 int read_exec(struct inode *inode, unsigned long offset,
 	char * addr, unsigned long count)
 {
-	struct file file;
-	int result = -ENOEXEC;
+    struct file file;
+    int result = -ENOEXEC;
 
-	if (!inode->i_op || !inode->i_op->default_file_ops)
-		goto end_readexec;
-	file.f_mode = 1;
-	file.f_flags = 0;
-	file.f_count = 1;
-	file.f_inode = inode;
-	file.f_pos = 0;
-	file.f_reada = 0;
-	file.f_op = inode->i_op->default_file_ops;
-	if (file.f_op->open)
-		if (file.f_op->open(inode,&file))
-			goto end_readexec;
-	if (!file.f_op || !file.f_op->read)
-		goto close_readexec;
-	if (file.f_op->lseek) {
-		if (file.f_op->lseek(inode,&file,offset,0) != offset)
- 			goto close_readexec;
-	} else
-		file.f_pos = offset;
-	if (get_fs() == USER_DS) {
-		result = verify_area(VERIFY_WRITE, addr, count);
-		if (result)
-			goto close_readexec;
-	}
-	result = file.f_op->read(inode, &file, addr, count);
+    if (!inode->i_op || !inode->i_op->default_file_ops)
+        goto end_readexec;
+    file.f_mode = 1;
+    file.f_flags = 0;
+    file.f_count = 1;
+    file.f_inode = inode;
+    file.f_pos = 0;
+    file.f_reada = 0;
+    file.f_op = inode->i_op->default_file_ops;
+    if (file.f_op->open)
+        if (file.f_op->open(inode,&file))
+            goto end_readexec;
+    if (!file.f_op || !file.f_op->read)
+        goto close_readexec;
+    if (file.f_op->lseek) {
+        if (file.f_op->lseek(inode, &file, offset, 0) != offset)
+            goto close_readexec;
+    } else
+        file.f_pos = offset;
+    if (get_fs() == USER_DS) {
+        result = verify_area(VERIFY_WRITE, addr, count);
+        if (result)
+            goto close_readexec;
+    }
+    result = file.f_op->read(inode, &file, addr, count);
 close_readexec:
-	if (file.f_op->release)
-		file.f_op->release(inode,&file);
+    if (file.f_op->release)
+        file.f_op->release(inode, &file);
 end_readexec:
-	return result;
+    return result;
 }
 
 
@@ -462,74 +462,75 @@ end_readexec:
 
 void flush_old_exec(struct linux_binprm * bprm)
 {
-	int i;
-	int ch;
-	char * name;
-	struct vm_area_struct * mpnt, *mpnt1;
+    int i;
+    int ch;
+    char * name;
+    struct vm_area_struct * mpnt, *mpnt1;
 
-	current->dumpable = 1;
-	name = bprm->filename;
-	for (i=0; (ch = *(name++)) != '\0';) {
-		if (ch == '/')
-			i = 0;
-		else
-			if (i < 15)
-				current->comm[i++] = ch;
-	}
-	current->comm[i] = '\0';
-	if (current->shm)
-		shm_exit();
-	if (current->executable) {
-		iput(current->executable);
-		current->executable = NULL;
-	}
-	/* Release all of the old mmap stuff. */
+    current->dumpable = 1;
+    name = bprm->filename;
+    for (i=0; (ch = *(name++)) != '\0';) {
+        if (ch == '/')
+            i = 0;
+        else
+            if (i < 15)
+        current->comm[i++] = ch;
+    }
+    current->comm[i] = '\0';
+    if (current->shm)
+        shm_exit();
+    if (current->executable) {
+        iput(current->executable);
+        current->executable = NULL;
+    }
+    /* Release all of the old mmap stuff. */
 
-	mpnt = current->mmap;
-	current->mmap = NULL;
-	current->stk_vma = NULL;
-	while (mpnt) {
-		mpnt1 = mpnt->vm_next;
-		if (mpnt->vm_ops && mpnt->vm_ops->close)
-			mpnt->vm_ops->close(mpnt);
-		kfree(mpnt);
-		mpnt = mpnt1;
-	}
+    mpnt = current->mmap;
+    current->mmap = NULL;
+    current->stk_vma = NULL;
+    while (mpnt) {
+        mpnt1 = mpnt->vm_next;
+        if (mpnt->vm_ops && mpnt->vm_ops->close)
+            mpnt->vm_ops->close(mpnt);
+        kfree(mpnt);
+        mpnt = mpnt1;
+    }
 
-	/* Flush the old ldt stuff... */
-	if (current->ldt) {
-		free_page((unsigned long) current->ldt);
-		current->ldt = NULL;
-		for (i=1 ; i<NR_TASKS ; i++) {
-			if (task[i] == current)  {
-				set_ldt_desc(gdt+(i<<1)+
-					     FIRST_LDT_ENTRY,&default_ldt, 1);
-				load_ldt(i);
-			}
-		}	
-	}
+    /* Flush the old ldt stuff... */
+    if (current->ldt) {
+        free_page((unsigned long) current->ldt);
+        current->ldt = NULL;
+        for (i=1 ; i<NR_TASKS ; i++) {
+            if (task[i] == current)  {
+                set_ldt_desc(gdt + ( i << 1) +
+                             FIRST_LDT_ENTRY, &default_ldt, 1);
+                load_ldt(i);
+            }
+        }	
+    }
 
-	for (i=0 ; i<8 ; i++) current->debugreg[i] = 0;
+    for (i = 0; i < 8; i++) 
+        current->debugreg[i] = 0;
 
-	if (bprm->e_uid != current->euid || bprm->e_gid != current->egid || 
-	    !permission(bprm->inode,MAY_READ))
-		current->dumpable = 0;
-	current->signal = 0;
-	for (i=0 ; i<32 ; i++) {
-		current->sigaction[i].sa_mask = 0;
-		current->sigaction[i].sa_flags = 0;
-		if (current->sigaction[i].sa_handler != SIG_IGN)
-			current->sigaction[i].sa_handler = NULL;
-	}
-	for (i=0 ; i<NR_OPEN ; i++)
-		if (FD_ISSET(i,&current->close_on_exec))
-			sys_close(i);
-	FD_ZERO(&current->close_on_exec);
-	clear_page_tables(current);
-	if (last_task_used_math == current)
-		last_task_used_math = NULL;
-	current->used_math = 0;
-	current->elf_executable = 0;
+    if (bprm->e_uid != current->euid || bprm->e_gid != current->egid || 
+                    !permission(bprm->inode,MAY_READ))
+        current->dumpable = 0;
+    current->signal = 0;
+    for (i = 0; i < 32; i++) {
+        current->sigaction[i].sa_mask = 0;
+        current->sigaction[i].sa_flags = 0;
+        if (current->sigaction[i].sa_handler != SIG_IGN)
+            current->sigaction[i].sa_handler = NULL;
+    }
+    for (i = 0; i < NR_OPEN; i++)
+        if (FD_ISSET(i, &current->close_on_exec))
+            sys_close(i);
+    FD_ZERO(&current->close_on_exec);
+    clear_page_tables(current);
+    if (last_task_used_math == current)
+        last_task_used_math = NULL;
+    current->used_math = 0;
+    current->elf_executable = 0;
 }
 
 /*
@@ -548,7 +549,7 @@ static int do_execve(char *filename, char **argv, char **envp,
     if (regs->cs != USER_CS)
         return -EINVAL;
     bprm.p = PAGE_SIZE * MAX_ARG_PAGES - 4;
-    for (i=0 ; i<MAX_ARG_PAGES ; i++)	/* clear page-table */
+    for (i = 0; i < MAX_ARG_PAGES; i++)    /* clear page-table */
         bprm.page[i] = 0;
     retval = open_namei(filename, 0, 0, &bprm.inode, NULL);
     if (retval)
@@ -594,10 +595,10 @@ restart_interp:
         retval = -EACCES;
         goto exec_error2;
     }
-    memset(bprm.buf,0,sizeof(bprm.buf));
+    memset(bprm.buf, 0, sizeof(bprm.buf));
     old_fs = get_fs();
     set_fs(get_ds());
-    retval = read_exec(bprm.inode, 0, bprm.buf,128);
+    retval = read_exec(bprm.inode, 0, bprm.buf, 128);
     set_fs(old_fs);
     if (retval < 0)
         goto exec_error2;
@@ -674,8 +675,8 @@ restart_interp:
         goto restart_interp;
     }
     if (!sh_bang) {
-        bprm.p = copy_strings(bprm.envc,envp,bprm.page,bprm.p,0);
-        bprm.p = copy_strings(bprm.argc,argv,bprm.page,bprm.p,0);
+        bprm.p = copy_strings(bprm.envc, envp, bprm.page, bprm.p, 0);
+        bprm.p = copy_strings(bprm.argc, argv, bprm.page, bprm.p, 0);
         if (!bprm.p) {
             retval = -E2BIG;
             goto exec_error2;
