@@ -13,6 +13,12 @@
 
 #include <test/debug.h>
 #include <linux/elf.h>
+#include <linux/ptrace.h>
+#include <linux/binfmts.h>
+#include <linux/string.h>
+#include <linux/stat.h>
+
+#include <asm/segment.h>
 
 #define __LIBRARY__
 #include <linux/unistd.h>
@@ -112,15 +118,115 @@
  * -----------------------------------------------------------------------
  *
  */
-int sys_d_parse_elf(const char *file, char **argv, char **envp)
+#ifdef CONFIG_PARSE_ELF_HEADER
+static int parse_elf_header(struct elfhdr *eh)
 {
-    printk("Hello World\n");
+    printk("FIRST %#x\n", eh->e_ident[0]);
     return 0;
+}
+#endif // CONFIG_PARSE_ELF_HEADER
+
+/* Read elf file from VFS  */
+static int elf_read(struct inode *inode, unsigned long offset,
+                    char *addr, unsigned long count)
+{
+    struct file file;
+    int result = -ENOEXEC;
+
+    if (!inode->i_op || !inode->i_op->default_file_ops)
+        goto end_readexec;
+
+    file.f_mode  = 1;
+    file.f_flags = 0;
+    file.f_count = 1;
+    file.f_inode = inode;
+    file.f_pos   = 0;
+    file.f_reada = 0;
+    file.f_op    = inode->i_op->default_file_ops;
+    if (file.f_op->open)
+        if (file.f_op->open(inode, &file))
+            goto end_readexec;
+    if (!file.f_op || !file.f_op->read)
+        goto close_readexec;
+    if (file.f_op->lseek) {
+        if (file.f_op->lseek(inode, &file, offset, 0) != offset)
+            goto close_readexec;
+    } else
+        file.f_pos = offset;
+    if (get_fs() == USER_DS) {
+        result = verify_area(VERIFY_WRITE, addr, count);
+        if (result)
+            goto close_readexec;
+    }
+    result = file.f_op->read(inode, &file, addr, count);
+    
+close_readexec:
+    if (file.f_op->release)
+        file.f_op->release(inode, &file);
+end_readexec:
+    return result;
+}
+
+/*
+ * Load specical EXEC file.
+ */
+static int do_elf(char *filename, char **argv, char **envp, 
+                  struct pt_regs *regs)
+{
+    struct linux_binprm bprm;
+    struct linux_binfmt *fmt;
+    unsigned long old_fs;
+    int i;
+    int retval = 0;
+
+    retval = open_namei(filename, 0, 0, &bprm.inode, NULL);
+    if (retval)
+        return retval;
+    if (!S_ISREG(bprm.inode->i_mode)) {
+        retval = -EACCES;
+        goto elf_error2; 
+    }
+    if (!bprm.inode->i_sb) {
+        retval = -EACCES;
+        goto elf_error2;
+    }
+#ifdef CONFIG_PARSE_ELF_HEADER
+    /* Read Execute-file */
+    memset(bprm.buf, 0, sizeof(bprm.buf));
+    old_fs = get_fs();
+    set_fs(get_ds());
+    retval = elf_read(bprm.inode, 0, bprm.buf, 128);
+    set_fs(old_fs);
+    if (retval < 0)
+        goto elf_error2;
+    parse_elf_header((struct elfhdr *)bprm.buf);
+#endif
+
+elf_error2:
+    iput(bprm.inode);
+
+    return retval;
+}
+
+/* Common system call entry */
+int sys_d_parse_elf(struct pt_regs regs)
+{
+    int error;
+    char *filename;
+
+    error = getname((char *)regs.ebx, &filename);
+    if (error)
+        return error;
+    error = do_elf(filename, (char **)regs.ecx, (char **)regs.edx, &regs);
+    putname(filename);
+    return error;
 }
 
 /* Invoke by system call: int $0x80 */
 int debug_binary_elf_format(void)
 {
-    d_parse_elf("/bin/demo", NULL, NULL);
+#ifdef CONFIG_ELF_RELOCATABLE_FILE
+    d_parse_elf("/bin/demo.o", NULL, NULL);
+#endif
     return 0;
 }

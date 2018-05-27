@@ -120,21 +120,21 @@ struct Elf32_Sym{
   short int st_shndx;
 };
 
-struct elfhdr{
-  char	e_ident[16];
-  short int e_type;
-  short int e_machine;
-  int   e_version;
-  char *e_entry;  /* Entry point */
-  int   e_phoff;
-  int   e_shoff;
-  int   e_flags;
-  short int e_ehsize;
-  short int e_phentsize;
-  short int e_phnum;
-  short int e_shentsize;
-  short int e_shnum;
-  short int e_shstrndx;
+struct elfhdr {
+    char e_ident[16];
+    short int e_type;
+    short int e_machine;
+    int   e_version;
+    char *e_entry;  /* Entry point */
+    int   e_phoff;
+    int   e_shoff;
+    int   e_flags;
+    short int e_ehsize;
+    short int e_phentsize;
+    short int e_phnum;
+    short int e_shentsize;
+    short int e_shnum;
+    short int e_shstrndx;
 };
 
 struct elf_phdr{
