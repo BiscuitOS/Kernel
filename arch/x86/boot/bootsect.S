@@ -179,7 +179,7 @@ ok_load_setup:
 	xor %bh, %bh
 	int $0x10
 
-	mov $20, %cx
+	mov $15, %cx
 	mov $0x0007, %bx   # page 0, attribute 7 (normal)
 #	lea msg1, %bp
 	mov $msg1, %bp

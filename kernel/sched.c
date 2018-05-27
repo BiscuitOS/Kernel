@@ -118,7 +118,13 @@ int sys_ni_syscall(void)
 	return -EINVAL;
 }
 
-fn_ptr sys_call_table[] = { sys_setup, sys_exit, sys_fork, sys_read,
+int sys_socketcall(void)
+{
+    return 0;
+}
+
+fn_ptr sys_call_table[] = {
+sys_setup, sys_exit, sys_fork, sys_read,
 sys_write, sys_open, sys_close, sys_waitpid, sys_creat, sys_link,
 sys_unlink, sys_execve, sys_chdir, sys_time, sys_mknod, sys_chmod,
 sys_chown, sys_break, sys_stat, sys_lseek, sys_getpid, sys_mount,
@@ -136,14 +142,18 @@ sys_gettimeofday, sys_settimeofday, sys_getgroups, sys_setgroups,
 sys_select, sys_symlink, sys_lstat, sys_readlink, sys_uselib,
 sys_swapon, sys_reboot, sys_readdir, sys_mmap, sys_munmap, sys_truncate,
 sys_ftruncate, sys_fchmod, sys_fchown, sys_getpriority, sys_setpriority,
-sys_profil, sys_statfs, sys_fstatfs, sys_ioperm,
+sys_profil, sys_statfs, sys_fstatfs, sys_ioperm, sys_socketcall,
 sys_syslog, sys_setitimer, sys_getitimer, sys_newstat, sys_newlstat,
 sys_newfstat, sys_uname, sys_iopl, sys_vhangup, sys_idle, sys_vm86,
 sys_wait4, sys_swapoff, sys_sysinfo, sys_ipc, sys_fsync, sys_sigreturn,
 sys_clone, sys_setdomainname, sys_newuname, sys_modify_ldt,
 sys_adjtimex, sys_mprotect, sys_sigprocmask, sys_create_module,
 sys_init_module, sys_delete_module, sys_get_kernel_syms, sys_quotactl,
-sys_getpgid, sys_fchdir, sys_bdflush };
+sys_getpgid, sys_fchdir, sys_bdflush,
+#ifdef CONFIG_DEBUG_BINARY_ELF
+sys_d_parse_elf,  /* parse elf format */
+#endif
+};
 
 /* So we don't have to do any more manual updating.... */
 int NR_syscalls = sizeof(sys_call_table)/sizeof(fn_ptr);
@@ -820,7 +830,7 @@ void sched_init(void)
 		panic("Struct sigaction MUST be 16 bytes");
 	set_tss_desc(gdt+FIRST_TSS_ENTRY,&init_task.tss);
 	set_ldt_desc(gdt+FIRST_LDT_ENTRY,&default_ldt,1);
-	set_system_gate(0x80,&system_call);
+	set_system_gate(0x80, &system_call);
 	p = gdt+2+FIRST_TSS_ENTRY;
 	for(i=1 ; i<NR_TASKS ; i++) {
 		task[i] = NULL;

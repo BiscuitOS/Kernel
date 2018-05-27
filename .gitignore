@@ -21,6 +21,7 @@ vmlinux.bin
 *.lds
 *.s
 *.list
+*.i
 
 # Execte file
 

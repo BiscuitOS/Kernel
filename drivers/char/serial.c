@@ -1781,7 +1781,7 @@ int rs_open(struct tty_struct *tty, struct file * filp)
  */
 static void show_serial_version(void)
 {
-	printk("Serial driver version 3.99a with");
+	//printk("Serial driver version 3.99a with");
 #ifdef CONFIG_AST_FOURPORT
 	printk(" AST_FOURPORT");
 #define SERIAL_OPT
@@ -1801,7 +1801,7 @@ static void show_serial_version(void)
 #ifdef SERIAL_OPT
 	printk(" enabled\n");
 #else
-	printk(" no serial options enabled\n");
+	//printk(" no serial options enabled\n");
 #endif
 #undef SERIAL_OPT
 }
@@ -2049,9 +2049,10 @@ long rs_init(long kmem_start)
 		autoconfig(info);
 		if (info->type == PORT_UNKNOWN)
 			continue;
-		printk("tty%02d%s at 0x%04x (irq = %d)", info->line, 
-		       (info->flags & ASYNC_FOURPORT) ? " FourPort" : "",
-		       info->port, info->irq);
+#if 0
+		//printk("tty%02d%s at 0x%04x (irq = %d)", info->line, 
+		  //     (info->flags & ASYNC_FOURPORT) ? " FourPort" : "",
+		    //   info->port, info->irq);
 		switch (info->type) {
 			case PORT_8250:
 				printk(" is a 8250\n");
@@ -2069,6 +2070,7 @@ long rs_init(long kmem_start)
 				printk("\n");
 				break;
 		}
+#endif
 	}
 	return kmem_start;
 }

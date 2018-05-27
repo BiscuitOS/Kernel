@@ -8,6 +8,6 @@
  * published by the Free Software Foundation.
  */
 #define __LIBRARY__
-#include <unistd.h>
+#include <linux/unistd.h>
 
 _syscall3(int, d_parse_elf, const char *, file, char **, argv, char **, envp)

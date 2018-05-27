@@ -144,6 +144,9 @@ extern int sys_quotactl();
 extern int sys_getpgid();
 extern int sys_fchdir();
 extern int sys_bdflush();
+#ifdef CONFIG_DEBUG_BINARY_ELF
+extern int sys_d_parse_elf();
+#endif
 
 /*
  * These are system calls that will be removed at some time

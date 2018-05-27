@@ -24,6 +24,10 @@
 #include <linux/utsname.h>
 #include <linux/ioport.h>
 
+#ifdef CONFIG_TESTCASE
+#include <test/debug.h>
+#endif
+
 extern unsigned long * prof_buffer;
 extern unsigned long prof_len;
 extern char edata[], end[];
@@ -63,7 +67,7 @@ static inline pid_t wait(int * wait_stat)
 	return waitpid(-1,wait_stat,0);
 }
 
-static char printbuf[1024];
+char printbuf[1024];
 
 extern int console_loglevel;
 
@@ -238,7 +242,6 @@ static void calibrate_delay(void)
 {
     int ticks;
 
-    printk("Calibrating delay loop.. ");
     while (loops_per_sec <<= 1) {
         ticks = jiffies;
         __delay(loops_per_sec);
@@ -255,7 +258,6 @@ static void calibrate_delay(void)
         return;
         }
     }
-    printk("failed\n");
 }
 	
 
@@ -482,7 +484,7 @@ asmlinkage void start_kernel(void)
         idle();
 }
 
-static int printf(const char *fmt, ...)
+int printf(const char *fmt, ...)
 {
     va_list args;
     int i;
@@ -502,7 +504,9 @@ void init(void)
     (void) open("/dev/tty1", O_RDWR, 0);
     (void) dup(0);
     (void) dup(0);
-
+#ifdef CONFIG_DEBUG_USERLAND_SYSCALL
+    debug_on_userland_syscall();
+#endif
     execve("/etc/init", argv_init, envp_init);
     execve("/bin/init",argv_init,envp_init);
     execve("/sbin/init",argv_init,envp_init);

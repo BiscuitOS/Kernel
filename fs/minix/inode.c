@@ -204,12 +204,12 @@ struct super_block *minix_read_super(struct super_block *s,void *data,
         bh->b_dirt = 1;
         s->s_dirt = 1;
     }
-    if (!(s->u.minix_sb.s_mount_state & MINIX_VALID_FS))
-        printk ("MINIX-fs: mounting unchecked file system, "
-                "running fsck is recommended.\n");
-    else if (s->u.minix_sb.s_mount_state & MINIX_ERROR_FS)
-        printk ("MINIX-fs: mounting file system with errors, "
-                "running fsck is recommended.\n");
+    if (!(s->u.minix_sb.s_mount_state & MINIX_VALID_FS));
+        //printk ("MINIX-fs: mounting unchecked file system, "
+          //      "running fsck is recommended.\n");
+    else if (s->u.minix_sb.s_mount_state & MINIX_ERROR_FS);
+        //printk ("MINIX-fs: mounting file system with errors, "
+        //        "running fsck is recommended.\n");
     return s;
 }
 

@@ -1473,7 +1473,8 @@ long con_init(long kmem_start)
 	gotoxy(currcons,orig_x,orig_y);
 	update_screen(fg_console);
 	printable = 1;
-	printk("Console: %s %s %ldx%ld, %d virtual consoles\n",
+	if (0)
+	    printk("Console: %s %s %ldx%ld, %d virtual consoles\n",
 		can_do_color?"colour":"mono",
 		display_desc,
 		video_num_columns,video_num_lines,
