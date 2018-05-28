@@ -92,7 +92,11 @@ QEMU_FLAGS += $(BLOCK_DEVICE)
 # -----------------------------------
 # Rootfs
 # -----------------------------------
-ROOTFS := -hda $(srctree)/BiscuitOS-0.11.img
+ifdef CONFIG_QEMU_ROOTFS_NAME
+ROOTFS := -hda $(srctree)/$(CONFIG_QEMU_ROOTFS_NAME)
+else
+ROOTFS := -hda $(srctree)/BiscuitOS-$(KERNELVERSION).img
+endif
 
 QEMU_FLAGS += $(ROOTFS)
 
