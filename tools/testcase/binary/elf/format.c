@@ -22,6 +22,71 @@
 
 #define __LIBRARY__
 #include <linux/unistd.h>
+
+/*
+ * ELF Section '.bis.data'
+ *   More section see "arch/x86/kernel/vmlinux.lds.S"
+ *   * Add a global initialized data into '.bis.data'
+ *   * Add a global uninitialized data into '.bid.data'
+ *   * Add a local static initialized data into '.bis.data'
+ *   * Add a local static uninitialized data into '.bis.data'
+ */
+#ifdef CONFIG_ELF_SECTION_DATA
+__attribute__ ((section(".bis.data"))) int bis_init = 0x687;
+__attribute__ ((section(".bis.data"))) int bis_uninit0;
+__attribute__ ((section(".bis.data"))) int bis_uninit1;
+__attribute__ ((section(".bis.data"))) int bis_uninit2;
+__attribute__ ((section(".bis.data"))) int bis_uninit3;
+__attribute__ ((section(".bis.data"))) int bis_uninit4;
+
+static void bis_data_section(void)
+{
+    __attribute__ ((section(".bis.data"))) static int bis_init0 = 0x678;	
+    __attribute__ ((section(".bis.data"))) static int bis_uninit5;	
+    __attribute__ ((section(".bis.data"))) static int bis_uninit6;	
+    __attribute__ ((section(".bis.data"))) static int bis_uninit7;	
+    __attribute__ ((section(".bis.data"))) static int bis_uninit8;	
+    __attribute__ ((section(".bis.data"))) static int bis_uninit9;	
+
+
+    if (0) {
+        /* remove warning on 'compile stage' */
+        printk("bis_init %d\n", bis_init);
+        printk("bis_init0 %d\n", bis_init0);
+        printk("bis_uninit0 %d\n", bis_uninit0);
+        printk("bis_uninit1 %d\n", bis_uninit1);
+        printk("bis_uninit2 %d\n", bis_uninit2);
+        printk("bis_uninit3 %d\n", bis_uninit3);
+        printk("bis_uninit4 %d\n", bis_uninit4);
+        printk("bis_uninit5 %d\n", bis_uninit5);
+        printk("bis_uninit6 %d\n", bis_uninit6);
+        printk("bis_uninit7 %d\n", bis_uninit7);
+        printk("bis_uninit8 %d\n", bis_uninit8);
+        printk("bis_uninit9 %d\n", bis_uninit9);
+    }
+}
+#endif
+/*
+ * ELF Section '.bis.text'
+ *   More section see 'arch/x86/kernel/vmlinux.lds.S'
+ *   * Add a static function into '.bis.text'
+ *   * Add a extern function into '.bis.text'
+ */
+#ifdef CONFIG_ELF_SECTION_FUNC
+__attribute__ ((section(".bis.text"))) static int bis_static_func(void)
+{
+    extern char __bis_text[], __bis_etext[];
+
+    printk("SECTION: .bis.text [%#x - %#x]\n", 
+          (unsigned int)__bis_text, (unsigned int)__bis_etext);
+    return 0;
+}
+__attribute__ ((section(".bis.text"))) int bis_extern_func(void)
+{
+    return 0;
+}
+#endif
+
 /*
  * Parse ELF header
  *
@@ -121,7 +186,189 @@
 #ifdef CONFIG_PARSE_ELF_HEADER
 static int parse_elf_header(struct elfhdr *eh)
 {
-    printk("FIRST %#x\n", eh->e_ident[0]);
+    int i;
+
+    /* 
+     * Magic number and other information 
+     *   Start with: 0x7f 0x45 0x4c 0x46 
+     */
+    printk("Magic: ");
+    for (i = 0; i < 16; i++)
+        printk(" %#x", (unsigned int)eh->e_ident[i]);
+    printk("\n");
+    
+    /* 
+     * File format: e_ident[EI_CLASS]
+     *   ELFCLASS32:          1    Elf32
+     *   ELFCLASS64:          2    Elf64 
+     */
+    printk("Object:       %s\n", (eh->e_ident[4] == 1) ?
+                         "Elf32" : "Elf64");
+
+    /* 
+     * Object file: e_ident[EI_DATA]
+     *   ELFDATANONE:         0    Invalid data encoding
+     *   ELFDATA2LSB:         1    2's complement, little endian
+     *   ELFDATA2MSB:         2    2's complement, big endian
+     */
+    if (eh->e_ident[5])
+        printk("Data coding:  %s\n", (eh->e_ident[5] == 1) ?
+                "Little endian" : "Big endian");
+    else
+        printk("Data coding: Invalid data encoding\n");
+
+    /* 
+     * OS ABI identification: e_ident[EI_OSABI]
+     *   ELFOSABI_SYSV:       0    Unix system V ABI 
+     *   ELFOSABI_HPUX:       1    HP-UX
+     *   ELFOSABI_NETBSD:     2    NetBSD
+     *   ELFOSABI_GNU:        3    Object uses GNU ELF extensions.
+     *   ELFOSABI_LINUX:      3    Linux
+     */
+    switch (eh->e_ident[7]) {
+    case 0:
+        printk("ABI:          Unix SystemV\n");
+        break;
+    case 1:
+        printk("ABI:          HP-Unix\n");
+        break;
+    case 2:
+        printk("ABI:          NetBSD\n");
+        break;
+    case 3:
+        printk("ABI:          Linux/GNU ELF extension\n");
+        break;
+    default:
+        printk("ABI:          Unknow ABI\n");
+        break;
+    }
+
+    /* ABI version: e_ident[EI_ABIVERSION] */
+    printk("ABI Version:  %d\n", eh->e_ident[8]);
+
+    /*
+     * Object file type: e_type 
+     *   ET_NONE:      0     No file type
+     *   ET_REL:       1     Relocatable file
+     *   ET_EXEC:      2     Executable file
+     *   ET_DYN:       3     Shared object file
+     *   ET_CORE:      4      Core file
+     */
+    switch (eh->e_type) {
+    case ET_NONE:
+        printk("File type:    No file type\n");
+        break;
+    case ET_REL:
+        printk("File type:    Relocatable file\n");
+        break;
+    case ET_EXEC:
+        printk("File type:    Executable file\n");
+        break;
+    case ET_DYN:
+        printk("File type:    Shared object file\n");
+        break;
+    case ET_CORE:
+        printk("File type:    Core file\n");
+        break;
+    default:
+        printk("File type:    Unknow type\n");
+        break;
+    }
+
+    /* 
+     * Target machine: e_machine
+     *   EM_NONE:      0   No machine
+     *   EM_M32:       1   AT&T WE 32100
+     *   EM_SPARC:     2   SUN SPARC
+     *   EM_386:       3   Intel 80386
+     */
+    switch (eh->e_machine) {
+    case EM_NONE:
+        printk("Target Mach:  No machine\n");
+        break;
+    case EM_M32:
+        printk("Target Mach:  AT&T WE 32100\n");
+        break;
+    case EM_SPARC:
+        printk("Target Mach:  SUN SPARC\n");
+        break;
+    case EM_386:
+        printk("Target Mach:  Intel 80386\n");
+        break;
+    default:
+        printk("Target Mach:  Unknow machine\n");
+        break;
+    }
+
+    /* Version: e_version */
+    printk("Version:      %d\n", eh->e_version);
+
+    /*
+     * Entry point virtual address
+     *  This is the memory address of the entry point from where the 
+     *  process starts executing. This field is either 32 or 64 bits 
+     *  long depending on the format defined earlier.
+     */
+    printk("Entry-Addr:   %#8x\n", (unsigned int)eh->e_entry);
+
+    /* 
+     * Program header table file offset
+     *  Points to the start of the program header table. It usually 
+     *  follows the file header immediately, making the offset 0x34 
+     *  or 0x40 for 32- and 64-bit ELF executables, respectively. 
+     */
+    printk("Prog-Table:   %#x\n", eh->e_phoff);
+
+    /*
+     * Section header table file offset 
+     *  Points to the start of the section header table.
+     */
+    printk("Sect-Table:   %#x\n", eh->e_shoff);
+
+    /* 
+     * Processor-specific flags
+     *  Interpretation of this field depends on the target architecture.
+     */
+    printk("Prog-flags:   %#x\n", eh->e_flags);
+
+    /* 
+     * ELF header size in bytes 
+     *  Contains the size of this header, normally 64 Bytes for 64-bit 
+     *  and 52 Bytes for 32-bit format
+     */
+    printk("ELF size:     %d\n", eh->e_ehsize);
+
+    /* 
+     * Program header table entry size 
+     *  Contains the size of a program header table entry.
+     */
+    printk("Phtable size: %#x\n", eh->e_phentsize);
+
+    /* 
+     * Program header table entry count 
+     *  Contains the size of a section header table entry.
+     */
+    printk("Phtable num:  %#x\n", eh->e_phnum);
+
+    /* 
+     * Section header table entry size 
+     *  Contains the number of entries in the section header table
+     */
+    printk("SectTab size: %#x\n", eh->e_shentsize);
+
+    /* 
+     * Section header table entry size 
+     *  Contains the number of entries in the section header table
+     */
+    printk("SectTab num:  %#x\n", eh->e_shnum);
+
+    /* 
+     * Section header string table index 
+     *  Contains index of the section header table entry that 
+     *  contains the section names
+     */
+    printk("StringTab:    %#x\n", eh->e_shstrndx);
+
     return 0;
 }
 #endif // CONFIG_PARSE_ELF_HEADER
@@ -174,9 +421,7 @@ static int do_elf(char *filename, char **argv, char **envp,
                   struct pt_regs *regs)
 {
     struct linux_binprm bprm;
-    struct linux_binfmt *fmt;
     unsigned long old_fs;
-    int i;
     int retval = 0;
 
     retval = open_namei(filename, 0, 0, &bprm.inode, NULL);
@@ -200,6 +445,13 @@ static int do_elf(char *filename, char **argv, char **envp,
     if (retval < 0)
         goto elf_error2;
     parse_elf_header((struct elfhdr *)bprm.buf);
+#endif
+#ifdef CONFIG_ELF_SECTION_DATA
+    bis_data_section();
+#endif
+#ifdef CONFIG_ELF_SECTION_FUNC
+    bis_static_func();
+    bis_extern_func();
 #endif
 
 elf_error2:

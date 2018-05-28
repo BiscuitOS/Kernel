@@ -13,20 +13,34 @@ config DEBUG_BINARY_ELF
 
 if DEBUG_BINARY_ELF
 
-config ELF_RELOCATABLE_FILE
-	bool "Parse ELF Relocable file"
-	help
-	  Parse formt for Relocable file.
-
 config DEBUG_ELF_FORMAT
 	bool "Format for ELF (Executable and Linkable Format)"
 	help
 	  Parse foramt for ELF (Executable and Linkable Format).
 
+config ELF_RELOCATABLE_FILE
+	bool "Parse ELF Relocable file"
+	select DEBUG_ELF_FORMAT
+	help
+	  Parse formt for Relocable file.
+
 config PARSE_ELF_HEADER
 	bool "Parse Header for ELF"
+	select DEBUG_ELF_FORMAT
 	help
 	  Parse ELF header.
+
+config ELF_SECTION_DATA
+	bool "Add and Parse a data into ELF section '.bis.data'"
+	select DEBUG_ELF_FORMAT
+	help
+	  Add and parse a new data into ELF section '.bis.data'.
+
+config ELF_SECTION_FUNC
+	bool "Add and parse a function into ELF section '.bis.text'"
+	select DEBUG_ELF_FORMAT
+	help
+	  Add and parse a new function into ELF section '.bis.text'
 
 endif
 
