@@ -112,12 +112,12 @@ struct Elf32_Rela{
 };
 
 struct Elf32_Sym{
-  int st_name;
-  unsigned int st_value;
-  int st_size;
-  unsigned char st_info;
-  unsigned char st_other;
-  short int st_shndx;
+    int st_name;
+    unsigned int st_value;
+    int st_size;
+    unsigned char st_info;
+    unsigned char st_other;
+    short int st_shndx;
 };
 
 struct elfhdr {

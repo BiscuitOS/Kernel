@@ -25,6 +25,10 @@
 
 static int elf_read(struct inode *inode, unsigned long offset,
                     char *addr, unsigned long count);
+#ifdef CONFIG_ELF_SECTION_TABLE
+static void parse_section_flags(unsigned int flags);
+static void parse_section_type(unsigned int type);
+#endif
 
 /*
  * ELF Section '.bis.data'
@@ -376,7 +380,215 @@ static int parse_elf_header(struct elfhdr *eh)
 }
 #endif // CONFIG_PARSE_ELF_HEADER
 
+#ifdef CONFIG_ELF_SECTION_SHSTRTAB
+/*
+ * Parse ELF .shstrtab section
+ *   Section String Table that contain string for section table, e.g.
+ *   .data, .code and .strtab and so on.
+ *
+ *   e_shstrndx point to index of .shstrtab in Section Table.
+ */
+#define SHSTRTAB_MAXLEN      128
+static int parse_elf_shstrtab_section(struct inode *inode, 
+                            struct elf_shdr *shdrp)
+{
+    char shstrtab[SHSTRTAB_MAXLEN];
+    unsigned long old_fs;
+    int retval;
+    int i;
+
+    /*
+     * Obtain '.strtab' from ELF file
+     */
+    old_fs = get_fs();
+    set_fs(get_ds());
+    retval = elf_read(inode, shdrp->sh_offset, shstrtab, shdrp->sh_size);
+    set_fs(old_fs);
+    if (retval < 0) {
+        printk("Unable to obtain '.strtab' from ELF file.\n");
+        goto err;
+    }
+
+    for (i = 0; i < shdrp->sh_size; i++) 
+        printk("%c", shstrtab[i]);
+    return 0;
+
+err:
+    return retval;
+}
+#endif
+
+#ifdef CONFIG_ELF_SECTION_STRTAB
+#define STRTAB_MAXLEN    256
+/*
+ * Parse ELF .strtab section
+ *   String table that contaim string from symbol.
+ */
+static int parse_elf_strtab_section(struct inode *inode,
+             struct elf_shdr *shdrp, const char *shstrtab)
+{
+    unsigned long old_fs;
+    char strtab[STRTAB_MAXLEN];
+    int retval, i;
+
+    printk("Loading %s section.\n", &shstrtab[shdrp->sh_name]);
+    old_fs = get_fs();
+    set_fs(get_ds());
+    retval = elf_read(inode, shdrp->sh_offset, strtab, shdrp->sh_size);
+    set_fs(old_fs);
+    if (retval < 0) {
+        printk("Unable to obtain '.strtab' from ELF file.\n");
+        goto err;
+    }
+
+    for (i = 0; i < shdrp->sh_size; i++)
+        printk("%c", strtab[i]);
+    return 0;
+
+err:
+    Ereturn retval;
+}
+#endif
+
+#ifdef CONFIG_ELF_SECTION_CODE
+#define CODE_MAXLEN       256
+/*
+ * Parse ELF .code section
+ *   Code section contain all executable code.
+ */
+static int parse_elf_code_section(struct inode *inode,
+             struct elf_shdr *shdrp, const char *shstrtab)
+{
+    unsigned long old_fs;
+    unsigned long context[CODE_MAXLEN];
+    char *chtab;
+    int retval, i, j, k;
+
+    /*
+     * Read .text or .data section from ELF file
+     */
+    old_fs = get_fs();
+    set_fs(get_ds());
+    retval = elf_read(inode, shdrp->sh_offset, (char *)context, 
+             shdrp->sh_size - CODE_MAXLEN * sizeof(unsigned long) ? 
+             CODE_MAXLEN * sizeof(unsigned long) : shdrp->sh_size);
+    set_fs(old_fs);
+    if (retval < 0) {
+       printk("Unable loading code section from ELF file.\n");
+       goto err;
+    }
+
+    /* Load virtual address */
+    printk("Section Address: %#08x\n", shdrp->sh_addr);
+    /* Location on ELF file */
+    printk("Section offset:  %#08x\n", shdrp->sh_offset);
+    /* Section flags */
+    parse_section_flags(shdrp->sh_flags);
+    /* Section type */
+    parse_section_type(shdrp->sh_type);
+
+    /* Dump text context */
+    printk("Context:\n");
+    chtab = (char *)context;
+    for (i = 0; i < ((shdrp->sh_size / 4 - CODE_MAXLEN ? 
+                          CODE_MAXLEN : shdrp->sh_size / 4)) / 4; i++) {
+        printk("%04x  ", i * 16);
+        for (j = 0; j < 4; j++)
+            printk("%08x ", (unsigned int)context[i * 4 + j]);
+        printk("  ");
+        for (k = 0; k < 16; k++)
+            printk("%c", chtab[i * 16 + k]);
+        printk("\n");
+    }
+    printk("\n");
+    return 0;
+
+err:
+    return retval;
+}
+#endif
+
 #ifdef CONFIG_ELF_SECTION_TABLE
+/*
+ * find special section by name
+ */
+static struct elf_shdr *elf_find_section_by_name(struct elfhdr *eh,
+               struct elf_shdr *shtab, const char *name, char *shstrtab)
+{
+    int i;
+
+    for (i = 1; i < eh->e_shnum; i++)
+        if (strcmp(&shstrtab[shtab[i].sh_name], name) == 0)
+            return &shtab[i];
+    return NULL;
+}
+
+/*
+ * Parse section flags
+ */
+static void parse_section_flags(unsigned int flags)
+{
+    printk("Flags:          ");
+    /* SHF_WRITE: writeable */
+    if (flags & 0x1)
+        printk(" Writeable");
+    if (flags & 0x2)
+        printk(" Allocable");
+    if (flags & 0x4)
+        printk(" Executable");
+    printk(" Readable\n");
+}
+
+/*
+ * Parse section type
+ */
+static void parse_section_type(unsigned int type)
+{
+    printk("Type:            ");
+    switch (type) {
+    case 0:
+        printk("NULL Type\n");
+        break;
+    case 1:
+        printk("Program\n");
+        break;
+    case 2:
+        printk("Symbol Table\n");
+        break;
+    case 3:
+        printk("String Table\n");
+        break;
+    case 4:
+        printk("Relocation Table\n");
+        break;
+    case 5:
+        printk("Hash Table\n");
+        break;
+    case 6:
+        printk("Dynamic Information\n");
+        break;
+    case 7:
+        printk("Note comment\n");
+        break;
+    case 8:
+        printk("Empty content\n");
+        break;
+    case 9:
+        printk("Relocation information\n");
+        break;
+    case 10:
+        printk("Reserved\n");
+        break;
+    case 11:
+        printk("Dynamic link symbol table\n");
+        break;
+    default:
+        printk("uknown Type\n");
+        break;
+    }
+}
+
+#define SHSTRTAB_LEN    256
 /*
  * Parse ELF Section Table.
  */
@@ -384,9 +596,11 @@ static int parse_elf_section_table(struct linux_binprm *bprm)
 {
     unsigned long old_fs;
     struct elf_shdr shdr[20];
+    struct elf_shdr *shdrp;
     struct elfhdr *eh = (struct elfhdr *)bprm->buf;
     int retval;
-    int index, offset;
+    int index;
+    char shstrtab[SHSTRTAB_LEN];
 
     /* 
      * Read ELF section table 
@@ -399,11 +613,46 @@ static int parse_elf_section_table(struct linux_binprm *bprm)
                           sizeof(struct elf_shdr) * eh->e_shnum);
     set_fs(old_fs < 0);
     if (retval < 0) {
-        printk("Unable to read section table from ELF file\n");
+        printk("Unable to read Section Table from ELF file\n");
         goto err;
     }
 
-    /* Obtain .strtab index in Section Table */
+    /* Obtain .strtab table entry */
+    index = eh->e_shstrndx;
+    shdrp = &shdr[index];
+    set_fs(get_ds());
+    retval = elf_read(bprm->inode, shdrp->sh_offset, shstrtab,
+                      shdrp->sh_size);
+    set_fs(old_fs);
+    if (retval < 0) {
+        printk("Unable to read .shstrtab from ELF file\n");
+        goto err;
+    }
+#ifdef CONFIG_ELF_SECTION_STRTAB
+    shdrp = elf_find_section_by_name(eh, shdr, ".strtab", shstrtab);
+    if (!shdrp) {
+        printk("Unable to .strtab section table\n");
+        goto err;
+    }
+    parse_elf_strtab_section(bprm->inode, shdrp, shstrtab);
+#endif
+
+#ifdef CONFIG_ELF_SECTION_CODE
+    shdrp = elf_find_section_by_name(eh, shdr, ".code", shstrtab);
+    if (!shdrp) {
+        /* Unable obtain '.code' section and try '.text' section */
+        shdrp = elf_find_section_by_name(eh, shdr, ".text", shstrtab);
+        if (!shdrp) {
+            printk("Unable obtain code section from ELF file.\n");
+            goto err;
+        }
+    }
+    parse_elf_code_section(bprm->inode, shdrp, shstrtab);
+#endif
+
+#ifdef CONFIG_ELF_SECTION_SHSTRTAB
+    parse_elf_shstrtab_section(bprm->inode, shdrp);
+#endif
 
     return 0;
 err:
