@@ -137,15 +137,28 @@ struct elfhdr {
     short int e_shstrndx;
 };
 
-struct elf_phdr{
-  int p_type;
-  int p_offset;
-  int p_vaddr;
-  int p_paddr;
-  int p_filesz;
-  int p_memsz;
-  int p_flags;
-  int p_align;
+struct elf_phdr {
+    int p_type;
+    int p_offset;
+    int p_vaddr;
+    int p_paddr;
+    int p_filesz;
+    int p_memsz;
+    int p_flags;
+    int p_align;
+};
+
+struct elf_shdr {
+    unsigned int sh_name;
+    unsigned int sh_type;
+    unsigned int sh_flags;
+    unsigned int sh_addr;
+    unsigned int sh_offset;
+    unsigned int sh_size;
+    unsigned int sh_link;
+    unsigned int sh_info;
+    unsigned int addralign;
+    unsigned int sh_entsize;
 };
 
 #define ELF_START_MMAP 0x80000000

@@ -42,6 +42,22 @@ config ELF_SECTION_FUNC
 	help
 	  Add and parse a new function into ELF section '.bis.text'
 
+config ELF_SECTION_TABLE
+	bool "ELF Section Table"
+	select DEBUG_ELF_FORMAT
+	help
+	  ELF Section Table.
+
+if ELF_SECTION_TABLE
+
+config ELF_SECTION_CODE
+	bool "ELF '.text'/'.code' code section"
+	help
+	  ELF Code Section point '.text' or '.code'
+	
+
+endif # ELF_SECTION_TABLE
+
 endif
 
 endmenu

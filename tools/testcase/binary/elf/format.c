@@ -23,6 +23,9 @@
 #define __LIBRARY__
 #include <linux/unistd.h>
 
+static int elf_read(struct inode *inode, unsigned long offset,
+                    char *addr, unsigned long count);
+
 /*
  * ELF Section '.bis.data'
  *   More section see "arch/x86/kernel/vmlinux.lds.S"
@@ -373,6 +376,41 @@ static int parse_elf_header(struct elfhdr *eh)
 }
 #endif // CONFIG_PARSE_ELF_HEADER
 
+#ifdef CONFIG_ELF_SECTION_TABLE
+/*
+ * Parse ELF Section Table.
+ */
+static int parse_elf_section_table(struct linux_binprm *bprm)
+{
+    unsigned long old_fs;
+    struct elf_shdr shdr[20];
+    struct elfhdr *eh = (struct elfhdr *)bprm->buf;
+    int retval;
+    int index, offset;
+
+    /* 
+     * Read ELF section table 
+     *   e_shoff: Section table offset in ELF file.
+     *   e_shnum: Section table number.
+     */
+    old_fs = get_fs();
+    set_fs(get_ds());
+    retval = elf_read(bprm->inode, eh->e_shoff, (char *)shdr, 
+                          sizeof(struct elf_shdr) * eh->e_shnum);
+    set_fs(old_fs < 0);
+    if (retval < 0) {
+        printk("Unable to read section table from ELF file\n");
+        goto err;
+    }
+
+    /* Obtain .strtab index in Section Table */
+
+    return 0;
+err:
+    return retval;
+}
+#endif
+
 /* Read elf file from VFS  */
 static int elf_read(struct inode *inode, unsigned long offset,
                     char *addr, unsigned long count)
@@ -452,6 +490,17 @@ static int do_elf(char *filename, char **argv, char **envp,
 #ifdef CONFIG_ELF_SECTION_FUNC
     bis_static_func();
     bis_extern_func();
+#endif
+#ifdef CONFIG_ELF_SECTION_TABLE
+    /* Read Execute-file */
+    memset(bprm.buf, 0, sizeof(bprm.buf));
+    old_fs = get_fs();
+    set_fs(get_ds());
+    retval = elf_read(bprm.inode, 0, bprm.buf, 128);
+    set_fs(old_fs);
+    if (retval < 0)
+        goto elf_error2;
+    parse_elf_section_table(&bprm);
 #endif
 
 elf_error2:
