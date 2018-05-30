@@ -1303,11 +1303,43 @@ static int do_elf(char *filename, char **argv, char **envp,
     parse_elf_section_table(&bprm);
 #endif
 
+    /* Cut warning */
+    if (0) {
+        printk("Hello World %d\n", (int)old_fs);
+    }
+
 elf_error2:
     iput(bprm.inode);
 
     return retval;
 }
+
+#ifdef CONFIG_ELF_SPECIAL_SYMBOL
+/*
+ * Extern symbol defined from ld.
+ *   see arch/x86/kernel/vmlinux.lds.S
+ */
+static int elf_special_link_symbol(void)
+{
+    /* Start address of program */
+    extern char __executable_start[];
+    /* End address of code. */
+    extern char __etext[], _etext[], etext[];
+    /* End address of data. */
+    extern char __edata[], _edata[], edata[];
+    /* End address of program */
+    extern char __end[], _end[], end[];
+
+    printk("Program start Address: %#x\n", (unsigned int)__executable_start);
+    printk("Code End Address:      %#x:%#x:%#x\n", 
+            (unsigned int)__etext, (unsigned int)_etext, (unsigned int)etext);
+    printk("Data End Address:      %#x:%#x:%#x\n", (unsigned int)__edata, 
+                       (unsigned int)_edata, (unsigned int)edata);
+    printk("Program end Address:   %#x:%#x:%#x\n", (unsigned int)__end,
+                       (unsigned int)_end, (unsigned int)end);
+    return 0;
+}
+#endif
 
 /* Common system call entry */
 int sys_d_parse_elf(struct pt_regs regs)
@@ -1320,6 +1352,15 @@ int sys_d_parse_elf(struct pt_regs regs)
         return error;
     error = do_elf(filename, (char **)regs.ecx, (char **)regs.edx, &regs);
     putname(filename);
+
+#ifdef CONFIG_ELF_SPECIAL_SYMBOL
+    elf_special_link_symbol();
+#endif
+
+    /* Cut warning */
+    if (0) {
+        elf_read(NULL, 0, NULL, 0);
+    }
     return error;
 }
 

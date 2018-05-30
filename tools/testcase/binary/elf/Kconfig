@@ -42,6 +42,12 @@ config ELF_PRIVATE_SECTION_FUNC
 	help
 	  Add and parse a new function into ELF section '.bis.text'
 
+config ELF_SPECIAL_SYMBOL
+	bool "ELF special link symbol."
+	select DEBUG_ELF_FORMAT
+	help
+	  ELF special link symbol. such as __edata.
+
 config ELF_SECTION_TABLE
 	bool "ELF Section Table"
 	select DEBUG_ELF_FORMAT
