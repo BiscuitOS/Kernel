@@ -30,13 +30,13 @@ config PARSE_ELF_HEADER
 	help
 	  Parse ELF header.
 
-config ELF_SECTION_DATA
+config ELF_PRIVATE_SECTION_DATA
 	bool "Add and Parse a data into ELF section '.bis.data'"
 	select DEBUG_ELF_FORMAT
 	help
 	  Add and parse a new data into ELF section '.bis.data'.
 
-config ELF_SECTION_FUNC
+config ELF_PRIVATE_SECTION_FUNC
 	bool "Add and parse a function into ELF section '.bis.text'"
 	select DEBUG_ELF_FORMAT
 	help
@@ -51,25 +51,49 @@ config ELF_SECTION_TABLE
 if ELF_SECTION_TABLE
 
 config ELF_SECTION_CODE
-	bool " .text or .code      Code Section"
+	bool ".text or .code      Code Section"
 	help
 	  ELF Code Section point '.text' or '.code'
 	
-config ELF_SECTION_DATA2
-	bool " .data               Data Section"
+config ELF_SECTION_DATA
+	bool ".data               Data Section"
 	help
 	  ELF Data Section point '.data'.
 	
 config ELF_SECTION_STRTAB
-	bool " .strtab             String Table Section"
+	bool ".strtab             String Table Section"
 	help
 	  ELF String Table section '.strtab'.
 	
 config ELF_SECTION_SHSTRTAB
-	bool " .shstrtab           Section String Table section"
+	bool ".shstrtab           Section String Table section"
 	help
 	  ELF Section string table '.shstrtab'.
 
+config ELF_SECTION_BSS
+	bool ".bss                Block Started by Symbol: BSS"
+	help
+	  ELF BSS: Block Started by Symbol.
+
+config ELF_SECTION_RODATA
+	bool ".rodata             Read-only Data section"
+	help
+	  ELF Read-Only Data section.
+
+config ELF_SECTION_COMMENT
+	bool ".comment            Comment section"
+	help
+	  ELF Comment section.
+
+config ELF_SECTION_SYMTAB
+	bool ".symtab             Symbol table section"
+	help
+	  ELF Symbol table section.
+
+config ELF_SECTION_RELTEXT
+	bool ".rel.text           Relocation Table section"
+	help
+	  ELF Relocation table section.
 
 endif # ELF_SECTION_TABLE
 

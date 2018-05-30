@@ -111,7 +111,7 @@ struct Elf32_Rela{
   int addend;
 };
 
-struct Elf32_Sym{
+struct Elf32_Sym {
     int st_name;
     unsigned int st_value;
     int st_size;
@@ -157,7 +157,7 @@ struct elf_shdr {
     unsigned int sh_size;
     unsigned int sh_link;
     unsigned int sh_info;
-    unsigned int addralign;
+    unsigned int sh_addralign;
     unsigned int sh_entsize;
 };
 

@@ -18,14 +18,14 @@ SECTIONS
 	.data	: { 
 		*(.data) 
 	}
-#ifdef CONFIG_ELF_SECTION_FUNC
+#ifdef CONFIG_ELF_PRIVATE_SECTION_FUNC
 	__bis_text = .;
 	.bis.text : {
 		*(.bis.text)
 	}
 	__bis_etext = .;
 #endif
-#ifdef CONFIG_ELF_SECTION_DATA
+#ifdef CONFIG_ELF_PRIVATE_SECTION_DATA
 	.bis.data : {
 		*(.bis.data)
 	}
@@ -40,7 +40,7 @@ SECTIONS
 EXTERN(end)
 EXTERN(__end)
 EXTERN(__edata)
-#ifdef CONFIG_ELF_SECTION_FUNC
+#ifdef CONFIG_ELF_PRIVATE_SECTION_FUNC
 EXTERN(__bis_text)
 EXTERN(__bis_etext)
 #endif

@@ -17,6 +17,7 @@
 #include <linux/binfmts.h>
 #include <linux/string.h>
 #include <linux/stat.h>
+#include <linux/ctype.h>
 
 #include <asm/segment.h>
 
@@ -28,6 +29,10 @@ static int elf_read(struct inode *inode, unsigned long offset,
 #ifdef CONFIG_ELF_SECTION_TABLE
 static void parse_section_flags(unsigned int flags);
 static void parse_section_type(unsigned int type);
+static int elf_section_table_info(struct elf_shdr *shdrp, char *shstrtab);
+static int elf_symbol_info(struct Elf32_Sym *sym, char *strtab, int nr);
+static int elf_symbol_info_core(struct Elf32_Sym *sym, char *strtab, int nr);
+static void elf_symbol_info_header(void);
 #endif
 
 /*
@@ -38,7 +43,7 @@ static void parse_section_type(unsigned int type);
  *   * Add a local static initialized data into '.bis.data'
  *   * Add a local static uninitialized data into '.bis.data'
  */
-#ifdef CONFIG_ELF_SECTION_DATA
+#ifdef CONFIG_ELF_PRIVATE_SECTION_DATA
 __attribute__ ((section(".bis.data"))) int bis_init = 0x687;
 __attribute__ ((section(".bis.data"))) int bis_uninit0;
 __attribute__ ((section(".bis.data"))) int bis_uninit1;
@@ -79,7 +84,7 @@ static void bis_data_section(void)
  *   * Add a static function into '.bis.text'
  *   * Add a extern function into '.bis.text'
  */
-#ifdef CONFIG_ELF_SECTION_FUNC
+#ifdef CONFIG_ELF_PRIVATE_SECTION_FUNC
 __attribute__ ((section(".bis.text"))) static int bis_static_func(void)
 {
     extern char __bis_text[], __bis_etext[];
@@ -462,7 +467,7 @@ static int parse_elf_code_section(struct inode *inode,
     unsigned long old_fs;
     unsigned long context[CODE_MAXLEN];
     char *chtab;
-    int retval, i, j, k;
+    int retval, i, j, k, size;
 
     /*
      * Read .text or .data section from ELF file
@@ -478,29 +483,384 @@ static int parse_elf_code_section(struct inode *inode,
        goto err;
     }
 
-    /* Load virtual address */
-    printk("Section Address: %#08x\n", shdrp->sh_addr);
-    /* Location on ELF file */
-    printk("Section offset:  %#08x\n", shdrp->sh_offset);
-    /* Section flags */
-    parse_section_flags(shdrp->sh_flags);
-    /* Section type */
-    parse_section_type(shdrp->sh_type);
+    /* Display elf-section table information */
+    elf_section_table_info(shdrp, (char *)shstrtab);
 
     /* Dump text context */
     printk("Context:\n");
     chtab = (char *)context;
-    for (i = 0; i < ((shdrp->sh_size / 4 - CODE_MAXLEN ? 
-                          CODE_MAXLEN : shdrp->sh_size / 4)) / 4; i++) {
+    size = ((CODE_MAXLEN - shdrp->sh_size / 4 ? shdrp->sh_size / 4 : 
+             CODE_MAXLEN) / 4) ? ((CODE_MAXLEN - shdrp->sh_size / 4 ?
+             shdrp->sh_size / 4 : CODE_MAXLEN) / 4) : 1;
+    for (i = 0; i < size; i++) {
         printk("%04x  ", i * 16);
-        for (j = 0; j < 4; j++)
+        for (j = 0; j < (size == 1 ? 1 : 4); j++)
             printk("%08x ", (unsigned int)context[i * 4 + j]);
         printk("  ");
-        for (k = 0; k < 16; k++)
-            printk("%c", chtab[i * 16 + k]);
+        for (k = 0; k < (size == 1 ? 4 : 16); k++)
+            if (isalnum((unsigned char)chtab[i * 16 + k]) ||
+                isalpha((unsigned char)chtab[i * 16 + k]))
+                printk("%c", chtab[i * 16 + k]);
+            else
+                printk(".");
         printk("\n");
     }
     printk("\n");
+    return 0;
+
+err:
+    return retval;
+}
+#endif
+
+#ifdef CONFIG_ELF_SECTION_DATA
+#define DATA_MAXLEN      128
+/*
+ * Parse ELF .data section
+ *   Data section contain all initialize data.
+ */
+static int parse_elf_data_section(struct inode *inode,
+             struct elf_shdr *shdrp, const char *shstrtab)
+{
+    unsigned long old_fs;
+    unsigned long content[DATA_MAXLEN];
+    char *chtab;
+    int retval, i, j, k, size;
+
+    /*
+     * Load .data section from ELF file.
+     */
+    old_fs = get_fs();
+    set_fs(get_ds());
+    retval = elf_read(inode, shdrp->sh_offset, (char *)content,
+                 (DATA_MAXLEN * sizeof(unsigned long) - shdrp->sh_size) ? 
+                 shdrp->sh_size : DATA_MAXLEN * sizeof(unsigned long));
+    set_fs(old_fs);
+    if (retval < 0) {
+        printk("Unable to load .data from ELF by elf_read!\n");
+        goto err;
+    }
+
+    /* Display elf-section table information */
+    elf_section_table_info(shdrp, (char *)shstrtab);
+
+    /* Content */
+    printk("Content:\n");
+    chtab = (char *)content;
+    size = ((DATA_MAXLEN - shdrp->sh_size / 4 ? shdrp->sh_size / 4 : 
+             DATA_MAXLEN) / 4) ? ((DATA_MAXLEN - shdrp->sh_size / 4 ? 
+             shdrp->sh_size / 4 : DATA_MAXLEN) / 4) : 1;
+    for (i = 0; i < size; i++) {
+        printk("%04x  ", i * 16);
+        for (j = 0; j < (size == 1 ? 1 : 4); j++)
+            printk("%08x ", (unsigned int)content[i * 4 + j]);
+        for (k = 0; k < (size == 1 ? 4 : 16); k++)
+            if (isalnum((unsigned char)chtab[i * 16 + k]) ||
+                isalpha((unsigned char)chtab[i * 16 + k]))
+                printk("%c", chtab[i * 16 + k]);
+            else
+                printk(".");
+        printk("\n");
+    }
+    printk("\n");
+
+    return 0;
+
+err:
+    return retval;
+}
+#endif
+
+#ifdef CONFIG_ELF_SECTION_BSS
+#define BSS_MAXLEN      128
+/*
+ * Parse ELF .bss section
+ *   BSS section contain all uninitialize data.
+ */
+static int parse_elf_bss_section(struct inode *inode,
+             struct elf_shdr *shdrp, const char *shstrtab)
+{
+    unsigned long old_fs;
+    unsigned long content[BSS_MAXLEN];
+    char *chtab;
+    int retval, i, j, k, size;
+
+    /*
+     * Load .bss section from ELF file.
+     */
+    old_fs = get_fs();
+    set_fs(get_ds());
+    retval = elf_read(inode, shdrp->sh_offset, (char *)content,
+                 (BSS_MAXLEN * sizeof(unsigned long) - shdrp->sh_size) ?
+                 shdrp->sh_size : BSS_MAXLEN * sizeof(unsigned long));
+    set_fs(old_fs);
+    if (retval < 0) {
+        printk("Unable to load .bss from ELF by elf_read()!\n");
+        goto err;
+    }
+
+    /* Display elf-section table information */
+    elf_section_table_info(shdrp, (char *)shstrtab);
+
+    /* Content */
+    printk("Content:\n");
+    chtab = (char *)content;
+    size = ((BSS_MAXLEN - shdrp->sh_size / 4 ? shdrp->sh_size / 4 :
+             BSS_MAXLEN) / 4) ? ((BSS_MAXLEN - shdrp->sh_size / 4 ?
+             shdrp->sh_size / 4 : BSS_MAXLEN) / 4) : 1;
+    for (i = 0; i < size; i++) {
+        printk("%04x  ", i * 16);
+        for (j = 0; j < (size == 1 ? 1 : 4); j++)
+            printk("%08x ", (unsigned int)content[i * 4 + j]);
+        for (k = 0; k < (size == 1 ? 4 : 16); k++)
+            if (isalnum((unsigned char)chtab[i * 16 + k]) ||
+                isalpha((unsigned char)chtab[i * 16 + k]))
+                printk("%c", chtab[i * 16 + k]);
+            else
+                printk(".");
+        printk("\n");
+    }
+    printk("\n");
+
+    return 0;
+
+err:
+    return retval;
+}
+#endif
+
+#ifdef CONFIG_ELF_SECTION_RODATA
+#define RODATA_MAXLEN      128
+/*
+ * Parse ELF .rodata section
+ *   Read-Only Data section contain all read-only data.
+ */
+static int parse_elf_rodata_section(struct inode *inode,
+             struct elf_shdr *shdrp, const char *shstrtab)
+{
+    unsigned long old_fs;
+    unsigned long content[RODATA_MAXLEN];
+    char *chtab;
+    int retval, i, j, k, size;
+
+    /*
+     * Load .bss section from ELF file.
+     */
+    old_fs = get_fs();
+    set_fs(get_ds());
+    retval = elf_read(inode, shdrp->sh_offset, (char *)content,
+                 (RODATA_MAXLEN * sizeof(unsigned long) - shdrp->sh_size) ?
+                 shdrp->sh_size : RODATA_MAXLEN * sizeof(unsigned long));
+    set_fs(old_fs);
+    if (retval < 0) {
+        printk("Unable to load .rodata from ELF by elf_read()!\n");
+        goto err;
+    }
+
+    /* Display elf-section table information */
+    elf_section_table_info(shdrp, (char *)shstrtab);
+
+    /* Content */
+    printk("Content:\n");
+    chtab = (char *)content;
+    size = ((RODATA_MAXLEN - shdrp->sh_size / 4 ? shdrp->sh_size / 4 :
+             RODATA_MAXLEN) / 4) ? ((RODATA_MAXLEN - shdrp->sh_size / 4 ?
+             shdrp->sh_size / 4 : RODATA_MAXLEN) / 4) : 1;
+    for (i = 0; i < size; i++) {
+        printk("%04x  ", i * 16);
+        for (j = 0; j < (size == 1 ? 1 : 4); j++)
+            printk("%08x ", (unsigned int)content[i * 4 + j]);
+        for (k = 0; k < (size == 1 ? 4 : 16); k++)
+            if (isalnum((unsigned char)chtab[i * 16 + k]) ||
+                isalpha((unsigned char)chtab[i * 16 + k]))
+                printk("%c", chtab[i * 16 + k]);
+            else
+                printk(".");
+        printk("\n");
+    }
+    printk("\n");
+
+    return 0;
+
+err:
+    return retval;
+}
+#endif
+
+#ifdef CONFIG_ELF_SECTION_COMMENT
+#define COMMENT_MAXLEN      128
+/*
+ * Parse ELF .comment section
+ *   Comment section contain all comment information.
+ */
+static int parse_elf_comment_section(struct inode *inode,
+             struct elf_shdr *shdrp, const char *shstrtab)
+{
+    unsigned long old_fs;
+    unsigned long content[COMMENT_MAXLEN];
+    char *chtab;
+    int retval, i, j, k, size;
+
+    /*
+     * Load .comment section from ELF file.
+     */
+    old_fs = get_fs();
+    set_fs(get_ds());
+    retval = elf_read(inode, shdrp->sh_offset, (char *)content,
+                 (COMMENT_MAXLEN * sizeof(unsigned long) - shdrp->sh_size) ?
+                 shdrp->sh_size : COMMENT_MAXLEN * sizeof(unsigned long));
+    set_fs(old_fs);
+    if (retval < 0) {
+        printk("Unable to load .comment from ELF by elf_read()!\n");
+        goto err;
+    }
+
+    /* Display elf-section table information */
+    elf_section_table_info(shdrp, (char *)shstrtab);
+
+    /* Content */
+    printk("Content:\n");
+    chtab = (char *)content;
+    size = ((COMMENT_MAXLEN - shdrp->sh_size / 4 ? shdrp->sh_size / 4 :
+             COMMENT_MAXLEN) / 4) ? ((COMMENT_MAXLEN - shdrp->sh_size / 4 ?
+             shdrp->sh_size / 4 : COMMENT_MAXLEN) / 4) : 1;
+    for (i = 0; i < size; i++) {
+        printk("%04x  ", i * 16);
+        for (j = 0; j < (size == 1 ? 1 : 4); j++)
+            printk("%08x ", (unsigned int)content[i * 4 + j]);
+        for (k = 0; k < (size == 1 ? 4 : 16); k++)
+            if (isalnum((unsigned char)chtab[i * 16 + k]) ||
+                isalpha((unsigned char)chtab[i * 16 + k]))
+                printk("%c", chtab[i * 16 + k]);
+            else
+                printk(".");
+        printk("\n");
+    }
+    printk("\n");
+
+    return 0;
+
+err:
+    return retval;
+}
+#endif
+
+#ifdef CONFIG_ELF_SECTION_SYMTAB
+#define SYMTAB_MAXLEN      256
+#define STRTAB_MAXLEN      256
+/*
+ * Parse ELF .symtab section
+ *   Symbol table section contain all symbol.
+ */
+static int parse_elf_symtab_section(struct inode *inode,
+             struct elf_shdr *shdrp, const char *shstrtab,
+             struct elf_shdr *strtabp)
+{
+    unsigned long old_fs;
+    unsigned long content[SYMTAB_MAXLEN];
+    char strtab[STRTAB_MAXLEN];
+    struct Elf32_Sym *symtab;
+    int retval;
+    int i;
+
+    /*
+     * Load .comment section from ELF file.
+     */
+    old_fs = get_fs();
+    set_fs(get_ds());
+    retval = elf_read(inode, shdrp->sh_offset, (char *)content,
+                 (SYMTAB_MAXLEN * sizeof(unsigned long) - shdrp->sh_size) ?
+                 shdrp->sh_size : SYMTAB_MAXLEN * sizeof(unsigned long));
+    set_fs(old_fs);
+    if (retval < 0) {
+        printk("Unable to load .symtab from ELF by elf_read()!\n");
+        goto err;
+    }
+
+    /* Load .strtab section from ELF file. */
+    set_fs(get_ds());
+    retval = elf_read(inode, strtabp->sh_offset, strtab,
+              (STRTAB_MAXLEN - strtabp->sh_size ?
+               strtabp->sh_size : STRTAB_MAXLEN));
+    set_fs(old_fs);
+
+    if (retval < 0) {
+        printk("Unable to load .strtab section from ELF.\n");
+        goto err;
+    }
+    /* Point to .strtab section */
+    symtab = (struct Elf32_Sym *)content;
+    
+    elf_symbol_info_header();
+    for (i = 0; i < (shdrp->sh_size - SYMTAB_MAXLEN ? 
+                SYMTAB_MAXLEN / sizeof(struct Elf32_Sym) : 
+                shdrp->sh_size / sizeof(struct Elf32_Sym)); i++)
+        elf_symbol_info_core(&symtab[i], strtab, i);
+    /* Display elf-section table information */
+    elf_section_table_info(shdrp, (char *)shstrtab);
+    
+    /* Cut warning for elf_symbol_info */
+    if (0)
+        elf_symbol_info(&symtab[i], strtab, i);
+
+    return 0;
+
+err:
+    return retval;
+}
+#endif
+
+#ifdef CONFIG_ELF_SECTION_RELTEXT
+#define RELTEXT_MAXLEN      128
+/*
+ * Parse ELF .rel.text section
+ *   Relocation table section contain all relocation information.
+ */
+static int parse_elf_rel_text_section(struct inode *inode,
+             struct elf_shdr *shdrp, const char *shstrtab)
+{
+    unsigned long old_fs;
+    unsigned long content[RELTEXT_MAXLEN];
+    char *chtab;
+    int retval, i, j, k, size;
+
+    /*
+     * Load .rel.text section from ELF file.
+     */
+    old_fs = get_fs();
+    set_fs(get_ds());
+    retval = elf_read(inode, shdrp->sh_offset, (char *)content,
+                 (RELTEXT_MAXLEN * sizeof(unsigned long) - shdrp->sh_size) ?
+                 shdrp->sh_size : RELTEXT_MAXLEN * sizeof(unsigned long));
+    set_fs(old_fs);
+    if (retval < 0) {
+        printk("Unable to load .rel.text from ELF by elf_read()!\n");
+        goto err;
+    }
+
+    /* Display elf-section table information */
+    elf_section_table_info(shdrp, (char *)shstrtab);
+
+    /* Content */
+    printk("Content:\n");
+    chtab = (char *)content;
+    size = ((RELTEXT_MAXLEN - shdrp->sh_size / 4 ? shdrp->sh_size / 4 :
+             RELTEXT_MAXLEN) / 4) ? ((RELTEXT_MAXLEN - shdrp->sh_size / 4 ?
+             shdrp->sh_size / 4 : RELTEXT_MAXLEN) / 4) : 1;
+    for (i = 0; i < size; i++) {
+        printk("%04x  ", i * 16);
+        for (j = 0; j < (size == 1 ? 1 : 4); j++)
+            printk("%08x ", (unsigned int)content[i * 4 + j]);
+        for (k = 0; k < (size == 1 ? 4 : 16); k++)
+            if (isalnum((unsigned char)chtab[i * 16 + k]) ||
+                isalpha((unsigned char)chtab[i * 16 + k]))
+                printk("%c", chtab[i * 16 + k]);
+            else
+                printk(".");
+        printk("\n");
+    }
+    printk("\n");
+
     return 0;
 
 err:
@@ -528,15 +888,19 @@ static struct elf_shdr *elf_find_section_by_name(struct elfhdr *eh,
  */
 static void parse_section_flags(unsigned int flags)
 {
-    printk("Flags:          ");
     /* SHF_WRITE: writeable */
-    if (flags & 0x1)
-        printk(" Writeable");
-    if (flags & 0x2)
-        printk(" Allocable");
-    if (flags & 0x4)
-        printk(" Executable");
-    printk(" Readable\n");
+    if ((flags & 0x6) == 0x6)
+        printk(" AX ");
+    else if ((flags & 0x3) == 0x3)
+        printk(" WA ");
+    else if ((flags & 0x2) == 0x2)
+        printk("  A ");
+    else if ((flags & 0x1) == 0x1)
+        printk("  W ");
+    else if ((flags & 0x4) == 0x4)
+        printk("  X ");
+    else
+        printk("    ");
 }
 
 /*
@@ -544,48 +908,173 @@ static void parse_section_flags(unsigned int flags)
  */
 static void parse_section_type(unsigned int type)
 {
-    printk("Type:            ");
     switch (type) {
     case 0:
-        printk("NULL Type\n");
+        printk("NULL            ");
         break;
     case 1:
-        printk("Program\n");
+        printk("PROGBITS        ");
         break;
     case 2:
-        printk("Symbol Table\n");
+        printk("SYMTAB          ");
         break;
     case 3:
-        printk("String Table\n");
+        printk("STRTAB          ");
         break;
     case 4:
-        printk("Relocation Table\n");
+        printk("RELA            ");
         break;
     case 5:
-        printk("Hash Table\n");
+        printk("HASH            ");
         break;
     case 6:
-        printk("Dynamic Information\n");
+        printk("DYNAMIC         ");
         break;
     case 7:
-        printk("Note comment\n");
+        printk("NOTE            ");
         break;
     case 8:
-        printk("Empty content\n");
+        printk("NOBITS          ");
         break;
     case 9:
-        printk("Relocation information\n");
+        printk("REL             ");
         break;
     case 10:
-        printk("Reserved\n");
+        printk("SHLIB           ");
         break;
     case 11:
-        printk("Dynamic link symbol table\n");
+        printk("DNYSYM          ");
         break;
     default:
-        printk("uknown Type\n");
+        printk("XXXXXX          ");
         break;
     }
+}
+
+static void elf_section_table_info_header(void)
+{
+    printk("Name              Type            Addr     Off    "
+           "Size   ES Flg Lk Inf Al\n");
+}
+
+static int elf_section_table_info_core(struct elf_shdr *shdrp, char *shstrtab)
+{
+    printk("%-18s", &shstrtab[shdrp->sh_name]);
+    parse_section_type(shdrp->sh_type);
+    printk("%08x ", shdrp->sh_addr);
+    printk("%06x ", shdrp->sh_offset);
+    printk("%06x ", shdrp->sh_size);
+    printk("00 ");
+    parse_section_flags(shdrp->sh_flags);
+    printk("%2d ", shdrp->sh_link);
+    printk("%3d ", shdrp->sh_info);
+    printk("%2d\n", shdrp->sh_addralign);
+    return 0;
+}
+
+/*
+ * Display ELF section table information
+ */
+static int elf_section_table_info(struct elf_shdr *shdrp, char *shstrtab)
+{
+    elf_section_table_info_header();
+    elf_section_table_info_core(shdrp, shstrtab);
+    return 0;
+}
+
+/*
+ * Symbol 
+ */
+
+/* symbol type */
+static void elf_symbol_type(struct Elf32_Sym *sym)
+{
+    switch (sym->st_info & 0xf) {
+    case 0:
+        printk("NOTYPE  ");
+        break;
+    case 1:
+        printk("OBJECT  ");
+        break;
+    case 2:
+        printk("FUNC    ");
+        break;
+    case 3:
+        printk("SECTION ");
+        break;
+    case 4:
+        printk("FILE    ");
+        break;
+    default:
+        printk("XXXXX   ");
+        break;
+    }
+}
+
+/* Symbol bind information */
+static void elf_symbol_bind(struct Elf32_Sym *sym)
+{
+    switch ((sym->st_info >> 4) & 0xF) {
+    case 0:
+        printk("LOCAL  ");
+        break;
+    case 1:
+        printk("GLOBAL ");
+        break;
+    case 2:
+        printk("WEAK   ");
+        break;
+    default:
+        printk("       ");
+        break;
+    }
+}
+
+/*
+ * The section number that symbol locate in.
+ */
+static void elf_symbol_section_nr(struct Elf32_Sym *sym)
+{
+    if (sym->st_shndx == 0xfffffff1)
+        printk("ABS ");
+    else if (sym->st_shndx == 0xfffffff2)
+        printk("COM ");
+    else
+        printk("%3d ", sym->st_shndx);
+}
+
+/* Symbol name */
+static void elf_symbol_name(struct Elf32_Sym *sym, char *strtab)
+{
+    if (sym->st_name == 0)
+        printk("\n");
+    else
+        printk("%s\n", &strtab[sym->st_name]);
+}
+
+static void elf_symbol_info_header(void)
+{
+    printk("   Num:    Value  Size Type    Bind   Vis      Ndx Name\n");
+}
+
+static int elf_symbol_info_core(struct Elf32_Sym *sym, char *strtab, int nr)
+{
+    printk("%6d: ", nr);
+    printk("%08x  ", sym->st_value);
+    printk("%4d ", sym->st_size);
+    elf_symbol_type(sym);
+    elf_symbol_bind(sym);
+    printk("DEFAULT  ");
+    elf_symbol_section_nr(sym);
+    elf_symbol_name(sym, strtab);
+    return 0;
+}
+
+static int elf_symbol_info(struct Elf32_Sym *sym, char *strtab, int nr)
+{
+    elf_symbol_info_header();
+    elf_symbol_info_core(sym, strtab, nr);
+    return 0;
 }
 
 #define SHSTRTAB_LEN    256
@@ -596,7 +1085,7 @@ static int parse_elf_section_table(struct linux_binprm *bprm)
 {
     unsigned long old_fs;
     struct elf_shdr shdr[20];
-    struct elf_shdr *shdrp;
+    struct elf_shdr *shdrp, *strtabp;
     struct elfhdr *eh = (struct elfhdr *)bprm->buf;
     int retval;
     int index;
@@ -628,14 +1117,13 @@ static int parse_elf_section_table(struct linux_binprm *bprm)
         printk("Unable to read .shstrtab from ELF file\n");
         goto err;
     }
-#ifdef CONFIG_ELF_SECTION_STRTAB
-    shdrp = elf_find_section_by_name(eh, shdr, ".strtab", shstrtab);
-    if (!shdrp) {
-        printk("Unable to .strtab section table\n");
+
+    /* Loading .strtab section header */
+    strtabp = elf_find_section_by_name(eh, shdr, ".strtab", shstrtab);
+    if (!strtabp) {
+        printk("Unable to read .strtab section head from ELF file.\n");
         goto err;
     }
-    parse_elf_strtab_section(bprm->inode, shdrp, shstrtab);
-#endif
 
 #ifdef CONFIG_ELF_SECTION_CODE
     shdrp = elf_find_section_by_name(eh, shdr, ".code", shstrtab);
@@ -643,12 +1131,75 @@ static int parse_elf_section_table(struct linux_binprm *bprm)
         /* Unable obtain '.code' section and try '.text' section */
         shdrp = elf_find_section_by_name(eh, shdr, ".text", shstrtab);
         if (!shdrp) {
-            printk("Unable obtain code section from ELF file.\n");
+            printk("Unable obtain .code section from ELF file.\n");
             goto err;
         }
     }
     parse_elf_code_section(bprm->inode, shdrp, shstrtab);
-#endif
+#endif // Code Section
+
+#ifdef CONFIG_ELF_SECTION_DATA
+    shdrp = elf_find_section_by_name(eh, shdr, ".data", shstrtab);
+    if (!shdrp) {
+        printk("Unable obtain .data section from ELF file.\n");
+        goto err;
+    }
+    parse_elf_data_section(bprm->inode, shdrp, shstrtab);
+#endif // Data Section
+
+#ifdef CONFIG_ELF_SECTION_BSS
+    shdrp = elf_find_section_by_name(eh, shdr, ".bss", shstrtab);
+    if (!shdrp) {
+        printk("Unable obtain .bss section from ELF file.\n");
+        goto err;
+    } else
+        parse_elf_bss_section(bprm->inode, shdrp, shstrtab);
+#endif // BSS Section
+
+#ifdef CONFIG_ELF_SECTION_RODATA
+    shdrp = elf_find_section_by_name(eh, shdr, ".rodata", shstrtab);
+    if (!shdrp) {
+        printk("Unable obtain .rodata section from ELF file.\n");
+        goto err;
+    } else
+        parse_elf_rodata_section(bprm->inode, shdrp, shstrtab);
+#endif // BSS Section
+
+#ifdef CONFIG_ELF_SECTION_COMMENT
+    shdrp = elf_find_section_by_name(eh, shdr, ".comment", shstrtab);
+    if (!shdrp) {
+        printk("Unable obtain .rodata section from ELF file.\n");
+        goto err;
+    } else
+        parse_elf_comment_section(bprm->inode, shdrp, shstrtab);
+#endif // Comment Section
+
+#ifdef CONFIG_ELF_SECTION_SYMTAB
+    shdrp = elf_find_section_by_name(eh, shdr, ".symtab", shstrtab);
+    if (!shdrp) {
+        printk("Unable obtain .symtab section from ELF file.\n");
+        goto err;
+    } else
+        parse_elf_symtab_section(bprm->inode, shdrp, shstrtab, strtabp);
+#endif // Symtab Section
+
+#ifdef CONFIG_ELF_SECTION_STRTAB
+    shdrp = elf_find_section_by_name(eh, shdr, ".strtab", shstrtab);
+    if (!shdrp) {
+        printk("Unable to .strtab section table\n");
+        goto err;
+    }
+    parse_elf_strtab_section(bprm->inode, shdrp, shstrtab);
+#endif // Strtab section
+
+#ifdef CONFIG_ELF_SECTION_RELTEXT
+    shdrp = elf_find_section_by_name(eh, shdr, ".rel.text", shstrtab);
+    if (!shdrp) {
+        printk("Unable to .rel.text section table\n");
+        goto err;
+    }
+    parse_elf_rel_text_section(bprm->inode, shdrp, shstrtab);
+#endif // relocation table section
 
 #ifdef CONFIG_ELF_SECTION_SHSTRTAB
     parse_elf_shstrtab_section(bprm->inode, shdrp);
@@ -733,10 +1284,10 @@ static int do_elf(char *filename, char **argv, char **envp,
         goto elf_error2;
     parse_elf_header((struct elfhdr *)bprm.buf);
 #endif
-#ifdef CONFIG_ELF_SECTION_DATA
+#ifdef CONFIG_ELF_PRIVATE_SECTION_DATA
     bis_data_section();
 #endif
-#ifdef CONFIG_ELF_SECTION_FUNC
+#ifdef CONFIG_ELF_PRIVATE_SECTION_FUNC
     bis_static_func();
     bis_extern_func();
 #endif
