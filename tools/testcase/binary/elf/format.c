@@ -953,12 +953,14 @@ static void parse_section_type(unsigned int type)
 
 static void elf_section_table_info_header(void)
 {
-    printk("Name              Type            Addr     Off    "
+    printk(" Idx Name              Type            Addr     Off    "
            "Size   ES Flg Lk Inf Al\n");
 }
 
-static int elf_section_table_info_core(struct elf_shdr *shdrp, char *shstrtab)
+static int elf_section_table_info_core(struct elf_shdr *shdrp, 
+              char *shstrtab, int idx)
 {
+    printk("%4d ", idx);
     printk("%-18s", &shstrtab[shdrp->sh_name]);
     parse_section_type(shdrp->sh_type);
     printk("%08x ", shdrp->sh_addr);
@@ -978,7 +980,7 @@ static int elf_section_table_info_core(struct elf_shdr *shdrp, char *shstrtab)
 static int elf_section_table_info(struct elf_shdr *shdrp, char *shstrtab)
 {
     elf_section_table_info_header();
-    elf_section_table_info_core(shdrp, shstrtab);
+    elf_section_table_info_core(shdrp, shstrtab, 0);
     return 0;
 }
 
@@ -1078,13 +1080,14 @@ static int elf_symbol_info(struct Elf32_Sym *sym, char *strtab, int nr)
 }
 
 #define SHSTRTAB_LEN    256
+#define SECTAB_MAXLEN   32
 /*
  * Parse ELF Section Table.
  */
 static int parse_elf_section_table(struct linux_binprm *bprm)
 {
     unsigned long old_fs;
-    struct elf_shdr shdr[20];
+    struct elf_shdr shdr[SECTAB_MAXLEN];
     struct elf_shdr *shdrp, *strtabp;
     struct elfhdr *eh = (struct elfhdr *)bprm->buf;
     int retval;
@@ -1099,14 +1102,16 @@ static int parse_elf_section_table(struct linux_binprm *bprm)
     old_fs = get_fs();
     set_fs(get_ds());
     retval = elf_read(bprm->inode, eh->e_shoff, (char *)shdr, 
-                          sizeof(struct elf_shdr) * eh->e_shnum);
-    set_fs(old_fs < 0);
+                          SECTAB_MAXLEN - eh->e_shnum ?
+                          sizeof(struct elf_shdr) * eh->e_shnum :
+                          sizeof(struct elf_shdr) * SECTAB_MAXLEN);
+    set_fs(old_fs);
     if (retval < 0) {
         printk("Unable to read Section Table from ELF file\n");
         goto err;
     }
 
-    /* Obtain .strtab table entry */
+    /* Obtain .shstrtab table entry */
     index = eh->e_shstrndx;
     shdrp = &shdr[index];
     set_fs(get_ds());
@@ -1273,7 +1278,6 @@ static int do_elf(char *filename, char **argv, char **envp,
         retval = -EACCES;
         goto elf_error2;
     }
-#ifdef CONFIG_PARSE_ELF_HEADER
     /* Read Execute-file */
     memset(bprm.buf, 0, sizeof(bprm.buf));
     old_fs = get_fs();
@@ -1282,6 +1286,7 @@ static int do_elf(char *filename, char **argv, char **envp,
     set_fs(old_fs);
     if (retval < 0)
         goto elf_error2;
+#ifdef CONFIG_PARSE_ELF_HEADER
     parse_elf_header((struct elfhdr *)bprm.buf);
 #endif
 #ifdef CONFIG_ELF_PRIVATE_SECTION_DATA
@@ -1292,21 +1297,8 @@ static int do_elf(char *filename, char **argv, char **envp,
     bis_extern_func();
 #endif
 #ifdef CONFIG_ELF_SECTION_TABLE
-    /* Read Execute-file */
-    memset(bprm.buf, 0, sizeof(bprm.buf));
-    old_fs = get_fs();
-    set_fs(get_ds());
-    retval = elf_read(bprm.inode, 0, bprm.buf, 128);
-    set_fs(old_fs);
-    if (retval < 0)
-        goto elf_error2;
     parse_elf_section_table(&bprm);
 #endif
-
-    /* Cut warning */
-    if (0) {
-        printk("Hello World %d\n", (int)old_fs);
-    }
 
 elf_error2:
     iput(bprm.inode);
@@ -1360,6 +1352,7 @@ int sys_d_parse_elf(struct pt_regs regs)
     /* Cut warning */
     if (0) {
         elf_read(NULL, 0, NULL, 0);
+	elf_symbol_info(NULL, NULL, 0);
     }
     return error;
 }
@@ -1367,8 +1360,14 @@ int sys_d_parse_elf(struct pt_regs regs)
 /* Invoke by system call: int $0x80 */
 int debug_binary_elf_format(void)
 {
+    /* ELF relocatable file */
 #ifdef CONFIG_ELF_RELOCATABLE_FILE
     d_parse_elf("/bin/demo.o", NULL, NULL);
+#endif
+
+    /* ELF executable file */
+#ifdef CONFIG_ELF_EXECUTE_FILE
+    d_parse_elf("/bin/ab", NULL, NULL);
 #endif
     return 0;
 }

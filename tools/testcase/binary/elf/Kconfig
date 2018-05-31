@@ -18,11 +18,29 @@ config DEBUG_ELF_FORMAT
 	help
 	  Parse foramt for ELF (Executable and Linkable Format).
 
+choice
+	prompt "ELF Format File"
+	default ELF_RELOCATABLE_FILE
+
 config ELF_RELOCATABLE_FILE
-	bool "Parse ELF Relocable file"
+	bool "Parse ELF Relocatable file"
 	select DEBUG_ELF_FORMAT
 	help
 	  Parse formt for Relocable file.
+
+config ELF_EXECUTE_FILE
+	bool "Parse ELF Executable file"
+	select DEBUG_ELF_FORMAT
+	help
+	  Parse formt for executable file.
+
+config ELF_SHARELIB_FILE
+	bool "Parse ELF Shared object file"
+	select DEBUG_ELF_FORMAT
+	help
+	  Parse formt for Shared object file.
+
+endchoice
 
 config PARSE_ELF_HEADER
 	bool "Parse Header for ELF"
