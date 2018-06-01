@@ -475,7 +475,7 @@ static int parse_elf_code_section(struct inode *inode,
     old_fs = get_fs();
     set_fs(get_ds());
     retval = elf_read(inode, shdrp->sh_offset, (char *)context, 
-             shdrp->sh_size - CODE_MAXLEN * sizeof(unsigned long) ? 
+             (shdrp->sh_size - CODE_MAXLEN * sizeof(unsigned long) > 0) ? 
              CODE_MAXLEN * sizeof(unsigned long) : shdrp->sh_size);
     set_fs(old_fs);
     if (retval < 0) {
@@ -533,7 +533,7 @@ static int parse_elf_data_section(struct inode *inode,
     old_fs = get_fs();
     set_fs(get_ds());
     retval = elf_read(inode, shdrp->sh_offset, (char *)content,
-                 (DATA_MAXLEN * sizeof(unsigned long) - shdrp->sh_size) ? 
+              ((DATA_MAXLEN * sizeof(unsigned long) - shdrp->sh_size)) > 0 ? 
                  shdrp->sh_size : DATA_MAXLEN * sizeof(unsigned long));
     set_fs(old_fs);
     if (retval < 0) {
@@ -591,7 +591,7 @@ static int parse_elf_bss_section(struct inode *inode,
     old_fs = get_fs();
     set_fs(get_ds());
     retval = elf_read(inode, shdrp->sh_offset, (char *)content,
-                 (BSS_MAXLEN * sizeof(unsigned long) - shdrp->sh_size) ?
+                ((BSS_MAXLEN * sizeof(unsigned long) - shdrp->sh_size)) > 0 ?
                  shdrp->sh_size : BSS_MAXLEN * sizeof(unsigned long));
     set_fs(old_fs);
     if (retval < 0) {
@@ -649,7 +649,7 @@ static int parse_elf_rodata_section(struct inode *inode,
     old_fs = get_fs();
     set_fs(get_ds());
     retval = elf_read(inode, shdrp->sh_offset, (char *)content,
-                 (RODATA_MAXLEN * sizeof(unsigned long) - shdrp->sh_size) ?
+               ((RODATA_MAXLEN * sizeof(unsigned long) - shdrp->sh_size)) > 0 ?
                  shdrp->sh_size : RODATA_MAXLEN * sizeof(unsigned long));
     set_fs(old_fs);
     if (retval < 0) {
@@ -707,7 +707,7 @@ static int parse_elf_comment_section(struct inode *inode,
     old_fs = get_fs();
     set_fs(get_ds());
     retval = elf_read(inode, shdrp->sh_offset, (char *)content,
-                 (COMMENT_MAXLEN * sizeof(unsigned long) - shdrp->sh_size) ?
+             ((COMMENT_MAXLEN * sizeof(unsigned long) - shdrp->sh_size)) > 0 ?
                  shdrp->sh_size : COMMENT_MAXLEN * sizeof(unsigned long));
     set_fs(old_fs);
     if (retval < 0) {
@@ -746,7 +746,7 @@ err:
 #endif
 
 #ifdef CONFIG_ELF_SECTION_SYMTAB
-#define SYMTAB_MAXLEN      256
+#define SYMTAB_MAXLEN      400
 #define STRTAB_MAXLEN      256
 /*
  * Parse ELF .symtab section
@@ -769,8 +769,8 @@ static int parse_elf_symtab_section(struct inode *inode,
     old_fs = get_fs();
     set_fs(get_ds());
     retval = elf_read(inode, shdrp->sh_offset, (char *)content,
-                 (SYMTAB_MAXLEN * sizeof(unsigned long) - shdrp->sh_size) ?
-                 shdrp->sh_size : SYMTAB_MAXLEN * sizeof(unsigned long));
+             (SYMTAB_MAXLEN * sizeof(unsigned long) - shdrp->sh_size) > 0 ?
+              shdrp->sh_size : SYMTAB_MAXLEN * sizeof(unsigned long));
     set_fs(old_fs);
     if (retval < 0) {
         printk("Unable to load .symtab from ELF by elf_read()!\n");
@@ -780,7 +780,7 @@ static int parse_elf_symtab_section(struct inode *inode,
     /* Load .strtab section from ELF file. */
     set_fs(get_ds());
     retval = elf_read(inode, strtabp->sh_offset, strtab,
-              (STRTAB_MAXLEN - strtabp->sh_size ?
+              ((STRTAB_MAXLEN - strtabp->sh_size) > 0 ?
                strtabp->sh_size : STRTAB_MAXLEN));
     set_fs(old_fs);
 
@@ -792,7 +792,7 @@ static int parse_elf_symtab_section(struct inode *inode,
     symtab = (struct Elf32_Sym *)content;
     
     elf_symbol_info_header();
-    for (i = 0; i < (shdrp->sh_size - SYMTAB_MAXLEN ? 
+    for (i = 0; i < ((shdrp->sh_size - SYMTAB_MAXLEN) > 0 ? 
                 SYMTAB_MAXLEN / sizeof(struct Elf32_Sym) : 
                 shdrp->sh_size / sizeof(struct Elf32_Sym)); i++)
         elf_symbol_info_core(&symtab[i], strtab, i);
@@ -830,7 +830,7 @@ static int parse_elf_rel_text_section(struct inode *inode,
     old_fs = get_fs();
     set_fs(get_ds());
     retval = elf_read(inode, shdrp->sh_offset, (char *)content,
-                 (RELTEXT_MAXLEN * sizeof(unsigned long) - shdrp->sh_size) ?
+              ((RELTEXT_MAXLEN * sizeof(unsigned long) - shdrp->sh_size)) > 0 ?
                  shdrp->sh_size : RELTEXT_MAXLEN * sizeof(unsigned long));
     set_fs(old_fs);
     if (retval < 0) {
@@ -1102,7 +1102,7 @@ static int parse_elf_section_table(struct linux_binprm *bprm)
     old_fs = get_fs();
     set_fs(get_ds());
     retval = elf_read(bprm->inode, eh->e_shoff, (char *)shdr, 
-                          SECTAB_MAXLEN - eh->e_shnum ?
+                          SECTAB_MAXLEN - eh->e_shnum > 0 ?
                           sizeof(struct elf_shdr) * eh->e_shnum :
                           sizeof(struct elf_shdr) * SECTAB_MAXLEN);
     set_fs(old_fs);
