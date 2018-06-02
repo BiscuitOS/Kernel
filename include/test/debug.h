@@ -41,6 +41,10 @@
 #include <test/segment.h>
 #endif
 
+#ifdef CONFIG_DEBUG_DEBUGCALL
+#include <test/init.h>
+#endif
+
 #ifdef CONFIG_DEBUG_KERNEL_LATER
 extern void debug_on_kernel_later(void);
 #endif

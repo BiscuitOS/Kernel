@@ -11,6 +11,11 @@ config TESTCASE
 
 if TESTCASE
 
+config DEBUG_DEBUGCALL
+	bool "Debug call in different stage."
+	help
+	  Debug call in different stage. see include/test/init.h
+
 choice 
 	prompt "Specify debug stage"
 	default DEBUG_KERNEL_LATER

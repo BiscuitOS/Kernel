@@ -18,6 +18,59 @@ SECTIONS
 	.text	: {
 		*(.text) 
 	}
+#ifdef CONFIG_DEBUG_DEBUGCALL
+	.debugcallearly.debug : {
+		*(.debugcallearly.debug)
+	}
+	.debugcall0.debug : {
+		*(.debugcall0.debug)
+	}
+	.debugcall1.debug : {
+		*(.debugcall1.debug)
+	}
+	.debugcall1s.debug : {
+		*(.debugcall1s.debug)
+	}
+	.debugcall2.debug : {
+		*(.debugcall2.debug)
+	}
+	.debugcall2s.debug : {
+		*(.debugcall2s.debug)
+	}
+	.debugcall3.debug : {
+		*(.debugcall3.debug)
+	}
+	.debugcall3s.debug : {
+		*(.debugcall3s.debug)
+	}
+	.debugcall4.debug : {
+		*(.debugcall4.debug)
+	}
+	.debugcall4s.debug : {
+		*(.debugcall4s.debug)
+	}
+	.debugcall5.debug : {
+		*(.debugcall5.debug)
+	}
+	.debugcall5s.debug : {
+		*(.debugcall5s.debug)
+	}
+	.debugcallrootfs.debug : {
+		*(.debugcallrootfs.debug)
+	}
+	.debugcall6.debug : {
+		*(.debugcall6.debug)
+	}
+	.debugcall6s.debug : {
+		*(.debugcall0.debug)
+	}
+	.debugcall7.debug : {
+		*(.debugcall0.debug)
+	}
+	.debugcall7s.debug : {
+		*(.debugcall0.debug)
+	}
+#endif
 	.data	: { 
 		*(.data) 
 	}
