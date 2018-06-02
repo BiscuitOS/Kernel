@@ -55,6 +55,10 @@ int debug_mmu_common(void)
     debug_mmu_TLB_common();
 #endif
 
+#ifdef CONFIG_DEBUG_MMU_KMALLOC
+    debug_mmu_kmalloc_common();
+#endif
+
     return 0;
 }
 

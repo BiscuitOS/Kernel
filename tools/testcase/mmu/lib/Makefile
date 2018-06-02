@@ -1,1 +1,1 @@
-lib-$(CONFIG_DEBUG_MMU)    += d_mmu.o
+lib-$(CONFIG_DEBUG_MMU_SYSCALL)    += d_mmu.o

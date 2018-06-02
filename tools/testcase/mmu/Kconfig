@@ -31,6 +31,8 @@ source tools/testcase/mmu/page-fault/Kconfig
 
 source tools/testcase/mmu/TLB/Kconfig
 
+source tools/testcase/mmu/kmalloc/Kconfig
+
 endif
 
 endmenu

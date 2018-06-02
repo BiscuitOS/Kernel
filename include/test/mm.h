@@ -107,5 +107,12 @@ extern int debug_TLB_common(void);
 
 #endif // CONFIG_DEBUG_MMU_TLB
 
+#ifdef CONFIG_DEBUG_MMU_KMALLOC
+extern int debug_mmu_kmalloc_common(void);
+
+extern int debug_kmalloc_allocator_common(void);
+
+#endif // CONFIG_DEBUG_MMU_KMALLOC
+
 #endif // CONFIG_DEBUG_MMU
 #endif

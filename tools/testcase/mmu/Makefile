@@ -9,3 +9,4 @@ obj-$(CONFIG_DEBUG_MMU_PAGING)         += paging/
 obj-$(CONFIG_DEBUG_MMU_ACCESS)         += right/
 obj-$(CONFIG_DEBUG_MMU_PAGE_FAULT)     += page-fault/
 obj-$(CONFIG_DEBUG_MMU_TLB)            += TLB/
+obj-$(CONFIG_DEBUG_MMU_KMALLOC)        += kmalloc/

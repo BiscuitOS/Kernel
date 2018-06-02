@@ -364,6 +364,9 @@ asmlinkage void start_kernel(void)
      * Interrupts are still disabled. Do necessary setups, then
      * enable them
      */
+#ifdef CONFIG_DEBUG_KERNEL_EARLY
+    debug_on_kernel_early();
+#endif
     printk("\n\n\n\n\n");
     set_call_gate(&default_ldt,lcall7);
     ROOT_DEV = ORIG_ROOT_DEV;
@@ -427,6 +430,9 @@ asmlinkage void start_kernel(void)
     ipc_init();
 #endif
     sti();
+#ifdef CONFIG_DEBUG_KERNEL_LATER
+    debug_on_kernel_later();
+#endif
 	
     /*
      * check if exception 16 works correctly.. This is truly evil

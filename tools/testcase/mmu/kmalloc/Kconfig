@@ -1,0 +1,26 @@
+#
+# Kmalloc memory allocator on MMU
+#
+
+menu "Kmalloc memory allocator on MMU"
+
+config DEBUG_MMU_KMALLOC
+	bool "Debug kmalloc memory allocator on MMU"
+	help
+	  Debug kmalloc memory allocator on MMU.
+
+if DEBUG_MMU_KMALLOC
+
+config DEBUG_KMALLOC_ALLOCATOR
+	bool "Extablish a kmalloc allocator."
+	help
+	  Extablish a kmalloc allocator.
+
+config DEBUG_KMALLOC_USAGE
+	bool "Utilize 'kmalloc' to allocate memory."
+	help
+	  Utilize 'kmalloc' to allocate spcial memory.
+
+endif
+
+endmenu
