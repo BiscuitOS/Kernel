@@ -28,6 +28,7 @@
 #include <test/debug.h>
 #endif
 
+extern void do_debugcall_early(void);
 extern unsigned long * prof_buffer;
 extern unsigned long prof_len;
 extern char edata[], end[];
@@ -260,7 +261,6 @@ static void calibrate_delay(void)
     }
 }
 	
-
 /*
  * This is a simple kernel command line parsing function: it parses
  * the command line, and fills in the arguments/environment to init
@@ -364,10 +364,10 @@ asmlinkage void start_kernel(void)
      * Interrupts are still disabled. Do necessary setups, then
      * enable them
      */
-#ifdef CONFIG_DEBUG_KERNEL_EARLY
-    debug_on_kernel_early();
-#endif
     printk("\n\n\n\n\n");
+#ifdef CONFIG_DEBUG_DEBUGCALL
+    do_debugcall(DEBUG_EARLY);
+#endif
     set_call_gate(&default_ldt,lcall7);
     ROOT_DEV = ORIG_ROOT_DEV;
     drive_info = DRIVE_INFO;
@@ -407,6 +407,9 @@ asmlinkage void start_kernel(void)
     memory_start = kmalloc_init(memory_start, memory_end);
     memory_start = chr_dev_init(memory_start,memory_end);
     memory_start = blk_dev_init(memory_start,memory_end);
+#ifdef CONFIG_DEBUG_DEBUGCALL
+    do_debugcall(DEBUG_SUBSYS);
+#endif
     sti();
     calibrate_delay();
 #ifdef CONFIG_INET
@@ -419,6 +422,9 @@ asmlinkage void start_kernel(void)
     memory_start = file_table_init(memory_start, memory_end);
     mem_init(low_memory_start,memory_start,memory_end);
     buffer_init();
+#ifdef CONFIG_DEBUG_DEBUGCALL
+    do_debugcall(DEBUG_FS);
+#endif
     time_init();
 #ifdef CONFIG_FLOPPY
     floppy_init();
@@ -429,10 +435,10 @@ asmlinkage void start_kernel(void)
 #ifdef CONFIG_SYSVIPC
     ipc_init();
 #endif
-    sti();
-#ifdef CONFIG_DEBUG_KERNEL_LATER
-    debug_on_kernel_later();
+#ifdef CONFIG_DEBUG_DEBUGCALL
+    do_debugcall(DEBUG_DEVICE);
 #endif
+    sti();
 	
     /*
      * check if exception 16 works correctly.. This is truly evil
@@ -474,6 +480,9 @@ asmlinkage void start_kernel(void)
     system_utsname.machine[1] = '0' + x86;
     printk(linux_banner);
 
+#ifdef CONFIG_DEBUG_DEBUGCALL
+    do_debugcall(DEBUG_LATE);
+#endif
     move_to_user_mode();
     if (!fork())    /* we count on this going ok */
         init();
@@ -510,9 +519,6 @@ void init(void)
     (void) open("/dev/tty1", O_RDWR, 0);
     (void) dup(0);
     (void) dup(0);
-#ifdef CONFIG_DEBUG_USERLAND_SYSCALL
-    debug_on_userland_syscall();
-#endif
     execve("/etc/init", argv_init, envp_init);
     execve("/bin/init",argv_init,envp_init);
     execve("/sbin/init",argv_init,envp_init);

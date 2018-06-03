@@ -16,33 +16,6 @@ config DEBUG_DEBUGCALL
 	help
 	  Debug call in different stage. see include/test/init.h
 
-choice 
-	prompt "Specify debug stage"
-	default DEBUG_KERNEL_LATER
-
-config DEBUG_KERNEL_EARLY
-	bool "Debug on kernel early stage"
-	help
-	  Debug funtion on kernel early stage. After jump into main()
-
-config DEBUG_KERNEL_LATER
-	bool "Debug on kernel later stage"
-	help
-	  Debug function on kernel later stage. Before invoke init()
-
-config DEBUG_USERLAND
-        bool "Debug on kernel on userland stage"
-	help
-	  Debug kernel function on userland.
-
-config DEBUG_USERLAND_SYSCALL
-	bool "Debug system call on userland"
-	help
-	  Debug function on userland.
-
-endchoice
-
-
 source "tools/testcase/interrupt/Kconfig"
 
 source "tools/testcase/block/Kconfig"

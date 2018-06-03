@@ -10,101 +10,151 @@
 #include <linux/kernel.h>
 #include <test/debug.h>
 
-#ifdef CONFIG_DEBUG_USERLAND_SYSCALL
-/*
- * Note! Broken the number of system call on linux 0.11, we should modify
- * 'nr_system_calls' on kernel/system_call.c. Default value is 72, so the 
- * number of system call over it will directly return -1.
- */
-#define __LIBRARY__
-#include <stdarg.h>
-#include <unistd.h>
-#include <fcntl.h>
-#endif
+extern debugcall_t debugcallearly_start[];
+extern debugcall_t debugcall0_start[];
+extern debugcall_t debugcall1_start[];
+extern debugcall_t debugcall1s_start[];
+extern debugcall_t debugcall2_start[];
+extern debugcall_t debugcall2s_start[];
+extern debugcall_t debugcall3_start[];
+extern debugcall_t debugcall3s_start[];
+extern debugcall_t debugcall4_start[];
+extern debugcall_t debugcall4s_start[];
+extern debugcall_t debugcall5_start[];
+extern debugcall_t debugcall5s_start[];
+extern debugcall_t debugcallrootfs_start[];
+extern debugcall_t debugcall6_start[];
+extern debugcall_t debugcall6s_start[];
+extern debugcall_t debugcall7_start[];
+extern debugcall_t debugcall7s_start[];
 
-#ifdef CONFIG_DEBUG_KERNEL_LATER
-/*
- * debug on kernel last before userland launch.
- */
-void debug_on_kernel_later(void)
+static debugcall_t *debugcall_levels[] = {
+    debugcallearly_start,
+    debugcall0_start,
+    debugcall1_start,
+    debugcall1s_start,
+    debugcall2_start,
+    debugcall2s_start,
+    debugcall3_start,
+    debugcall3s_start,
+    debugcall4_start,
+    debugcall4s_start,
+    debugcall5_start,
+    debugcall5s_start,
+    debugcallrootfs_start,
+    debugcall6_start,
+    debugcall6s_start,
+    debugcall7_start,
+    debugcall7s_start,
+};
+
+void do_debugcall(int levels)
 {
-#ifdef CONFIG_DEBUG_INTERRUPT
-    debug_interrupt_common();
-#endif
+    debugcall_t *fn;
 
-#ifdef CONFIG_DEBUG_SCHED
-    debug_task_scheduler_common();
-#endif
-
-#ifdef CONFIG_DEBUG_MMU
-    debug_mmu_common();
-#endif
-
-#ifdef CONFIG_DEBUG_SYSCALL
-    debug_syscall_common();
-#endif
-
-#ifdef CONFIG_DEBUG_VFS
-    debug_vfs_common();
-#endif
-
-#ifdef CONFIG_DEBUG_BLOCK_DEV
-    debug_block_common();
-#endif
-
-#ifdef CONFIG_DEBUG_BINARY
-    debug_binary_common();
-#endif
-
-#ifdef CONFIG_DEBUG_SEGMENT
-    debug_segment_common();
-#endif
+    for (fn = debugcall_levels[levels]; fn < debugcall_levels[levels + 1]; fn++)
+        debugcall(*fn);
 }
-#endif // CONFIG_DEBUG_KERNEL_LATER
 
-#ifdef CONFIG_DEBUG_KERNEL_EARLY
-/*
- * debug on kernel early
- */
-void debug_on_kernel_early(void)
+/* Empty debugcall */
+static int __debug_empty_early(void)
 {
-
-}
-#endif // CONFIG_DEBUG_KERNEL_EARLY
-
-#ifdef CONFIG_DEBUG_USERLAND
-/* debug kernel on userland */
-int debug_kernel_on_userland(void)
-{
-    printk("Debug kernel on userland :-)\n");
-#ifdef CONFIG_DEBUG_VFS
-    debug_vfs_common_userland();
-#endif
     return 0;
 }
-#endif // CONFIG_DEBUG_USERLAND
+early_debugcall(__debug_empty_early);
 
-#ifdef CONFIG_DEBUG_USERLAND_SYSCALL
-/*
- * Debug on userland.
- */
-int debug_on_userland_syscall(void)
+static int __debug_empty_pure(void)
 {
-#ifdef CONFIG_DEBUG_SYSCALL
-    debug_syscall_common_userland();
-#endif
-
-#ifdef CONFIG_DEBUG_BINARY
-    debug_binary_common_userland();
-#endif
-
-#ifdef CONFIG_DEBUG_SEGMENT
-    debug_segment_common_userland();
-#endif
-
-#ifdef CONFIG_DEBUG_MMU
-    debug_mmu_common_userland();
-#endif
     return 0;
 }
-#endif // CONFIG_DEBUG_USERLAND_SYSCALL
+pure_debugcall(__debug_empty_pure);
+
+static int __debug_empty_core(void)
+{
+    return 0;
+}
+core_debugcall(__debug_empty_core);
+
+static int __debug_empty_core_sync(void)
+{
+    return 0;
+}
+core_debugcall_sync(__debug_empty_core_sync);
+
+static int __debug_empty_postcore(void)
+{
+    return 0;
+}
+postcore_debugcall(__debug_empty_postcore);
+
+static int __debug_empty_postcore_sync(void)
+{
+    return 0;
+}
+postcore_debugcall_sync(__debug_empty_postcore_sync);
+
+static int __debug_empty_arch(void)
+{
+    return 0;
+}
+arch_debugcall(__debug_empty_arch);
+
+static int __debug_empty_arch_sync(void)
+{
+    return 0;
+}
+arch_debugcall_sync(__debug_empty_arch_sync);
+
+static int __debug_empty_subsys(void)
+{
+    return 0;
+}
+subsys_debugcall(__debug_empty_subsys);
+
+static int __debug_empty_subsys_sync(void)
+{
+    return 0;
+}
+subsys_debugcall_sync(__debug_empty_subsys_sync);
+
+static int __debug_empty_fs(void)
+{
+    return 0;
+}
+fs_debugcall(__debug_empty_fs);
+
+static int __debug_empty_fs_sync(void)
+{
+    return 0;
+}
+fs_debugcall_sync(__debug_empty_fs_sync);
+
+static int __debug_empty_rootfs(void)
+{
+    return 0;
+}
+rootfs_debugcall(__debug_empty_rootfs);
+
+static int __debug_empty_device(void)
+{
+    return 0;
+}
+device_debugcall(__debug_empty_device);
+
+static int __debug_empty_device_sync(void)
+{
+    return 0;
+}
+device_debugcall_sync(__debug_empty_device_sync);
+
+static int __debug_empty_late(void)
+{
+    return 0;
+}
+late_debugcall(__debug_empty_late);
+
+static int __debug_empty_late_sync(void)
+{
+    return 0;
+} 
+late_debugcall_sync(__debug_empty_late_sync);

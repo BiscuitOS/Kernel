@@ -6,6 +6,8 @@
  */
 typedef int (*debugcall_t)(void);
 
+#define __used      __attribute__((__used__))
+
 /*
  * debugcalls are now grouped by functionality into separate
  * subsections. Ordering inside the subsections is determined
@@ -21,6 +23,11 @@ typedef int (*debugcall_t)(void);
     static debugcall_t __debugcall_##fn##id __used \
         __attribute__((__section__(".debugcall"#id".debug"))) = fn;
 
+/*
+ * Invake debugcall function
+ */
+#define debugcall(fn) \
+    __asm__ ("call *%0" :: "r" (fn))
 
 /*
  * Early debugcalls run before initializing SMP
@@ -52,5 +59,30 @@ typedef int (*debugcall_t)(void);
 #define device_debugcall_sync(fn)       __define_debugcall(fn,6s)
 #define late_debugcall(fn)              __define_debugcall(fn,7)
 #define late_debugcall_sync(fn)         __define_debugcall(fn,7s)
+
+/*
+ * Debug levels
+ */
+enum {
+    DEBUG_EARLY,
+    DEBUG_PURE,
+    DEBUG_CORE,
+    DEBUG_CORE_SYNC,
+    DEBUG_POSTCORE,
+    DEBUG_POSTCORE_SYNC,
+    DEBUG_ARCH,
+    DEBUG_ARCH_SYNC,
+    DEBUG_SUBSYS,
+    DEBUG_SUBSYS_SYNC,
+    DEBUG_FS,
+    DEBUG_FS_SYNC,
+    DEBUG_ROOTFS,
+    DEBUG_DEVICE,
+    DEBUG_DEVICE_SYNC,
+    DEBUG_LATE,
+    DEBUG_LATE_SYNC
+};
+
+extern void do_debugcall(int levels);
 
 #endif
