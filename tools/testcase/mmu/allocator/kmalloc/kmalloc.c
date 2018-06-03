@@ -16,6 +16,8 @@
 
 #include <test/debug.h>
 
+#define GFP_LEVEL_MASK    0xf
+
 /*
  * I want this low enough for a while to catch errors.
  * I want this number to be increased in the near future.
@@ -108,6 +110,7 @@ static int extablish_kmalloc_alloctor(void)
 
     return 0;
 }
+subsys_debugcall(extablish_kmalloc_alloctor);
 #endif
 
 #ifdef CONFIG_DEBUG_KMALLOC_USAGE
@@ -128,7 +131,7 @@ static int get_order(int size)
  */
 static void *kmalloc_alloc(size_t size, int priority)
 {
-    int order, tries;
+    int order, tries, sz;
     unsigned long flags;
     extern unsigned long intr_count;
     struct page_descriptor *page;
@@ -165,21 +168,31 @@ static void *kmalloc_alloc(size_t size, int priority)
             printk("DDDDDD\n");
         }
         restore_flags(flags);
+
+        /* Now we're in trouble: We need to get a new free page...... */
+        /* sz is the size of the blocks we're dealing with this */
+        sz = BLOCKSIZE(order);
+
+        /* This can be done with ints on: This is private to this invocation */
+        page = (struct page_descriptor *)__get_free_page(priority &
+                                            GFP_LEVEL_MASK);
+        if (!page) {
+            printk("Could't get a free page....\n");
+            return NULL;
+        }
+        ksizes[order].npages++;
+        printk("NPAGEs %#x\n", ksizes[order].npages);
     }
 
     return NULL;
 }
-#endif
 
-/* Kmalloc allocator common entory. */
-int debug_kmalloc_allocator_common(void)
+static int debug_kmalloc_usage(void)
 {
-#ifdef CONFIG_DEBUG_KMALLOC_ALLOCATOR
-    extablish_kmalloc_alloctor();
-#endif
 
-#ifdef CONFIG_DEBUG_KMALLOC_USAGE
     kmalloc_alloc(48, GFP_KERNEL);
-#endif
+
     return 0;
 }
+subsys_debugcall(debug_kmalloc_usage);
+#endif

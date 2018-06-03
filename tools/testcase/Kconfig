@@ -6,6 +6,7 @@ menu "TestCase configuration"
 
 config TESTCASE
 	bool "Testcase for kernel function"
+	select DEBUG_DEBUGCALL
 	help
 	  Test basic kernel function on specify envirnoment
 

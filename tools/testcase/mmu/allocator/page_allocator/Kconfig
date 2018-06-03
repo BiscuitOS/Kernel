@@ -1,0 +1,17 @@
+#
+# Get one free page
+#
+
+menu "Free page memory allocator"
+
+config DEBUG_PAGE_ALLOCATOR
+	bool "Free Page Memory Allocator"
+	help
+	  Debug free page memory allocator.
+
+config GET_ONE_FREE_PAGE
+	bool "Get one free page"
+	help
+	  Obtain one free page.
+
+endmenu

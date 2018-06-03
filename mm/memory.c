@@ -1043,70 +1043,71 @@ unsigned long paging_init(unsigned long start_mem, unsigned long end_mem)
 void mem_init(unsigned long start_low_mem,
 	      unsigned long start_mem, unsigned long end_mem)
 {
-	int codepages = 0;
-	int reservedpages = 0;
-	int datapages = 0;
-	unsigned long tmp;
-	unsigned short * p;
-	int etext = 0;
+    int codepages = 0;
+    int reservedpages = 0;
+    int datapages = 0;
+    unsigned long tmp;
+    unsigned short * p;
+    int etext = 0;
 
-	cli();
-	end_mem &= PAGE_MASK;
-	high_memory = end_mem;
-	start_mem +=  0x0000000f;
-	start_mem &= ~0x0000000f;
-	tmp = MAP_NR(end_mem);
-	mem_map = (unsigned short *) start_mem;
-	p = mem_map + tmp;
-	start_mem = (unsigned long) p;
-	while (p > mem_map)
-		*--p = MAP_PAGE_RESERVED;
-	start_low_mem = PAGE_ALIGN(start_low_mem);
-	start_mem = PAGE_ALIGN(start_mem);
-	while (start_low_mem < 0xA0000) {
-		mem_map[MAP_NR(start_low_mem)] = 0;
-		start_low_mem += PAGE_SIZE;
-	}
-	while (start_mem < end_mem) {
-		mem_map[MAP_NR(start_mem)] = 0;
-		start_mem += PAGE_SIZE;
-	}
+    cli();
+    end_mem &= PAGE_MASK;
+    high_memory = end_mem;
+    start_mem +=  0x0000000f;
+    start_mem &= ~0x0000000f;
+    tmp = MAP_NR(end_mem);
+    mem_map = (unsigned short *) start_mem;
+    p = mem_map + tmp;
+    start_mem = (unsigned long) p;
+    while (p > mem_map)
+        *--p = MAP_PAGE_RESERVED;
+    start_low_mem = PAGE_ALIGN(start_low_mem);
+    start_mem = PAGE_ALIGN(start_mem);
+    while (start_low_mem < 0xA0000) {
+        mem_map[MAP_NR(start_low_mem)] = 0;
+        start_low_mem += PAGE_SIZE;
+    }
+    while (start_mem < end_mem) {
+       mem_map[MAP_NR(start_mem)] = 0;
+       start_mem += PAGE_SIZE;
+    }
 #ifdef CONFIG_SOUND
-	sound_mem_init();
+    sound_mem_init();
 #endif
-	free_page_list = 0;
-	nr_free_pages = 0;
-	for (tmp = 0 ; tmp < end_mem ; tmp += PAGE_SIZE) {
-		if (mem_map[MAP_NR(tmp)]) {
-			if (tmp >= 0xA0000 && tmp < 0x100000)
-				reservedpages++;
-			else if (tmp < (unsigned long) &etext)
-				codepages++;
-			else
-				datapages++;
-			continue;
-		}
-		*(unsigned long *) tmp = free_page_list;
-		free_page_list = tmp;
-		nr_free_pages++;
-	}
-	tmp = nr_free_pages << PAGE_SHIFT;
-	printk("Memory: %luk/%luk available (%dk kernel code, %dk reserved, %dk data)\n",
-		tmp >> 10,
-		end_mem >> 10,
-		codepages << (PAGE_SHIFT-10),
-		reservedpages << (PAGE_SHIFT-10),
-		datapages << (PAGE_SHIFT-10));
+    free_page_list = 0;
+    nr_free_pages = 0;
+    for (tmp = 0 ; tmp < end_mem ; tmp += PAGE_SIZE) {
+        if (mem_map[MAP_NR(tmp)]) {
+            if (tmp >= 0xA0000 && tmp < 0x100000)
+                reservedpages++;
+            else if (tmp < (unsigned long) &etext)
+                codepages++;
+            else
+                datapages++;
+            continue;
+        } 
+        *(unsigned long *) tmp = free_page_list;
+        free_page_list = tmp;
+        nr_free_pages++;
+    }
+    tmp = nr_free_pages << PAGE_SHIFT;
+    printk("Memory: %luk/%luk available (%dk kernel code, %dk "
+           "reserved, %dk data)\n",
+           tmp >> 10,
+           end_mem >> 10,
+           codepages << (PAGE_SHIFT-10),
+           reservedpages << (PAGE_SHIFT-10),
+           datapages << (PAGE_SHIFT-10));
 /* test if the WP bit is honoured in supervisor mode */
-	wp_works_ok = -1;
-	pg0[0] = PAGE_READONLY;
-	invalidate();
-	__asm__ __volatile__("movb 0,%%al ; movb %%al,0": : :"ax", "memory");
-	pg0[0] = 0;
-	invalidate();
-	if (wp_works_ok < 0)
-		wp_works_ok = 0;
-	return;
+    wp_works_ok = -1;
+    pg0[0] = PAGE_READONLY;
+    invalidate();
+    __asm__ __volatile__("movb 0,%%al ; movb %%al,0": : :"ax", "memory");
+    pg0[0] = 0;
+    invalidate();
+    if (wp_works_ok < 0)
+        wp_works_ok = 0;
+    return;
 }
 
 void si_meminfo(struct sysinfo *val)

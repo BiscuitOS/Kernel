@@ -53,7 +53,7 @@ extern int shm_swap (int);
  * NOTE!! NR_LAST_FREE_PAGES must be a power of 2...
  */
 #define NR_LAST_FREE_PAGES 32
-static unsigned long last_free_pages[NR_LAST_FREE_PAGES] = {0,};
+static unsigned long last_free_pages[NR_LAST_FREE_PAGES] = {0, };
 
 void rw_swap_page(int rw, unsigned long entry, char * buf)
 {
@@ -551,28 +551,29 @@ void free_page(unsigned long addr)
  * know what you are doing.
  */
 #define REMOVE_FROM_MEM_QUEUE(queue,nr) \
-	cli(); \
-	if ((result = queue) != 0) { \
-		if (!(result & ~PAGE_MASK) && result < high_memory) { \
-			queue = *(unsigned long *) result; \
-			if (!mem_map[MAP_NR(result)]) { \
-				mem_map[MAP_NR(result)] = 1; \
-				nr--; \
-last_free_pages[index = (index + 1) & (NR_LAST_FREE_PAGES - 1)] = result; \
-				restore_flags(flag); \
-				return result; \
-			} \
-			printk("Free page %08lx has mem_map = %d\n", \
-				result,mem_map[MAP_NR(result)]); \
-		} else \
-			printk("Result = 0x%08lx - memory map destroyed\n", result); \
-		queue = 0; \
-		nr = 0; \
-	} else if (nr) { \
-		printk(#nr " is %d, but " #queue " is empty\n",nr); \
-		nr = 0; \
-	} \
-	restore_flags(flag)
+    cli(); \
+    if ((result = queue) != 0) { \
+        if (!(result & ~PAGE_MASK) && result < high_memory) { \
+            queue = *(unsigned long *) result; \
+            if (!mem_map[MAP_NR(result)]) { \
+                mem_map[MAP_NR(result)] = 1; \
+                nr--; \
+                last_free_pages[index = \
+                    (index + 1) & (NR_LAST_FREE_PAGES - 1)] = result; \
+                restore_flags(flag); \
+                return result; \
+            } \
+            printk("Free page %08lx has mem_map = %d\n", \
+                          result,mem_map[MAP_NR(result)]); \
+        } else \
+            printk("Result = 0x%08lx - memory map destroyed\n", result); \
+        queue = 0; \
+        nr = 0; \
+    } else if (nr) { \
+        printk(#nr " is %d, but " #queue " is empty\n",nr); \
+        nr = 0; \
+    } \
+    restore_flags(flag)
 
 /*
  * Get physical address of first (actually last :-) free page, and mark it
@@ -585,30 +586,30 @@ last_free_pages[index = (index + 1) & (NR_LAST_FREE_PAGES - 1)] = result; \
  */
 unsigned long __get_free_page(int priority)
 {
-	extern unsigned long intr_count;
-	unsigned long result, flag;
-	static unsigned long index = 0;
+    extern unsigned long intr_count;
+    unsigned long result, flag;
+    static unsigned long index = 0;
 
-	/* this routine can be called at interrupt time via
-	   malloc.  We want to make sure that the critical
-	   sections of code have interrupts disabled. -RAB
-	   Is this code reentrant? */
+    /* this routine can be called at interrupt time via
+       malloc.  We want to make sure that the critical
+       sections of code have interrupts disabled. -RAB
+       Is this code reentrant? */
 
-	if (intr_count && priority != GFP_ATOMIC) {
-		printk("gfp called nonatomically from interrupt %08lx\n",
-			((unsigned long *)&priority)[-1]);
-		priority = GFP_ATOMIC;
-	}
-	save_flags(flag);
+    if (intr_count && priority != GFP_ATOMIC) {
+        printk("gfp called nonatomically from interrupt %08lx\n",
+                 ((unsigned long *)&priority)[-1]);
+        priority = GFP_ATOMIC;
+    }
+    save_flags(flag);
 repeat:
-	REMOVE_FROM_MEM_QUEUE(free_page_list,nr_free_pages);
-	if (priority == GFP_BUFFER)
-		return 0;
-	if (priority != GFP_ATOMIC)
-		if (try_to_free_page())
-			goto repeat;
-	REMOVE_FROM_MEM_QUEUE(secondary_page_list,nr_secondary_pages);
-	return 0;
+    REMOVE_FROM_MEM_QUEUE(free_page_list, nr_free_pages);
+    if (priority == GFP_BUFFER)
+        return 0;
+    if (priority != GFP_ATOMIC)
+        if (try_to_free_page())
+            goto repeat;
+    REMOVE_FROM_MEM_QUEUE(secondary_page_list, nr_secondary_pages);
+    return 0;
 }
 
 /*

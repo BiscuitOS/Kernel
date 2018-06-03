@@ -28,7 +28,6 @@
 #include <test/debug.h>
 #endif
 
-extern void do_debugcall_early(void);
 extern unsigned long * prof_buffer;
 extern unsigned long prof_len;
 extern char edata[], end[];

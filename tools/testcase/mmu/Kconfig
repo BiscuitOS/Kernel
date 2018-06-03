@@ -11,27 +11,8 @@ config DEBUG_MMU
 
 if DEBUG_MMU
 
-source tools/testcase/mmu/virtual/Kconfig
-
-source tools/testcase/mmu/linear/Kconfig
-
-source tools/testcase/mmu/physic/Kconfig
-
-source tools/testcase/mmu/logic/Kconfig
-
-source tools/testcase/mmu/pgtable/Kconfig
-
-source tools/testcase/mmu/segmentation/Kconfig
-
-source tools/testcase/mmu/paging/Kconfig
-
-source tools/testcase/mmu/right/Kconfig
-
-source tools/testcase/mmu/page-fault/Kconfig
-
-source tools/testcase/mmu/TLB/Kconfig
-
-source tools/testcase/mmu/kmalloc/Kconfig
+# Memory allocator
+source "tools/testcase/mmu/allocator/Kconfig"
 
 endif
 
