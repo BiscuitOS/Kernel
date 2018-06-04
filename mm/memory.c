@@ -1048,7 +1048,7 @@ void mem_init(unsigned long start_low_mem,
     int datapages = 0;
     unsigned long tmp;
     unsigned short * p;
-    int etext = 0;
+    extern char etext[];
 
     cli();
     end_mem &= PAGE_MASK;

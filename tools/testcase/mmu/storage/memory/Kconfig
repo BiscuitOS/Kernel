@@ -42,7 +42,12 @@ config MEMORY_FROM_GLOBAL_ARGUMENT
 	help
 	  Detect memory information from global argument.
 
-endif
+endif # DEBUG_DETECT_MEMORY
+
+config DEBUG_INIT_MEMORY
+	bool "Initialize main memory"
+	help
+	  Debug main routine for memory initialiation.
 
 endif # DEBUG_MAIN_MEMORY
 
