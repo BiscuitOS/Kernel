@@ -47,7 +47,7 @@ static long _get_free_page(int priority)
        Is this code reentrant? */
     if (intr_count && priority != GFP_ATOMIC) {
         printk("gfp called nonatomically from interrupt %08x\n",
-               ((unsigned long *)&priority)[-1]);
+               (unsigned int)((unsigned long *)&priority)[-1]);
         priority = GFP_ATOMIC;
     }
     save_flags(flag);
@@ -73,15 +73,21 @@ repeat:
     } else if (nr_free_pages) {
         printk("nr_free_pages is %d, but free_page_list is empty\n", 
                    nr_free_pages);
-        nr_free_pages;
+        nr_free_pages = 0;
     }
     restore_flags(flag);
+    if (priority == GFP_BUFFER)
+        return 0;
+    goto repeat;
 }
 
 static int free_page_one(void)
 {
-    _get_free_page(GFP_KERNEL);
+    unsigned long page;
+
+    page = _get_free_page(GFP_KERNEL);
+    printk("_get_free_page: %#08x\n", (unsigned int)page);
     return 0;
 }
-subsys_debugcall(free_page_one);
+late_debugcall(free_page_one);
 #endif

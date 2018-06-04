@@ -9,9 +9,13 @@ config DEBUG_PAGE_ALLOCATOR
 	help
 	  Debug free page memory allocator.
 
+if DEBUG_PAGE_ALLOCATOR
+
 config GET_ONE_FREE_PAGE
 	bool "Get one free page"
 	help
 	  Obtain one free page.
+
+endif
 
 endmenu

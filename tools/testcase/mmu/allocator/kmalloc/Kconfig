@@ -21,6 +21,47 @@ config DEBUG_KMALLOC_USAGE
 	help
 	  Utilize 'kmalloc' to allocate spcial memory.
 
+if DEBUG_KMALLOC_USAGE
+
+config FIRST_ALLOC_MEMORY
+	bool "First allocate memory for special order size."
+	help
+	  First allocate memory that cause the system allocate
+	  new page.
+
+config ALLOC_MORE_PAGE
+	bool "Allocate memory cause allocate new page."
+	help
+	  Allocate memory cause the system allocate new page
+	  expect first page.
+
+config ALLOC_OVER_MAX_KMALLOC_K
+	bool "Allocate memory size over MAX_KMALLOC_K"
+	help
+	  Allocate memory size over MAX_KMALLOC_K.
+
+config ALLOC_WITH_GFP_BUFFER
+	bool "Allocate memory with GFP_BUFFER"
+	help
+	  Allocate memory with GFP_BUFFER.
+
+config ALLOC_WITH_GFP_ATOMIC
+	bool "Allocate memory with GFP_ATOMIC"
+	help
+	  Allocate memory with GFP_ATOMIC.
+
+config ALLOC_WITH_GFP_USER
+	bool "Allocate memory with GFP_USER"
+	help
+	  Allocate memory with GFP_USER.
+
+config ALLOC_WITH_GFP_KERNEL
+	bool "Allocate memory with GFP_KERNEL"
+	help
+	  Allocate memory with GFP_KERNEL.
+
+endif
+
 endif
 
 endmenu

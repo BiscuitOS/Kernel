@@ -31,6 +31,21 @@
  */
 #define MAX_GET_FREE_PAGE_TRIES    4
 
+/* Private flags. */
+#define MF_USED    0xffaa0055
+#define MF_FREE    0x0055ffaa
+
+/*
+ * Much care has gone into making these routines in this file reentrant.
+ *
+ * The fancy book keeping of nbytes malloced and the like are only used
+ * to report them to the user (oooohhhh, aaaaahhhh...) are not
+ * protected by cli(). (If that goes wrong, So what?)
+ *
+ * These routines restore the interrupt status to allow calling with
+ * ints off.
+ */
+
 /*
  * A block header. This is in fromt of every malloc-block,
  * whether free or not.
@@ -42,6 +57,10 @@ struct block_header {
         struct block_header *fbh_next;
     } vp;
 };
+
+#define bh_length    vp.ubh_length
+#define bh_next      vp.fbh_next
+#define BH(p)        ((struct block_header *)(p))
 
 /*
  * The page descriptor is at the front of every page that malloc
@@ -131,7 +150,7 @@ static int get_order(int size)
  */
 static void *kmalloc_alloc(size_t size, int priority)
 {
-    int order, tries, sz;
+    int order, tries, sz, i;
     unsigned long flags;
     extern unsigned long intr_count;
     struct page_descriptor *page;
@@ -165,7 +184,25 @@ static void *kmalloc_alloc(size_t size, int priority)
         /* Try to allocate a "recently" free memory block */
         cli();
         if ((page = ksizes[order].firstfree) && (p = page->firstfree)) {
-            printk("DDDDDD\n");
+            if (p->bh_flags == MF_FREE) {
+                page->firstfree = p->bh_next;
+                page->nfree--;
+                if (!page->nfree) {
+                    ksizes[order].firstfree = page->next;
+                    page->next = NULL;
+                }
+                restore_flags(flags);
+                ksizes[order].nmallocs++;
+                ksizes[order].nbytesmalloced += size;
+                /* As of now this block is officially in use */
+                p->bh_flags  = MF_USED;
+                p->bh_length = size;
+                /* Pointer arithmetic: increments past header */
+                return p + 1;
+            }
+            printk("Problem: block on freelist at %08lx "
+                   "isn't free.\n", (long)p);
+            return (NULL);
         }
         restore_flags(flags);
 
@@ -181,18 +218,203 @@ static void *kmalloc_alloc(size_t size, int priority)
             return NULL;
         }
         ksizes[order].npages++;
-        printk("NPAGEs %#x\n", ksizes[order].npages);
+
+        /* 
+         * Loop for all but last block: 
+         *
+         *  Kmalloc Page
+         *  0----------------------------------------------------------4k
+         *  |                 |              |             |           |
+         *  | page_descriptor | block_header | memory area | .....     |
+         *  |                 |              |             |           |
+         *  ------------------------------------------------------------
+         *                                                      |
+         *                     |--------------------------------|
+         *                     |
+         *                     V
+         *  ----------------------------------------------------------4k
+         *  |              |             |              |             |
+         *  | block_header | memory area | block_header | memory area |
+         *  |              |             |              |             |
+         *  -----------------------------------------------------------
+         *                     |
+         *         |-----------|
+         *         |
+         *         V
+         *  0----------------------------------------------sz
+         *  |                                               |
+         *  | Special size for memory area which store data |
+         *  |      Length = BLOCKSIZE(order)                |
+         *  -------------------------------------------------
+         *
+         */
+        for (i = NBLOCKS(order), p = BH(page + 1); i > 1;
+               i--, p = p->bh_next) {
+            p->bh_flags = MF_FREE;
+            p->bh_next  = BH(((long)p) + sz);
+        }
+        /* Last block: */
+        p->bh_flags = MF_FREE;
+        p->bh_next = NULL;
+
+        page->order = order;
+        page->nfree = NBLOCKS(order);
+        page->firstfree = BH(page + 1);
+        /* Now we're going to muck with the "global" freellist for this size:
+           this should be uninterruptible */
+        cli();
+        /* 
+         * sizes[order].firstfree used to be NULL, otherwise we wouldn't be
+         * here, but you never know....
+         *
+         *  ksizes[order].firsetfree -------->  0 .-----------------.
+         *    A                                   | page_descriptor |
+         *    |                               I---|           .next |
+         *    |                               |   |                 |
+         *    |                               |   |      PAGE       |
+         *    |      0 .-----------------. <--|   |                 |
+         *    |        | page_descriptor |        |                 |
+         *    L--------|           .next |        |                 |
+         *             |                 |     4k .-----------------.
+         *             |      PAGE       |
+         *             |                 |
+         *             |                 |
+         *             |                 |
+         *          4k .-----------------.
+         */
+        page->next = ksizes[order].firstfree;
+        ksizes[order].firstfree = page;
+        restore_flags(flags);
     }
+
+    /* Pray that printk won't cause this to happen again :-) */
+    printk ("Hey. This is very funny. I tried %d times ""to allocate a whole\n"
+        "new page for an object only %d bytes long, but some other process\n"
+        "beat me to actually allocating it. Also note that this 'error'\n"
+        "message is soooo very long to catch your attention. I'd appreciate\n"
+        "it if you'd be so kind as to report what conditions caused this to\n"
+        "the author of this kmalloc: wolff@dutecai.et.tudelft.nl.\n"
+        "(Executive summary: This can't happen)\n",
+                MAX_GET_FREE_PAGE_TRIES, size);
 
     return NULL;
 }
 
 static int debug_kmalloc_usage(void)
 {
+#ifdef CONFIG_FIRST_ALLOC_MEMORY
+    unsigned long kmalloc_vma0, kmalloc_vma1;
 
-    kmalloc_alloc(48, GFP_KERNEL);
+    kmalloc_vma0 = (unsigned long)kmalloc_alloc(48, GFP_KERNEL);
+    if (!kmalloc_vma0) {
+        printk("Unable obtain memory from kmalloc0.\n");
+        return -1;
+    }
+    kmalloc_vma1 = (unsigned long)kmalloc_alloc(48, GFP_KERNEL);
+    if (!kmalloc_vma1) {
+        printk("Unable obtain memory from kmalloc1.\n");
+        return -1;
+    }
+
+    printk("VMA0 %#x\n", (unsigned int)kmalloc_vma0);
+    printk("VMA1 %#x\n", (unsigned int)kmalloc_vma1);
+#endif
+
+#ifdef CONFIG_ALLOC_MORE_PAGE
+    unsigned long kmalloc_vma2, kmalloc_vma3;
+    int i, order;
+    int special_size = 56;
+
+    /* get memory order */
+    order = get_order(special_size);
+
+    /* first allocate memory */
+    kmalloc_vma2 = (unsigned long)kmalloc_alloc(special_size, GFP_KERNEL);
+    if (!kmalloc_vma2) {
+        printk("Unable obtain memory from kmalloc0.\n");
+        return -1;
+    }
+
+    for (i = 0; i < (NBLOCKS(order) + 4); i++) {
+        kmalloc_vma3 = (unsigned long)kmalloc_alloc(special_size, GFP_KERNEL);
+        if (!kmalloc_vma3) {
+            printk("Unable obtain memory from kmallocx.\n");
+            return -1;
+        }
+
+    }
+
+    /* allocate memory from new page */
+    kmalloc_vma3 = (unsigned long)kmalloc_alloc(special_size, GFP_KERNEL);
+    if (!kmalloc_vma3) {
+        printk("Unable obtain memory from kmalloc1.\n");
+        return -1;
+    }
+
+    /* Check whether memory locate on different page. */
+    if (PAGE_ALIGN(kmalloc_vma2) == PAGE_ALIGN(kmalloc_vma3))
+        printk("VMA0 and VMA1 from same Page.\n");
+    else
+        printk("VMA0 and VMA1 from different Page.\n");
+#endif
+
+#ifdef CONFIG_ALLOC_WITH_GFP_BUFFER
+    unsigned long kmalloc_vma5;
+
+    kmalloc_vma5 = (unsigned long)kmalloc_alloc(62, GFP_BUFFER);
+    if (!kmalloc_vma5) {
+        printk("Unable obtain memory from kmalloc.\n");
+        return -1;
+    }
+    printk("GFP_BUFFER %#x\n", (unsigned int)kmalloc_vma5);
+#endif
+
+#ifdef CONFIG_ALLOC_WITH_GFP_ATOMIC
+    unsigned long kmalloc_vma6;
+
+    kmalloc_vma6 = (unsigned long)kmalloc_alloc(62, GFP_ATOMIC);
+    if (!kmalloc_vma6) {
+        printk("Unable obtain memory from kmalloc.\n");
+        return -1;
+    }
+    printk("GFP_ATOMIC %#x\n", (unsigned int)kmalloc_vma6);
+#endif
+
+#ifdef CONFIG_ALLOC_WITH_GFP_USER
+    unsigned long kmalloc_vma7;
+
+    kmalloc_vma7 = (unsigned long)kmalloc_alloc(62, GFP_USER);
+    if (!kmalloc_vma7) {
+        printk("Unable obtain memory from kmalloc.\n");
+        return -1;
+    }
+    printk("GFP_USER %#x\n", (unsigned int)kmalloc_vma7);
+#endif
+
+#ifdef CONFIG_ALLOC_WITH_GFP_KERNEL
+    unsigned long kmalloc_vma8;
+
+    kmalloc_vma8 = (unsigned long)kmalloc_alloc(62, GFP_KERNEL);
+    if (!kmalloc_vma8) {
+        printk("Unable obtain memory from kmalloc.\n");
+        return -1;
+    }
+    printk("GFP_KERNEL %#x\n", (unsigned int)kmalloc_vma8);
+#endif
+
+#ifdef CONFIG_ALLOC_OVER_MAX_KMALLOC_K
+    unsigned long kmalloc_vma4;
+    unsigned long size = MAX_KMALLOC_K * 1024 + 8;
+
+    kmalloc_vma4 = (unsigned long)kmalloc_alloc(size, GFP_KERNEL);
+    if (!kmalloc_vma4) {
+        printk("Unable obtain memory from kmalloc.\n");
+        return -1;
+    }
+    printk("Kmalloc address %#x\n", (unsigned int)kmalloc_vma4);
+#endif
 
     return 0;
 }
-subsys_debugcall(debug_kmalloc_usage);
+late_debugcall(debug_kmalloc_usage);
 #endif

@@ -34,7 +34,7 @@
 /* 
  * Much care has gone into making these routines in this file reentrant.
  *
- * The fancy bookkeeping of nbytesmalloced and the like are only used to
+ * The fancy book keeping of nbytes malloced and the like are only used to
  * report them to the user (oooohhhhh, aaaaahhhhh....) are not 
  * protected by cli(). (If that goes wrong. So what?)
  *
@@ -227,7 +227,7 @@ void *kmalloc (size_t size, int priority)
         page->nfree = NBLOCKS(order); 
         page->firstfree = BH(page+1);
         /* Now we're going to muck with the "global" freelist for this size:
-          this should be uniterruptible */
+          this should be uninterruptible */
         cli ();
         /* 
          * sizes[order].firstfree used to be NULL, otherwise we wouldn't be
