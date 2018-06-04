@@ -1,0 +1,49 @@
+#
+# Main Memory: 
+#
+
+menu "Primary storage (main memory or internal memory)"
+
+config DEBUG_MAIN_MEMORY
+	bool "Primary storage: main memory or internal memory"
+	help
+	  Primary storage (also known as main memory or internal memory), 
+	  often referred to simply as memory, is the only one directly 
+	  accessible to the CPU. The CPU continuously reads instructions 
+	  stored there and executes them as required. Any data actively 
+	  operated on is also stored there in uniform manner.
+
+if DEBUG_MAIN_MEMORY
+
+config DEBUG_DETECT_MEMORY
+	bool "Detect system memory information"
+	help
+	  Detect system memory informtion from BIOS, ld and so on.
+
+if DEBUG_DETECT_MEMORY
+
+config MEMORY_FROM_BIOS
+	bool "Detect memory information from BIOS"
+	help
+	  Detect memory information from BIOS
+
+config MEMORY_FROM_LD
+	bool "Detect memory information from LD"
+	help
+	  Detect memory information from LD scriptor.
+
+config MEMORY_FROM_TASK
+	bool "Detect memory information from task_struct"
+	help
+	  Detect memory information from task_struct.
+
+config MEMORY_FROM_GLOBAL_ARGUMENT
+	bool "Detect memory information from global argument"
+	help
+	  Detect memory information from global argument.
+
+endif
+
+endif # DEBUG_MAIN_MEMORY
+
+endmenu

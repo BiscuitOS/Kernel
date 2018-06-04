@@ -1,0 +1,19 @@
+#
+# Data storage, general recording of information
+#
+
+menu "Data storage, general recording of information"
+
+config DEBUG_STORAGE
+	bool "Debug Data Storage, Memory, ROM, TLB...."
+	help
+	  Debug Data Storage.
+
+if DEBUG_STORAGE
+
+# Main Memory
+source "tools/testcase/mmu/storage/memory/Kconfig"
+
+endif
+
+endmenu
