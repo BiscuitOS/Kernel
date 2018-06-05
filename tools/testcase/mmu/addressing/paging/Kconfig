@@ -11,10 +11,10 @@ config DEBUG_MMU_PAGING
 
 if DEBUG_MMU_PAGING
 
-config DEBUG_PAGING_REGISTER
-	bool "Debug all Registers on Paging Mode"
+config DEBUG_PAGING_INIT
+	bool "Initialize paging table."
 	help
-	  Debug all Registerson Paging Mode.
+	  Initialize paging table..
 
 endif
 

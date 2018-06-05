@@ -615,35 +615,35 @@ static void put_unused_buffer_head(struct buffer_head * bh)
 
 static void get_more_buffer_heads(void)
 {
-	int i;
-	struct buffer_head * bh;
+    int i;
+    struct buffer_head * bh;
 
-	if (unused_list)
-		return;
+    if (unused_list)
+        return;
 
-	if(! (bh = (struct buffer_head*) get_free_page(GFP_BUFFER)))
-		return;
+    if(! (bh = (struct buffer_head*) get_free_page(GFP_BUFFER)))
+        return;
 
-	for (nr_buffer_heads+=i=PAGE_SIZE/sizeof*bh ; i>0; i--) {
-		bh->b_next_free = unused_list;	/* only make link */
-		unused_list = bh++;
-	}
+    for (nr_buffer_heads+=i=PAGE_SIZE/sizeof*bh ; i>0; i--) {
+        bh->b_next_free = unused_list;    /* only make link */
+        unused_list = bh++;
+    }
 }
 
 static struct buffer_head * get_unused_buffer_head(void)
 {
-	struct buffer_head * bh;
+    struct buffer_head * bh;
 
-	get_more_buffer_heads();
-	if (!unused_list)
-		return NULL;
-	bh = unused_list;
-	unused_list = bh->b_next_free;
-	bh->b_next_free = NULL;
-	bh->b_data = NULL;
-	bh->b_size = 0;
-	bh->b_req = 0;
-	return bh;
+    get_more_buffer_heads();
+    if (!unused_list)
+        return NULL;
+    bh = unused_list;
+    unused_list = bh->b_next_free;
+    bh->b_next_free = NULL;
+    bh->b_data = NULL;
+    bh->b_size = 0;
+    bh->b_req = 0;
+    return bh;
 }
 
 /*
@@ -652,34 +652,35 @@ static struct buffer_head * get_unused_buffer_head(void)
  * follow the buffers created.  Return NULL if unable to create more
  * buffers.
  */
-static struct buffer_head * create_buffers(unsigned long page, unsigned long size)
+static struct buffer_head * create_buffers(unsigned long page, 
+                                  unsigned long size)
 {
-	struct buffer_head *bh, *head;
-	unsigned long offset;
+    struct buffer_head *bh, *head;
+    unsigned long offset;
 
-	head = NULL;
-	offset = PAGE_SIZE;
-	while ((offset -= size) < PAGE_SIZE) {
-		bh = get_unused_buffer_head();
-		if (!bh)
-			goto no_grow;
-		bh->b_this_page = head;
-		head = bh;
-		bh->b_data = (char *) (page+offset);
-		bh->b_size = size;
-	}
-	return head;
+    head = NULL;
+    offset = PAGE_SIZE;
+    while ((offset -= size) < PAGE_SIZE) {
+        bh = get_unused_buffer_head();
+        if (!bh)
+            goto no_grow;
+        bh->b_this_page = head;
+        head = bh;
+        bh->b_data = (char *) (page+offset);
+        bh->b_size = size;
+    }
+    return head;
 /*
  * In case anything failed, we just free everything we got.
  */
 no_grow:
-	bh = head;
-	while (bh) {
-		head = bh;
-		bh = bh->b_this_page;
-		put_unused_buffer_head(head);
-	}
-	return NULL;
+    bh = head;
+    while (bh) {
+        head = bh;
+        bh = bh->b_this_page;
+        put_unused_buffer_head(head);
+    }
+    return NULL;
 }
 
 static void read_buffers(struct buffer_head * bh[], int nrbuf)
@@ -867,41 +868,41 @@ unsigned long bread_page(unsigned long address, dev_t dev, int b[], int size, in
  */
 static int grow_buffers(int pri, int size)
 {
-	unsigned long page;
-	struct buffer_head *bh, *tmp;
+    unsigned long page;
+    struct buffer_head *bh, *tmp;
 
-	if ((size & 511) || (size > PAGE_SIZE)) {
-		printk("VFS: grow_buffers: size = %d\n",size);
-		return 0;
-	}
-	if(!(page = __get_free_page(pri)))
-		return 0;
-	bh = create_buffers(page, size);
-	if (!bh) {
-		free_page(page);
-		return 0;
-	}
-	tmp = bh;
-	while (1) {
-		if (free_list) {
-			tmp->b_next_free = free_list;
-			tmp->b_prev_free = free_list->b_prev_free;
-			free_list->b_prev_free->b_next_free = tmp;
-			free_list->b_prev_free = tmp;
-		} else {
-			tmp->b_prev_free = tmp;
-			tmp->b_next_free = tmp;
-		}
-		free_list = tmp;
-		++nr_buffers;
-		if (tmp->b_this_page)
-			tmp = tmp->b_this_page;
-		else
-			break;
-	}
-	tmp->b_this_page = bh;
-	buffermem += PAGE_SIZE;
-	return 1;
+    if ((size & 511) || (size > PAGE_SIZE)) {
+        printk("VFS: grow_buffers: size = %d\n",size);
+        return 0;
+    }
+    if(!(page = __get_free_page(pri)))
+        return 0;
+    bh = create_buffers(page, size);
+    if (!bh) {
+        free_page(page);
+        return 0;
+    }
+    tmp = bh;
+    while (1) {
+        if (free_list) {
+            tmp->b_next_free = free_list;
+            tmp->b_prev_free = free_list->b_prev_free;
+            free_list->b_prev_free->b_next_free = tmp;
+            free_list->b_prev_free = tmp;
+        } else {
+            tmp->b_prev_free = tmp;
+            tmp->b_next_free = tmp;
+        }
+        free_list = tmp;
+        ++nr_buffers;
+        if (tmp->b_this_page)
+            tmp = tmp->b_this_page;
+        else
+            break;
+    }
+    tmp->b_this_page = bh;
+    buffermem += PAGE_SIZE;
+    return 1;
 }
 
 /*

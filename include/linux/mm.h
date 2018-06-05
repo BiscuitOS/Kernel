@@ -91,14 +91,14 @@ extern unsigned long secondary_page_list;
 extern unsigned long __get_free_page(int priority);
 static inline unsigned long get_free_page(int priority)
 {
-	unsigned long page;
+    unsigned long page;
 
-	page = __get_free_page(priority);
-	if (page)
-		__asm__ __volatile__("rep ; stosl"
-			: /* no outputs */ \
-			:"a" (0),"c" (1024),"D" (page));
-	return page;
+    page = __get_free_page(priority);
+    if (page)
+        __asm__ __volatile__("rep ; stosl"
+                             : /* no outputs */ \
+                             :"a" (0),"c" (1024),"D" (page));
+    return page;
 }
 
 /* memory.c */

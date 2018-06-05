@@ -252,78 +252,65 @@ void *kmalloc (size_t size, int priority)
 }
 
 
-void kfree_s (void *ptr,int size)
+void kfree_s(void *ptr,int size)
 {
-unsigned long flags;
-int order;
-register struct block_header *p=((struct block_header *)ptr) -1;
-struct page_descriptor *page,*pg2;
+    unsigned long flags;
+    int order;
+    register struct block_header *p = ((struct block_header *)ptr) - 1;
+    struct page_descriptor *page,*pg2;
 
-page = PAGE_DESC (p);
-order = page->order;
-if ((order < 0) || 
-    (order > sizeof (sizes)/sizeof (sizes[0])) ||
-    (((long)(page->next)) & ~PAGE_MASK) ||
-    (p->bh_flags != MF_USED))
-    {
-    printk ("kfree of non-kmalloced memory: %p, next= %p, order=%d\n",
-                p, page->next, page->order);
-    return;
+    page = PAGE_DESC(p);
+    order = page->order;
+    if ((order < 0) ||  (order > sizeof(sizes) / sizeof(sizes[0])) ||
+                (((long)(page->next)) & ~PAGE_MASK) ||
+                (p->bh_flags != MF_USED)) {
+        printk ("kfree of non-kmalloced memory: %p, next= %p, order=%d\n",
+                  p, page->next, page->order);
+        return;
     }
-if (size &&
-    size != p->bh_length)
-    {
-    printk ("Trying to free pointer at %p with wrong size: %d instead of %lu.\n",
-        p,size,p->bh_length);
-    return;
+    if (size && size != p->bh_length) {
+        printk ("Trying to free pointer at %p with wrong size: %d "
+                      "instead of %lu.\n",
+                p, size, p->bh_length);
+        return;
     }
-size = p->bh_length;
-p->bh_flags = MF_FREE; /* As of now this block is officially free */
+    size = p->bh_length;
+    p->bh_flags = MF_FREE; /* As of now this block is officially free */
 
-save_flags(flags);
-cli ();
-p->bh_next = page->firstfree;
-page->firstfree = p;
-page->nfree ++;
+    save_flags(flags);
+    cli();
+    p->bh_next = page->firstfree;
+    page->firstfree = p;
+    page->nfree ++;
 
-if (page->nfree == 1)
-   { /* Page went from full to one free block: put it on the freelist */
-   if (page->next)
-        {
-        printk ("Page %p already on freelist dazed and confused....\n", page);
+    if (page->nfree == 1) { 
+        /* Page went from full to one free block: put it on the freelist */
+        if (page->next) {
+            printk ("Page %p already on freelist dazed "
+                    "and confused....\n", page);
+        } else {
+            page->next = sizes[order].firstfree;
+            sizes[order].firstfree = page;
         }
-   else
-        {
-        page->next = sizes[order].firstfree;
-        sizes[order].firstfree = page;
-        }
-   }
-
-/* If page is completely free, free it */
-if (page->nfree == NBLOCKS (page->order))
-    {
-#if 0
-    printk ("Freeing page %08x.\n", (long)page);
-#endif
-    if (sizes[order].firstfree == page)
-        {
-        sizes[order].firstfree = page->next;
-        }
-    else
-        {
-        for (pg2=sizes[order].firstfree;
-                (pg2 != NULL) && (pg2->next != page);
-                        pg2=pg2->next)
-            /* Nothing */;
-        if (pg2 != NULL)
-            pg2->next = page->next;
-        else
-            printk ("Ooops. page %p doesn't show on freelist.\n", page);
-        }
-    free_page ((long)page);
     }
-restore_flags(flags);
 
-sizes[order].nfrees++;      /* Noncritical (monitoring) admin stuff */
-sizes[order].nbytesmalloced -= size;
+    /* If page is completely free, free it */
+    if (page->nfree == NBLOCKS(page->order)) {
+        if (sizes[order].firstfree == page) {
+            sizes[order].firstfree = page->next;
+        } else {
+            for (pg2 = sizes[order].firstfree; (pg2 != NULL) && 
+                (pg2->next != page); pg2=pg2->next)
+                /* Nothing */;
+            if (pg2 != NULL)
+                pg2->next = page->next;
+            else
+                printk ("Ooops. page %p doesn't show on freelist.\n", page);
+        }
+        free_page((long)page);
+    }
+    restore_flags(flags);
+
+    sizes[order].nfrees++;      /* Noncritical (monitoring) admin stuff */
+    sizes[order].nbytesmalloced -= size;
 }

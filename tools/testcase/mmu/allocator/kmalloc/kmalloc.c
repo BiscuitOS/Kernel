@@ -73,6 +73,9 @@ struct page_descriptor {
     int nfree;
 };
 
+#define PAGE_DESC(p) ((struct page_descriptor *)(((unsigned long)(p)) & \
+                                                   PAGE_MASK))
+
 /*
  * A size descriptor describes a specific class of malloc sizes.
  * Each class of sizes has its own fresslist.
@@ -130,6 +133,72 @@ static int extablish_kmalloc_alloctor(void)
     return 0;
 }
 subsys_debugcall(extablish_kmalloc_alloctor);
+#endif
+
+#ifdef CONFIG_DEBUG_KMALLOC_FREE
+
+#define kfrees(x) kfree_kmalloc((x), 0)
+
+static void kfree_kmalloc(void *ptr, int size)
+{
+    unsigned long flags;
+    int order;
+    register struct block_header *p = ((struct block_header *)ptr) - 1;
+    struct page_descriptor *page, *pg2;
+
+    page = PAGE_DESC(p);
+    order = page->order;
+    if ((order < 0) || (order > sizeof(ksizes) / sizeof(ksizes[0])) ||
+             ((long)(page->next) & ~PAGE_MASK) ||
+             (p->bh_flags != MF_USED)) {
+        printk("kfree of non-kmalloced memory: %p, next= %p, order=%d\n",
+                  p, page->next, page->order);
+        return;
+    }
+    if (size && size != p->bh_length) {
+        printk("Trying to free pointer at %p with wrong size: %d "
+                  "instead of %lu.\n",
+               p, size, p->bh_length);
+        return;
+    }
+    size = p->bh_length;
+    p->bh_flags = MF_FREE; /* As of now this block is officially free */
+
+    save_flags(flags);
+    cli();
+    p->bh_next = page->firstfree;
+    page->firstfree = p;
+    page->nfree++;
+
+    if (page->nfree == 1) {
+        /* Page went from full to one free block: put it on the firstfree */
+        if (page->next) {
+            printk("Page %p already on freelist dazed "
+                   "and confused....\n", page);
+        } else {
+            page->next = ksizes[order].firstfree;
+            ksizes[order].firstfree = page;
+        }
+    }
+
+    /* If page is completely free, free it */
+    if (page->nfree == NBLOCKS(page->order)) {
+        if (ksizes[order].firstfree == page) {
+            ksizes[order].firstfree = page->next;
+        } else {
+            for (pg2 = ksizes[order].firstfree; (pg2 != NULL) &&
+                (pg2->next != page); pg2 = pg2->next)
+                /* Nothing */;
+            if (pg2 != NULL)
+                pg2->next = page->next;
+        }
+        free_page((long)page);
+    }
+    restore_flags(flags);
+
+    ksizes[order].nfrees++;  /* Noncritical (monitoring) admin stuff */
+    ksizes[order].nbytesmalloced -= size;
+}
 #endif
 
 #ifdef CONFIG_DEBUG_KMALLOC_USAGE
@@ -300,6 +369,38 @@ static void *kmalloc_alloc(size_t size, int priority)
     return NULL;
 }
 
+#ifdef CONFIG_DEBUG_KMALLOC_STRUCTURE
+/*
+ * Due to structure for kmalloc area, each block contains memory area and
+ * block_header. And each page start of page_descriptor. As figure:
+ *
+ * 0-----------------------------------------------------------------4k
+ * |                 |       |              |             |          |
+ * | page_descriptor | ..... | block_header | memory area | ........ |  
+ * |                 |       |              |             |          |
+ * -------------------------------------------------------------------
+ *                                          A
+ *                                          |
+ *                                          |---> addr
+ *
+ */
+static void analyse_kmalloc_structure(unsigned long *addr)
+{
+    struct block_header *header;
+    struct page_descriptor *page;
+
+    /* Obtain block_header */
+    header = ((struct block_header *)addr) - 1;
+    page = PAGE_DESC(addr);
+
+    printk("Page Order: %d\n", page->order);
+    printk("Page nfree: %d\n", page->nfree);
+
+    printk("Block flag: %#08x\n", (unsigned int)header->bh_flags);
+    printk("Block size: %d\n", (int)header->bh_length);
+}
+#endif
+
 static int debug_kmalloc_usage(void)
 {
 #ifdef CONFIG_FIRST_ALLOC_MEMORY
@@ -318,6 +419,19 @@ static int debug_kmalloc_usage(void)
 
     printk("VMA0 %#x\n", (unsigned int)kmalloc_vma0);
     printk("VMA1 %#x\n", (unsigned int)kmalloc_vma1);
+
+#endif
+
+#ifdef CONFIG_DEBUG_KMALLOC_FREE
+    unsigned long kmalloc_vma;
+
+    kmalloc_vma = (unsigned long)kmalloc_alloc(48, GFP_KERNEL);
+    if (!kmalloc_vma) {
+        printk("Unable obtain memory from kmalloc..\n");
+        return -1;
+    }
+    printk("Kfree %#x\n", (unsigned int)kmalloc_vma);
+    kfrees((void *)kmalloc_vma);
 #endif
 
 #ifdef CONFIG_ALLOC_MORE_PAGE
@@ -400,6 +514,17 @@ static int debug_kmalloc_usage(void)
         return -1;
     }
     printk("GFP_KERNEL %#x\n", (unsigned int)kmalloc_vma8);
+#endif
+
+#ifdef CONFIG_DEBUG_KMALLOC_STRUCTURE
+    unsigned long *addr;
+
+    addr = (unsigned long *)kmalloc_alloc(62, GFP_KERNEL);
+    if (!addr) {
+        printk("Unable obtain memory from kmalloc.\n");
+        return -1;
+    }
+    analyse_kmalloc_structure(addr);
 #endif
 
 #ifdef CONFIG_ALLOC_OVER_MAX_KMALLOC_K

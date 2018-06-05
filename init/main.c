@@ -389,6 +389,9 @@ asmlinkage void start_kernel(void)
         memory_start = 1024 * 1024;
         low_memory_start = (unsigned long)end;
     }
+#ifdef CONFIG_DEBUG_DEBUGCALL
+    do_debugcall(DEBUG_ARCH);
+#endif
     low_memory_start = PAGE_ALIGN(low_memory_start);
     memory_start = paging_init(memory_start, memory_end);
     if (strncmp((char*)0x0FFFD9, "EISA", 4) == 0)

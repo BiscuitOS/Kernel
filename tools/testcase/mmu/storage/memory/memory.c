@@ -191,6 +191,42 @@ static int detect_memory_from_task_struct(void)
  *
  *   * nr_free_pages
  *     The value indicates the free pages on current system.
+ *
+ *   * swapper_pg_dir
+ *     The value point the global page dirent which hold 4GB virtual
+ *     address cover to physical address.
+ *     The page dirent contain 1024 item, each item manage 4MB virtual 
+ *     address. So page dirent manage 4GB virtual address. The offset of
+ *     0xC0000000 on page table is 768 (768 * 4MB = 0xC0000000). 
+ *
+ *     virtual memory:
+ *     0-------------------------------------------3G------------4G
+ *     |                                           |              |
+ *     +-------------------------------------------+--------------+
+ *                                                 A
+ *                                                 |
+ *                                                 |
+ *                           o---------------------o  
+ *                           |                     
+ *                          0-+-------------------------4k
+ *                          | |                          |
+ *       o----------------->| | Page Table .....         |
+ *       |                  | |                          |
+ *       |                  +-+--------------------------+
+ *       |                   A
+ *       |                   |
+ *       |                   |
+ *       |                   |
+ *       |                   |
+ *       |                   |
+ *       |                   |
+ *       |                   o----------o
+ *       |                              |
+ *     0---+-------------------------+-----+-------------4k
+ *     |   |                         |     |              |
+ *     | 0 |  swapper_pg_dir ....    | 768 | ...          |  
+ *     |   |                         |     |              |
+ *     +---+-------------------------+-----+--------------+
  */
 extern unsigned long high_memory;
 extern unsigned short *mem_map;
@@ -202,6 +238,7 @@ static int detect_memory_from_global_argument(void)
     printk("HighMemory:      %08x\n", (unsigned int)high_memory);
     printk("NR free page:    %#08x\n", nr_free_pages);
     printk("First free page: %#08x\n", (unsigned int)free_page_list);
+    printk("Page Dirent:     %#08x\n", (unsigned int)swapper_pg_dir);
     printk("Mem_map[0x200000] is %s\n", mem_map[MAP_NR(0x200000)] == 0 ?
                               "unused" : "used");
     return 0;

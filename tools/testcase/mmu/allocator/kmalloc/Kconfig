@@ -62,6 +62,18 @@ config ALLOC_WITH_GFP_KERNEL
 
 endif
 
+config DEBUG_KMALLOC_FREE
+	bool "Free a speical kmalloc memory area"
+	select DEBUG_KMALLOC_USAGE
+	help
+	  Free memory area that from kmalloc.
+
 endif
+
+config DEBUG_KMALLOC_STRUCTURE
+	bool "Analyse kmalloc structure."
+	select DEBUG_KMALLOC_USAGE
+	help
+	  Analyse page_descriptor and block_header structure.
 
 endmenu

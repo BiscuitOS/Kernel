@@ -5,7 +5,7 @@
 menu "MMU(Memory Manager Unit) on X86 Architecture"
 
 config DEBUG_MMU
-	bool "Debug MMU(Memory Manager Unit) machanism on X86 Architecture"
+	bool "Debug MMU(Memory Manager Unit) mechanism on X86 Architecture"
 	help
 	  Debug Memory Manager Unit(MMU).
 
@@ -16,6 +16,9 @@ source "tools/testcase/mmu/allocator/Kconfig"
 
 # Data Storage
 source "tools/testcase/mmu/storage/Kconfig"
+
+# Addressing
+source "tools/testcase/mmu/addressing/Kconfig"
 
 endif
 
