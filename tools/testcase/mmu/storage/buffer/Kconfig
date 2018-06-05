@@ -2,10 +2,10 @@
 # Filesystem Buffer: 
 #
 
-menu "Filesystem Buffer"
+menu "Virtual Filesystem Buffer"
 
 config DEBUG_BUFFER
-	bool "Filesystem Data buffer"
+	bool "Virtual Filesystem Data Buffer"
 	help
 	  Data buffer (or just buffer) is a region of a physical 
 	  memory storage used to temporarily store data while it 
@@ -14,7 +14,7 @@ config DEBUG_BUFFER
 if DEBUG_BUFFER
 
 config DEBUG_BUFFER_INIT
-	bool "Initialize VFS buffer."
+	bool "Initialize VFS Buffer, establish free_list"
 	help
 	  Initialize VFS buffer.
 

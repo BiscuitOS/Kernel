@@ -604,13 +604,13 @@ struct buffer_head * breada(dev_t dev,int first, ...)
  */
 static void put_unused_buffer_head(struct buffer_head * bh)
 {
-	struct wait_queue * wait;
+    struct wait_queue * wait;
 
-	wait = ((volatile struct buffer_head *) bh)->b_wait;
-	memset((void *) bh,0,sizeof(*bh));
-	((volatile struct buffer_head *) bh)->b_wait = wait;
-	bh->b_next_free = unused_list;
-	unused_list = bh;
+    wait = ((volatile struct buffer_head *) bh)->b_wait;
+    memset((void *) bh, 0, sizeof(*bh));
+    ((volatile struct buffer_head *) bh)->b_wait = wait;
+    bh->b_next_free = unused_list;
+    unused_list = bh;
 }
 
 static void get_more_buffer_heads(void)
@@ -666,7 +666,7 @@ static struct buffer_head * create_buffers(unsigned long page,
             goto no_grow;
         bh->b_this_page = head;
         head = bh;
-        bh->b_data = (char *) (page+offset);
+        bh->b_data = (char *)(page + offset);
         bh->b_size = size;
     }
     return head;
