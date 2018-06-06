@@ -195,21 +195,23 @@ __asm__("cld\n\t" \
 
 static inline unsigned long get_fs(void)
 {
-	unsigned long _v;
-	__asm__("mov %%fs,%w0":"=r" (_v):"0" (0));
-	return _v;
+    unsigned long _v;
+
+    __asm__("mov %%fs,%w0":"=r" (_v):"0" (0));
+    return _v;
 }
 
 static inline unsigned long get_ds(void)
 {
-	unsigned long _v;
-	__asm__("mov %%ds,%w0":"=r" (_v):"0" (0));
-	return _v;
+    unsigned long _v;
+
+    __asm__("mov %%ds,%w0":"=r" (_v):"0" (0));
+    return _v;
 }
 
 static inline void set_fs(unsigned long val)
 {
-	__asm__ __volatile__("mov %w0,%%fs": /* no output */ :"r" (val));
+    __asm__ __volatile__("mov %w0,%%fs": /* no output */ :"r" (val));
 }
 
 #endif /* _ASM_SEGMENT_H */

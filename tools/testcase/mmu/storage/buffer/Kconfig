@@ -2,7 +2,7 @@
 # Filesystem Buffer: 
 #
 
-menu "Virtual Filesystem Buffer"
+menu "Buffer:   Virtual Filesystem Buffer"
 
 config DEBUG_BUFFER
 	bool "Virtual Filesystem Data Buffer"

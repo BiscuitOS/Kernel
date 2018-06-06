@@ -2,7 +2,7 @@
 # Main Memory: 
 #
 
-menu "Primary storage (main memory or internal memory)"
+menu "Memory:   Primary storage"
 
 config DEBUG_MAIN_MEMORY
 	bool "Primary storage: main memory or internal memory"

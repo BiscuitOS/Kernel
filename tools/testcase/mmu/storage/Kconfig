@@ -17,6 +17,9 @@ source "tools/testcase/mmu/storage/memory/Kconfig"
 # Filesystem Buffer
 source "tools/testcase/mmu/storage/buffer/Kconfig"
 
+# Register
+source "tools/testcase/mmu/storage/register/Kconfig"
+
 endif
 
 endmenu
