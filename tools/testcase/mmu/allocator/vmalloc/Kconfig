@@ -1,0 +1,12 @@
+#
+# Vmalloc memory allocator on MMU
+#
+
+menu "Vmalloc memory allocator on MMU"
+
+config DEBUG_MMU_VMALLOC
+	bool "Debug vmalloc memory allocator on MMU"
+	help
+	  Debug vmalloc memory allocator on MMU.
+
+endmenu

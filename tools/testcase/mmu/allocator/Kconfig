@@ -15,7 +15,10 @@ if DEBUG_MEMORY_ALLOCATOR
 source "tools/testcase/mmu/allocator/kmalloc/Kconfig"
 
 # Page allocator
-source "tools/testcase/mmu/allocator/page_allocator/Kconfig"
+source "tools/testcase/mmu/allocator/page/Kconfig"
+
+# vmalloc allocator
+source "tools/testcase/mmu/allocator/vmalloc/Kconfig"
 
 endif
 
