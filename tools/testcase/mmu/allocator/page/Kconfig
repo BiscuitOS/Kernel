@@ -11,10 +11,10 @@ config DEBUG_PAGE_ALLOCATOR
 
 if DEBUG_PAGE_ALLOCATOR
 
-config GET_ONE_FREE_PAGE
-	bool "Get one free page"
+config GET_FREE_ZERO_PAGE
+	bool "Obtain one free zero page"
 	help
-	  Obtain one free page.
+	  Obtain one free zero page.
 
 endif
 

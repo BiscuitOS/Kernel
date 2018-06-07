@@ -14,7 +14,25 @@
 
 #include <test/debug.h>
 
-#ifdef CONFIG_GET_ONE_FREE_PAGE
+#ifdef CONFIG_GET_FREE_ZERO_PAGE
+/*
+ * This is timing-critical - most of the time in getting a new page
+ * goes to clearing the page. If you want a page without the clearing
+ * overhead, just use __get_free_page() directly...
+ */
+static long _get_free_page(int priority);
+static inline unsigned long get_free_pages(int priority)
+{
+    unsigned long page;
+
+    page = _get_free_page(priority);
+    if (page)
+        __asm__ __volatile__("rep ; stosl"
+                             : /* no output */ \
+                             : "a" (0), "c" (1024), "D" (page));
+    return page;
+}
+#endif
 
 /* 
  * The following are used to make sure we don't thrash too much...
@@ -87,7 +105,11 @@ static int free_page_one(void)
 
     page = _get_free_page(GFP_KERNEL);
     printk("_get_free_page: %#08x\n", (unsigned int)page);
+
+#ifdef CONFIG_GET_FREE_ZERO_PAGE
+    page = get_free_pages(GFP_KERNEL);
+    printk("get_free_page: %#08x\n", (unsigned int)page);
+#endif
     return 0;
 }
 late_debugcall(free_page_one);
-#endif
