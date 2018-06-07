@@ -346,12 +346,9 @@ all: vmlinux
 objs-y          := arch/ init/ fs/ kernel/ drivers/ mm/ ipc/
 libs-y          := lib/
 
-ifdef CONFIG_TESTCASE
-  objs-y        += tools/testcase/
-  libs-y        += tools/testcase/systemcall/lib/
-  libs-y        += tools/testcase/binary/lib/
-  libs-y        += tools/testcase/segment/lib/
-  libs-y        += tools/testcase/mmu/lib/
+ifdef CONFIG_DEMO_CODE
+  objs-y        += tools/demo/
+  libs-y        += tools/demo/posix/lib/
 endif
 
 vmlinux-dirs	:= $(patsubst %/,%,$(objs-y) $(libs-y))

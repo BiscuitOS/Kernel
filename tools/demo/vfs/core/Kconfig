@@ -1,0 +1,27 @@
+#
+# VFS core Architecture and Mechanism
+#
+menu "VFS core Architecture and Mechanism"
+
+config DEBUG_VFS_CORE
+        bool "VfS core Architecture and Mechanism"
+        help
+          A virtual file system (VFS) or virtual filesystem switch is 
+          an abstraction layer on top of a more concrete file system. 
+          The purpose of a VFS is to allow client applications to access
+          different types of concrete file systems in a uniform way. 
+          A VFS can, for example, be used to access local and network
+          storage devices transparently without the client application
+          noticing the difference.
+
+if DEBUG_VFS_CORE
+
+# Inode
+source "tools/demo/vfs/core/inode/Kconfig"
+
+# File table
+source "tools/demo/vfs/core/file_table/Kconfig"
+
+endif
+
+endmenu

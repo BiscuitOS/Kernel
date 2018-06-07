@@ -89,6 +89,30 @@ SECTIONS
         .debugcall7s.debug : { 
                 *(.debugcall7s.debug) 
         } 
+        PROVIDE(debugcall8_start = .); 
+        .debugcall8.debug : { 
+                *(.debugcall8.debug) 
+        } 
+        PROVIDE(debugcall8s_start = .); 
+        .debugcall8s.debug : { 
+                *(.debugcall8s.debug) 
+        } 
+        PROVIDE(debugcall9_start = .); 
+        .debugcall9.debug : { 
+                *(.debugcall9.debug) 
+        } 
+        PROVIDE(debugcall9s_start = .); 
+        .debugcall9s.debug : { 
+                *(.debugcall9s.debug) 
+        } 
+        PROVIDE(debugcalla_start = .); 
+        .debugcalla.debug : { 
+                *(.debugcalla.debug) 
+        } 
+        PROVIDE(debugcallas_start = .); 
+        .debugcallas.debug : { 
+                *(.debugcallas.debug) 
+        } 
 	PROVIDE(.debugcall_end = .);
 #endif
 #ifdef CONFIG_ELF_PRIVATE_SECTION_FUNC

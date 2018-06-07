@@ -14,7 +14,7 @@ if DEBUG_KERNEL
 
 source "tools/debug/Kconfig"
 
-source "tools/testcase/Kconfig"
+source "tools/demo/Kconfig"
 
 endif
 

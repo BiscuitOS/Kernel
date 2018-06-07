@@ -1,0 +1,28 @@
+#
+# Data storage, general recording of information
+#
+
+menu "Data storage: Main Memory, Buffer, Cache ..."
+
+config DEBUG_STORAGE
+	bool "Debug Data Storage, Memory, ROM, TLB...."
+	help
+	  Debug Data Storage.
+
+if DEBUG_STORAGE
+
+# Main Memory
+source "tools/demo/mmu/storage/memory/Kconfig"
+
+# Filesystem Buffer
+source "tools/demo/mmu/storage/buffer/Kconfig"
+
+# Register
+source "tools/demo/mmu/storage/register/Kconfig"
+
+# I/O Port
+source "tools/demo/mmu/storage/ioports/Kconfig"
+
+endif
+
+endmenu

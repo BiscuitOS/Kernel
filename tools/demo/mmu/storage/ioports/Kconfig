@@ -1,0 +1,20 @@
+#
+# XT, AT and PS/2 I/O port addresses
+#
+
+menu "I/O:      I/O port on X86 Architecture"
+
+config DEBUG_IOPORT
+	bool "Input/Output Port memory"
+	help
+	  
+
+if DEBUG_IOPORT
+
+# 0x70: CMOS
+source "tools/demo/mmu/storage/ioports/cmos/Kconfig"
+
+
+endif
+
+endmenu

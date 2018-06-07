@@ -1,0 +1,20 @@
+#
+# file table:
+#
+menu "File table:  File structure table"
+
+config DEBUG_VFS_FILE_TABLE
+        bool "File Table: XXX"
+        help
+	  The inode is a data structure in a Unix-style file system 
+
+if DEBUG_VFS_FILE_TABLE
+
+config DEBUG_FILE_TABLE_INIT
+	bool "Iniitialize all file_table structure."
+	help
+	  Initialize all file_table structure.
+
+endif
+
+endmenu

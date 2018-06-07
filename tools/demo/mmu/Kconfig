@@ -1,0 +1,25 @@
+#
+# Memeory Manager Unit
+#
+
+menu "MMU(Memory Manager Unit) on X86 Architecture"
+
+config DEBUG_MMU
+	bool "Debug MMU(Memory Manager Unit) mechanism on X86 Architecture"
+	help
+	  Debug Memory Manager Unit(MMU).
+
+if DEBUG_MMU
+
+# Memory allocator
+source "tools/demo/mmu/allocator/Kconfig"
+
+# Data Storage
+source "tools/demo/mmu/storage/Kconfig"
+
+# Addressing
+source "tools/demo/mmu/addressing/Kconfig"
+
+endif
+
+endmenu

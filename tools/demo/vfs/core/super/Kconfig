@@ -1,0 +1,10 @@
+#
+# Super block
+#
+menu "Super block: Fileystem Super block Read/Write."
+
+config DEBUG_VFS_SUPER
+        bool "Super block: Filesystem super block Read/Write"
+        help
+
+endmenu

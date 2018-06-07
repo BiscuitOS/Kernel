@@ -24,8 +24,8 @@
 #include <linux/utsname.h>
 #include <linux/ioport.h>
 
-#ifdef CONFIG_TESTCASE
-#include <test/debug.h>
+#ifdef CONFIG_DEMO_CODE
+#include <demo/debug.h>
 #endif
 
 extern unsigned long * prof_buffer;
@@ -516,11 +516,20 @@ void init(void)
 {
     int pid,i;
 
+#ifdef CONFIG_DEBUG_DEBUGCALL
+    do_debugcall(DEBUG_USER0_SYNC);
+#endif
     setup((void *) &drive_info);
+#ifdef CONFIG_DEBUG_DEBUGCALL
+    do_debugcall(DEBUG_USER1);
+#endif
     sprintf(term, "TERM=con%dx%d", ORIG_VIDEO_COLS, ORIG_VIDEO_LINES);
     (void) open("/dev/tty1", O_RDWR, 0);
     (void) dup(0);
     (void) dup(0);
+#ifdef CONFIG_DEBUG_DEBUGCALL
+    do_debugcall(DEBUG_USER1_SYNC);
+#endif
     execve("/etc/init", argv_init, envp_init);
     execve("/bin/init",argv_init,envp_init);
     execve("/sbin/init",argv_init,envp_init);

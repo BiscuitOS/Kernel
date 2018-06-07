@@ -1,0 +1,32 @@
+#
+# Debug tools configuration
+# 
+
+menu "Demo Code for variable subsystem mechanism"
+
+config DEMO_CODE
+	bool "Demo Code for variable subsystem mechanism"
+	select DEBUG_DEBUGCALL
+	help
+	  Test basic kernel function on specify envirnoment
+
+if DEMO_CODE
+
+config DEBUG_DEBUGCALL
+	bool "Debug call in different stage."
+	help
+	  Debug call in different stage. see include/test/init.h
+
+# MMU 
+source "tools/demo/mmu/Kconfig"
+
+# VFS
+source "tools/demo/vfs/Kconfig"
+
+# POSIX
+source "tools/demo/posix/Kconfig"
+
+endif
+
+endmenu
+

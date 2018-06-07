@@ -1,0 +1,18 @@
+#
+# Register
+#
+
+menu "Register: X86 Common Register mechanism"
+
+config DEBUG_REGISTER
+	bool "Common Register Descriptor for X86 Architecture"
+	help
+
+if DEBUG_REGISTER
+
+# CS Register
+source "tools/demo/mmu/storage/register/cs/Kconfig"
+
+endif
+
+endmenu

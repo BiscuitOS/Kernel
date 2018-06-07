@@ -1,0 +1,18 @@
+#
+# POSIX System Call
+#
+
+menu "Portable Operating System Interface of UNIX (POSIX)"
+
+config DEBUG_POSIX
+	bool "Debug POSIX System Call Mechanism on X86 Architecture"
+	help
+	  Debug System Call Mechanism on X86 Architecture.
+
+if DEBUG_POSIX
+
+source tools/demo/posix/setup/Kconfig
+
+endif
+
+endmenu

@@ -1,0 +1,19 @@
+#
+# Addressing Mechanism
+#
+
+menu "Addressing Mechanism"
+
+config DEBUG_ADDRESSING
+	bool "Memory addressing mechanism"
+	help
+	  Debug Memory addressing mechanism.
+
+if DEBUG_ADDRESSING
+
+# Paging mechanism
+source "tools/demo/mmu/addressing/paging/Kconfig"
+
+endif
+
+endmenu

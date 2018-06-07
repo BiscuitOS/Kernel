@@ -1,0 +1,25 @@
+#
+# Memeory Manager Unit
+#
+
+menu "Common Memory Allocator"
+
+config DEBUG_MEMORY_ALLOCATOR
+	bool "Common Memory Allocator"
+	help
+	  Debug Memory Allocator.
+
+if DEBUG_MEMORY_ALLOCATOR
+
+# Kmalloc allocator
+source "tools/demo/mmu/allocator/kmalloc/Kconfig"
+
+# Page allocator
+source "tools/demo/mmu/allocator/page/Kconfig"
+
+# vmalloc allocator
+source "tools/demo/mmu/allocator/vmalloc/Kconfig"
+
+endif
+
+endmenu

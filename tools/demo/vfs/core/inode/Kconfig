@@ -1,0 +1,25 @@
+#
+# Inode: Filesystem object file or dirent
+#
+menu "Inode:    Describe a Filesystem object file or dirent"
+
+config DEBUG_VFS_INODE
+        bool "Inode: Describe a Filesystem object file or dirent"
+        help
+	  The inode is a data structure in a Unix-style file system 
+	  that describes a filesystem object such as a file or a 
+	  directory. Each inode stores the attributes and disk block 
+	  location(s) of the object's data. Filesystem object 
+	  attributes may include metadata (times of last change,
+	  access, modification), as well as owner and permission data
+
+if DEBUG_VFS_INODE
+
+config DEBUG_INODE_INIT
+	bool "Iniitialize all inode structure."
+	help
+	  Initialize all inode structure.
+
+endif
+
+endmenu

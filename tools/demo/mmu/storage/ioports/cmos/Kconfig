@@ -1,0 +1,11 @@
+#
+# 0x70: CMOS
+#
+
+menu "0x70:     CMOS"
+
+config DEBUG_IOPORT_CMOS
+	bool "CMOS "
+	help
+	  
+endmenu
