@@ -144,8 +144,8 @@ extern int sys_quotactl();
 extern int sys_getpgid();
 extern int sys_fchdir();
 extern int sys_bdflush();
-#ifdef CONFIG_DEBUG_BINARY_ELF
-extern int sys_d_parse_elf();
+#ifdef CONFIG_DEBUG_POSIX_SETUP
+extern int sys_demo_setup();
 #endif
 
 /*

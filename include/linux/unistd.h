@@ -5,7 +5,7 @@
  * This file contains the system call numbers and the syscallX
  * macros
  */
-#ifdef CONFIG_DEBUG_USERLAND_SYSCALL
+#ifdef CONFIG_DEMO_CODE
 #define DEBUG_SYSCALL_NR          135
 #endif
 
@@ -144,8 +144,8 @@
 #define __NR_getpgid		132
 #define __NR_fchdir		133
 #define __NR_bdflush		134
-#ifdef CONFIG_DEBUG_BINARY_ELF
-#define __NR_d_parse_elf        DEBUG_SYSCALL_NR
+#ifdef CONFIG_DEBUG_POSIX_SETUP
+#define __NR_demo_setup         DEBUG_SYSCALL_NR
 #endif
 
 extern int errno;
@@ -231,8 +231,8 @@ errno=-__res; \
 return -1; \
 }
 
-#ifdef CONFIG_DEBUG_BINARY_ELF
-int d_parse_elf(const char *filename, char **argv, char **envp);
+#ifdef CONFIG_DEBUG_POSIX_SETUP
+int demo_setup(void *BIOS);
 #endif
 
 #endif /* _LINUX_UNISTD_H */

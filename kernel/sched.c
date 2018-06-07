@@ -153,6 +153,9 @@ sys_getpgid, sys_fchdir, sys_bdflush,
 #ifdef CONFIG_DEBUG_BINARY_ELF
 sys_d_parse_elf,  /* parse elf format */
 #endif
+#ifdef CONFIG_DEBUG_POSIX_SETUP
+sys_demo_setup,   /* mount and setup Rootfs */
+#endif
 };
 
 /* So we don't have to do any more manual updating.... */

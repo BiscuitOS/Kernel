@@ -1,13 +1,12 @@
 /*
- * System Call: setup
+ * POSIX: setup
  *
- * (C) 2018.03 BiscuitOS <buddy.zhang@aliyun.com>
+ * (C) 2018.06.07 BiscuitOS <buddy.zhang@aliyun.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#define __LIBRARY__
-#include <unistd.h>
+#include <linux/unistd.h>
 
-_syscall0(int, d_setup)
+_syscall1(int, demo_setup, void *, BIOS);
