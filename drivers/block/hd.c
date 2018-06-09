@@ -41,8 +41,8 @@ static int revalidate_hddisk(int, int);
 
 static inline unsigned char CMOS_READ(unsigned char addr)
 {
-	outb_p(addr,0x70);
-	return inb_p(0x71);
+    outb_p(addr,0x70);
+    return inb_p(0x71);
 }
 
 #define	HD_DELAY	0
@@ -71,8 +71,8 @@ unsigned long last_req, read_timer();
  *  This struct defines the HD's and their types.
  */
 struct hd_i_struct {
-	unsigned int head,sect,cyl,wpcom,lzone,ctl;
-	};
+    unsigned int head,sect,cyl,wpcom,lzone,ctl;
+};
 #ifdef HD_TYPE
 struct hd_i_struct hd_info[] = { HD_TYPE };
 static int NR_HD = ((sizeof (hd_info))/(sizeof (struct hd_i_struct)));
@@ -593,29 +593,29 @@ static void hd_release(struct inode * inode, struct file * file)
 static void hd_geninit(void);
 
 static struct gendisk hd_gendisk = {
-	MAJOR_NR,	/* Major number */	
-	"hd",		/* Major name */
-	6,		/* Bits to shift to get real from partition */
-	1 << 6,		/* Number of partitions per real */
-	MAX_HD,		/* maximum number of real */
-	hd_geninit,	/* init function */
-	hd,		/* hd struct */
-	hd_sizes,	/* block sizes */
-	0,		/* number */
-	(void *) hd_info,	/* internal */
-	NULL		/* next */
+    MAJOR_NR,            /* Major number */	
+    "hd",                /* Major name */
+    6,                   /* Bits to shift to get real from partition */
+    1 << 6,              /* Number of partitions per real */
+    MAX_HD,              /* maximum number of real */
+    hd_geninit,          /* init function */
+    hd,                  /* hd struct */
+    hd_sizes,            /* block sizes */
+    0,                   /* number */
+    (void *) hd_info,    /* internal */
+    NULL                 /* next */
 };
 	
 static void hd_interrupt(int unused)
 {
-	void (*handler)(void) = DEVICE_INTR;
+    void (*handler)(void) = DEVICE_INTR;
 
-	DEVICE_INTR = NULL;
-	timer_active &= ~(1<<HD_TIMER);
-	if (!handler)
-		handler = unexpected_hd_interrupt;
-	handler();
-	sti();
+    DEVICE_INTR = NULL;
+    timer_active &= ~(1<<HD_TIMER);
+    if (!handler)
+        handler = unexpected_hd_interrupt;
+    handler();
+    sti();
 }
 
 /*
@@ -628,10 +628,10 @@ static void hd_interrupt(int unused)
  * safe.
  */
 static struct sigaction hd_sigaction = {
-	hd_interrupt,
-	0,
-	SA_INTERRUPT,
-	NULL
+    hd_interrupt,
+    0,
+    SA_INTERRUPT,
+    NULL
 };
 
 static void hd_geninit(void)
@@ -725,16 +725,16 @@ static struct file_operations hd_fops = {
 
 unsigned long hd_init(unsigned long mem_start, unsigned long mem_end)
 {
-	if (register_blkdev(MAJOR_NR,"hd",&hd_fops)) {
-		printk("Unable to get major %d for harddisk\n",MAJOR_NR);
-		return mem_start;
-	}
-	blk_dev[MAJOR_NR].request_fn = DEVICE_REQUEST;
-	read_ahead[MAJOR_NR] = 8;		/* 8 sector (4kB) read-ahead */
-	hd_gendisk.next = gendisk_head;
-	gendisk_head = &hd_gendisk;
-	timer_table[HD_TIMER].fn = hd_times_out;
-	return mem_start;
+    if (register_blkdev(MAJOR_NR, "hd", &hd_fops)) {
+        printk("Unable to get major %d for harddisk\n", MAJOR_NR);
+        return mem_start;
+    }
+    blk_dev[MAJOR_NR].request_fn = DEVICE_REQUEST;
+    read_ahead[MAJOR_NR] = 8;		/* 8 sector (4kB) read-ahead */
+    hd_gendisk.next = gendisk_head;
+    gendisk_head = &hd_gendisk;
+    timer_table[HD_TIMER].fn = hd_times_out;
+    return mem_start;
 }
 
 #define DEVICE_BUSY busy[target]

@@ -26,6 +26,9 @@ source "tools/demo/vfs/Kconfig"
 # POSIX
 source "tools/demo/posix/Kconfig"
 
+# Drivers
+source "tools/demo/drivers/Kconfig"
+
 endif
 
 endmenu

@@ -1,0 +1,21 @@
+#
+# Hard-Disk
+#
+
+menu "hard disk drive (HDD)"
+
+config DEBUG_BLOCK_HD
+	bool "Debug hard disk drive (HDD)"
+	help
+	  Debug hard disk drive (HDD).
+
+if DEBUG_BLOCK_HD
+
+config DEBUG_HD_INIT
+	bool "Initialize Hard-Disk (HDD)"
+	help
+	  Initialize Hard-Disk (HDD)
+
+endif
+
+endmenu

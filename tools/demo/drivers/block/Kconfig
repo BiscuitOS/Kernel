@@ -1,0 +1,22 @@
+#
+# Block Device Driver
+#
+
+menu "Block Device Driver"
+
+config DEBUG_BLOCK
+	bool "Debug Block Device Driver"
+	help
+	  Debug BLOCK Device Driver.
+
+if DEBUG_BLOCK
+
+# General HD
+source tools/demo/drivers/block/genhd/Kconfig
+
+# Hard Disk (HDD)
+source tools/demo/drivers/block/hd/Kconfig
+
+endif
+
+endmenu

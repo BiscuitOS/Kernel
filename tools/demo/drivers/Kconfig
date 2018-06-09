@@ -1,0 +1,19 @@
+#
+# Device Driver
+#
+
+menu "Device Driver Common Layer"
+
+config DEBUG_DDL
+	bool "Debug Device Driver"
+	help
+	  Debug Device Driver.
+
+if DEBUG_DDL
+
+# Block device
+source tools/demo/drivers/block/Kconfig
+
+endif
+
+endmenu

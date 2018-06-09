@@ -482,7 +482,7 @@ long blk_dev_init(long mem_start, long mem_end)
         req->next = NULL;
     }
     memset(ro_bits,0,sizeof(ro_bits));
-    mem_start = hd_init(mem_start,mem_end);
+    mem_start = hd_init(mem_start, mem_end);
 #ifdef CONFIG_BLK_DEV_XD
     mem_start = xd_init(mem_start,mem_end);
 #endif

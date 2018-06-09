@@ -1,0 +1,12 @@
+#
+# General block device driver layer
+#
+
+menu "General block device driver layer."
+
+config DEBUG_BLOCK_GENHD
+	bool "Debug Block Device Driver"
+	help
+	  Debug BLOCK Device Driver.
+
+endmenu

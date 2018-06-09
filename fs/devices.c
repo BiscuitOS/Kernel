@@ -53,15 +53,16 @@ int register_chrdev(unsigned int major, const char * name, struct file_operation
 	return 0;
 }
 
-int register_blkdev(unsigned int major, const char * name, struct file_operations *fops)
+int register_blkdev(unsigned int major, const char * name, 
+                    struct file_operations *fops)
 {
-	if (major >= MAX_BLKDEV)
-		return -EINVAL;
-	if (blkdevs[major].fops)
-		return -EBUSY;
-	blkdevs[major].name = name;
-	blkdevs[major].fops = fops;
-	return 0;
+    if (major >= MAX_BLKDEV)
+        return -EINVAL;
+    if (blkdevs[major].fops)
+        return -EBUSY;
+    blkdevs[major].name = name;
+    blkdevs[major].fops = fops;
+    return 0;
 }
 
 int unregister_chrdev(unsigned int major, const char * name)
