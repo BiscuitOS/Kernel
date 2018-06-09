@@ -1,0 +1,12 @@
+#
+# POSIX system call: setup
+#
+
+menu "setup       Mount and initialize Rootfs"
+
+config DEBUG_POSIX_SETUP
+	bool "Mount and setup Rootfs"
+	help
+	  Debug setup() main routine.
+
+endmenu
