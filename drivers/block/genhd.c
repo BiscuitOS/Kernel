@@ -15,6 +15,10 @@
 #include <linux/genhd.h>
 #include <linux/kernel.h>
 
+#ifdef CONFIG_DEBUG_DEBUGCALL
+#include <demo/debug.h>
+#endif
+
 struct gendisk *gendisk_head = NULL;
 
 static int current_minor = 0;
@@ -218,6 +222,10 @@ asmlinkage int sys_setup(void * BIOS)
     if (ramdisk_size)
         rd_load();
 #endif
+#ifdef CONFIG_DEBUG_VFS_SUPER
+    do_debugcall(DEBUG_ROOTFS);
+#else
     mount_root();
+#endif
     return (0);
 }

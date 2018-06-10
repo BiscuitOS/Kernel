@@ -1,1 +1,1 @@
-obj-$(CONFIG_DEBUG_VFS_INODE)  += inode.o
+obj-$(CONFIG_DEBUG_VFS_SUPER)  += super.o

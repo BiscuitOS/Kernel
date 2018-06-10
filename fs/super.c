@@ -43,14 +43,14 @@ dev_t ROOT_DEV = 0;
 
 struct file_system_type *get_fs_type(char *name)
 {
-	int a;
+    int a;
 	
-	if (!name)
-		return &file_systems[0];
-	for(a = 0 ; file_systems[a].read_super ; a++)
-		if (!strcmp(name,file_systems[a].name))
-			return(&file_systems[a]);
-	return NULL;
+    if (!name)
+        return &file_systems[0];
+    for(a = 0 ; file_systems[a].read_super ; a++)
+        if (!strcmp(name, file_systems[a].name))
+            return(&file_systems[a]);
+    return NULL;
 }
 
 void __wait_on_super(struct super_block * sb)
@@ -89,20 +89,20 @@ void sync_supers(dev_t dev)
 
 static struct super_block * get_super(dev_t dev)
 {
-	struct super_block * s;
+    struct super_block * s;
 
-	if (!dev)
-		return NULL;
-	s = 0+super_blocks;
-	while (s < NR_SUPER+super_blocks)
-		if (s->s_dev == dev) {
-			wait_on_super(s);
-			if (s->s_dev == dev)
-				return s;
-			s = 0+super_blocks;
-		} else
-			s++;
-	return NULL;
+    if (!dev)
+        return NULL;
+    s = 0 + super_blocks;
+    while (s < NR_SUPER + super_blocks)
+        if (s->s_dev == dev) {
+            wait_on_super(s);
+            if (s->s_dev == dev)
+                return s;
+            s = 0 + super_blocks;
+        } else
+            s++;
+    return NULL;
 }
 
 void put_super(dev_t dev)

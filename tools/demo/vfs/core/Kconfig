@@ -22,6 +22,9 @@ source "tools/demo/vfs/core/inode/Kconfig"
 # File table
 source "tools/demo/vfs/core/file_table/Kconfig"
 
+# Super block
+source "tools/demo/vfs/core/super/Kconfig"
+
 endif
 
 endmenu

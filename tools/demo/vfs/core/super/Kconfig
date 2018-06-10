@@ -7,4 +7,13 @@ config DEBUG_VFS_SUPER
         bool "Super block: Filesystem super block Read/Write"
         help
 
+if DEBUG_VFS_SUPER
+
+config DEBUG_MOUNT_ROOTFS
+	bool "Mount rootfs on init."
+	help
+	  Mount rootfs.
+
+endif
+
 endmenu
