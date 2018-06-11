@@ -110,29 +110,29 @@ static struct buffer_head * minix_find_entry(struct inode * dir,
 int minix_lookup(struct inode * dir,const char * name, int len,
 	struct inode ** result)
 {
-	int ino;
-	struct minix_dir_entry * de;
-	struct buffer_head * bh;
+    int ino;
+    struct minix_dir_entry * de;
+    struct buffer_head * bh;
 
-	*result = NULL;
-	if (!dir)
-		return -ENOENT;
-	if (!S_ISDIR(dir->i_mode)) {
-		iput(dir);
-		return -ENOENT;
-	}
-	if (!(bh = minix_find_entry(dir,name,len,&de))) {
-		iput(dir);
-		return -ENOENT;
-	}
-	ino = de->inode;
-	brelse(bh);
-	if (!(*result = iget(dir->i_sb,ino))) {
-		iput(dir);
-		return -EACCES;
-	}
-	iput(dir);
-	return 0;
+    *result = NULL;
+    if (!dir)
+        return -ENOENT;
+    if (!S_ISDIR(dir->i_mode)) {
+        iput(dir);
+        return -ENOENT;
+    }
+    if (!(bh = minix_find_entry(dir, name, len, &de))) {
+        iput(dir);
+        return -ENOENT;
+    }
+    ino = de->inode;
+    brelse(bh);
+    if (!(*result = iget(dir->i_sb, ino))) {
+        iput(dir);
+        return -EACCES;
+    }
+    iput(dir);
+    return 0;
 }
 
 /*

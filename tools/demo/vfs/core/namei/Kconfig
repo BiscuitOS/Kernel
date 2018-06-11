@@ -14,6 +14,17 @@ config DEBUG_NAMEI_FROM_USER
 	help
 	  Obtain data from userland.
 
+config DEBUG_INODE_LOOKUP
+	bool "Lookup inode with special name"
+	help
+	  Lookup inode with special name.
+
+config DEBUG_LOOKUP_SPECIAL
+	bool "Lookup inode in special rootfs"
+	select DEBUG_INODE_LOOKUP
+	help
+	  Lookup inode in special rootfs.
+
 endif
 
 endmenu

@@ -46,7 +46,7 @@ int getname(const char * filename, char **result)
         return -ENOENT;
     if(!(page = __get_free_page(GFP_KERNEL)))
         return -ENOMEM;
-	*result = tmp = (char *) page;
+    *result = tmp = (char *) page;
     while (--i) {
         *(tmp++) = c;
         c = get_fs_byte(filename++);
@@ -101,8 +101,8 @@ int lookup(struct inode * dir,const char * name, int len,
     if (!dir)
         return -ENOENT;
 /* check permissions before traversing mount-points */
-    perm = permission(dir,MAY_EXEC);
-    if (len==2 && name[0] == '.' && name[1] == '.') {
+    perm = permission(dir, MAY_EXEC);
+    if (len == 2 && name[0] == '.' && name[1] == '.') {
         if (dir == current->root) {
             *result = dir;
             return 0;
