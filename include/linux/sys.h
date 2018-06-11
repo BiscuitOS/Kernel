@@ -1,5 +1,11 @@
 #ifndef _LINUX_SYS_H
 #define _LINUX_SYS_H
+
+/* debug entry */
+#ifdef CONFIG_DEMO_CODE
+#define __FILE_SYS_DEBUGCALL__          1
+#include <demo/syscall.h>
+#endif
 /*
  * system call entry points
  */
@@ -144,9 +150,6 @@ extern int sys_quotactl();
 extern int sys_getpgid();
 extern int sys_fchdir();
 extern int sys_bdflush();
-#ifdef CONFIG_DEBUG_POSIX_SETUP
-extern int sys_demo_setup();
-#endif
 
 /*
  * These are system calls that will be removed at some time

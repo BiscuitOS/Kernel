@@ -11,7 +11,11 @@ config DEBUG_POSIX
 
 if DEBUG_POSIX
 
+# setup
 source tools/demo/posix/setup/Kconfig
+
+# open
+source tools/demo/posix/open/Kconfig
 
 endif
 

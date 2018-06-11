@@ -1,0 +1,19 @@
+#
+# Name to Inode
+#
+menu "Namei: name to special inode"
+
+config DEBUG_VFS_NAMEI
+        bool "namei: cover name to inode"
+        help
+
+if DEBUG_VFS_NAMEI
+
+config DEBUG_NAMEI_FROM_USER
+	bool "Obtian name string from userland."
+	help
+	  Obtain data from userland.
+
+endif
+
+endmenu

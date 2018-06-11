@@ -1,0 +1,31 @@
+#
+# POSIX system call: open
+#
+
+menu "open        Open file/Directory/socket/pipe etc"
+
+config DEBUG_POSIX_OPEN
+	bool "Main routine for opening file/Directory/socket/pipe etc"
+	help
+	  Debug open() main routine.
+
+if DEBUG_POSIX_OPEN
+
+config DEBUG_OPEN_FILE
+	bool "Main routine for opening an regular file"
+	help
+	  Debug main routine for opening regular file.
+
+config DEBUG_PARSE_FILE_STRUCT
+	bool "Parse file descriptor: struct file."
+	help
+	  Parse file descriptor.
+
+config DEBUG_OPEN_NAMEI
+	bool "Parse open a inode by vfs"
+	help
+	  Parse open routinue with special Filesystem.
+
+endif
+
+endmenu

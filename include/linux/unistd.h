@@ -1,12 +1,10 @@
 #ifndef _LINUX_UNISTD_H
 #define _LINUX_UNISTD_H
 
-/*
- * This file contains the system call numbers and the syscallX
- * macros
- */
+/* debug entry */
 #ifdef CONFIG_DEMO_CODE
-#define DEBUG_SYSCALL_NR          135
+#define __FILE_DEBUGCALL_NR__          1
+#include <demo/syscall.h>
 #endif
 
 #define __NR_setup		  0	/* used only by init, to get system going */
@@ -144,9 +142,6 @@
 #define __NR_getpgid		132
 #define __NR_fchdir		133
 #define __NR_bdflush		134
-#ifdef CONFIG_DEBUG_POSIX_SETUP
-#define __NR_demo_setup         DEBUG_SYSCALL_NR
-#endif
 
 extern int errno;
 
@@ -230,9 +225,5 @@ if (__res>=0) \
 errno=-__res; \
 return -1; \
 }
-
-#ifdef CONFIG_DEBUG_POSIX_SETUP
-int demo_setup(void *BIOS);
-#endif
 
 #endif /* _LINUX_UNISTD_H */

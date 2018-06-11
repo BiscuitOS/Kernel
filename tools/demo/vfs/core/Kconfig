@@ -25,6 +25,9 @@ source "tools/demo/vfs/core/file_table/Kconfig"
 # Super block
 source "tools/demo/vfs/core/super/Kconfig"
 
+# namei
+source "tools/demo/vfs/core/namei/Kconfig"
+
 endif
 
 endmenu
