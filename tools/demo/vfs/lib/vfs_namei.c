@@ -9,4 +9,4 @@
  */
 #include <linux/unistd.h>
 
-_syscall1(int, vfs_namei, const char *, name);
+_syscall3(int, vfs_namei, const char *, name, int, flag, int, mode);

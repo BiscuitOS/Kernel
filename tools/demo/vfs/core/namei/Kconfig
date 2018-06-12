@@ -10,7 +10,7 @@ config DEBUG_VFS_NAMEI
 if DEBUG_VFS_NAMEI
 
 config DEBUG_NAMEI_FROM_USER
-	bool "Obtian name string from userland."
+	bool "Obtian and verify name string from userland."
 	help
 	  Obtain data from userland.
 
@@ -19,11 +19,26 @@ config DEBUG_INODE_LOOKUP
 	help
 	  Lookup inode with special name.
 
-config DEBUG_LOOKUP_SPECIAL
+config DEBUG_INODE_LOOKUP_ROOTFS
 	bool "Lookup inode in special rootfs"
 	select DEBUG_INODE_LOOKUP
 	help
 	  Lookup inode in special rootfs.
+
+config DEBUG_OPEN_NAMEI
+	bool "Obtain inode while open_namei() routine."
+	help
+	  Debug main routinue for open_namei().
+
+config DEBUG_INODE_SYMLINK
+	bool "Verify symlink for inode"
+	help
+	  Verify symlink for inode.
+
+config DEBUG_INODE_SYMLINK_ROOTFS
+	bool "Verify symlink on special rootfs"
+	help
+	  Verify symlink for inode on special rootfs.
 
 endif
 

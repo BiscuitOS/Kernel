@@ -373,7 +373,7 @@ asmlinkage int sys_chown(const char * filename, uid_t user, gid_t group)
  * for the internal routines (ie open_namei()/follow_link() etc). 00 is
  * used by symlinks.
  */
-int do_open(const char * filename,int flags,int mode)
+int do_open(const char * filename, int flags, int mode)
 {
     struct inode * inode;
     struct file * f;

@@ -17,7 +17,7 @@
 
 int demo_setup(void *BIOS);
 int demo_open(const char *filename, int flag, int mode);
-int vfs_namei(const char *name);
+int vfs_namei(const char *name, int flag, int mode);
 
 #endif // __FILE_DEBUGCALL_NR__
 
