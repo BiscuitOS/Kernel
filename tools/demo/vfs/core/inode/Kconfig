@@ -22,6 +22,7 @@ config DEBUG_INODE_INIT
 
 config DEBUG_INODE_IGET
 	bool "iget(): obtain special inode"
+	select DEBUG_INODE_INIT
 	help
 	  Debug main routine for iget().
 
