@@ -20,6 +20,11 @@ config DEBUG_INODE_INIT
 	help
 	  Initialize all inode structure.
 
+config DEBUG_INODE_IGET
+	bool "iget(): obtain special inode"
+	help
+	  Debug main routine for iget().
+
 endif
 
 endmenu

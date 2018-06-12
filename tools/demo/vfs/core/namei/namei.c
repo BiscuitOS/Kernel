@@ -501,6 +501,8 @@ static int do_namei(const char *filename, int flags, int mode)
 #else
     error = open_namei(filename, flag, mode, &inode, NULL);
 #endif
+    if (error)
+        return error;
     return 0;
 }
 

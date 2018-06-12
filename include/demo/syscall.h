@@ -14,10 +14,12 @@
 #define __NR_demo_setup           (DEBUG_SYSCALL_NR + 0)
 #define __NR_demo_open            (DEBUG_SYSCALL_NR + 1)
 #define __NR_vfs_namei            (DEBUG_SYSCALL_NR + 2)
+#define __NR_vfs_inode            (DEBUG_SYSCALL_NR + 3)
 
 int demo_setup(void *BIOS);
 int demo_open(const char *filename, int flag, int mode);
 int vfs_namei(const char *name, int flag, int mode);
+int vfs_inode(const char *filename);
 
 #endif // __FILE_DEBUGCALL_NR__
 
@@ -47,6 +49,12 @@ extern int sys_demo_open();
 extern int sys_vfs_namei();
 #else
 #define sys_vfs_namei sys_null
+#endif
+
+#ifdef CONFIG_DEBUG_VFS_INODE
+extern int sys_vfs_inode();
+#else
+#define sys_vfs_inode sys_null
 #endif
 
 #endif // __FILE_SYS_DEBUGCALL__

@@ -151,7 +151,7 @@ sys_adjtimex, sys_mprotect, sys_sigprocmask, sys_create_module,
 sys_init_module, sys_delete_module, sys_get_kernel_syms, sys_quotactl,
 sys_getpgid, sys_fchdir, sys_bdflush,
 /* debug system call mechanism */
-sys_demo_setup, sys_demo_open, sys_vfs_namei
+sys_demo_setup, sys_demo_open, sys_vfs_namei, sys_vfs_inode
 };
 
 /* So we don't have to do any more manual updating.... */

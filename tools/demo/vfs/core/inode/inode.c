@@ -10,6 +10,8 @@
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/fs.h>
+#include <linux/unistd.h>
+#include <linux/fcntl.h>
 
 #include <demo/debug.h>
 
@@ -18,9 +20,8 @@ static struct inode_hash_entry {
     int updating;
 } hash_table[NR_IHASH];
 
-static struct inode *first_inode;
-
 #ifdef CONFIG_DEBUG_INODE_INIT
+static struct inode *first_inode;
 
 static void inode_inits(void)
 {
@@ -36,3 +37,24 @@ static int debug_inode(void)
 }
 subsys_debugcall(debug_inode);
 #endif
+
+#ifdef CONFIG_DEBUG_INODE_IGET
+static int debug_iget(int nr)
+{
+    return 0;
+}
+#endif
+
+asmlinkage int sys_vfs_inode(int nr)
+{
+#ifdef CONFIG_DEBUG_INODE_IGET
+    debug_iget(nr);
+#endif
+}
+
+static int debug_inode(void)
+{
+    vfs_inode(0);
+    return 0;
+}
+user1_debugcall(debug_inode);
