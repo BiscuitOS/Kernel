@@ -7,6 +7,7 @@
 typedef int (*debugcall_t)(void);
 
 #define __used      __attribute__((__used__))
+#define __unused    __attribute__((unused))
 
 /*
  * debugcalls are now grouped by functionality into separate

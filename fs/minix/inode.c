@@ -18,11 +18,11 @@
 
 void minix_put_inode(struct inode *inode)
 {
-	if (inode->i_nlink)
-		return;
-	inode->i_size = 0;
-	minix_truncate(inode);
-	minix_free_inode(inode);
+    if (inode->i_nlink)
+        return;
+    inode->i_size = 0;
+    minix_truncate(inode);
+    minix_free_inode(inode);
 }
 
 static void minix_commit_super (struct super_block * sb,
@@ -400,96 +400,100 @@ struct buffer_head * minix_bread(struct inode * inode, int block, int create)
 
 void minix_read_inode(struct inode * inode)
 {
-	struct buffer_head * bh;
-	struct minix_inode * raw_inode;
-	int block, ino;
+    struct buffer_head * bh;
+    struct minix_inode * raw_inode;
+    int block, ino;
 
-	ino = inode->i_ino;
-	inode->i_op = NULL;
-	inode->i_mode = 0;
-	if (!ino || ino >= inode->i_sb->u.minix_sb.s_ninodes) {
-		printk("Bad inode number on dev 0x%04x: %d is out of range\n",
-			inode->i_dev, ino);
-		return;
-	}
-	block = 2 + inode->i_sb->u.minix_sb.s_imap_blocks +
-		    inode->i_sb->u.minix_sb.s_zmap_blocks +
-		    (ino-1)/MINIX_INODES_PER_BLOCK;
-	if (!(bh=bread(inode->i_dev,block, BLOCK_SIZE))) {
-		printk("Major problem: unable to read inode from dev 0x%04x\n",
-			inode->i_dev);
-		return;
-	}
-	raw_inode = ((struct minix_inode *) bh->b_data) +
-		    (ino-1)%MINIX_INODES_PER_BLOCK;
-	inode->i_mode = raw_inode->i_mode;
-	inode->i_uid = raw_inode->i_uid;
-	inode->i_gid = raw_inode->i_gid;
-	inode->i_nlink = raw_inode->i_nlinks;
-	inode->i_size = raw_inode->i_size;
-	inode->i_mtime = inode->i_atime = inode->i_ctime = raw_inode->i_time;
-	inode->i_blocks = inode->i_blksize = 0;
-	if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode))
-		inode->i_rdev = raw_inode->i_zone[0];
-	else for (block = 0; block < 9; block++)
-		inode->u.minix_i.i_data[block] = raw_inode->i_zone[block];
-	brelse(bh);
-	if (S_ISREG(inode->i_mode))
-		inode->i_op = &minix_file_inode_operations;
-	else if (S_ISDIR(inode->i_mode))
-		inode->i_op = &minix_dir_inode_operations;
-	else if (S_ISLNK(inode->i_mode))
-		inode->i_op = &minix_symlink_inode_operations;
-	else if (S_ISCHR(inode->i_mode))
-		inode->i_op = &chrdev_inode_operations;
-	else if (S_ISBLK(inode->i_mode))
-		inode->i_op = &blkdev_inode_operations;
-	else if (S_ISFIFO(inode->i_mode))
-		init_fifo(inode);
+    ino = inode->i_ino;
+    inode->i_op = NULL;
+    inode->i_mode = 0;
+    if (!ino || ino >= inode->i_sb->u.minix_sb.s_ninodes) {
+        printk("Bad inode number on dev 0x%04x: %d is out of range\n",
+        inode->i_dev, ino);
+        return;
+    }
+    block = 2 + inode->i_sb->u.minix_sb.s_imap_blocks +
+                inode->i_sb->u.minix_sb.s_zmap_blocks +
+                (ino - 1) / MINIX_INODES_PER_BLOCK;
+    if (!(bh = bread(inode->i_dev, block, BLOCK_SIZE))) {
+        printk("Major problem: unable to read inode from dev 0x%04x\n",
+             inode->i_dev);
+        return;
+    }
+    raw_inode = ((struct minix_inode *) bh->b_data) +
+                (ino - 1) % MINIX_INODES_PER_BLOCK;
+    inode->i_mode = raw_inode->i_mode;
+    inode->i_uid = raw_inode->i_uid;
+    inode->i_gid = raw_inode->i_gid;
+    inode->i_nlink = raw_inode->i_nlinks;
+    inode->i_size = raw_inode->i_size;
+    inode->i_mtime = inode->i_atime = inode->i_ctime = raw_inode->i_time;
+    inode->i_blocks = inode->i_blksize = 0;
+    if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode))
+        inode->i_rdev = raw_inode->i_zone[0];
+    else {
+        for (block = 0; block < 9; block++)
+            inode->u.minix_i.i_data[block] = raw_inode->i_zone[block];
+    }
+    brelse(bh);
+    if (S_ISREG(inode->i_mode))
+        inode->i_op = &minix_file_inode_operations;
+    else if (S_ISDIR(inode->i_mode))
+        inode->i_op = &minix_dir_inode_operations;
+    else if (S_ISLNK(inode->i_mode))
+        inode->i_op = &minix_symlink_inode_operations;
+    else if (S_ISCHR(inode->i_mode))
+        inode->i_op = &chrdev_inode_operations;
+    else if (S_ISBLK(inode->i_mode))
+        inode->i_op = &blkdev_inode_operations;
+    else if (S_ISFIFO(inode->i_mode))
+        init_fifo(inode);
 }
 
 static struct buffer_head * minix_update_inode(struct inode * inode)
 {
-	struct buffer_head * bh;
-	struct minix_inode * raw_inode;
-	int ino, block;
+    struct buffer_head * bh;
+    struct minix_inode * raw_inode;
+    int ino, block;
 
-	ino = inode->i_ino;
-	if (!ino || ino >= inode->i_sb->u.minix_sb.s_ninodes) {
-		printk("Bad inode number on dev 0x%04x: %d is out of range\n",
-			inode->i_dev, ino);
-		inode->i_dirt = 0;
-		return 0;
-	}
-	block = 2 + inode->i_sb->u.minix_sb.s_imap_blocks + inode->i_sb->u.minix_sb.s_zmap_blocks +
-		(ino-1)/MINIX_INODES_PER_BLOCK;
-	if (!(bh=bread(inode->i_dev, block, BLOCK_SIZE))) {
-		printk("unable to read i-node block\n");
-		inode->i_dirt = 0;
-		return 0;
-	}
-	raw_inode = ((struct minix_inode *)bh->b_data) +
-		(ino-1)%MINIX_INODES_PER_BLOCK;
-	raw_inode->i_mode = inode->i_mode;
-	raw_inode->i_uid = inode->i_uid;
-	raw_inode->i_gid = inode->i_gid;
-	raw_inode->i_nlinks = inode->i_nlink;
-	raw_inode->i_size = inode->i_size;
-	raw_inode->i_time = inode->i_mtime;
-	if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode))
-		raw_inode->i_zone[0] = inode->i_rdev;
-	else for (block = 0; block < 9; block++)
-		raw_inode->i_zone[block] = inode->u.minix_i.i_data[block];
-	inode->i_dirt=0;
-	bh->b_dirt=1;
-	return bh;
+    ino = inode->i_ino;
+    if (!ino || ino >= inode->i_sb->u.minix_sb.s_ninodes) {
+        printk("Bad inode number on dev 0x%04x: %d is out of range\n",
+               inode->i_dev, ino);
+        inode->i_dirt = 0;
+        return 0;
+    }
+    block = 2 + inode->i_sb->u.minix_sb.s_imap_blocks + 
+                inode->i_sb->u.minix_sb.s_zmap_blocks +
+                (ino - 1) / MINIX_INODES_PER_BLOCK;
+    if (!(bh = bread(inode->i_dev, block, BLOCK_SIZE))) {
+        printk("unable to read i-node block\n");
+        inode->i_dirt = 0;
+        return 0;
+    }
+    raw_inode = ((struct minix_inode *)bh->b_data) +
+                (ino - 1) % MINIX_INODES_PER_BLOCK;
+    raw_inode->i_mode = inode->i_mode;
+    raw_inode->i_uid = inode->i_uid;
+    raw_inode->i_gid = inode->i_gid;
+    raw_inode->i_nlinks = inode->i_nlink;
+    raw_inode->i_size = inode->i_size;
+    raw_inode->i_time = inode->i_mtime;
+    if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode))
+        raw_inode->i_zone[0] = inode->i_rdev;
+    else for (block = 0; block < 9; block++)
+        raw_inode->i_zone[block] = inode->u.minix_i.i_data[block];
+    inode->i_dirt = 0;
+    bh->b_dirt = 1;
+    return bh;
 }
 
 void minix_write_inode(struct inode * inode)
 {
-	struct buffer_head *bh;
-	bh = minix_update_inode(inode);
-	brelse(bh);
+    struct buffer_head *bh;
+
+    bh = minix_update_inode(inode);
+    brelse(bh);
 }
 
 int minix_sync_inode(struct inode * inode)

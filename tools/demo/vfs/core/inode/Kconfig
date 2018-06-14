@@ -21,10 +21,35 @@ config DEBUG_INODE_INIT
 	  Initialize all inode structure.
 
 config DEBUG_INODE_IGET
-	bool "iget(): obtain special inode"
-	select DEBUG_INODE_INIT
+	bool "iget(): get an inode with speical name"
 	help
 	  Debug main routine for iget().
+
+config DEBUG_INODE_IGET_HASH
+	bool "iget(): get an inode from Inode-hash"
+	help
+	  Debug main routine for iget() with hash table.
+
+config DEBUG_INODE_IPUT
+	bool "iput(): put an inode to VFS"
+	help
+	  Debug core routine for iput();
+
+config DEBUG_INODE_IPUT_ROOTFS
+	bool "put a inode in special rootfs"
+	select DEBUG_INODE_IPUT
+	help
+	  Debug core routine for iput on special rootfs.
+
+config DEBUG_INODE_READ_SPECIAL
+	bool "Read inode from special Rootfs"
+	help
+	  Read inode structure from special Rootfs.
+
+config DEBUG_INODE_WRITE_SPECIAL
+	bool "write inode to special Rootfs"
+	help
+	  Write inode structure to special Rootfs.
 
 endif
 

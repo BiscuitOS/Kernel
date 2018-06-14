@@ -167,20 +167,20 @@ repeat:
 		
 void minix_truncate(struct inode * inode)
 {
-	int retry;
+    int retry;
 
-	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
-	     S_ISLNK(inode->i_mode)))
-		return;
-	while (1) {
-		retry = trunc_direct(inode);
-		retry |= trunc_indirect(inode,7,inode->u.minix_i.i_data+7);
-		retry |= trunc_dindirect(inode);
-		if (!retry)
-			break;
-		current->counter = 0;
-		schedule();
-	}
-	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-	inode->i_dirt = 1;
+    if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+           S_ISLNK(inode->i_mode)))
+        return;
+    while (1) {
+        retry = trunc_direct(inode);
+        retry |= trunc_indirect(inode, 7, inode->u.minix_i.i_data + 7);
+        retry |= trunc_dindirect(inode);
+        if (!retry)
+            break;
+        current->counter = 0;
+        schedule();
+    }
+    inode->i_mtime = inode->i_ctime = CURRENT_TIME;
+    inode->i_dirt = 1;
 }
