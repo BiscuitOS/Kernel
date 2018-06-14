@@ -51,6 +51,11 @@ config DEBUG_INODE_WRITE_SPECIAL
 	help
 	  Write inode structure to special Rootfs.
 
+config DEBUG_INODE_ATTR
+	bool "Parse inode attribute."
+	help
+	  Parse inode structure attribute.
+
 endif
 
 endmenu

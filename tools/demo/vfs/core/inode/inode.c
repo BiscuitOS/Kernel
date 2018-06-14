@@ -754,6 +754,12 @@ repeat:
 }
 #endif
 
+#ifdef CONFIG_DEBUG_INODE_ATTR
+static void parse_inode_attr(struct inode *inode)
+{
+}
+#endif
+
 /* The entry for systemcall */
 asmlinkage int sys_vfs_inode(const char *filename)
 {
@@ -770,6 +776,12 @@ asmlinkage int sys_vfs_inode(const char *filename)
     inode->i_count++;
 #ifdef CONFIG_DEBUG_INODE_IGET
     inode = debug_iget(inode->i_ino, 1);
+#else
+    inode = iget(inode->i_sb, inode->i_ino);
+#endif
+
+#ifdef CONFIG_DEBUG_INODE_ATTR
+    parse_inode_attr(inode);
 #endif
 
 #ifdef CONFIG_DEBUG_INODE_IPUT
