@@ -755,8 +755,359 @@ repeat:
 #endif
 
 #ifdef CONFIG_DEBUG_INODE_ATTR
+
+/*
+ * parse_inode_attr()
+ *  This function is used to describe the usage for each member.
+ *  The defination for inode structure on 'include/linux/fs.h'
+ */
 static void parse_inode_attr(struct inode *inode)
 {
+    /* 
+     * Member: i_dev
+     *  'i_dev' is device number, we can obtain MAJOR or MINOR number.
+     *  It's usually used on bread() or hash().
+     *  
+     *  * Regular file: 
+     *    The 'i_dev' points to device number for Rootfs.
+     *    Such as HDD is 0x301 for first HDD.
+     *  * Char/Block device: 
+     *    We can utilize MAJOR(i_dev) or MINOR(i_dev) to obtain special
+     *    MAJOR and MINOR number.
+     *
+     */
+    printk("i_dev %#x, MAJOR: %#x MINOR %#x\n", inode->i_dev,
+             MAJOR(inode->i_dev), MINOR(inode->i_dev));
+
+    /*
+     * Member: i_ino
+     *  This is a unique identify for inode on special filesystem.
+     *  We can obtain special inode via i_ino on special filesystem.
+     *  Such as:
+     *   iget(i_ino, 0)
+     */
+    printk("The unique identify: %#x\n", (unsigned int)inode->i_ino);
+
+    /*
+     * Member: i_mode [1]
+     *  This member is used to indicate the inode type. The inode type
+     *  contain "Regular file", "Char device", "Block device" and "FIFO"
+     *  and so on. The system offer some macro to explain or compute
+     *  inode attribute.
+     *  such as:
+     *    S_ISDIR(), S_ISLNK() and S_ISCHR() ....
+     */
+    if (S_ISLNK(inode->i_mode)) /* Symlink or Hard-link */
+        printk("Inode is a symlink or hard-link.\n");
+    if (S_ISREG(inode->i_mode)) /* Regular file */
+        printk("Inode is a regular file.\n");
+    if (S_ISDIR(inode->i_mode)) /* Directory */
+        printk("Inode is a directory\n");
+    if (S_ISCHR(inode->i_mode)) /* Character device */
+        printk("Inode is a character device.\n");
+    if (S_ISBLK(inode->i_mode)) /* Block device */
+        printk("Inode is a block device.\n");
+    if (S_ISFIFO(inode->i_mode)) /* FIFO */
+        printk("Inode is a FIFO\n");
+    if (S_ISSOCK(inode->i_mode)) /* Socket */
+        printk("Inode is a Socket.\n");
+
+    /*
+     * Member: i_mode [2]
+     *  The 'i_mode' contain the file access permission which control 
+     *  who can read or write the file.
+     *
+     *  Import:
+     *  * User ID
+     *    A UID (user identifier) is a number assigned by Linux to each 
+     *    user on the system. This number is used to identify the user 
+     *    to the system and to determine which system resources the user 
+     *    can access. 
+     *
+     *  * Real User ID (RUID)
+     *    This is the UID of the user/process that created THIS process. 
+     *    It can be changed only if the running process has EUID=0. The 
+     *    real UID (ruid) and real GID (rgid) identify the real owner of 
+     *    the process and affect the permissions for sending signals. A 
+     *    process without superuser privileges may signal another process
+     *    only if the sender's ruid or euid matches receiver's ruid or 
+     *    suid. Because a child process inherits its credentials from its 
+     *    parent, a child and parent may signal each other.
+     *
+     *  * Effective User ID (EUID)
+     *    This UID is used to evaluate privileges of the process to 
+     *    perform a particular action. EUID can be change either to RUID, 
+     *    or SUID if EUID!=0. If EUID=0, it can be changed to anything.
+     *    The effective UID (euid) of a process is used for most access 
+     *    checks. It is also used as the owner for files created by that 
+     *    process. The effective GID (egid) of a process also affects access
+     *    control and may also affect file creation, depending on the 
+     *    semantics of the specific kernel implementation in use and 
+     *    possibly the mount options used. According to BSD Unix semantics,
+     *    the group ownership given to a newly created file is 
+     *    unconditionally inherited from the group ownership of the 
+     *    directory in which it is created. According to AT&T UNIX System
+     *    V semantics (also adopted by Linux variants), a newly created file
+     *    is normally given the group ownership specified by the egid of 
+     *    the process that creates the file. Most filesystems implement a
+     *    method to select whether BSD or AT&T semantics should be used 
+     *    regarding group ownership of a newly created file; BSD semantics
+     *    are selected for specific directories when the S_ISGID (s-gid) 
+     *    permission is set.
+     *
+     *  * Saved User ID (SUID)
+     *    If the binary image file, that was launched has a Set-UID bit on, 
+     *    SUID will be the UID of the owner of the file. Otherwise, SUID 
+     *    will be the RUID. The saved user ID (suid) is used when a program
+     *    running with elevated privileges needs to do some unprivileged 
+     *    work temporarily; changing euid from a privileged value (
+     *    typically 0) to some unprivileged value (anything other than the
+     *    privileged value) causes the privileged value to be stored in 
+     *    suid. Later, a program's euid can be set back to the value stored
+     *    in suid, so that elevated privileges can be restored; an 
+     *    unprivileged process may set its euid to one of only three values:
+     *    the value of ruid, the value of suid, or the value of euid.
+     *
+     *  * Filesystem User ID (fsuid)
+     *    Linux also has a file system user ID (fsuid) which is used 
+     *    explicitly for access control to the file system. It matches the 
+     *    euid unless explicitly set otherwise. It may be root's user ID 
+     *    only if ruid, suid, or euid is root. Whenever the euid is changed, 
+     *    the change is propagated to the fsuid.
+     *    The intent of fsuid is to permit programs (e.g., the NFS server) 
+     *    to limit themselves to the file system rights of some given uid 
+     *    without giving that uid permission to send them signals. Since 
+     *    kernel 2.0, the existence of fsuid is no longer necessary because 
+     *    Linux adheres to SUSv3 rules for sending signals, but fsuid 
+     *    remains for compatibility reasons.
+     *
+     *  * Group ID (GID)
+     *    A group identifier, often abbreviated to GID, is a numeric value
+     *    used to represent a specific group. The range of values for a 
+     *    GID varies amongst different systems; at the very least, a GID 
+     *    can be between 0 and 32,767, with one restriction: the login 
+     *    group for the superuser must have GID 0. This numeric value is 
+     *    used to refer to groups in the /etc/passwd and /etc/group files 
+     *    or their equivalents. Shadow password files and Network Information
+     *    Service also refer to numeric GIDs. The group identifier is a 
+     *    necessary component of Unix file systems and processes.
+     *
+     *  File contain 3 permission: S_IRUSR/S_IWUSR/S_IXUSR.
+     *    These flags indicate a file whether can be read/write/execute.
+     *
+     *  * S_IRUSR
+     *    Read permission bit for the owner of the file. On many systems
+     *    this bit is 0400. 
+     *
+     *  * S_IWUSR
+     *    Write permission bit for the owner of the file. Usually 0200.
+     *
+     *  * S_IXUSR
+     *    Execute (for ordinary files) or search (for directories) 
+     *    permission bit for the owner of the file. Usually 0100.
+     *
+     *  * S_IRWXU
+     *    This is equivalent to ‘(S_IRUSR | S_IWUSR | S_IXUSR)’.
+     *
+     *  Group contain 3 permission: S_IRGRP/S_IWGRP/S_IXGRP.
+     *    These flags indicate a group whether can be read/write/execute.
+     *
+     *  * S_IRGRP
+     *    Read permission bit for the group owner of the file. Usually 040.
+     *
+     *  * S_IWGRP
+     *    Write permission bit for the group owner of the file. Usually 020.
+     *
+     *  * S_IXGRP 
+     *    Execute or search permission bit for the group owner of the file. 
+     *    Usually 010.
+     *
+     *  * S_IRWXG
+     *    This is equivalent to ‘(S_IRGRP | S_IWGRP | S_IXGRP)’.
+     *
+     *  Other user contain 3 permission: S_IROTH/S_IWOTH/S_IXOTH
+     *    These flags indicate other user whether can be read/write/execute.
+     *
+     *  * S_IROTH
+     *    Read permission bit for other users. Usually 04.
+     *
+     *  * S_IWOTH
+     *    Write permission bit for other users. Usually 02.
+     *
+     *  * S_IXOTH
+     *    Execute or search permission bit for other users. Usually 01.
+     *
+     *  * S_IRWXO
+     *    This is equivalent to ‘(S_IROTH | S_IWOTH | S_IXOTH)’.
+     *
+     *  * S_ISUID
+     *    This is the set-user-ID on execute bit, usually 04000. The 
+     *    ability to change the persona of a process can be a source of 
+     *    unintentional privacy violations, or even intentional abuse. 
+     *    Because of the potential for problems, changing persona is 
+     *    restricted to special circumstances.
+     *    You can’t arbitrarily set your user ID or group ID to anything 
+     *    you want; only privileged processes can do that. Instead, the 
+     *    normal way for a program to change its persona is that it has 
+     *    been set up in advance to change to a particular user or group. 
+     *    This is the function of the setuid and setgid bits of a file’s 
+     *    access mode. See Permission Bits. 
+     *    When the setuid bit of an executable file is on, executing that
+     *    file gives the process a third user ID: the file user ID. This ID
+     *    is set to the owner ID of the file. The system then changes the 
+     *    effective user ID to the file user ID. The real user ID remains 
+     *    as it was. Likewise, if the setgid bit is on, the process is 
+     *    given a file group ID equal to the group ID of the file, and its
+     *    effective group ID is changed to the file group ID.
+     *    If a process has a file ID (user or group), then it can at any 
+     *    time change its effective ID to its real ID and back to its file
+     *    ID. Programs use this feature to relinquish their special 
+     *    privileges except when they actually need them. This makes it
+     *    less likely that they can be tricked into doing something 
+     *    inappropriate with their privileges. 
+     *    Portability Note: Older systems do not have file IDs. To determine
+     *    if a system has this feature, you can test the compiler define 
+     *    _POSIX_SAVED_IDS. (In the POSIX standard, file IDs are known as 
+     *    saved IDs.) 
+     *
+     *  * S_ISGID
+     *    This is the set-group-ID on execute bit, usually 02000. As above.
+     *
+     *  * S_ISVTX
+     *    This is the sticky bit, usually 01000.
+     *    For a directory it gives permission to delete a file in that 
+     *    directory only if you own that file. Ordinarily, a user can either
+     *    delete all the files in a directory or cannot delete any of them 
+     *    (based on whether the user has write permission for the directory).
+     *    The same restriction applies—you must have both write permission 
+     *    for the directory and own the file you want to delete. The one 
+     *    exception is that the owner of the directory can delete any file 
+     *    in the directory, no matter who owns it (provided the owner has 
+     *    given himself write permission for the directory). This is 
+     *    commonly used for the /tmp directory, where anyone may create 
+     *    files but not delete files created by other users.
+     *    Originally the sticky bit on an executable file modified the 
+     *    swapping policies of the system. Normally, when a program 
+     *    terminated, its pages in core were immediately freed and reused. 
+     *    If the sticky bit was set on the executable file, the system kept
+     *    the pages in core for a while as if the program were still running.
+     *    This was advantageous for a program likely to be run many times in
+     *    succession. This usage is obsolete in modern systems. When a 
+     *    program terminates, its pages always remain in core as long as 
+     *    there is no shortage of memory in the system. When the program is 
+     *    next run, its pages will still be in core if no shortage arose 
+     *    since the last run. 
+     *
+     *    More information see:
+     *    http://teaching.idallen.com/cst8207/13w/notes/500_permissions.html
+     */
+
+    /*
+     * Member: i_nlink
+     *  The number of links for file or directory. Sometime, function will
+     *  verify the links for file or direntory, such as iput(). If i_nlink
+     *  isn't zero, the inode will not release.
+     */
+    printk("Links: %#x\n", inode->i_nlink);
+
+    /*
+     * Member: i_uid
+     *  The file access permission for UID. The system often verify User
+     *  access permission between euid of current task and i_uid of inode.
+     *  euid is Effective UID (more information see above) that contain
+     *  access permission for current task. And i_uid indicates the file
+     *  needed access permission. 
+     */
+    printk("EUID: %#x I_UID: %#x\n", current->euid, inode->i_uid);
+
+    /*
+     * Member: i_gid
+     *  The file access permission for GID. The same as 'i_uid'. More 
+     *  information see 'in_group_p()'.
+     */
+    printk("EGID: %#x I_GID: %#x\n", current->egid, inode->i_gid);
+
+    /*
+     * Member: i_rdev
+     */
+
+    /*
+     * Member: i_size
+     *  The size for inode. If inode is a file, it is file size. It
+     *  is not size of inode structure.
+     */
+    printk("i_size: %#x\n", (unsigned int)inode->i_size);
+    /*
+     * Member: i_atime, i_mtime, i_ctime
+     *  i_atime is last access time.
+     *  i_ctime is last modify time.
+     *  i_mtime 
+     */
+    printk(KERN_INFO "i_atime %#x i_ctime %#x i_mtime %#x\n",
+               (unsigned int)inode->i_atime, (unsigned int)inode->i_ctime, 
+               (unsigned int)inode->i_mtime);
+
+    /*
+     * Member: i_next, i_prev
+     *  The inode mechanism manages a double linked list to hold all inode
+     *  structure. Each inode structure utilze 'i_next' and 'i_prev'
+     *  pointer to connect other inode structure. The header named 
+     *  "first_inode", the system always allocate new inode start at
+     *  "first_inode". The value "nr_inodes" indicate the inode number
+     *  for current system, and "nr_free_inodes" also indicate the 
+     *  number for free inode (means unused or valid inode). This list
+     *  isn't only contains free inode, but also contains inode that 
+     *  in-used. As figure.
+     *
+     * 
+     *                         i_next
+     *  o----------------------------------------------------------o
+     *  |                                                          |
+     *  |                                                          |
+     *  |                                                          |
+     *  |        +---------+       +---------+        +---------+  |
+     *  o------->|        -|------>|        -|-->...->|        -|--o
+     *           |  inode  |       |  inode  |        |  inode  |
+     *           |         |       |         |        |         |
+     *  o--------|-        |<------|-        |<--...<-|-        |<-o
+     *  |        +---------+       +---------+        +---------+  |
+     *  |        A                                                 |
+     *  |        |                                                 |
+     *  |        o----first_inode                                  |
+     *  |                                                          |
+     *  o----------------------------------------------------------o
+     *                         i_prev 
+     *
+     *  More information See:
+     *    insert_inode_free() or remove_inode_free()
+     */
+
+    /*
+     * Member: i_hash_next, i_hash_prev
+     *  The inode subsystem manages a hash table that acculate to find
+     *  special inode. It offset a hash() to calculate key value and
+     *  "hash_table[]" array hold all hash entry. The 'i_hash_next'
+     *  and 'i_hash_prev' connect inode structure that contain same key. 
+     *
+     * +-------+-------+----------+-------+------------------+-------+
+     * |       |       |          |       |                  |       |
+     * | entry | entry | ...      | entry | ...              | entry |
+     * |       |       |          |       |                  |       |
+     * +-------+-------+----------+-------+------------------+-------+
+     *                                |
+     *                                |
+     *      o-------------------------o
+     *      |
+     *      |
+     *      o-->+-------+   i_hash_prev   +-------+
+     *          |       |<----------------|-       |
+     *          | inode |                 | inode |
+     *          |      -|---------------->|       |  
+     *          +-------+   i_hash_next   +-------+
+     *
+     *  More information see:
+     *   insert_inode_hash() or remove_inode_hash()
+     */
 }
 #endif
 
@@ -801,7 +1152,7 @@ asmlinkage int sys_vfs_inode(const char *filename)
 
 static int debug_inode(void)
 {
-    vfs_inode("/etc/BiscuitOS.rc");
+    vfs_inode("/etc/rc");
     return 0;
 }
 user1_debugcall(debug_inode);
