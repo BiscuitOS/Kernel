@@ -231,22 +231,107 @@ static int do_opens(const char *filename, int flags, int mode)
     struct file *f;
     int flag, error, fd;
 
+    /*
+     * Each task manage a file list that hold file descriptor. This structure
+     * is a typical array that search by fd.
+     *
+     * +----------+
+     * |          |
+     * |   task   |
+     * |          |
+     * |          |
+     * |          |
+     * |   filp  -|--->+-----+-----+-----+----------+-------------+
+     * |          |    |     |     |     |          |             |
+     * |          |    | fd0 | fd1 | fd2 | ...      | fd[NR_OPEN] |
+     * |          |    |     |     |     |          |             |
+     * |          |    +-----+-----+-----+----------+-------------+
+     * |          |
+     * |          |
+     * +----------+
+     */
     for (fd = 0; fd < NR_OPEN; fd++)
         if (!current->filp[fd])
             break;
     if (fd >= NR_OPEN)
         return -EMFILE;
+    /*
+     * The argument 'close_on_exec' of current task is a opened file Bitmap.
+     * The structure type of 'close_on_exec' is 'struct fd_set' that defined
+     * on 'include/linux/types.h'. as follow:
+     *
+     *   #define __FDSET_LONGS 8
+     *   typedef struct fd_set {
+     *                unsigned long fds_bits[__FDSET_LONGS];
+     *   } fd_set;
+     * 
+     * This allows for 256 file descriptors: if NR_OPEN is ever grown beyond
+     * that your'll have to change this too. But 256 fd's seem to enough
+     * even for such "real" unices like SunOS, so hopefully this is one
+     * limit that doesn't have to be changed.
+     *
+     * Note that POSIX want the FD_CLEAR(fd,fdsetp) defines to be in 
+     * <sys/time.h> (and thus <linux/time.h>) - but this is a more logical
+     * place foe them. 
+     *
+     * FD_CLR() will send bit value for 'fd' to 'CF' bit of EFLAGS register,
+     * and then clear this bit on 'close_on_exec'.
+     * A file will be close if bit was set on 'close_on_exec' when invoke 
+     * "execve()".
+     */
     FD_CLR(fd, &current->close_on_exec);
+    /*
+     * Get a free file descriptor, VFS utilize 'file_table' to manage all
+     * file descriptors. The 'file_table' is a typical signal linked list.
+     * The 'first_file' points to the first valid free file descriptor on 
+     * "file_table", and all used file descriptor also hold on tail of 
+     * 'file_table'.
+     *
+     *  file_table:
+     *
+     *      (Used)                  (Free)                  (Free)
+     *  +------------+  f_prev  +------------+  f_prev  +------------+
+     *  |            |<---------|-           |<---------|-           |<-- ..
+     *  | file       |          | file       |          | file       |
+     *  | descriptor |          | descriptor |          | descriptor |
+     *  |           -|--------->|           -|--------->|           -|--> ..
+     *  +------------+  f_next  +------------+  f_next  +------------+
+     *                          A
+     *                          |
+     *          first_file------o
+     *
+     */
     f = get_empty_filp();
     if (!f)
         return -ENFILE;
     current->filp[fd] = f;
+    /*
+     * Setup flage and mode for file descriptor. Note that while the flag
+     * value (low two bits) for sys_open means:
+     *    00 - read-only
+     *    01 - write-only
+     *    10 - read-write
+     *    11 - special
+     * This is changed into:
+     *    00 - no permission needed
+     *    01 - read-permission
+     *    10 - write-permission
+     *    11 - read-write
+     */
     f->f_flags = flag = flags;
     f->f_mode  = (flag + 1) & O_ACCMODE;
     if (f->f_mode)
         flag++;
+    /* If flag contain O_TRUNC or O_CREAT, assign write-permission. On 
+     * above operation, O_TRUNC and O_CREAT doesn't be changed. */
     if (flag & (O_TRUNC | O_CREAT))
         flag |= 2;
+    /*
+     * Now, we invoke 'open_namei()' to obtain special inode with 'filename',
+     * 'flag' and 'mode'. If success, we will obtain a inode that contain
+     * more information for file on special file-system. It's core routine
+     * for 'open' operation.
+     */
 #ifdef CONFIG_DEBUG_OPEN_NAMEI
     error = parse_open_namei(filename, flag, mode, &inode, NULL);
 #else
