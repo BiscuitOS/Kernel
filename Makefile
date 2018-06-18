@@ -348,8 +348,6 @@ libs-y          := lib/
 
 ifdef CONFIG_DEMO_CODE
   objs-y        += tools/demo/
-  libs-y        += tools/demo/posix/lib/
-  libs-y        += tools/demo/vfs/lib/
 endif
 
 vmlinux-dirs	:= $(patsubst %/,%,$(objs-y) $(libs-y))

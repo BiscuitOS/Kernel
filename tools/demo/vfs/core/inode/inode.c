@@ -1150,6 +1150,10 @@ asmlinkage int sys_vfs_inode(const char *filename)
     return error;
 }
 
+/* Common systemcall entry */
+inline _syscall1(int, vfs_inode, const char *, filename);
+
+/* userland code */
 static int debug_inode(void)
 {
     vfs_inode("/etc/rc");

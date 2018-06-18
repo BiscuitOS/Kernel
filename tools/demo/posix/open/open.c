@@ -380,6 +380,9 @@ asmlinkage int sys_demo_open(const char *filename, int flags, int mode)
     return error;
 }
 
+/* System call entry */
+inline _syscall3(int, demo_open, const char *, file, int, flag, int, mode);
+
 static int debug_open(void)
 {
     int fd = -1;

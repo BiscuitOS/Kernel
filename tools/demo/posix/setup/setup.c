@@ -124,6 +124,9 @@ int sys_demo_setup(void *BIOS)
     return 0;
 }
 
+/* system call entry */
+inline _syscall1(int, demo_setup, void *, BIOS);
+
 static int debug_setup(void)
 {
 

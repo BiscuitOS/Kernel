@@ -525,6 +525,10 @@ asmlinkage int sys_vfs_namei(const char *name, int flag, int mode)
     return error;
 }
 
+/* Common system call entry */
+inline _syscall3(int, vfs_namei, const char *, name, int, flag, int, mode);
+
+/* Userland code */
 static int debug_namei(void)
 {
     printf("Cover name to inode\n");

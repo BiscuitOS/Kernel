@@ -1,10 +1,10 @@
 #
 # file table:
 #
-menu "File table:  File structure table"
+menu "File table:  File descriptor table"
 
 config DEBUG_VFS_FILE_TABLE
-        bool "File Table: XXX"
+        bool "File Table: file descriptor table"
         help
 	  The inode is a data structure in a Unix-style file system 
 
@@ -14,6 +14,13 @@ config DEBUG_FILE_TABLE_INIT
 	bool "Iniitialize all file_table structure."
 	help
 	  Initialize all file_table structure.
+
+config DEBUG_FILE_GET
+	bool "Get an empty file descriptor or grow file table"
+	select DEBUG_FILE_TABLE_INIT
+	help
+	  Get an empty file descriptor. If subsytem can not get
+	  a file descriptor on first time, it will grow file_table.
 
 endif
 

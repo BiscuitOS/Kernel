@@ -98,8 +98,8 @@ typedef struct fd_set {
 
 #undef	__FD_CLR
 #define __FD_CLR(fd,fdsetp) \
-		__asm__ __volatile__("btrl %1,%0": \
-			"=m" (*(fd_set *) (fdsetp)):"r" ((int) (fd)))
+    __asm__ __volatile__("btrl %1,%0": \
+                         "=m" (*(fd_set *) (fdsetp)):"r" ((int) (fd)))
 
 #undef	__FD_ISSET
 #define __FD_ISSET(fd,fdsetp) (__extension__ ({ \

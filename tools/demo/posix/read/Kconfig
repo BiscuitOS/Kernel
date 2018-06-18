@@ -1,0 +1,21 @@
+#
+# POSIX system call: read
+#
+
+menu "Read        Read data from a file/directory/socket/pipe etc"
+
+config DEBUG_POSIX_READ
+	bool "Main routine for reading file/Directory/socket/pipe etc"
+	help
+	  Debug read() main routine.
+
+if DEBUG_POSIX_READ
+
+config DEBUG_READ_ROOTFS
+	bool "Read routine on speical rootfs"
+	help
+	  Debug routine on special rootfs.
+
+endif
+
+endmenu
