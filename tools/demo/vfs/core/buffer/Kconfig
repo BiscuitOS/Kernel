@@ -10,8 +10,14 @@ config DEBUG_VFS_BUFFER
 
 if DEBUG_VFS_BUFFER
 
+config DEBUG_BUFFER_INIT
+	bool "Initialize VFS buffer"
+	help
+	  initialize VFS buffer.
+
 config DEBUG_BUFFER_GET
 	bool "get a speical block into buffer"
+	select DEBUG_BUFFER_INIT
 	help
 	  Obtain a special block into buffer.
 

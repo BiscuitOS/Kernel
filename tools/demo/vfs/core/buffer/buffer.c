@@ -19,6 +19,10 @@
 static inline _syscall3(int, open, const char *, file, int, flag, int, mode);
 static inline _syscall1(int, close, int, fd);
 
+static struct buffer_head *hash_table[NR_HASH];
+static struct buffer_head *free_list = NULL;
+static int min_free_pages = 20; /* nr free pages needed before buffer grows */
+
 #define _hashfn(dev,block) (((unsigned)(dev^block))%NR_HASH)
 #define hash(dev,block)  hash_table[_hashfn(dev,block)]
 
@@ -51,10 +55,9 @@ static struct buffer_head *get_hash_tables(dev_t dev, int block, int size)
     struct buffer_head *bh;
 
     for (;;) {
-        if (!bh = find_buffer(dev, block, size))
+        if (!(bh = find_buffer(dev, block, size)))
             return NULL;
         bh->b_count++;
-        wait_on_buffer(bh);
     }
 }
 
@@ -79,6 +82,50 @@ repeat:
 
     return NULL;
 }
+
+/*
+ * Try to increase the number of buffers available: the size argument
+ * is used to determine what kind of buffers we want.
+ */
+static int grow_buffers(int pri, int size)
+{
+    unsigned long page;
+    struct buffer_head *bh, *tmp;
+
+    if ((size & 511) || (size > PAGE_SIZE)) {
+        printk("VFS: grow_buffers: size = %d\n", size);
+    }
+
+    return 0;
+}
+
+#ifdef CONFIG_DEBUG_BUFFER_INIT
+/*
+ * This initializes the initial buffer free list. nr_buffers is set
+ * to one less the actual number of buffers, as a sop to backwards
+ * compatibility --- the old code did this (I think unintentionally,
+ * but I'm not sure), and program in the ps package expect it.
+ *                                           - TYT 8/30/92
+ */
+static int debug_buffer_init(void)
+{
+    int i;
+
+    if (high_memory >= 4 * 1024 * 1024)
+        min_free_pages = 200;
+    else
+        min_free_pages = 20;
+    for (i = 0; i < NR_HASH; i++)
+        hash_table[i] = NULL;
+    free_list = 0;
+    grow_buffers(GFP_KERNEL, BLOCK_SIZE);
+    if (!free_list)
+        panic("VFS: Unable to initialize buffer free list");
+
+    return 0;
+}
+late_debugcall(debug_buffer_init);
+#endif
 
 /* The entry for systemcall */
 asmlinkage int sys_vfs_buffer(int fd)

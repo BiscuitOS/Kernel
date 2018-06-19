@@ -1018,7 +1018,7 @@ void buffer_init(void)
 {
     int i;
 
-    if (high_memory >= 4*1024*1024)
+    if (high_memory >= 4 * 1024 * 1024)
         min_free_pages = 200;
     else
         min_free_pages = 20;
