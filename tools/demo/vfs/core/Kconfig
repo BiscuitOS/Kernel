@@ -28,6 +28,9 @@ source "tools/demo/vfs/core/super/Kconfig"
 # namei
 source "tools/demo/vfs/core/namei/Kconfig"
 
+# buffer
+source "tools/demo/vfs/core/buffer/Kconfig"
+
 endif
 
 endmenu

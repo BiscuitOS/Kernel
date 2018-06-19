@@ -65,7 +65,7 @@ struct inode_operations minix_file_inode_operations = {
 
 static int minix_file_read(struct inode * inode, struct file * filp, char * buf, int count)
 {
-    int read,left,chars;
+    int read, left, chars;
     int block, blocks, offset;
     int bhrequest, uptodate;
     struct buffer_head ** bhb, ** bhe;
@@ -93,8 +93,8 @@ static int minix_file_read(struct inode * inode, struct file * filp, char * buf,
         return 0;
     read = 0;
     block = offset >> BLOCK_SIZE_BITS;
-    offset &= BLOCK_SIZE-1;
-    size = (size + (BLOCK_SIZE-1)) >> BLOCK_SIZE_BITS;
+    offset &= BLOCK_SIZE - 1;
+    size = (size + (BLOCK_SIZE - 1)) >> BLOCK_SIZE_BITS;
     blocks = (left + offset + BLOCK_SIZE - 1) >> BLOCK_SIZE_BITS;
     bhb = bhe = buflist;
     if (filp->f_reada) {

@@ -360,19 +360,19 @@ static inline void insert_into_queues(struct buffer_head * bh)
 
 static struct buffer_head * find_buffer(dev_t dev, int block, int size)
 {		
-	struct buffer_head * tmp;
+    struct buffer_head * tmp;
 
-	for (tmp = hash(dev,block) ; tmp != NULL ; tmp = tmp->b_next)
-		if (tmp->b_dev==dev && tmp->b_blocknr==block) {
-			if (tmp->b_size == size)
-				return tmp;
-			else {
-				printk("VFS: Wrong blocksize on device %d/%d\n",
-							MAJOR(dev), MINOR(dev));
-				return NULL;
-			}
-		}
-	return NULL;
+    for (tmp = hash(dev, block); tmp != NULL; tmp = tmp->b_next)
+        if (tmp->b_dev == dev && tmp->b_blocknr == block) {
+            if (tmp->b_size == size)
+                return tmp;
+            else {
+                printk("VFS: Wrong blocksize on device %d/%d\n",
+                         MAJOR(dev), MINOR(dev));
+                return NULL;
+            }
+        }
+    return NULL;
 }
 
 /*
@@ -384,17 +384,18 @@ static struct buffer_head * find_buffer(dev_t dev, int block, int size)
  */
 struct buffer_head * get_hash_table(dev_t dev, int block, int size)
 {
-	struct buffer_head * bh;
+    struct buffer_head * bh;
 
-	for (;;) {
-		if (!(bh=find_buffer(dev,block,size)))
-			return NULL;
-		bh->b_count++;
-		wait_on_buffer(bh);
-		if (bh->b_dev == dev && bh->b_blocknr == block && bh->b_size == size)
-			return bh;
-		bh->b_count--;
-	}
+    for (;;) {
+        if (!(bh = find_buffer(dev, block, size)))
+            return NULL;
+        bh->b_count++;
+        wait_on_buffer(bh);
+        if (bh->b_dev == dev && bh->b_blocknr == block && 
+            bh->b_size == size)
+            return bh;
+        bh->b_count--;
+    }
 }
 
 void set_blocksize(dev_t dev, int size)
@@ -451,75 +452,75 @@ void set_blocksize(dev_t dev, int size)
 #define BADNESS(bh) (((bh)->b_dirt<<1)+(bh)->b_lock)
 struct buffer_head * getblk(dev_t dev, int block, int size)
 {
-	struct buffer_head * bh, * tmp;
-	int buffers;
-	static int grow_size = 0;
+    struct buffer_head * bh, * tmp;
+    int buffers;
+    static int grow_size = 0;
 
 repeat:
-	bh = get_hash_table(dev, block, size);
-	if (bh) {
-		if (bh->b_uptodate && !bh->b_dirt)
-			put_last_free(bh);
-		return bh;
-	}
-	grow_size -= size;
-	if (nr_free_pages > min_free_pages && grow_size <= 0) {
-		if (grow_buffers(GFP_BUFFER, size))
-			grow_size = PAGE_SIZE;
-	}
-	buffers = nr_buffers;
-	bh = NULL;
+    bh = get_hash_table(dev, block, size);
+    if (bh) {
+        if (bh->b_uptodate && !bh->b_dirt)
+            put_last_free(bh);
+        return bh;
+    }
+    grow_size -= size;
+    if (nr_free_pages > min_free_pages && grow_size <= 0) {
+        if (grow_buffers(GFP_BUFFER, size))
+            grow_size = PAGE_SIZE;
+    }
+    buffers = nr_buffers;
+    bh = NULL;
 
-	for (tmp = free_list; buffers-- > 0 ; tmp = tmp->b_next_free) {
-		if (tmp->b_count || tmp->b_size != size)
-			continue;
-		if (mem_map[MAP_NR((unsigned long) tmp->b_data)] != 1)
-			continue;
-		if (!bh || BADNESS(tmp)<BADNESS(bh)) {
-			bh = tmp;
-			if (!BADNESS(tmp))
-				break;
-		}
+    for (tmp = free_list; buffers-- > 0; tmp = tmp->b_next_free) {
+        if (tmp->b_count || tmp->b_size != size)
+            continue;
+        if (mem_map[MAP_NR((unsigned long) tmp->b_data)] != 1)
+            continue;
+        if (!bh || BADNESS(tmp) < BADNESS(bh)) {
+            bh = tmp;
+            if (!BADNESS(tmp))
+                break;
+        }
 #if 0
-		if (tmp->b_dirt) {
-			tmp->b_count++;
-			ll_rw_block(WRITEA, 1, &tmp);
-			tmp->b_count--;
-		}
+        if (tmp->b_dirt) {
+            tmp->b_count++;
+            ll_rw_block(WRITEA, 1, &tmp);
+            tmp->b_count--;
+        }
 #endif
-	}
+    }
 
-	if (!bh) {
-		if (nr_free_pages > 5)
-			if (grow_buffers(GFP_BUFFER, size))
-				goto repeat;
-		if (!grow_buffers(GFP_ATOMIC, size))
-			sleep_on(&buffer_wait);
-		goto repeat;
-	}
+    if (!bh) {
+        if (nr_free_pages > 5)
+            if (grow_buffers(GFP_BUFFER, size))
+                goto repeat;
+        if (!grow_buffers(GFP_ATOMIC, size))
+            sleep_on(&buffer_wait);
+        goto repeat;
+    }
 
-	wait_on_buffer(bh);
-	if (bh->b_count || bh->b_size != size)
-		goto repeat;
-	if (bh->b_dirt) {
-		sync_buffers(0,0);
-		goto repeat;
-	}
+    wait_on_buffer(bh);
+    if (bh->b_count || bh->b_size != size)
+        goto repeat;
+    if (bh->b_dirt) {
+        sync_buffers(0,0);
+        goto repeat;
+    }
 /* NOTE!! While we slept waiting for this block, somebody else might */
 /* already have added "this" block to the cache. check it */
-	if (find_buffer(dev,block,size))
-		goto repeat;
+    if (find_buffer(dev, block, size))
+        goto repeat;
 /* OK, FINALLY we know that this buffer is the only one of its kind, */
 /* and that it's unused (b_count=0), unlocked (b_lock=0), and clean */
-	bh->b_count=1;
-	bh->b_dirt=0;
-	bh->b_uptodate=0;
-	bh->b_req=0;
-	remove_from_queues(bh);
-	bh->b_dev=dev;
-	bh->b_blocknr=block;
-	insert_into_queues(bh);
-	return bh;
+    bh->b_count=1;
+    bh->b_dirt=0;
+    bh->b_uptodate=0;
+    bh->b_req=0;
+    remove_from_queues(bh);
+    bh->b_dev=dev;
+    bh->b_blocknr=block;
+    insert_into_queues(bh);
+    return bh;
 }
 
 void brelse(struct buffer_head * buf)

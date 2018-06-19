@@ -16,12 +16,14 @@
 #define __NR_vfs_namei            (DEBUG_SYSCALL_NR + 2)
 #define __NR_vfs_inode            (DEBUG_SYSCALL_NR + 3)
 #define __NR_demo_read            (DEBUG_SYSCALL_NR + 4)
+#define __NR_vfs_buffer           (DEBUG_SYSCALL_NR + 5)
 
 int demo_setup(void *BIOS);
 int demo_open(const char *filename, int flag, int mode);
 int vfs_namei(const char *name, int flag, int mode);
 int vfs_inode(const char *filename);
 int demo_read(unsigned int fd, char *buf, unsigned int count);
+int vfs_buffer(int fd);
 
 #endif // __FILE_DEBUGCALL_NR__
 
@@ -62,7 +64,13 @@ extern int sys_vfs_inode();
 #ifdef CONFIG_DEBUG_POSIX_READ
 extern int sys_demo_read();
 #else
-#define sys_demo_setup sys_null
+#define sys_demo_read sys_null
+#endif
+
+#ifdef CONFIG_DEBUG_VFS_BUFFER
+extern int sys_vfs_buffer();
+#else
+#define sys_vfs_buffer sys_null
 #endif
 
 #endif // __FILE_SYS_DEBUGCALL__

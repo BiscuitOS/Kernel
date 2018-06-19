@@ -1,7 +1,7 @@
 /*
  * POSIX system call: read
  *
- * (C) 2018.06.17 BiscuitOS <buddy.zhang@aliyun.com>
+ * (C) 2018.06.18 BiscuitOS <buddy.zhang@aliyun.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -12,19 +12,121 @@
 #include <linux/types.h>
 #include <linux/fcntl.h>
 #include <linux/mm.h>
+#include <linux/stat.h>
 
 #include <demo/debug.h>
 
+#define NBUF      32
+
 static inline _syscall3(int, open, const char *, file, int, flag, int, mode);
 static inline _syscall1(int, close, int, fd);
+
+#ifdef CONFIG_MINIX_FS
+
+static struct buffer_head *inode_getblk(struct inode *inode, int nr,
+      int create)
+{
+    int tmp;
+    unsigned short *p;
+    struct buffer_head *result;
+
+    p = inode->u.minix_i.i_data + nr;
+repeat:
+    tmp = *p;
+    if (tmp) {
+        result = getblk(inode->i_dev, tmp, BLOCK_SIZE);
+    }
+    return NULL;
+}
+
+struct buffer_head *minix_getblks(struct inode *inode, int block,
+                    int create)
+{
+    struct buffer_head *bh;
+
+    if (block < 0) {
+        printk("minix_getblk: block < 0");
+        return NULL;
+    }
+    if (block >= 7 + 512 + 512 * 512) {
+        printk("minix_getblk: block > big");
+        return NULL;
+    }
+    if (block < 7)
+        return inode_getblk(inode, block, create);
+}
+
+static int file_read_minix(struct inode *inode, struct file *filp,
+           char *buf, int count)
+{
+    int read, left, chars;
+    int block, blocks, offset;
+    int bhrequest, uptodate;
+    struct buffer_head **bhb, **bhe;
+    struct buffer_head *bhreq[NBUF];
+    struct buffer_head *buflist[NBUF];
+    unsigned int size;
+
+    if (!inode) {
+        printk(KERN_ERR "minix_file_read: inode = NULL\n");
+        return -EINVAL;
+    }
+    if (!S_ISREG(inode->i_mode)) {
+        printk(KERN_ERR "minix_file_read: mode = %07o\n", inode->i_mode);
+        return -EINVAL;
+    }
+    offset = filp->f_pos;
+    size = inode->i_size;
+    if (offset > size)
+        left = 0;
+    else
+        left = size - offset;
+    if (left > count)
+        left = count;
+    if (left <= 0)
+        return 0;
+    read = 0;
+    block = offset >> BLOCK_SIZE_BITS;
+    offset &= BLOCK_SIZE - 1;
+    size = (size + (BLOCK_SIZE - 1)) >> BLOCK_SIZE_BITS;
+    blocks = (left + offset + BLOCK_SIZE - 1) >> BLOCK_SIZE_BITS;
+    bhb = bhe = buflist;
+    if (filp->f_reada) {
+        blocks += read_ahead[MAJOR(inode->i_dev)] / (BLOCK_SIZE >> 9);
+        if (block + blocks > size)
+            blocks = size - block;
+    }
+
+    /* We do this in a two stage process. We first try and request
+     * as many blocks as we can, then we wait for the first one to
+     * complete, and then we try and wrap up as many as are actually
+     * done. This routine is rather generic, in that it can be used
+     * in a filesystem by substituting the appropriate function in
+     * for getblk.
+     *
+     * This routine is optimized to make maximum use of the various
+     * buffers and caches. */
+
+    do {
+        bhrequest = 0;
+        uptodate = 1;
+        while (blocks) {
+            --blocks;
+            *bhb = minix_getblks(inode, block++, 0);
+        }
+    } while (left > 0);
+
+}
+#endif
 
 #ifdef CONFIG_DEBUG_READ_ROOTFS
 static int rootfs_read(struct inode *inode, struct file *filp, char *buf,
                      unsigned int count)
 {
 #ifdef CONFIG_MINIX_FS
-    
+    file_read_minix(inode, filp, buf, count);
 #endif
+    return 0;
 }
 #endif
 

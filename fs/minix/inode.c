@@ -277,35 +277,35 @@ int minix_bmap(struct inode * inode,int block)
 
 static struct buffer_head * inode_getblk(struct inode * inode, int nr, int create)
 {
-	int tmp;
-	unsigned short *p;
-	struct buffer_head * result;
+    int tmp;
+    unsigned short *p;
+    struct buffer_head * result;
 
-	p = inode->u.minix_i.i_data + nr;
+    p = inode->u.minix_i.i_data + nr;
 repeat:
-	tmp = *p;
-	if (tmp) {
-		result = getblk(inode->i_dev, tmp, BLOCK_SIZE);
-		if (tmp == *p)
-			return result;
-		brelse(result);
-		goto repeat;
-	}
-	if (!create)
-		return NULL;
-	tmp = minix_new_block(inode->i_sb);
-	if (!tmp)
-		return NULL;
-	result = getblk(inode->i_dev, tmp, BLOCK_SIZE);
-	if (*p) {
-		minix_free_block(inode->i_sb,tmp);
-		brelse(result);
-		goto repeat;
-	}
-	*p = tmp;
-	inode->i_ctime = CURRENT_TIME;
-	inode->i_dirt = 1;
-	return result;
+    tmp = *p;
+    if (tmp) {
+        result = getblk(inode->i_dev, tmp, BLOCK_SIZE);
+        if (tmp == *p)
+            return result;
+        brelse(result);
+        goto repeat;
+    }
+    if (!create)
+        return NULL;
+    tmp = minix_new_block(inode->i_sb);
+    if (!tmp)
+        return NULL;
+    result = getblk(inode->i_dev, tmp, BLOCK_SIZE);
+    if (*p) {
+        minix_free_block(inode->i_sb,tmp);
+        brelse(result);
+        goto repeat;
+    }
+    *p = tmp;
+    inode->i_ctime = CURRENT_TIME;
+    inode->i_dirt = 1;
+    return result;
 }
 
 static struct buffer_head * block_getblk(struct inode * inode, 
@@ -360,27 +360,27 @@ repeat:
 
 struct buffer_head * minix_getblk(struct inode * inode, int block, int create)
 {
-	struct buffer_head * bh;
+    struct buffer_head * bh;
 
-	if (block<0) {
-		printk("minix_getblk: block<0");
-		return NULL;
-	}
-	if (block >= 7+512+512*512) {
-		printk("minix_getblk: block>big");
-		return NULL;
-	}
-	if (block < 7)
-		return inode_getblk(inode,block,create);
-	block -= 7;
-	if (block < 512) {
-		bh = inode_getblk(inode,7,create);
-		return block_getblk(inode, bh, block, create);
-	}
-	block -= 512;
-	bh = inode_getblk(inode,8,create);
-	bh = block_getblk(inode, bh, block>>9, create);
-	return block_getblk(inode, bh, block & 511, create);
+    if (block < 0) {
+        printk("minix_getblk: block < 0");
+        return NULL;
+    }
+    if (block >= 7 + 512 + 512 * 512) {
+        printk("minix_getblk: block>big");
+        return NULL;
+    }
+    if (block < 7)
+        return inode_getblk(inode, block, create);
+    block -= 7;
+    if (block < 512) {
+        bh = inode_getblk(inode,7,create);
+        return block_getblk(inode, bh, block, create);
+    }
+    block -= 512;
+    bh = inode_getblk(inode,8,create);
+    bh = block_getblk(inode, bh, block>>9, create);
+    return block_getblk(inode, bh, block & 511, create);
 }
 
 struct buffer_head * minix_bread(struct inode * inode, int block, int create)

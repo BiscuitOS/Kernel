@@ -49,4 +49,12 @@ MINIXFS
     majority of the space. It is where the actual file and directory data 
     are stored.
 
+  ```
+   MINIX FS:
 
+   +------------+-------------+--------------+-------------+-------+------+
+   |            |             |              |             |       |      |
+   | Boot Block | Super Block | inode BitMap | Zone BitMap | Inode | Data |
+   |            |             |              |             |       |      |
+   +------------+-------------+--------------+-------------+-------+------+
+  ```

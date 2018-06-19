@@ -1,0 +1,20 @@
+#
+# Buffer: Filesystem Buffer
+#
+menu "Buffer:   Virtual Filesystem Buffer"
+
+config DEBUG_VFS_BUFFER
+        bool "Buffer: Virtual Filesystem buffer."
+        help
+	  Virtual Filesystem Buffer.
+
+if DEBUG_VFS_BUFFER
+
+config DEBUG_BUFFER_GET
+	bool "get a speical block into buffer"
+	help
+	  Obtain a special block into buffer.
+
+endif
+
+endmenu
