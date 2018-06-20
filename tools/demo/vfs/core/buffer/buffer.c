@@ -13,15 +13,167 @@
 #include <linux/unistd.h>
 #include <linux/errno.h>
 #include <linux/sched.h>
+#include <linux/string.h>
 
 #include <demo/debug.h>
+
+/*
+ * VFS Buffer
+ *   VFS Buffer is common data area that store data from HD/Floppy. Buffer
+ *   subsystem manage data exchange between memory with Disk, it be more
+ *   like a data cache for HD/Floppy data. Buffer subsystem contain 4 
+ *   queues that manages mate data 'buffer_head' and data area. The 4
+ *   queues are: Hash_table, free_list, unused_list and this_page. 
+ *   I'll describe mechanism and how to work for 3 queues.
+ *
+ *   UNUSED_LIST
+ *    The unused_list is a typical single linked list, it manage unused
+ *    'buffer_head' structure. When system allocate memory to establish
+ *    new 'buffer_head', it will be insert into header of 'unused_list'.
+ *    And then Buffer subsystem will invoke 'get_unused_buffer_head()' to 
+ *    obtain a unsed and empty 'buffer_head'. When 'unused_list' becomes
+ *    empty, the subsystem will invoke 'get_more_buffer_heads()' to 
+ *    get more unused 'buffer_head'.
+ *    The 'unusd_list' points to first unused 'buffer_head', and the member
+ *    of 'unused_list' utilze 'b_next_free' to connect another 'buffer_head'
+ *
+ *    Note! The member of 'unused_list' doesn't contain data area!
+ *
+ *    As figure:
+ * 
+ *    0-------------+-------------+--------------+-------------+-----4k
+ *    |             |             |              |             |      |
+ *    | buffer_head | buffer_head | ...          | buffer_head | hole |
+ *    |     (0)     |     (1)     |              |     (n)     |      |
+ *    +-------------+-------------+--------------+-------------+------+
+ *                                   |
+ *                                   |
+ *                                   |
+ *                                   |
+ *                                   V
+ *
+ *              +-------------+               +-------------+
+ *              |             |               |             |
+ *              | buffer_head |  b_next_free  | buffer_head |
+ *     NULL<----|-    (0)     |<--------------|-    (1)     |
+ *              +-------------+               +-------------+<---unused_list 
+ *
+ *   FREE_LIST
+ *     The 'free_list' is typical double linked list, it manage all free and
+ *     in-used 'buffer_head' sturuct. The member of 'free_list' contains 
+ *     data zone. The 'free_list' points to first free 'buffer_head', and
+ *     Buffer subsystem can invoke 'remove_from_queues()' to obtain a
+ *     valid and empty 'buffer_head' that contain data area. The 'free_list'
+ *     also manage all in-used 'buffer_head'. When obtain a free 
+ *     a 'buffer_head', we should insert it into tail of 'free_list'.
+ *     'free_list' utlize 'b_prev_free' and 'b_next_free' to connect another
+ *     'buffer_head'.
+ *
+ *     As Figure:
+ *
+ *        (In-used)                             (free)
+ *     +-------------+     b_prev_free      +-------------+
+ *     |             |<---------------------|-            |
+ *     | buffer_head |                      | buffer_head |
+ *     |             |     b_next_free      |             |
+ *     |            -|--------------------->|            -|---> ...
+ *     |            -|---------o            |            -|---o
+ *     +-------------+         |      o---->+-------------+   |
+ *                             |      |                       |
+ *                      b_data |    free_list                 |
+ *                             |                    b_data    |
+ *                             |                 o------------o
+ *                             |                 |
+ *                             |                 |
+ *                             V                 V
+ *     0-----------+-----------+-----------+-----+-----------+-----4K
+ *     |           |           |           |     |           |      |
+ *     | Data Area | Data Area | Data Area | ... | Data Area | hold |
+ *     |           |           |           |     |           |      |
+ *     +-----------+-----------+-----------+-----+-----------+------+
+ *
+ *
+ *   HASH_TABLE
+ *    In order to accelerate to find special block, Buffer subsystem manage
+ *    a hast table. The key value depend on device number and block number.
+ *    Each member utlize 'b_next' and 'b_prev' to connect another memober.
+ *    We can invoke 'remove_from_hash_queue()' to remove a 'buffer_bead'
+ *    from hash table and also invoke "insert_into_queues()" to insert
+ *    a 'buffer_head' into Hash_table.
+ *
+ *    As follow:
+ *
+ *    +---------------+
+ *    |               |
+ *    +---------------+
+ *    | buffer_head * |
+ *    +---------------+
+ *    |               |
+ *    |               |
+ *    |               |
+ *    |               |      +-------------+   b_prev   +-------------+
+ *    |               |      |             |<-----------|-            |
+ *    |               |      | buffer_head |            | buffer_head |
+ *    +---------------+      |            -|----------->|            -|--> NULL
+ *    | buffer_head * |----->+-------------+   b_next   +-------------+
+ *    +---------------+
+ *    |               |
+ *    |               |
+ *    |               |
+ *    +---------------+
+ *
+ * 
+ *   THIS_PAGE
+ *    It's a typical single linked list and used to manage 'buffer_head'
+ *    that data area from same page.
+ *
+ *    As figure
+ *
+ *             +-------------+ b_this_page  +-------------+ b_this_page
+ *             |            -|------------->|            -|-------------> NULL
+ *             | buffer_head |              | buffer_head |
+ *             |            -|---o          |            -|---o
+ *    head---->+-------------+   |          +-------------+   |
+ *                               |                            |
+ *                               |                            |
+ *            b_data             |                            |
+ *    o--------------------------o                            |
+ *    |                                        b_data         |
+ *    |            o------------------------------------------o
+ *    |            |
+ *    |            |
+ *    |            |
+ *    V            V          Buffer Data area
+ *    0------------+------------+--------------+------------+-----4K
+ *    |            |            |              |            |      |
+ *    | BLOCK_SIZE | BLOCK_SIZE | ...          | BLOCK_SIZE | hole |
+ *    |            |            |              |            |      |
+ *    +------------+------------+--------------+------------+------+
+ */
 
 static inline _syscall3(int, open, const char *, file, int, flag, int, mode);
 static inline _syscall1(int, close, int, fd);
 
 static struct buffer_head *hash_table[NR_HASH];
 static struct buffer_head *free_list = NULL;
+static struct buffer_head *unused_list = NULL;
+static struct wait_queue  *buffer_wait = NULL;
+
+/*
+ * Meta Data
+ *  VFS Buffer mange some argument to indicate usage of buffer, we can
+ *  do some useful operation according these argument.
+ *
+ *  nr_buffer
+ *   This argument indicate subsystem
+ */
+
+static int nr_buffer = 0;
+static int nr_buffer_head = 0;
+static int buffermems = 0;
 static int min_free_pages = 20; /* nr free pages needed before buffer grows */
+
+static int grow_buffers(int pri, int size);
 
 #define _hashfn(dev,block) (((unsigned)(dev^block))%NR_HASH)
 #define hash(dev,block)  hash_table[_hashfn(dev,block)]
@@ -55,10 +207,128 @@ static struct buffer_head *get_hash_tables(dev_t dev, int block, int size)
     struct buffer_head *bh;
 
     for (;;) {
-        if (!(bh = find_buffer(dev, block, size)))
+        if (!(bh = find_buffer(dev, block, size))) {
             return NULL;
+        }
         bh->b_count++;
     }
+}
+
+/*
+ * VFS buffer manages a hash table to hold all valid buffers. The member
+ * 'b_next' of 'buffer_head' structure is used to point next 'buffer_head'
+ * that contain same key value. As figure:
+ *
+ * hash_table
+ * 
+ * +---------------+
+ * |               |
+ * +---------------+
+ * | buffer_head * |
+ * +---------------+
+ * |               |
+ * |               |
+ * |               |
+ * |               |      +-------------+   b_prev   +-------------+
+ * |               |      |             |<-----------|-            |
+ * |               |      | buffer_head |            | buffer_head |
+ * +---------------+      |            -|----------->|            -|--> NULL
+ * | buffer_head * |----->+-------------+   b_next   +-------------+
+ * +---------------+
+ * |               |
+ * |               |
+ * |               |
+ * +---------------+
+ *
+ * remove_from_hash_queue()
+ *  Remove a 'buffer_head' from hash_table.
+ *
+ */
+static inline void remove_from_hash_queue(struct buffer_head *bh)
+{
+    if (bh->b_next)
+        bh->b_next->b_prev = bh->b_prev;
+    if (bh->b_prev)
+        bh->b_prev->b_next = bh->b_next;
+    if (hash(bh->b_dev, bh->b_blocknr) == bh)
+        hash(bh->b_dev, bh->b_blocknr) = bh->b_next;
+    bh->b_next = bh->b_prev = NULL;
+}
+
+/*
+ * VFS Buffer manage a single linked list to hold all free 'buffer_head'
+ * that contain data area. Each free 'buffer_head' utilze 'b_prev_free'
+ * and 'b_next_free' to connect another 'buffer_head'. As Figure.
+ *
+ *
+ *
+ *             +-------------+     b_prev_free      +-------------+
+ *             |             |<---------------------|-            |
+ *             | buffer_head |     b_next_free      | buffer_head |
+ *             |            -|--------------------->|            -|---> ...
+ *             |            -|--------------------->|            -|---> ...
+ *             |            -|---o    b_this_page   |            -|---o
+ * free_list-->+-------------+   |                  +-------------+   |
+ *                               |                                    |
+ *                               | b_data                             |
+ *                               |                        b_data      |
+ *                         o-----o                 o------------------o
+ *                         |                       |
+ *                         |                       |
+ *                         V                       V
+ * 0-----------+-----------+-----------+-----------+-----------+-----4K
+ * |           |           |           |           |           |      |
+ * | Data Area | Data Area | Data Area | ...       | Data Area | hold |
+ * |           |           |           |           |           |      |
+ * +-----------+-----------+-----------+-----------+-----------+------+
+ *
+ * remove_from_free_list()
+ *  Remove a free 'buffer_head' from free list.
+ *
+ */
+static inline void remove_from_free_list(struct buffer_head *bh)
+{
+    if (!(bh->b_prev_free) || !(bh->b_next_free))
+        panic("VFS: Free block list corrupted");
+    bh->b_prev_free->b_next_free = bh->b_next_free;
+    bh->b_next_free->b_prev_free = bh->b_prev_free;
+    if (free_list == bh)
+        free_list = bh->b_next_free;
+    bh->b_next_free = bh->b_prev_free = NULL;
+}
+
+/*
+ * remove_from_queues()
+ *  In order to get a valid and free 'buffer_head', we should remove
+ *  it from hast_table and free list.
+ */
+static inline void remove_from_queues(struct buffer_head *bh)
+{
+    remove_from_hash_queue(bh);
+    remove_from_free_list(bh);
+}
+
+/*
+ * insert_into_queues()
+ *   Insert a 'buffer_head' structure into two queues: free_list and 
+ *   hash_table. More information see above.
+ */
+static inline void insert_into_queues(struct buffer_head *bh)
+{
+    /* put at end of free list */
+    bh->b_next_free = free_list;
+    bh->b_prev_free = free_list->b_prev_free;
+    free_list->b_prev_free->b_next_free = bh;
+    free_list->b_prev_free = bh;
+    /* put the buffer in new hash-queue if it has a device */
+    bh->b_prev = NULL;
+    bh->b_next = NULL;
+    if (!bh->b_dev)
+        return;
+    bh->b_next = hash(bh->b_dev, bh->b_blocknr);
+    hash(bh->b_dev, bh->b_blocknr) = bh;
+    if (bh->b_next)
+        bh->b_next->b_prev = bh;
 }
 
 /*
@@ -71,6 +341,7 @@ static struct buffer_head *get_hash_tables(dev_t dev, int block, int size)
  * 14.02.92: changed it to sync dirty buffers a bit: better performance
  * when the filesystem starts to get full of direct blocks (I hope). 
  */
+#define BADNESS(bh)   (((bh)->b_dirt<<1)+(bh)->b_lock)
 static struct buffer_head *getblks(dev_t dev, int block, int size)
 {
     struct buffer_head *bh, *tmp;
@@ -79,13 +350,230 @@ static struct buffer_head *getblks(dev_t dev, int block, int size)
 
 repeat:
     bh = get_hash_tables(dev, block, size);
+    if (bh) {
+        panic("I don't care now.\n");
+    }
+    grow_size -= size;
+    if (nr_free_pages > min_free_pages && grow_size <= 0) {
+        if (grow_buffers(GFP_BUFFER, size))
+            grow_size = PAGE_SIZE;
+    }
+    buffers = nr_buffer;
+    bh = NULL;
 
+    for (tmp = free_list; buffers-- > 0; tmp = tmp->b_next_free) {
+        if (tmp->b_count || tmp->b_size != size)
+            continue;
+        if (mem_map[MAP_NR((unsigned long) tmp->b_data)] != 1)
+            continue;
+        if (!bh || BADNESS(tmp) < BADNESS(bh)) {
+            bh = tmp;
+            if (!BADNESS(tmp)) {
+                break;
+            }
+        }
+    }
+
+    if (!bh) {
+        if (nr_free_pages > 5)
+            if (grow_buffers(GFP_BUFFER, size))
+                goto repeat;
+        if (!grow_buffers(GFP_ATOMIC, size))
+            sleep_on(&buffer_wait);
+        goto repeat;
+    }
+
+    if (bh->b_count || bh->b_size != size)
+        goto repeat;
+    if (bh->b_dirt) {
+        panic("sync buffer");
+    }
+/* NOTE!! While we slept waiting for this block, somebody else might */
+/* already have added "this" block to the cache, check it */
+    if (find_buffer(dev, block, size))
+        goto repeat;
+/* OK, FINALLY we know that this buffer is the only one of its kind, */
+/* and that it's unused (b_count=0), unlocked (b_lock=0), and clean */
+    bh->b_count = 1;
+    bh->b_dirt = 0;
+    bh->b_uptodate = 0;
+    bh->b_req = 0;
+    remove_from_queues(bh);
+    bh->b_dev = dev;
+    bh->b_blocknr = block;
+    insert_into_queues(bh);
+    return bh;
+}
+
+/*
+ * get_more_buffer_heads()
+ *  Extablish a free buffer_head list when 'unused_list' is empty. The
+ *  free buffer_head list is a typical singal linked list, and 
+ *  'unused_list' points to first valid buffer_head. The function will
+ *  affect the number of all valid free buffer_head. If we want to 
+ *  get a unused buffer_head, the 'unused_list' is best choice.
+ *  
+ *  0-------------+-------------+--------------+-------------+-----4k
+ *  |             |             |              |             |      |
+ *  | buffer_head | buffer_head | ...          | buffer_head | hole |
+ *  |     (0)     |     (1)     |              |     (n)     |      |
+ *  +-------------+-------------+--------------+-------------+------+
+ *                                   |
+ *                                   |
+ *                                   |
+ *                                   |
+ *                                   V
+ *
+ *              +-------------+               +-------------+
+ *              |             |               |             |
+ *              | buffer_head |  b_next_free  | buffer_head |
+ *     NULL<----|-    (0)     |<--------------|-    (1)     |
+ *              +-------------+               +-------------+<---unused_list
+ */
+static void get_more_buffer_heads(void)
+{
+    int i;
+    struct buffer_head *bh;
+
+    if (unused_list)
+        return;
+
+    if (!(bh = (struct buffer_head *) get_free_page(GFP_BUFFER)))
+        return;
+
+    for (nr_buffer_head += i = PAGE_SIZE / sizeof(*bh); i > 0; i--) {
+        bh->b_next_free = unused_list;    /* only make link */
+        unused_list = bh++;
+    }
+}
+
+/*
+ * get_unused_buffer_head()
+ *  Obtain an unused buffer_head from 'unused_list'.
+ */
+static struct buffer_head *get_unused_buffer_head(void)
+{
+    struct buffer_head *bh;
+
+    /* Get more valid buffer_head from system */
+    get_more_buffer_heads();
+    if (!unused_list)
+        return NULL;
+    bh = unused_list;
+    unused_list = bh->b_next_free;
+    bh->b_next_free = NULL;
+    bh->b_data = NULL;
+    bh->b_size = 0;
+    bh->b_req = 0;
+    return bh;
+}
+
+/*
+ * See fs/inode.c for the weird use of volatile.
+ * Clear buffer_head structure and insert 'unused_list'.
+ */
+static void put_unused_buffer_head(struct buffer_head *bh)
+{
+    struct wait_queue *wait;
+
+    wait = ((volatile struct buffer_head *) bh)->b_wait;
+    memset((void *)bh, 0, sizeof(*bh));
+    ((volatile struct buffer_head *)bh)->b_wait = wait;
+    bh->b_next_free = unused_list;
+    unused_list = bh;
+}
+
+/*
+ * Create the appropriate buffers when given a page for data area and
+ * the size of each buffer.. Use the bh->b_this_page linked list to
+ * follow the buffer created. Return NULL if unable to create more
+ * buffer.
+ *
+ *
+ *
+ *          +-------------+ b_this_page  +-------------+ b_this_page
+ *          |            -|------------->|            -|-------------> NULL
+ *          | buffer_head |              | buffer_head |
+ *          |            -|---o          |            -|---o
+ * head---->+-------------+   |          +-------------+   |
+ *                            |                            |
+ *                            |                            |
+ *         b_data             |                            |
+ * o--------------------------o                            |
+ * |                                        b_data         |
+ * |            o------------------------------------------o
+ * |            |
+ * |            |
+ * |            |
+ * V            V          Buffer Data area
+ * 0------------+------------+--------------+------------+-----4K
+ * |            |            |              |            |      |
+ * | BLOCK_SIZE | BLOCK_SIZE | ...          | BLOCK_SIZE | hole |
+ * |            |            |              |            |      |
+ * +------------+------------+--------------+------------+------+
+ */
+static struct buffer_head *create_buffers(unsigned long page,
+                                unsigned long size)
+{
+    struct buffer_head *bh, *head;
+    unsigned long offset;
+
+    head = NULL;
+    offset = PAGE_SIZE;
+    while ((offset -= size) < PAGE_SIZE) {
+        bh = get_unused_buffer_head();
+        if (!bh)
+            goto no_grow;
+        bh->b_this_page = head;
+        head = bh;
+        bh->b_data = (char *)(page + offset);
+        bh->b_size = size;
+    }
+    return head;
+/*
+ * In case anything failed, we just free everything we got.
+ */
+no_grow:
+    bh = head;
+    while (bh) {
+        head = bh;
+        bh = bh->b_this_page;
+        put_unused_buffer_head(head);
+    }
     return NULL;
 }
 
 /*
  * Try to increase the number of buffers available: the size argument
  * is used to determine what kind of buffers we want.
+ *
+ * The VFS utlize a single linked list to manage all free buffer. And free
+ * buffer must contain 'buffer_head' and data area. The 'unused_list' only
+ * manage unused 'buffer_head' structure that doesn't contain data area.
+ * 'grow_buffers()' will establish a free buffer list and 'free_list' points
+ * to first free 'buffer_head'. As figure:
+ *
+ *             +-------------+     b_prev_free      +-------------+
+ *             |             |<---------------------|-            |
+ *             | buffer_head |     b_next_free      | buffer_head |
+ *             |            -|--------------------->|            -|---> ...
+ *             |            -|--------------------->|            -|---> ...
+ *             |            -|---o    b_this_page   |            -|---o
+ * free_list-->+-------------+   |                  +-------------+   |
+ *                               |                                    |
+ *                               | b_data                             |
+ *                               |                        b_data      |
+ *                         o-----o                 o------------------o
+ *                         |                       |
+ *                         |                       |
+ *                         V                       V
+ * 0-----------+-----------+-----------+-----------+-----------+-----4K
+ * |           |           |           |           |           |      |
+ * | Data Area | Data Area | Data Area | ...       | Data Area | hold |
+ * |           |           |           |           |           |      |
+ * +-----------+-----------+-----------+-----------+-----------+------+
+ *
+ *
  */
 static int grow_buffers(int pri, int size)
 {
@@ -94,9 +582,36 @@ static int grow_buffers(int pri, int size)
 
     if ((size & 511) || (size > PAGE_SIZE)) {
         printk("VFS: grow_buffers: size = %d\n", size);
+        return 0;
     }
-
-    return 0;
+    if (!(page = __get_free_page(pri)))
+        return 0;
+    bh = create_buffers(page, size);
+    if (!bh) {
+        free_page(page);
+        return 0;
+    }
+    tmp = bh;
+    while (1) {
+        if (free_list) {
+            tmp->b_next_free = free_list;
+            tmp->b_prev_free = free_list->b_prev_free;
+            free_list->b_prev_free->b_next_free = tmp;
+            free_list->b_prev_free = tmp;
+        } else {
+            tmp->b_prev_free = tmp;
+            tmp->b_next_free = tmp;
+        }
+        free_list = tmp;
+        ++nr_buffer;
+        if (tmp->b_this_page)
+            tmp = tmp->b_this_page;
+        else
+            break;
+    }
+    tmp->b_this_page = bh;
+    buffermems += PAGE_SIZE;
+    return 1;
 }
 
 #ifdef CONFIG_DEBUG_BUFFER_INIT
@@ -121,7 +636,6 @@ static int debug_buffer_init(void)
     grow_buffers(GFP_KERNEL, BLOCK_SIZE);
     if (!free_list)
         panic("VFS: Unable to initialize buffer free list");
-
     return 0;
 }
 late_debugcall(debug_buffer_init);

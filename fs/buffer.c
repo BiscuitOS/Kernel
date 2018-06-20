@@ -285,30 +285,30 @@ void check_disk_change(dev_t dev)
 
 static inline void remove_from_hash_queue(struct buffer_head * bh)
 {
-	if (bh->b_next)
-		bh->b_next->b_prev = bh->b_prev;
-	if (bh->b_prev)
-		bh->b_prev->b_next = bh->b_next;
-	if (hash(bh->b_dev,bh->b_blocknr) == bh)
-		hash(bh->b_dev,bh->b_blocknr) = bh->b_next;
-	bh->b_next = bh->b_prev = NULL;
+    if (bh->b_next)
+        bh->b_next->b_prev = bh->b_prev;
+    if (bh->b_prev)
+        bh->b_prev->b_next = bh->b_next;
+    if (hash(bh->b_dev, bh->b_blocknr) == bh)
+        hash(bh->b_dev, bh->b_blocknr) = bh->b_next;
+    bh->b_next = bh->b_prev = NULL;
 }
 
 static inline void remove_from_free_list(struct buffer_head * bh)
 {
-	if (!(bh->b_prev_free) || !(bh->b_next_free))
-		panic("VFS: Free block list corrupted");
-	bh->b_prev_free->b_next_free = bh->b_next_free;
-	bh->b_next_free->b_prev_free = bh->b_prev_free;
-	if (free_list == bh)
-		free_list = bh->b_next_free;
-	bh->b_next_free = bh->b_prev_free = NULL;
+    if (!(bh->b_prev_free) || !(bh->b_next_free))
+        panic("VFS: Free block list corrupted");
+    bh->b_prev_free->b_next_free = bh->b_next_free;
+    bh->b_next_free->b_prev_free = bh->b_prev_free;
+    if (free_list == bh)
+        free_list = bh->b_next_free;
+    bh->b_next_free = bh->b_prev_free = NULL;
 }
 
 static inline void remove_from_queues(struct buffer_head * bh)
 {
-	remove_from_hash_queue(bh);
-	remove_from_free_list(bh);
+    remove_from_hash_queue(bh);
+    remove_from_free_list(bh);
 }
 
 static inline void put_first_free(struct buffer_head * bh)
@@ -342,20 +342,20 @@ static inline void put_last_free(struct buffer_head * bh)
 
 static inline void insert_into_queues(struct buffer_head * bh)
 {
-/* put at end of free list */
-	bh->b_next_free = free_list;
-	bh->b_prev_free = free_list->b_prev_free;
-	free_list->b_prev_free->b_next_free = bh;
-	free_list->b_prev_free = bh;
-/* put the buffer in new hash-queue if it has a device */
-	bh->b_prev = NULL;
-	bh->b_next = NULL;
-	if (!bh->b_dev)
-		return;
-	bh->b_next = hash(bh->b_dev,bh->b_blocknr);
-	hash(bh->b_dev,bh->b_blocknr) = bh;
-	if (bh->b_next)
-		bh->b_next->b_prev = bh;
+    /* put at end of free list */
+    bh->b_next_free = free_list;
+    bh->b_prev_free = free_list->b_prev_free;
+    free_list->b_prev_free->b_next_free = bh;
+    free_list->b_prev_free = bh;
+    /* put the buffer in new hash-queue if it has a device */
+    bh->b_prev = NULL;
+    bh->b_next = NULL;
+    if (!bh->b_dev)
+        return;
+    bh->b_next = hash(bh->b_dev, bh->b_blocknr);
+    hash(bh->b_dev, bh->b_blocknr) = bh;
+    if (bh->b_next)
+        bh->b_next->b_prev = bh;
 }
 
 static struct buffer_head * find_buffer(dev_t dev, int block, int size)
@@ -512,13 +512,13 @@ repeat:
         goto repeat;
 /* OK, FINALLY we know that this buffer is the only one of its kind, */
 /* and that it's unused (b_count=0), unlocked (b_lock=0), and clean */
-    bh->b_count=1;
-    bh->b_dirt=0;
-    bh->b_uptodate=0;
-    bh->b_req=0;
+    bh->b_count = 1;
+    bh->b_dirt = 0;
+    bh->b_uptodate = 0;
+    bh->b_req = 0;
     remove_from_queues(bh);
-    bh->b_dev=dev;
-    bh->b_blocknr=block;
+    bh->b_dev = dev;
+    bh->b_blocknr = block;
     insert_into_queues(bh);
     return bh;
 }
@@ -622,10 +622,10 @@ static void get_more_buffer_heads(void)
     if (unused_list)
         return;
 
-    if(! (bh = (struct buffer_head*) get_free_page(GFP_BUFFER)))
+    if(! (bh = (struct buffer_head *) get_free_page(GFP_BUFFER)))
         return;
 
-    for (nr_buffer_heads+=i=PAGE_SIZE/sizeof*bh ; i>0; i--) {
+    for (nr_buffer_heads += i = PAGE_SIZE / sizeof * bh; i > 0; i--) {
         bh->b_next_free = unused_list;    /* only make link */
         unused_list = bh++;
     }
