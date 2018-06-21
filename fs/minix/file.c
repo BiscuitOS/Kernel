@@ -158,11 +158,11 @@ static int minix_file_read(struct inode * inode, struct file * filp, char * buf,
             left -= chars;
             read += chars;
             if (*bhe) {
-                memcpy_tofs(buf, offset+(*bhe)->b_data, chars);
+                memcpy_tofs(buf, offset + (*bhe)->b_data, chars);
                 brelse(*bhe);
                 buf += chars;
             } else {
-                while (chars-->0)
+                while (chars-- > 0)
                     put_fs_byte(0, buf++);
             }
             offset = 0;

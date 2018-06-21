@@ -13,6 +13,9 @@
 #include <linux/fcntl.h>
 #include <linux/mm.h>
 #include <linux/stat.h>
+#include <linux/locks.h>
+
+#include <asm/segment.h>
 
 #include <demo/debug.h>
 
@@ -34,16 +37,21 @@ static struct buffer_head *inode_getblk(struct inode *inode, int nr,
 repeat:
     tmp = *p;
     if (tmp) {
+        /* get a buffer_head, more see tools/demo/vfs/core/buffer/buffer.c */
         result = getblk(inode->i_dev, tmp, BLOCK_SIZE);
+        if (tmp == *p)
+            return result;
+        brelse(result);
+        goto repeat;
     }
+    if (!create)
+        return 0;
     return NULL;
 }
 
 struct buffer_head *minix_getblks(struct inode *inode, int block,
                     int create)
 {
-    struct buffer_head *bh;
-
     if (block < 0) {
         printk("minix_getblk: block < 0");
         return NULL;
@@ -54,8 +62,19 @@ struct buffer_head *minix_getblks(struct inode *inode, int block,
     }
     if (block < 7)
         return inode_getblk(inode, block, create);
+    panic("MINIX_GETBLOPCK");
 }
 
+/*
+ * file_read_minix()
+ *  Read data from minixfs. This function utilize two 'buffer_head' to
+ *  manage special 'buffer_head'. "bhreq" is used to manage 'buffer_head'
+ *  that contain data for reading and 'bhreq' will be invoke when reading
+ *  data from disk. "bhlist" is also manage 'buffer_head' and 'bhb' points
+ *  to last 'buffer_head' on array, 'bhe' points to first 'buffer_head' on
+ *  'bhlist'. The 'bhlist' is used to count read and exchange data into 
+ *  userland.
+ */
 static int file_read_minix(struct inode *inode, struct file *filp,
            char *buf, int count)
 {
@@ -75,6 +94,72 @@ static int file_read_minix(struct inode *inode, struct file *filp,
         printk(KERN_ERR "minix_file_read: mode = %07o\n", inode->i_mode);
         return -EINVAL;
     }
+    /*
+     * Verify range for read.
+     *  On reading file, subsystem utilize 'size', 'count', 'left' and 
+     *  'offset' to indicate block and block number for reading.
+     *
+     *  The 'size' indicate the lenght of file.
+     *  The 'offset' indicate the start address for reading.
+     *  The 'count' indicate the number for reading.
+     *  The 'left' indicate the number for remain data.
+     *
+     *  Case 1:
+     *   "offset < size" and "count < left"
+     *
+     *   | <----------------------- size -------------------------> |
+     *   +------------+--------------------+------------------------+
+     *   |            |                    |                        |
+     *   |            | <--- Data area --> |                        |
+     *   |            |                    |                        |
+     *   +------------+--------------------+------------------------+
+     *                A <-------------------- left ---------------> |
+     *                | <---- count -----> |
+     *                |
+     *                |
+     *      offset----o 
+     *
+     *      (1) left = size - offset
+     *      (2) left = count
+     *
+     *  Case 2:
+     *   "offset > size"
+     *
+     *   | <---------------- size --------------> |
+     *   +------------+--------------------+------+--+-------------+
+     *   |            |                    |      |  |             |
+     *   |            | <--- Data area --> |      |  |             |
+     *   |            |                    |      |  |             |
+     *   +------------+--------------------+------+--+-------------+
+     *                                               A <- count -> |
+     *                                               |
+     *                                               |
+     *                                     offset----o 
+     *
+     *      (1) left = 0
+     *      (2) BAD && reutrn 0
+     *
+     *
+     *
+     *  Case 3:
+     *   "offset < size" and "count > left"
+     *
+     *   | <---------------- size --------------> |
+     *   +------------+--------------------+------+-----------------+
+     *   |            |                    |      |                 |
+     *   |            | <--- Data area --> |      |                 |
+     *   |            |                    |      |                 |
+     *   +------------+--------------------+------+-----------------+
+     *                A <------------------- count ---------------> |
+     *                | <--------- left --------> |
+     *                |
+     *                |
+     *      offset----o 
+     *
+     *
+     *      (1) left = size - left
+     *      (2) left < count
+     */
     offset = filp->f_pos;
     size = inode->i_size;
     if (offset > size)
@@ -86,10 +171,51 @@ static int file_read_minix(struct inode *inode, struct file *filp,
     if (left <= 0)
         return 0;
     read = 0;
+    /*
+     * The inode contains a lot of blocks, and the 'block' argument indicates
+     * offset on block set. The 'blocks' indicates last block offset.
+     *
+     *
+     *
+     * Inode block set
+     * +--------+--------+-----+--------+-----+----------+--------+
+     * |        |        |     |        |     |          |        |
+     * | BLOCK0 | BLOCK1 | ... | BLOCKm | ... | BLOCKm+n | BLOCKx |
+     * |        |        |     |        |     |          |        |
+     * +--------+--------+-----+--------+-----+----------+--------+
+     *                         A              A
+     *                         |              |
+     *                         |              |
+     *                 block---o              |
+     *                                        |
+     *                                        |
+     *                 blocks-----------------o
+     *
+     */
     block = offset >> BLOCK_SIZE_BITS;
     offset &= BLOCK_SIZE - 1;
     size = (size + (BLOCK_SIZE - 1)) >> BLOCK_SIZE_BITS;
     blocks = (left + offset + BLOCK_SIZE - 1) >> BLOCK_SIZE_BITS;
+    /*
+     * The 'buflist' is an array that holds all request 'buffer_head'. 
+     * 'bhe' points to the first 'buffer_head' and 'bhb' points to the
+     * last 'buffer_head'. As figure:
+     *
+     *
+     * buflist[NBUF]:
+     *
+     * +-------------+-------------+----------+-------------+------+
+     * |             |             |          |             |      |
+     * | Buffer_head | Buffer_head | ...      | Buffer_head | ...  |
+     * |             |             |          |             |      |
+     * +-------------+-------------+----------+-------------+------+
+     * A                                      A
+     * |                                      |
+     * |                                      |
+     * o----bhe                       bhb-----o
+     *
+     *
+     */
     bhb = bhe = buflist;
     if (filp->f_reada) {
         blocks += read_ahead[MAJOR(inode->i_dev)] / (BLOCK_SIZE >> 9);
@@ -113,9 +239,125 @@ static int file_read_minix(struct inode *inode, struct file *filp,
         while (blocks) {
             --blocks;
             *bhb = minix_getblks(inode, block++, 0);
+            /*
+             * The system invokes 'minix_getblks()' to get speical 
+             * 'buffer_head', and then 'bhreq' array hold 'buffer_head'.
+             * 'bhreq' array is used to read data from disk.
+             *
+             * bhreq[NBUF]
+             * 
+             * +-------------+-------------+--------------+-------------+
+             * |             |             |              |             |
+             * | buffer_head | buffer_head | ...          | buffer_head |
+             * |             |             |              |             |
+             * +-------------+-------------+--------------+-------------+
+             *
+             */
+            if (*bhb && !(*bhb)->b_uptodate) {
+                uptodate = 0;
+                bhreq[bhrequest++] = *bhb;
+            }
+
+            /* Uptodate 'bhb' and point next bufferlist. If 'bhb' points
+             * to end of 'buflist' and then make 'bhb' points to header 
+             * of 'buflist' */
+            if (++bhb == &buflist[NBUF])
+                bhb = buflist;
+
+            /* If the block we have on hand is uptodate, go ahead 
+               and complete processing. */
+            if (uptodate)
+                break;
+            if (bhb == bhe)
+                break;
         }
+
+        /* Now request them all */
+        if (bhrequest)
+            ll_rw_block(READ, bhrequest, bhreq);
+
+        do { /* Finish off all I/O that has actually completed */
+            if (*bhe) {
+                wait_on_buffer(*bhe);
+                if (!(*bhe)->b_uptodate) {    /* read error? */
+                    brelse(*bhe);
+                    if (++bhe == &buflist[NBUF])
+                        bhe = buflist;
+                    left = 0;
+                    break;
+                }
+            }
+            /*
+             * The 'left' indicate number for reading. If number is small
+             * then "BLOCK_SIZE - offset", 'chars' is equal 'left'
+             *
+             *
+             * | <---------- BLOCK SIZE ------------> |
+             * 0---------------+-------------------+--1K
+             * |               |                   |  |
+             * |               |                   |  |
+             * |               |                   |  |
+             * +---------------+-------------------+--+
+             *                 A <---- left -----> |
+             *                 | <---- chars ----> |
+             *   offset -------o
+             *
+             * (1) chars = left
+             *
+             *
+             * If number for reading is big than remain on a BLOCK_SIZE.
+             * and the 'chars' is equal remain number.
+             *
+             * | <---------- BLOCK SIZE ------------> |
+             * 0---------------+----------------------1K
+             * |               |                      |
+             * |               |                      |
+             * |               |                      |
+             * +---------------+----------------------+
+             *                 A <------------- left ----------> |
+             *                 | <------ chars -----> |
+             *   offset -------o
+             *
+             * (1) chars = BLOCK_SIZE - offset
+             *
+             */
+            if (left < BLOCK_SIZE - offset)
+                chars = left;
+            else
+                chars = BLOCK_SIZE - offset;
+            /* update argument for next reading */
+            filp->f_pos += chars;
+            left -= chars;
+            read += chars;
+            if (*bhe) { /* Copy data from buffer to userland */
+                memcpy_tofs(buf, offset + (*bhe)->b_data, chars);
+                brelse(*bhe);
+                buf += chars;
+            } else {
+                while (chars-- > 0)
+                    put_fs_byte(0, buf++);
+            }
+            offset = 0;
+            /* Uptodate 'bhe' and verify whether 'bhe' points to end of 
+             * 'buflist'. If it is done and makes 'bhe' points to start
+             * of 'buflist' */
+            if (++bhe == &buflist[NBUF])
+                bhe = buflist;
+        } while (left > 0 && bhe != bhb && (!*bhe || !(*bhe)->b_lock));
     } while (left > 0);
 
+    /* Release the read-ahead blocks */
+    while (bhe != bhb) {
+        brelse(*bhe);
+        if (++bhe == &buflist[NBUF])
+            bhe = buflist;
+    }
+    if (!read)
+        return -EIO;
+    filp->f_reada = 1;
+    if (IS_RDONLY(inode))
+        inode->i_atime = CURRENT_TIME;
+    return read;
 }
 #endif
 

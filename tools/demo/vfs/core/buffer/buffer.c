@@ -718,6 +718,7 @@ asmlinkage int sys_vfs_buffer(int fd)
     struct file *filp;
     struct inode *inode;
     struct buffer_head *bh = NULL;
+    unsigned short *p __unused;
 
     filp = current->filp[fd];
     if (!filp) {
@@ -743,7 +744,10 @@ asmlinkage int sys_vfs_buffer(int fd)
 #endif
     }
 #ifdef CONFIG_DEBUG_BUFFER_BREAD
-    bh = breads(inode->i_dev, inode->i_ino, BLOCK_SIZE);
+#ifdef CONFIG_MINIX_FS
+    p = inode->u.minix_i.i_data + 0;
+#endif
+    bh = breads(inode->i_dev, *p, BLOCK_SIZE);
     if (bh) {
         char *data;
         int i;
