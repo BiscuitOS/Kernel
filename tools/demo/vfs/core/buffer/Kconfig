@@ -21,6 +21,19 @@ config DEBUG_BUFFER_GET
 	help
 	  Obtain a special block into buffer.
 
+config DEBUG_BUFFER_BRELSE
+	bool "brelse: release a buffer"
+	select DEBUG_BUFFER_INIT
+	help
+	  Relse a buffer.
+
+config DEBUG_BUFFER_BREAD
+	bool "bread: read a special block into buffer"
+	select DEBUG_BUFFER_BRELSE
+	select DEBUG_BUFFER_GET
+	help
+	  Read a special block into buffer.
+
 endif
 
 endmenu

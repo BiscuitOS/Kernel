@@ -14,6 +14,7 @@
 #include <linux/errno.h>
 #include <linux/sched.h>
 #include <linux/string.h>
+#include <linux/locks.h>
 
 #include <demo/debug.h>
 
@@ -211,6 +212,11 @@ static struct buffer_head *get_hash_tables(dev_t dev, int block, int size)
             return NULL;
         }
         bh->b_count++;
+        wait_on_buffer(bh);
+        if (bh->b_dev == dev && bh->b_blocknr == block &&
+                bh->b_size == size)
+            return bh;
+        bh->b_count--;
     }
 }
 
@@ -332,6 +338,27 @@ static inline void insert_into_queues(struct buffer_head *bh)
 }
 
 /*
+ * put_last_free()
+ *  Remove buffer_head from free list and then insert it into tail of
+ *  free list.
+ */
+static inline void put_last_free(struct buffer_head *bh)
+{
+    if (!bh)
+        return;
+    if (bh == free_list) {
+        free_list = bh->b_next_free;
+        return;
+    }
+    remove_from_free_list(bh);
+    /* Add to back of free list */
+    bh->b_next_free = free_list;
+    bh->b_prev_free = free_list->b_prev_free;
+    free_list->b_prev_free->b_next_free = bh;
+    free_list->b_prev_free = bh;
+}
+
+/*
  * Ok, this is getblk, and it isn't very clear, again to hinder
  * race-conditions. Most of the code is seldom used, (ie repeating),
  * so it should be much more efficient than it looks.
@@ -351,7 +378,9 @@ static struct buffer_head *getblks(dev_t dev, int block, int size)
 repeat:
     bh = get_hash_tables(dev, block, size);
     if (bh) {
-        panic("I don't care now.\n");
+        if (bh->b_uptodate && !bh->b_dirt)
+            put_last_free(bh);
+        return bh;
     }
     grow_size -= size;
     if (nr_free_pages > min_free_pages && grow_size <= 0) {
@@ -614,6 +643,48 @@ static int grow_buffers(int pri, int size)
     return 1;
 }
 
+/*
+ * brelse()
+ *  Release special buffer_head refreence. this function will not relase
+ *  a buffer but only decrease reference.
+ */
+static void brelses(struct buffer_head *bh)
+{
+    if (!bh)
+        return;
+    wait_on_buffer(bh);
+    if (bh->b_count) {
+        if (--bh->b_count)
+            return;
+        wake_up(&buffer_wait);
+        return;
+    }
+    printk("VFS: brelse: Trying to free free buffer\n");
+}
+
+/*
+ * bread() reads a specified block and returns the buffer that contains
+ * it. It returns NULL if the block was unreadable.
+ */
+static __unused struct buffer_head *breads(dev_t dev, int block, int size)
+{
+    struct buffer_head *bh;
+
+    if (!(bh = getblks(dev, block, size))) {
+        printk("VFS: bread: Read error on device %d/%d\n",
+                 MAJOR(dev), MINOR(dev));
+        return NULL;
+    }
+    if (bh->b_uptodate)
+        return bh;
+    ll_rw_block(READ, 1, &bh);
+    wait_on_buffer(bh);
+    if (bh->b_uptodate)
+        return bh;
+    brelses(bh);
+    return NULL;
+}
+
 #ifdef CONFIG_DEBUG_BUFFER_INIT
 /*
  * This initializes the initial buffer free list. nr_buffers is set
@@ -646,6 +717,7 @@ asmlinkage int sys_vfs_buffer(int fd)
 {
     struct file *filp;
     struct inode *inode;
+    struct buffer_head *bh = NULL;
 
     filp = current->filp[fd];
     if (!filp) {
@@ -660,7 +732,28 @@ asmlinkage int sys_vfs_buffer(int fd)
     inode->i_count++;
 
 #ifdef CONFIG_DEBUG_BUFFER_GET
-    getblks(inode->i_dev, 0, BLOCK_SIZE);
+    bh = getblks(inode->i_dev, 0, BLOCK_SIZE);
+#endif
+    if (bh) {
+        printk("Obtain 0-->block: %#08x\n", (unsigned int)bh);
+#ifdef CONFIG_DEBUG_BUFFER_BRELSE
+        brelses(bh);
+#else
+        brelse(bh);
+#endif
+    }
+#ifdef CONFIG_DEBUG_BUFFER_BREAD
+    bh = breads(inode->i_dev, inode->i_ino, BLOCK_SIZE);
+    if (bh) {
+        char *data;
+        int i;
+
+        data = (char *)bh->b_data;
+        for (i = 0; i < 100; i++)
+            printk("%c ", data[i]);
+
+        brelses(bh);
+    }
 #endif
 
     iput(inode);

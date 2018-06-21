@@ -326,18 +326,18 @@ static inline void put_first_free(struct buffer_head * bh)
 
 static inline void put_last_free(struct buffer_head * bh)
 {
-	if (!bh)
-		return;
-	if (bh == free_list) {
-		free_list = bh->b_next_free;
-		return;
-	}
-	remove_from_free_list(bh);
-/* add to back of free list */
-	bh->b_next_free = free_list;
-	bh->b_prev_free = free_list->b_prev_free;
-	free_list->b_prev_free->b_next_free = bh;
-	free_list->b_prev_free = bh;
+    if (!bh)
+        return;
+    if (bh == free_list) {
+        free_list = bh->b_next_free;
+        return;
+    }
+    remove_from_free_list(bh);
+    /* add to back of free list */
+    bh->b_next_free = free_list;
+    bh->b_prev_free = free_list->b_prev_free;
+    free_list->b_prev_free->b_next_free = bh;
+    free_list->b_prev_free = bh;
 }
 
 static inline void insert_into_queues(struct buffer_head * bh)
@@ -525,16 +525,16 @@ repeat:
 
 void brelse(struct buffer_head * buf)
 {
-	if (!buf)
-		return;
-	wait_on_buffer(buf);
-	if (buf->b_count) {
-		if (--buf->b_count)
-			return;
-		wake_up(&buffer_wait);
-		return;
-	}
-	printk("VFS: brelse: Trying to free free buffer\n");
+    if (!buf)
+        return;
+    wait_on_buffer(buf);
+    if (buf->b_count) {
+        if (--buf->b_count)
+            return;
+        wake_up(&buffer_wait);
+        return;
+    }
+    printk("VFS: brelse: Trying to free free buffer\n");
 }
 
 /*
@@ -543,21 +543,21 @@ void brelse(struct buffer_head * buf)
  */
 struct buffer_head * bread(dev_t dev, int block, int size)
 {
-	struct buffer_head * bh;
+    struct buffer_head * bh;
 
-	if (!(bh = getblk(dev, block, size))) {
-		printk("VFS: bread: READ error on device %d/%d\n",
-						MAJOR(dev), MINOR(dev));
-		return NULL;
-	}
-	if (bh->b_uptodate)
-		return bh;
-	ll_rw_block(READ, 1, &bh);
-	wait_on_buffer(bh);
-	if (bh->b_uptodate)
-		return bh;
-	brelse(bh);
-	return NULL;
+    if (!(bh = getblk(dev, block, size))) {
+        printk("VFS: bread: READ error on device %d/%d\n",
+                    MAJOR(dev), MINOR(dev));
+        return NULL;
+    }
+    if (bh->b_uptodate)
+        return bh;
+    ll_rw_block(READ, 1, &bh);
+    wait_on_buffer(bh);
+    if (bh->b_uptodate)
+        return bh;
+    brelse(bh);
+    return NULL;
 }
 
 /*
