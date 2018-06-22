@@ -187,63 +187,63 @@ static int minix_file_read(struct inode * inode, struct file * filp, char * buf,
 
 static int minix_file_write(struct inode * inode, struct file * filp, char * buf, int count)
 {
-	off_t pos;
-	int written,c;
-	struct buffer_head * bh;
-	char * p;
+    off_t pos;
+    int written, c;
+    struct buffer_head * bh;
+    char * p;
 
-	if (!inode) {
-		printk("minix_file_write: inode = NULL\n");
-		return -EINVAL;
-	}
-	if (!S_ISREG(inode->i_mode)) {
-		printk("minix_file_write: mode = %07o\n",inode->i_mode);
-		return -EINVAL;
-	}
-/*
- * ok, append may not work when many processes are writing at the same time
- * but so what. That way leads to madness anyway.
- */
-	if (filp->f_flags & O_APPEND)
-		pos = inode->i_size;
-	else
-		pos = filp->f_pos;
-	written = 0;
-	while (written<count) {
-		bh = minix_getblk(inode,pos/BLOCK_SIZE,1);
-		if (!bh) {
-			if (!written)
-				written = -ENOSPC;
-			break;
-		}
-		c = BLOCK_SIZE - (pos % BLOCK_SIZE);
-		if (c > count-written)
-			c = count-written;
-		if (c != BLOCK_SIZE && !bh->b_uptodate) {
-			ll_rw_block(READ, 1, &bh);
-			wait_on_buffer(bh);
-			if (!bh->b_uptodate) {
-				brelse(bh);
-				if (!written)
-					written = -EIO;
-				break;
-			}
-		}
-		p = (pos % BLOCK_SIZE) + bh->b_data;
-		pos += c;
-		if (pos > inode->i_size) {
-			inode->i_size = pos;
-			inode->i_dirt = 1;
-		}
-		written += c;
-		memcpy_fromfs(p,buf,c);
-		buf += c;
-		bh->b_uptodate = 1;
-		bh->b_dirt = 1;
-		brelse(bh);
-	}
-	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-	filp->f_pos = pos;
-	inode->i_dirt = 1;
-	return written;
+    if (!inode) {
+        printk("minix_file_write: inode = NULL\n");
+        return -EINVAL;
+    }
+    if (!S_ISREG(inode->i_mode)) {
+        printk("minix_file_write: mode = %07o\n", inode->i_mode);
+        return -EINVAL;
+    }
+    /*
+     * ok, append may not work when many processes are writing at the 
+     * same time but so what. That way leads to madness anyway.
+     */
+    if (filp->f_flags & O_APPEND)
+        pos = inode->i_size;
+    else
+        pos = filp->f_pos;
+    written = 0;
+    while (written < count) {
+        bh = minix_getblk(inode,pos/BLOCK_SIZE,1);
+        if (!bh) {
+            if (!written)
+                written = -ENOSPC;
+            break;
+        }
+        c = BLOCK_SIZE - (pos % BLOCK_SIZE);
+        if (c > count-written)
+            c = count-written;
+        if (c != BLOCK_SIZE && !bh->b_uptodate) {
+            ll_rw_block(READ, 1, &bh);
+            wait_on_buffer(bh);
+            if (!bh->b_uptodate) {
+                brelse(bh);
+                if (!written)
+                    written = -EIO;
+                break;
+            }
+        }
+        p = (pos % BLOCK_SIZE) + bh->b_data;
+        pos += c;
+        if (pos > inode->i_size) {
+            inode->i_size = pos;
+            inode->i_dirt = 1;
+        }
+        written += c;
+        memcpy_fromfs(p,buf,c);
+        buf += c;
+        bh->b_uptodate = 1;
+        bh->b_dirt = 1;
+        brelse(bh);
+    }
+    inode->i_mtime = inode->i_ctime = CURRENT_TIME;
+    filp->f_pos = pos;
+    inode->i_dirt = 1;
+    return written;
 }

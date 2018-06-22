@@ -20,6 +20,9 @@ source tools/demo/posix/open/Kconfig
 # read
 source tools/demo/posix/read/Kconfig
 
+# write
+source tools/demo/posix/write/Kconfig
+
 endif
 
 endmenu

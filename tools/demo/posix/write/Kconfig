@@ -1,0 +1,26 @@
+#
+# POSIX: write
+#
+
+menu "write       Write data to a file/directory/socket/pipe etc"
+
+config DEBUG_POSIX_WRITE
+	bool "Write(): Write data to a file/directory/socket/pipe etc"
+	help
+	  Debug Write system Call Mechanism on X86 Architecture.
+
+if DEBUG_POSIX_WRITE
+
+config DEBUG_WRITE_ORIG
+	bool "Original write(): write date into file"
+	help
+	  Debug original write().
+
+config DEBUG_WRITE_ROOTFS
+	bool "write(): write on speical rootfs"
+	help
+	  Write on special rootfs.
+
+endif
+
+endmenu
