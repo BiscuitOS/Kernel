@@ -71,8 +71,8 @@ struct minix_super_block {
 };
 
 struct minix_dir_entry {
-	unsigned short inode;
-	char name[0];
+    unsigned short inode;
+    char name[0];
 };
 
 extern int minix_lookup(struct inode * dir,const char * name, int len,

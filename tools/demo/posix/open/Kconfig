@@ -11,20 +11,39 @@ config DEBUG_POSIX_OPEN
 
 if DEBUG_POSIX_OPEN
 
+config DEBUG_OPEN_ORIG
+	bool "open(): original posix open()"
+
 config DEBUG_OPEN_FILE
-	bool "Main routine for opening an regular file"
+	bool "open(): To open a regular file"
 	help
 	  Debug main routine for opening regular file.
 
-config DEBUG_PARSE_FILE_STRUCT
-	bool "Parse file descriptor: struct file."
+config DEBUG_CREAT_FILE
+	bool "open(): create a non-exist file"
+	select DEBUG_OPEN_NAMEI
+	help
+	  Create a non-exist file on sys_open.
+
+config DEBUG_CREAT_ROOTFS
+	bool "open(): create a file on special rootfs"
+	select DEBUG_CREAT_FILE
+
+config DEBUG_FILE_DESCRIBE
+	bool "open(): parse structure -- file descriptor"
 	help
 	  Parse file descriptor.
 
 config DEBUG_OPEN_NAMEI
-	bool "Parse open a inode by vfs"
+	bool "open_namei(): open a inode on special rootfs"
 	help
 	  Parse open routinue with special Filesystem.
+
+config DEBUG_LOOKUP_ROOTFS
+	bool "open_dir(): lookup special inode of directory."
+	select DEBUG_OPEN_NAMEI
+	help
+	  Lookup a special inode of directory on rootfs.
 
 endif
 

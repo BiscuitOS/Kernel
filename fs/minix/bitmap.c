@@ -181,48 +181,48 @@ void minix_free_inode(struct inode * inode)
 
 struct inode * minix_new_inode(const struct inode * dir)
 {
-	struct super_block * sb;
-	struct inode * inode;
-	struct buffer_head * bh;
-	int i,j;
+    struct super_block * sb;
+    struct inode * inode;
+    struct buffer_head * bh;
+    int i, j;
 
-	if (!dir || !(inode = get_empty_inode()))
-		return NULL;
-	sb = dir->i_sb;
-	inode->i_sb = sb;
-	inode->i_flags = inode->i_sb->s_flags;
-	j = 8192;
-	for (i=0 ; i<8 ; i++)
-		if ((bh = inode->i_sb->u.minix_sb.s_imap[i]) != NULL)
-			if ((j=find_first_zero(bh->b_data))<8192)
-				break;
-	if (!bh || j >= 8192) {
-		iput(inode);
-		return NULL;
-	}
-	if (set_bit(j,bh->b_data)) {	/* shouldn't happen */
-		printk("new_inode: bit already set");
-		iput(inode);
-		return NULL;
-	}
-	bh->b_dirt = 1;
-	j += i*8192;
-	if (!j || j >= inode->i_sb->u.minix_sb.s_ninodes) {
-		iput(inode);
-		return NULL;
-	}
-	inode->i_count = 1;
-	inode->i_nlink = 1;
-	inode->i_dev = sb->s_dev;
-	inode->i_uid = current->euid;
-	inode->i_gid = (dir->i_mode & S_ISGID) ? dir->i_gid : current->egid;
-	inode->i_dirt = 1;
-	inode->i_ino = j;
-	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME;
-	inode->i_op = NULL;
-	inode->i_blocks = inode->i_blksize = 0;
-	insert_inode_hash(inode);
-	return inode;
+    if (!dir || !(inode = get_empty_inode()))
+        return NULL;
+    sb = dir->i_sb;
+    inode->i_sb = sb;
+    inode->i_flags = inode->i_sb->s_flags;
+    j = 8192;
+    for (i = 0; i < 8; i++)
+        if ((bh = inode->i_sb->u.minix_sb.s_imap[i]) != NULL)
+            if ((j = find_first_zero(bh->b_data)) < 8192)
+                break;
+    if (!bh || j >= 8192) {
+        iput(inode);
+        return NULL;
+    }
+    if (set_bit(j, bh->b_data)) {	/* shouldn't happen */
+        printk("new_inode: bit already set");
+        iput(inode);
+        return NULL;
+    }
+    bh->b_dirt = 1;
+    j += i * 8192;
+    if (!j || j >= inode->i_sb->u.minix_sb.s_ninodes) {
+        iput(inode);
+        return NULL;
+    }
+    inode->i_count = 1;
+    inode->i_nlink = 1;
+    inode->i_dev = sb->s_dev;
+    inode->i_uid = current->euid;
+    inode->i_gid = (dir->i_mode & S_ISGID) ? dir->i_gid : current->egid;
+    inode->i_dirt = 1;
+    inode->i_ino = j;
+    inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME;
+    inode->i_op = NULL;
+    inode->i_blocks = inode->i_blksize = 0;
+    insert_inode_hash(inode);
+    return inode;
 }
 
 unsigned long minix_count_free_inodes(struct super_block *sb)

@@ -26,14 +26,20 @@ static inline _syscall3(int, write, unsigned int, fd, char *, buf,
                             unsigned int, count);
 #endif
 
-static int write_rootfs(struct inode *inode, struct file *filp, 
-                 char *buf, int count)
+#ifdef CONFIG_MINIX_FS
+static buffer_head *minix_getblks(struct inode *inode, int block, int create)
 {
-    off_t pos;
-    int written, c;
     struct buffer_head *bh;
-    char *p;
 
+    if (block < 0) {
+        printk("minix_getblk: block < 0\n");
+        return NULL;
+    }
+}
+
+static int minix_file_write(struct inode *inode, struct file *filp,
+          char *buf, int count)
+{
     if (!inode) {
         printk("minix_file_write: inode = NULL\n");
         return -EINVAL;
@@ -42,7 +48,32 @@ static int write_rootfs(struct inode *inode, struct file *filp,
         printk("minix_file_write: mode = %07o\n", inode->i_mode);
         return -EINVAL;
     }
-    return 0;
+    /*
+     * OK, append may not work when many processes are writing at the
+     * same time but so what. That way leads to madness anyway.
+     */
+    if (filp->f_flags & 0_APPEND)
+        pos = inode->_i_size;
+    else
+        pos = file->f_pos;
+    written = 0;
+    while (written < count) {
+        bh = minix_getblks(inode, pos / BLOCK_SIZE, 1);
+        if (!bh) {
+            if (!written)
+                written = -ENOSPC;
+            break;
+        }
+    }
+}
+#endif
+
+static int write_rootfs(struct inode *inode, struct file *filp, 
+                 char *buf, int count)
+{
+#ifdef CONFIG_MINIX_FS
+    minix_file_write(inode, filp, buf, count);
+#endif
 }
 
 asmlinkage int sys_demo_write(unsigned int fd, char *buf, 

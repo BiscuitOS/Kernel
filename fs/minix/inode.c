@@ -385,17 +385,17 @@ struct buffer_head * minix_getblk(struct inode * inode, int block, int create)
 
 struct buffer_head * minix_bread(struct inode * inode, int block, int create)
 {
-	struct buffer_head * bh;
+    struct buffer_head * bh;
 
-	bh = minix_getblk(inode,block,create);
-	if (!bh || bh->b_uptodate)
-		return bh;
-	ll_rw_block(READ, 1, &bh);
-	wait_on_buffer(bh);
-	if (bh->b_uptodate)
-		return bh;
-	brelse(bh);
-	return NULL;
+    bh = minix_getblk(inode, block, create);
+    if (!bh || bh->b_uptodate)
+        return bh;
+    ll_rw_block(READ, 1, &bh);
+    wait_on_buffer(bh);
+    if (bh->b_uptodate)
+        return bh;
+    brelse(bh);
+    return NULL;
 }
 
 void minix_read_inode(struct inode * inode)

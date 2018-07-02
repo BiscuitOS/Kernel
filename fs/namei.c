@@ -73,17 +73,17 @@ void putname(char * name)
  */
 int permission(struct inode * inode,int mask)
 {
-	int mode = inode->i_mode;
+    int mode = inode->i_mode;
 
-	if (inode->i_op && inode->i_op->permission)
-		return inode->i_op->permission(inode, mask);
-	else if (current->euid == inode->i_uid)
-		mode >>= 6;
-	else if (in_group_p(inode->i_gid))
-		mode >>= 3;
-	if (((mode & mask & 0007) == mask) || suser())
-		return 1;
-	return 0;
+    if (inode->i_op && inode->i_op->permission)
+        return inode->i_op->permission(inode, mask);
+    else if (current->euid == inode->i_uid)
+        mode >>= 6;
+    else if (in_group_p(inode->i_gid))
+        mode >>= 3;
+    if (((mode & mask & 0007) == mask) || suser())
+        return 1;
+    return 0;
 }
 
 /*

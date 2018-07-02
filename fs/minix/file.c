@@ -210,7 +210,7 @@ static int minix_file_write(struct inode * inode, struct file * filp, char * buf
         pos = filp->f_pos;
     written = 0;
     while (written < count) {
-        bh = minix_getblk(inode,pos/BLOCK_SIZE,1);
+        bh = minix_getblk(inode, pos / BLOCK_SIZE, 1);
         if (!bh) {
             if (!written)
                 written = -ENOSPC;
