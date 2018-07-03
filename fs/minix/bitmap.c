@@ -99,39 +99,39 @@ void minix_free_block(struct super_block * sb, int block)
 
 int minix_new_block(struct super_block * sb)
 {
-	struct buffer_head * bh;
-	int i,j;
+    struct buffer_head * bh;
+    int i, j;
 
-	if (!sb) {
-		printk("trying to get new block from nonexistent device\n");
-		return 0;
-	}
+    if (!sb) {
+        printk("trying to get new block from nonexistent device\n");
+        return 0;
+    }
 repeat:
-	j = 8192;
-	for (i=0 ; i<8 ; i++)
-		if ((bh=sb->u.minix_sb.s_zmap[i]) != NULL)
-			if ((j=find_first_zero(bh->b_data))<8192)
-				break;
-	if (i>=8 || !bh || j>=8192)
-		return 0;
-	if (set_bit(j,bh->b_data)) {
-		printk("new_block: bit already set");
-		goto repeat;
-	}
-	bh->b_dirt = 1;
-	j += i*8192 + sb->u.minix_sb.s_firstdatazone-1;
-	if (j < sb->u.minix_sb.s_firstdatazone ||
-	    j >= sb->u.minix_sb.s_nzones)
-		return 0;
-	if (!(bh = getblk(sb->s_dev,j,BLOCK_SIZE))) {
-		printk("new_block: cannot get block");
-		return 0;
-	}
-	clear_block(bh->b_data);
-	bh->b_uptodate = 1;
-	bh->b_dirt = 1;
-	brelse(bh);
-	return j;
+    j = 8192;
+    for (i = 0; i < 8; i++)
+        if ((bh = sb->u.minix_sb.s_zmap[i]) != NULL)
+            if ((j = find_first_zero(bh->b_data)) < 8192)
+                break;
+    if (i >= 8 || !bh || j >= 8192)
+        return 0;
+    if (set_bit(j, bh->b_data)) {
+        printk("new_block: bit already set");
+        goto repeat;
+    }
+    bh->b_dirt = 1;
+    j += i * 8192 + sb->u.minix_sb.s_firstdatazone - 1;
+    if (j < sb->u.minix_sb.s_firstdatazone ||
+                     j >= sb->u.minix_sb.s_nzones)
+        return 0;
+    if (!(bh = getblk(sb->s_dev, j, BLOCK_SIZE))) {
+        printk("new_block: cannot get block");
+        return 0;
+    }
+    clear_block(bh->b_data);
+    bh->b_uptodate = 1;
+    bh->b_dirt = 1;
+    brelse(bh);
+    return j;
 }
 
 unsigned long minix_count_free_blocks(struct super_block *sb)

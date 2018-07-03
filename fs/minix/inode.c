@@ -275,7 +275,8 @@ int minix_bmap(struct inode * inode,int block)
 	return block_bmap(bread(inode->i_dev,i,BLOCK_SIZE),block & 511);
 }
 
-static struct buffer_head * inode_getblk(struct inode * inode, int nr, int create)
+static struct buffer_head * inode_getblk(struct inode * inode, int nr, 
+                                     int create)
 {
     int tmp;
     unsigned short *p;

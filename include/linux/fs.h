@@ -237,30 +237,30 @@ struct file_lock {
 #include <linux/sysv_fs_sb.h>
 
 struct super_block {
-	dev_t s_dev;
-	unsigned long s_blocksize;
-	unsigned char s_blocksize_bits;
-	unsigned char s_lock;
-	unsigned char s_rd_only;
-	unsigned char s_dirt;
-	struct super_operations *s_op;
-	unsigned long s_flags;
-	unsigned long s_magic;
-	unsigned long s_time;
-	struct inode * s_covered;
-	struct inode * s_mounted;
-	struct wait_queue * s_wait;
-	union {
-		struct minix_sb_info minix_sb;
-		struct ext_sb_info ext_sb;
-		struct ext2_sb_info ext2_sb;
-		struct hpfs_sb_info hpfs_sb;
-		struct msdos_sb_info msdos_sb;
-		struct isofs_sb_info isofs_sb;
-		struct nfs_sb_info nfs_sb;
-		struct xiafs_sb_info xiafs_sb;
-		struct sysv_sb_info sysv_sb;
-	} u;
+    dev_t s_dev;
+    unsigned long s_blocksize;
+    unsigned char s_blocksize_bits;
+    unsigned char s_lock;
+    unsigned char s_rd_only;
+    unsigned char s_dirt;
+    struct super_operations *s_op;
+    unsigned long s_flags;
+    unsigned long s_magic;
+    unsigned long s_time;
+    struct inode * s_covered;
+    struct inode * s_mounted;
+    struct wait_queue * s_wait;
+    union {
+        struct minix_sb_info minix_sb;
+        struct ext_sb_info ext_sb;
+        struct ext2_sb_info ext2_sb;
+        struct hpfs_sb_info hpfs_sb;
+        struct msdos_sb_info msdos_sb;
+        struct isofs_sb_info isofs_sb;
+        struct nfs_sb_info nfs_sb;
+        struct xiafs_sb_info xiafs_sb;
+        struct sysv_sb_info sysv_sb;
+    } u;
 };
 
 struct file_operations {

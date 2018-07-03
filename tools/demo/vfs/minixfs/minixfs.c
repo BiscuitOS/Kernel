@@ -1,38 +1,27 @@
 /*
- * MINIX file system
+ * MINIX Filesystem.
  *
- * (C) 2018.2 BiscuitOS <buddy.zhang@aliyun.com>
- * 
+ * (C) 2018.07.03 BiscuitOS <buddy.zhang@aliyun.com>
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
 #include <linux/kernel.h>
+#include <linux/unistd.h>
+#include <linux/types.h>
+#include <linux/fcntl.h>
 #include <linux/fs.h>
-#include <linux/mm.h>
-#include <linux/hdreg.h>
+#include <linux/errno.h>
+#include <linux/sched.h>
+#include <linux/stat.h>
+#include <linux/locks.h>
+#include <linux/minix_fs.h>
 
-#include <test/debug.h>
+#include <demo/debug.h>
 
 /*
- * MINIXFS physical layout
- *
- * ------------------------------------------------------------------
- * | Boot | Super | Inode | Zone | Data                             |
- * ------------------------------------------------------------------
- *
- *   Boot:  Boot block
- *          Reserved for partition boot code. 1 block
- *   Super: Super block
- *          Infomation about the filesystem. 1 block
- *   Inode: Inode Map
- *          Keep track of used/unused inodes. #Inodes/BLOCK_SIZE
- *   Zone:  Zone Map
- *          Keep track of used/unused inodes. #Data Zones/BLOCK_SIZE
- *   Data:  Data Zone
- *          File/Directory contents.
- *         
- * Definitions
+ * Basic Definitions on MINIXFS
  *
  *   inode: Stores all the information about a file except its name.
  *   block: A unit of size which is determined by the medium or programmer.
@@ -44,19 +33,21 @@
  *          the type and size of the file system.
  */
 
-/* MINIXFS ROOT DEV: 1st hard-disk */
-#define ROOT_DEV       0x300
-/* MINIXFS SUPER DEV: 1st partition on disk */
-#define SUPER_DEV      0x301
-/* BOOT block: first block on MINIXFS */
-#define BOOT_BLOCK     0x00
-/* SUPER block: second block on MINIXFS */
-#define SUPER_BLOCK    0x01
-/* IMAP block: Inode Map block */
-#define IMAP_BLOCK     0x02
+static inline _syscall3(int, open, const char *, file, int, flag, int, mode);
+static inline _syscall1(int, close, int, fd);
+
+/* Boot block */
+#define BOOT_BLOCK          0x00
+/* Super block */
+#define SUPER_BLOCK         0x01
+
+/* Bit number for per BLOCK */
+#define BIT_PER_BLOCK       (1024 * 8)
 
 /*
- * Obtain boot block of MINIXFS
+ * Boot block
+ *  Boot block is first part on MINIX Filesystem. It consists of 
+ *  boot code, Reserved for system. The Boot block contain 1 block.
  *
  *   Assume/Indicate MINIXFS as first hard disk. 
  *   Schem of Partition e.g.
@@ -94,58 +85,34 @@
  *   | (Offset 0xC)   |                                                  |
  *   .-------------------------------------------------------------------.
  */
-static void obtain_boot_block_minixfs(void)
+static __unused int minixfs_boot_block(struct super_block *sb)
 {
     struct buffer_head *bh;
-    struct partition *partition[4], *p;
+    char *buf;
+    int i;
 
-    bh = bread(ROOT_DEV, BOOT_BLOCK);
-    if (!bh) {
-        printk("MINIXFS: can't obtain boot block.\n");
-        return;
-    }
-    /* varify whether block is boot block */
-    if (bh->b_data[0x1FE] != 0x55 || (unsigned char)
-        bh->b_data[0x1FF] != 0xAA) {
-        printk("MINIXFS: Unable to obtain correct Boot block.\n");
-        brelse(bh);
-        return;
+    /* Read Boot block from Disk */
+    if (!(bh = bread(sb->s_dev, BOOT_BLOCK, BLOCK_SIZE))) {
+        printk(KERN_ERR "Unable to read BOOT block.\n");
+        return -EINVAL;
     }
 
-    /* Obtain Partition Table 0. */
-    partition[0] = (struct partition *)&bh->b_data[0x1BE];
-    /* Obtain Partition Table 1. */
-    partition[1] = (struct partition *)&bh->b_data[0x1CE];
-    /* Obtain Partition Table 2. */
-    partition[2] = (struct partition *)&bh->b_data[0x1DE];
-    /* Obtain Partition Table 3. */
-    partition[3] = (struct partition *)&bh->b_data[0x1EE];
-    
-    p = partition[0];
-    printk("===== Partition Table =====\n");
-    if (p->boot_ind)
-        printk("Partition is Bootable\n");
-    else
-        printk("Partition is Un-Bootable\n");
-    printk("Partition type:    %#x\n", p->sys_ind);
-    printk("Original Head:     %#x\n", p->head);
-    printk("Original Cylinder: %#x\n",
-          ((p->sector & 0xC0) << 0x2) + p->cyl);
-    printk("Original Sector:   %#x\n", p->sector & 0x3F);
-    printk("End Head:          %#x\n", p->end_head);
-    printk("End Cylinder:      %#x\n",
-          ((p->end_sector & 0xC0) << 0x2) + p->end_cyl );
-    printk("End Sector:        %#x\n", (p->end_sector) & 0x3F);
-    printk("Used sectors:      %#x\n", p->end_sector);
-    printk("Total sector:      %#x\n", p->nr_sects);
-    printk("==========================\n");    
+    /* Read boot code */
+    buf = (char *)bh->b_data;
+
+    printk("Boot Code:\n");
+    for (i = 510; i < BLOCK_SIZE; i++)
+        printk("%x ", buf[i]);
+    printk("\n");
 
     brelse(bh);
+
+    return 0;
 }
 
 /*
- * Obtain Super block for MINIXFS
- *
+ * Super block
+ * 
  *   The superblock for the minix fs is offset 1024 bytes from the start of
  *   of the disk, this is to leave room for things like LILO and other boot
  *   code. The superblock basically details the size of the the file system.
@@ -156,277 +123,203 @@ static void obtain_boot_block_minixfs(void)
  * Scheme of Super block
  *   Assume Super block is located in 1st partition on HD (that 0x301).
  *
- *   ------------------------------------------------------------------
+ *   +--------+-------------------------------------------------------+
  *   | Offset | Describe                                              |
- *   ------------------------------------------------------------------
- *   | 0x00   | Number of inodes                                      |
- *   | 0x01   |                                                       |
- *   ------------------------------------------------------------------
- *   | 0x02   | Number of data zones                                  |
+ *   +--------+-------------------------------------------------------+
+ *   | 0x00   | s_ninodes: Number of inodes (block)                   |
  *   | 0x03   |                                                       |
- *   ------------------------------------------------------------------
- *   | 0x04   | Space used by inode map (block)                       |
- *   | 0x05   |                                                       |
- *   ------------------------------------------------------------------
- *   | 0x06   | Space used by zone map (block)                        |
+ *   +--------+-------------------------------------------------------+
+ *   | 0x04   | s_nzones: Number of data zones (block)                |
  *   | 0x07   |                                                       |
- *   ------------------------------------------------------------------
- *   | 0x08   | First zone with "file" data                           |
- *   | 0x09   |                                                       |
- *   ------------------------------------------------------------------
- *   | 0x0A   | Size of data zone =                                   |
- *   | 0x0B   |                 (1024 << s_log_zone_size)             |
- *   ------------------------------------------------------------------
- *   | 0x0C   | Maximum file size (bytes)                             |
- *   | 0x0D   |                                                       |
- *   | 0x0E   |                                                       |
+ *   +--------+-------------------------------------------------------+
+ *   | 0x08   | s_imap_blocks: Number of Inode BitMap (block)         |
+ *   | 0x0B   |                                                       |
+ *   +--------+-------------------------------------------------------+
+ *   | 0x0C   | s_zmap_blocks: Number of Zone BitMap (block)          |
  *   | 0x0F   |                                                       |
- *   ------------------------------------------------------------------
- *   | 0x10   | Minix 14/30 ID number                                 |
- *   | 0x11   |                                                       |
- *   ------------------------------------------------------------------
- *   | 0x12   | Mount state, was it cleanly unmount                   |
- *   |        |                                                       |
- *   ------------------------------------------------------------------
+ *   +--------+-------------------------------------------------------+
+ *   | 0x10   | s_firstdatazone: The number of first zone with 'data' |
+ *   | 0x13   |                                                       |
+ *   +--------+-------------------------------------------------------+
+ *   | 0x14   | s_long_zone_size:                                     |
+ *   |   |    |    Size of data zone =                                |
+ *   | 0x17   |                 (1024 << s_log_zone_size)             |
+ *   +--------+-------------------------------------------------------+
+ *   | 0x18   | s_max_size:                                           |
+ *   | 0x19   |   Maximum file size (bytes)                           |
+ *   | 0x1A   |                                                       |
+ *   | 0x1B   |                                                       |
+ *   +--------+-------------------------------------------------------+
+ *   | 0x1C   | s_imap[8]:                                            |
+ *   | 0x1D   |   Points to buffer for Inode Bitmap                   |
+ *   | 0x1E   |                                                       |
+ *   | 0x1F   |                                                       |
+ *   +--------+-------------------------------------------------------+
+ *   | 0x20   | s_zmap[8]:                                            |
+ *   | 0x21   |   Points to buffer for Zone Bitmap                    |
+ *   | 0x22   |                                                       |
+ *   | 0x23   |                                                       |
+ *   +--------+-------------------------------------------------------+
+ *   | 0x24   | s_dirsize:                                            |
+ *   | 0x25   |   Indicate the size of directory                      |
+ *   | 0x26   |                                                       |
+ *   | 0x27   |                                                       |
+ *   +--------+-------------------------------------------------------+
+ *   | 0x28   | s_namelen:                                            |
+ *   | 0x29   |   Indicate the name length on dentry entry            |
+ *   | 0x2A   |                                                       |
+ *   | 0x2B   |                                                       |
+ *   +--------+-------------------------------------------------------+
+ *   | 0x2C   | s_sbh:                                                |
+ *   | 0x2D   |   Point to buffer that contain minix super block      |
+ *   | 0x2E   |                                                       |
+ *   | 0x2F   |                                                       |
+ *   +--------+-------------------------------------------------------+
+ *   | 0x30   | s_ms:                                                 |
+ *   | 0x31   |   Point to 'minix_super_block' structure              |
+ *   | 0x32   |                                                       |
+ *   | 0x33   |                                                       |
+ *   +--------+-------------------------------------------------------+
+ *   | 0x34   | Mount state, was it cleanly unmount                   |
+ *   | 0x35   |                                                       |
+ *   +--------+-------------------------------------------------------+
  */
-static void obtain_superblock_minixfs(void)
+static int minixfs_super_block(struct super_block *sb)
 {
-    struct buffer_head *bh;
-    struct super_block *sb;
+    struct minix_super_block *ms;
+    struct buffer_head *bh = NULL;
+    int imap_blocks;
 
-    /* The superblock is located in 2nd block on MINIXFS */
-    bh = bread(SUPER_DEV, SUPER_BLOCK);
-    if (!bh) {
-        printk("MINIXFS: unable to obtain superblock.\n");
-        return;
+    /* We have two ways to obtain minix fs super block
+     *  1. Read minix fs super block from Disk
+     *  2. Obtain minix fs super block from super block.
+     */
+    ms = sb->u.minix_sb.s_ms;
+    if (!ms) {
+        if (!(bh = bread(sb->s_dev, SUPER_BLOCK, BLOCK_SIZE))) {
+            printk(KERN_ERR "Faild to read super block\n");
+            return -EINVAL;
+        }
+        sb->u.minix_sb.s_ms = ms;
     }
 
-    /* Allocate memory to super block structure. */
-    sb = (struct super_block *)get_free_page();
-    /* Obtain super block structure */
-    *((struct d_super_block *)sb) = *((struct d_super_block *)bh->b_data);
-    brelse(bh);
-    /* Check MINIXFS MAGIC */
-    if (sb->s_magic != SUPER_MINIX_MAGIC &&
-        sb->s_magic != SUPER_MINIX_MAGIC_V1) {
-        printk("MINIXFS: Incorrect MAGIC!\n");
+    /*
+     * s_ninodes:
+     *  It indicates the numbe of inode for minix-fs. It often used to
+     *  calculate the block number for Inode BitMap. Each block contain
+     *  1024 * 8 bits.
+     *
+     *   s_imap_blocks = (s_ninodes + BIT_PER_BLOCK - 1) / BIT_PER_BLOCK;
+     *
+     *  Align with BLOCK_SIZE. 
+     */
+    imap_blocks = (ms->s_ninodes + BIT_PER_BLOCK - 1) / BIT_PER_BLOCK;
+    if (imap_blocks != ms->s_imap_blocks) {
+        panic("Un-Alignment for s_imap_blocks");
+    }
+   
+    if (bh)
         brelse(bh);
-        return;
-    }
-    printk("=============super block==============\n");
-    printk("Ninodes:     %#x\n", sb->s_ninodes);
-    printk("Nzones:      %#x\n", sb->s_nzones);
-    printk("Imap:        %#x\n", sb->s_imap_blocks);
-    printk("Zmap:        %#x\n", sb->s_zmap_blocks);
-    printk("Firstzone:   %#x\n", sb->s_firstdatazone);
-    printk("Zone Size:   %#x\n", sb->s_log_zone_size);
-    printk("MAX Size:    %#x\n", sb->s_max_size);
-    printk("MAGIC:       %#x\n", sb->s_magic);
-    printk("======================================\n");
-    free_page((unsigned long)sb);
-}
-
-/*
- * Inode Map
- *
- *   Inode Bitmap describe the usage of inode which indicates special inode
- *   whether is used. Each bit represent one inode. For one block that 
- *   contains 1024 Byte (8192 bits), A block will describe useage of 8192
- *   inodes. The same as logical block Bitmap, beause the find function will
- *   return 0 when empty inode is be found, the first bit of the first byte
- *   for Inode Bitmap and corresponding inode is not used, and it will be set
- *   when system establish. So, the first Inode Bitmap block only contains
- *   the state of 8191 inodes.
- */
-static void parse_inode_map(void)
-{
-    struct super_block *sb;
-    struct buffer_head *bh;
-    int i, j;
-    char *map;
-
-    /* Obtain supber block */
-    sb = (struct super_block *)get_free_page();
-    bh = bread(SUPER_DEV, SUPER_BLOCK);
-    if (!bh) {
-        printk("MINIXFS: unable to obtain Superblock\n");
-        free_page((unsigned long)sb);
-        return;
-    }
-    *((struct d_super_block *)sb) = *((struct d_super_block *)bh->b_data);
-    brelse(bh);
-
-    /* clear s_imap */
-    for (i = 0; i < I_MAP_SLOTS; i++)
-        sb->s_imap[i] = NULL;
-    
-    /* Obtain Imap from bread */
-    for (i = 0; i < sb->s_imap_blocks; i++)
-        sb->s_imap[i] = bread(SUPER_DEV, IMAP_BLOCK + i);
-
-    /* Dump first inode bit map */
-    map = (char *)sb->s_imap[0]->b_data;
-    /* Dump all inode bit map */
-    printk("===============Inode BitMap==============\n");
-    for (i = 0; i < 10; i++) {
-        for (j = 0; j < 8; j++)
-            printk("%#2x ", (unsigned char)map[i * 10 + j]);
-        printk("\n");
-    }
-    printk("=========================================\n");
-    
-    /* Release buffer */
-    for (i = 0; i < sb->s_imap_blocks; i++)
-        brelse(sb->s_imap[i]);
-    free_page((unsigned long)sb);
-}
-
-/*
- * Zone map (Logical BitMap)
- *
- *   Logical Bitmap use to describe the usage of data block. Except first
- *   bit, a bit represets a data block in turn. Bit 1 of Zone Bitmap represets
- *   1st data block not 1st block. Special bit will be set when special 
- *   data block is used. Because HD will return 0 when find special data
- *   block, MINIXFS doesn't use bit 0, and set bit 0 when establish filesystem.
- */
-static void parse_zone_map(void)
-{
-    struct super_block *sb;
-    struct buffer_head *bh;
-    int i, j, block;
-    char *map;
-
-    /* Obtain super block */
-    bh = bread(SUPER_DEV, SUPER_BLOCK);
-    if (!bh) {
-        printk("MINIXFS: Unable to obtain Superblock.\n");
-        return;
-    }
-    sb = (struct super_block *)get_free_page();
-    *((struct d_super_block *)sb) = *((struct d_super_block *)bh->b_data);
-    brelse(bh);
-
-    /* clear ZoneMap */
-    for (i = 0; i < Z_MAP_SLOTS; i++)
-        sb->s_zmap[i] = NULL;
-
-    block = IMAP_BLOCK + sb->s_imap_blocks;
-    /* Obtain Zmap from bread */
-    for (i = 0; i < sb->s_zmap_blocks; i++)
-        sb->s_zmap[i] = bread(SUPER_DEV, block + i);
-
-    /* Dump 1st Zmap */
-    map = (char *)sb->s_zmap[0]->b_data;
-    printk("======================Zone BitMap====================\n");
-    for (i = 0; i < 10; i++) {
-        for (j = 0; j < 8; j++)
-            printk("%#2x ", (unsigned char)map[i * 10 + j]);
-        printk("\n");
-    }
-    printk("=====================================================\n");
-
-    /* Release buffer */
-    for (i = 0; i < sb->s_zmap_blocks; i++)
-        brelse(sb->s_zmap[i]);
-    free_page((unsigned long)sb);
-}
-
-/*
- * Inode Entry
- *
- *   The inode contains all the important information about a file, except
- *   it name. It contains the file permissions, file type, user, group, size
- *   modification time, number of links, and the location and order of all
- *   the blocks in the file. All values are stored in low byte - high byte 
- *   order. The maximum number of links is 250 (MINIX_LINK_MAX). Notice that
- *   the group number is limited to one byte where <gnu/types.h> defines
- *   it as short.
- *
- *   Now, for the zones. The first seven zone pointers (0-6) are point to
- *   file data. They are two byte numbers which point to a BLOCK on the disk
- *   which contains the file's data. The eighth is a pointer to an indirect
- *   block. This block continues the tradition of the first seven zone 
- *   pointers, and contains 512 (BLOCK_SIZE/2) zone pointers. The ninth zone
- *   pointer in the inode points to a double indirect block. The double
- *   indirect block contains 512 pointers to more indirect blocks, each of
- *   which points to 512 data zones. Each indirect block adds 1k to the file.
- *   It's no big deal, but it;s nice that small files (under 8K) don't have
- *   this overhead. Technically you can make 262M file (7 + 512 + 512 X 512K,
- *   see also s_max_size in the superblock information), but since the Minix
- *   fs uses unsigned shorts for block pointers, it is limited to 64M 
- *   partitions.
- *
- *   To determine the meaning of the mode entry, consult <linux/types.h> which
- *   is included via <sys/types.h>. Below is a list of octal numbers which
- *   can be extracted from the mode entry. This information can also be found
- *   in the stat(2) and chmod(2) man page.
- *
- *   Scheme of Inode
- *
- *   ------------------------------------------------------------------
- *   |  Offset  |  Describe                                           |
- *   ------------------------------------------------------------------
- *   | 0x00     | MODE                                                |
- *   | 0x01     |                                                     |
- *   ------------------------------------------------------------------
- *   | 0x02     | UID                                                 |
- *   | 0x03     |                                                     |
- *   ------------------------------------------------------------------
- *   | 0x04     | SIZE                                                |
- *   | 0x05     |                                                     |
- *   | 0x06     |                                                     |
- *   | 0x07     |                                                     |
- *   ------------------------------------------------------------------
- *   | 0x08     | TIME                                                |
- *   | 0x09     |                                                     |
- *   | 0x0A     |                                                     |
- *   | 0x0B     |                                                     |
- *   ------------------------------------------------------------------
- *   | 0x0C     | GID                                                 |
- *   ------------------------------------------------------------------
- *   | 0x0D     | LINKS                                               |
- *   ------------------------------------------------------------------
- *   | 0x0E     | ZONE 0                                              |
- *   | 0x0F     |                                                     |
- *   ------------------------------------------------------------------
- *   | 0x10     | ZONE 1                                              |
- *   | 0x11     |                                                     |
- *   ------------------------------------------------------------------
- *   | 0x12     | ZONE 2                                              |
- *   | 0x13     |                                                     |
- *   ------------------------------------------------------------------
- *   | 0x14     | ZONE 3                                              |
- *   | 0x15     |                                                     |
- *   ------------------------------------------------------------------
- *   | 0x16     | ZONE 4                                              |
- *   | 0x17     |                                                     |
- *   ------------------------------------------------------------------
- *   | 0x18     | ZONE 5                                              |
- *   | 0x19     |                                                     |
- *   ------------------------------------------------------------------
- *   | 0x1A     | ZONE 6                                              |
- *   | 0x1B     |                                                     |
- *   ------------------------------------------------------------------
- *   | 0x1C     | ZONE 7                                              |
- *   | 0x1D     |                                                     |
- *   ------------------------------------------------------------------
- *   | 0x1E     | ZONE 8                                              |
- *   | 0x1F     |                                                     |
- *   ------------------------------------------------------------------
- * 
- *  More information see inode.c
- */
-
-int debug_vfs_minixfs_userland(void)
-{
-    if (1) {
-        parse_zone_map();
-    } else {
-        parse_zone_map();
-        parse_inode_map();
-        obtain_superblock_minixfs();
-        obtain_boot_block_minixfs();
-    }     
     return 0;
 }
+
+/*
+ * MINIX Filesystem physical layout
+ *
+ *  +------+-------------+-----------+----------+-------------+--------+
+ *  |      |             |           |          |             |        |
+ *  | Boot | Super Block | Inode Map | Zone Map | Inode Table |  Zone  |
+ *  |      |             |           |          |             |        |
+ *  +------+-------------+-----------+----------+-------------+--------+
+ *
+ *  MINIX FS consists of 5 parts. Detail as follow:
+ *
+ *  1) Boot block
+ *     Boot block reserved for partition boot code. Total 1 block.
+ *  2) Super Block
+ *     Super block contains information about the MINIX filesystem.
+ *     Total 1 block.    
+ *  3) Inode Map
+ *     Inode Map is a BitMap that Keeps track of used/unused inodes. Each 
+ *     bit represents a used/unused inode.
+ *  4) Zone Map
+ *     Zone Map is a BitMap that Keeps track of used/unused data zone.
+ *     Each bit represents a used/unsed inode.
+ *  5) Zone
+ *     The 'Zone' consists of a data area that contain Direntory/File
+ *     contents.
+ *    
+ */
+static int minix_layout(struct inode *inode, struct super_block *sb)
+{
+    struct buffer_head *bh;
+    struct minix_super_block *ms;
+
+    /* Read super block from Disk */
+    if (!(bh = bread(inode->i_dev, SUPER_BLOCK, BLOCK_SIZE))) {
+        printk(KERN_ERR "Unable obtain minix fs super block.\n");
+        return -EINVAL;
+    }
+
+    ms = (struct minix_super_block *)bh->b_data;
+    sb->u.minix_sb.s_ms = ms;
+    sb->s_dev = inode->i_dev;
+
+#ifdef CONFIG_DEBUG_BOOT_BLOCK
+    /* Parse Boot Block on MINIXFS */
+    minixfs_boot_block(sb);
+#endif
+
+#ifdef CONFIG_DEBUG_SUPER_BLOCK
+    /* Parse Super Block on MINIXFS */
+    minixfs_super_block(sb);
+#endif
+    return 0;
+}
+
+asmlinkage int sys_demo_minixfs(int fd)
+{
+    struct inode *inode;    
+    struct file *filp;
+    struct super_block sb;
+
+    /* get file descriptor from current task */
+    filp = current->filp[fd];
+    if (!filp) {
+        printk("Unable to open minixfs inode.\n");
+        return -EINVAL;
+    }
+
+    /* get special inode */
+    inode = filp->f_inode;
+    if (!inode) {
+        printk(KERN_ERR "Invalid inode.\n");
+        return -EINVAL;
+    }
+
+    /* Parse MINIX Filsystem layout */
+    minix_layout(inode, &sb);
+ 
+    return 0;
+}
+
+/* System call entry */
+inline _syscall1(int, demo_minixfs, int, fd);
+
+static int debug_minixfs(void)
+{
+    int fd;
+
+    fd = open("/etc/rc", O_RDONLY, 0);
+    if (fd < 0) {
+        printk("Unable to read /etc/rc\n");
+        return -1;
+    }
+
+    demo_minixfs(fd);
+
+    close(fd);
+
+    return 0;
+}
+user1_debugcall_sync(debug_minixfs);

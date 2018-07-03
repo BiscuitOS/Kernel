@@ -19,6 +19,9 @@ if DEBUG_VFS
 # VFS core
 source "tools/demo/vfs/core/Kconfig"
 
+# MINIX Fileystem
+source "tools/demo/vfs/minixfs/Kconfig"
+
 endif
 
 endmenu

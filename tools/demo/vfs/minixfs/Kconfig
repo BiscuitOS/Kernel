@@ -4,26 +4,22 @@
 menu "MINIX Filesystem"
 
 config DEBUG_VFS_MINIXFS
-        bool "Debug MINIX Filesystem"
+        bool "MINIX Filesystem: A Unix Filesystem"
         help
-	  MINIXFS
+	  Minix File system.
 
 if DEBUG_VFS_MINIXFS
 
-config DEBUG_MINIXFS_BLOCK
-	bool "Debug MINIXFS Boot, Super Block, Inode BitMap, Zone BitMap"
+config DEBUG_BOOT_BLOCK
+	bool "Layout: boot block(boot code, partition table)"
 	help
-	  MINIXFS boot block, super block, inode bit map, and zone bit map
+	  Boot block on MINIX Filesystem.
 
-config DEBUG_MINIXFS_INODE
-	bool "Debug Inode on MINIXFS"
+config DEBUG_SUPER_BLOCK
+	bool "Layout: super block(inode,zone,BitMap)"
 	help
-	  Inode contains all the important information about a file, except
-	  it name. It contains the file permissions, file type, user, group, 
-	  size modification time, number of links, and the location and order 
-	  of all the blocks in the file. All values are stored in low byte - 
-	  high byte order.
+	  Super block on MINX Filesystem.
 
-endif # End of DEBUG_VFS_MINIXFS
+endif
 
 endmenu
