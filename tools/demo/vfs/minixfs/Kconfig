@@ -20,6 +20,31 @@ config DEBUG_SUPER_BLOCK
 	help
 	  Super block on MINX Filesystem.
 
+config DEBUG_INODE_BITMAP
+	bool "Layout: Inode-BitMap (manage unused/used Inode)"
+	help
+	  Inode-BitMap on Minix-fs.
+
+config DEBUG_ZONE_BITMAP
+	bool "Layout: Zone-BitMap (manage unused/used Zone)"
+        help
+	  Zone-BitMap on Minix-fs.
+
+config DEBUG_INODE_TABLE
+	bool "Layout: Inode-Table (manage minix inode)"
+	help
+	  Inode-Table on Minix-fs.
+
+config DEBUG_DATA_ZONE
+	bool "Layout: Data Zone (Store file/directory)"
+	help
+	  Data Zone on MINIX-fs.
+
+config DEBUG_MINIX_INODE
+	bool "minix_inode: parse structure and member"
+	help
+	  Sturcture of minix_inode.
+
 endif
 
 endmenu

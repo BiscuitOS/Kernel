@@ -22,18 +22,18 @@ __asm__("cld\n\t" \
 	:"a" (0),"c" (BLOCK_SIZE/4),"D" ((long) (addr)))
 
 #define find_first_zero(addr) ({ \
-int __res; \
-__asm__("cld\n" \
-	"1:\tlodsl\n\t" \
-	"notl %%eax\n\t" \
-	"bsfl %%eax,%%edx\n\t" \
-	"jne 2f\n\t" \
-	"addl $32,%%ecx\n\t" \
-	"cmpl $8192,%%ecx\n\t" \
-	"jl 1b\n\t" \
-	"xorl %%edx,%%edx\n" \
-	"2:\taddl %%edx,%%ecx" \
-	:"=c" (__res):"0" (0),"S" (addr)); \
+    int __res; \
+    __asm__("cld\n" \
+            "1:\tlodsl\n\t" \
+            "notl %%eax\n\t" \
+            "bsfl %%eax,%%edx\n\t" \
+            "jne 2f\n\t" \
+            "addl $32,%%ecx\n\t" \
+            "cmpl $8192,%%ecx\n\t" \
+            "jl 1b\n\t" \
+            "xorl %%edx,%%edx\n" \
+            "2:\taddl %%edx,%%ecx" \
+            :"=c" (__res):"0" (0),"S" (addr)); \
 __res;})
 
 static int nibblemap[] = { 0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4 };
