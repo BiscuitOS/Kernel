@@ -1557,15 +1557,42 @@ static int minix_layout(struct inode *inode, struct super_block *sb)
  *   | 0x1F   |   block order of data zone                            |
  *   +--------+-------------------------------------------------------+
  */
-static __unused int minixfs_minix_inode(struct minix_inode *inode,
+static __unused int minixfs_minix_inode(struct inode *vfs_inode,
                            struct super_block *sb)
 {
     unsigned short *block_array;
+    struct minix_inode *inode;
     struct buffer_head *bh = NULL, *bh1 = NULL, *bh2 = NULL;
+    struct buffer_head *raw_bh = NULL;
     unsigned short block_order;
-    int blocks;
+    int blocks, ino;
     int offset;
     char *buffer;
+
+    /*
+     * Read minix inode from Inode-Table on minix-fs. Inode-Table is behind
+     * of Zone-BitMap, so we can obtain inode-table block order as follow:
+     *  
+     *   block = 2 + s_imap_blocks + s_zmap_blocks
+     *
+     * And then, Inode-table maintain all minix_inode on these area. We can
+     * search speical inode by ino means inode order. The 'ino' hold on 
+     * VFS inode named 'i_ino'. On MINIX-FS, the number of minix_inode which
+     * each block managed is MINIX_INODES_PER_BLOCK. So in order to find
+     * special minix_inode on Inode-table as follow:
+     *
+     *   minix_inode = block + (ino - 1) / MINIX_INODES_PER_BLOCK 
+     */
+    ino = vfs_inode->i_ino;
+    blocks = 2 + sb->u.minix_sb.s_imap_blocks +
+                 sb->u.minix_sb.s_zmap_blocks +
+            (ino - 1) / MINIX_INODES_PER_BLOCK;
+    if (!(raw_bh = bread(vfs_inode->i_dev, blocks, BLOCK_SIZE))) {
+        printk(KERN_ERR "Major problem, unable to read inode from disk\n");
+        return -EINVAL;
+    }
+    inode = ((struct minix_inode *)raw_bh->b_data) +
+                  (ino - 1) % MINIX_INODES_PER_BLOCK;
 
     /*
      * i_mode:
@@ -1783,11 +1810,11 @@ static __unused int minixfs_minix_inode(struct minix_inode *inode,
          * One indirectly access
          *
          *
-         *                                                  +---------------+
-         *                                                  |               |
-         * +-------------+                block_array       | buffer_header |
-         * |             |              +-------------+     |               |
-         * | minix_inode |              | block_order-|---->+---------------+
+         *                                                  +-------------+
+         *                                                  |             |
+         * +-------------+                block_array       | buffer_head |
+         * |             |              +-------------+     |             |
+         * | minix_inode |              | block_order-|---->+-------------+
          * |             |              +-------------+
          * +-------------+              | ..........  |
          * |             |              +-------------+
@@ -1861,7 +1888,7 @@ static __unused int minixfs_minix_inode(struct minix_inode *inode,
     buffer = (char *)bh->b_data;
     offset %= BLOCK_SIZE;
 
-    printk("Speical: %c\n", buffer[offset]);
+    printk("Special: %c\n", buffer[offset]);
 
     if (bh)
         brelse(bh);
@@ -1869,6 +1896,155 @@ static __unused int minixfs_minix_inode(struct minix_inode *inode,
         brelse(bh1);
     if (bh2)
         brelse(bh2);
+    if (raw_bh)
+        brelse(raw_bh);
+    return 0;
+}
+
+/*
+ * minix_dir_entry
+ *  The MINIX-fs utilizes 'minix_dir_entry' structure to manage a minix 
+ *  directory. And 'minix_dir_entry' contains two member, the 1st member
+ *  is inode number that indicate a special directory, and the 2nd member 
+ *  is directory name. All 'minix_dir_entry' store in data zone for special
+ *  inode.
+ *
+ *
+ *  +--------+-----+-----------+-----------+----+-----------+-----------+
+ *  |        |     |           |           |    |           |           |
+ *  | i_mode | ... | i_zone[0] | i_zone[2] | .. | i_zone[7] | z_zone[8] |
+ *  |        |     |           |           |    |           |           |
+ *  +--------+-----+-----------+-----------+----+-----------+-----------+
+ *                       |
+ *                       |
+ *                       |
+ *                       V
+ *                       +-------------+--------+----+
+ *                       |             |        |    |
+ *                       | buffer_head | b_data | .. |
+ *                       |             |        |    |
+ *                       +-------------+--------+----+
+ *                                          |
+ *                                          |
+ *                                          |
+ *                                          o--o 
+ *                                             |
+ *                                             |
+ *                                             V
+ *  0-----------------+-----------------+------+-----------------+-----4k
+ *  |                 |                 |      |                 |      |
+ *  | minix_dir_entry | minix_dir_entry | .... | minix_dir_entry | hole |
+ *  |                 |                 |      |                 |      |
+ *  +-----------------+-----------------+------+-----------------+------+
+ *
+ */
+static __unused int minixfs_minix_dir_entry(struct super_block *sb)
+{
+    struct inode *inode;
+    int nr, blocks;
+    struct buffer_head *bh;
+    unsigned long offset;
+    struct minix_dir_entry *de;
+
+    /* Obtain a inode and the type of inode is directory! */
+    inode = current->root;
+    inode->i_count++;
+    if (!S_ISDIR(inode->i_mode)) {
+        printk(KERN_ERR "We need a directory on first!\n");
+        return -EINVAL;
+    }
+
+    /*
+     * The inode of directory contains a data zone that store all 
+     * 'minix_dir_entry' that locate on this direntry. The 'i_size'
+     * can calculate the number of 'minix_dir_entry'. The size of data
+     * zone is BLOCK_SIZE, so we can calculate the number of block for
+     * inode as follow:
+     *
+     *     block = (inode->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE
+     *
+     */
+    blocks = (inode->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+
+    /*
+     * Match special directory by name.
+     *  Minix-fs utilize 'minix_dir_entry' to indicate a special direntory.
+     *  It defines as follow:
+     *  
+     *    struct minix_dir_entry {
+     *        unsigned short inode;
+     *        char name[0];
+     *    }
+     *
+     *  1) inode
+     *     It's a inode number that used to indicate a special inode.
+     *
+     *  2) name
+     *     The string for directory. This is a empty charactor array, and
+     *     's_magic' indicate the length of name string, as follow:
+     * 
+     *     MINIX_SUPER_MAGIC (0x137F)
+     *       s_dirsize = 16
+     *       s_namelen = 14
+     *     MINIX_SUPER_MAGIC2 (0x138F)
+     *       s_dirsize = 32
+     *       s_namelen = 30
+     *
+     *     As above, the length of 'minix_dir_entry' is 's_dirsize' and the 
+     *     length of name is 's_namelen'.
+     */
+    if (!(bh = bread(sb->s_dev, inode->u.minix_i.i_data[0], BLOCK_SIZE))) {
+        printk(KERN_ERR "Unable to load contents from Disk\n");
+        return -EINVAL;
+    }
+    de = (struct minix_dir_entry *)(bh->b_data);
+
+    /*
+     * Directory layout
+     *
+     *         root
+     *      +---------+
+     *      |         |
+     *      |    /    |
+     *      |         |
+     *      +---------+
+     *           |
+     *           |
+     *           |
+     *           V   
+     *           +-------+--------+---------+---------+------+---------+
+     *           |       |        |         |         |      |         |
+     *           |   .   |   ..   |   etc   |   dev   | .... |   tmp   |  
+     *           |       |        |         |         |      |         |
+     *           +-------+--------+---------+---------+------+---------+
+     *                                 |
+     *                                 |
+     *                                 |
+     *                                 V
+     *                                 +------+---------+-----+---------+
+     *                                 |      |         |     |         |
+     *                                 |  rc  | netwrok | ... | systemd |
+     *                                 |      |         |     |         |
+     *                                 +------+---------+-----+---------+
+     *                                 
+     *
+     */
+    /* first direnty on root */
+    offset = 0;
+    de = (struct minix_dir_entry *)((char *)bh->b_data + offset);
+    printk("1ST: %s\n", de->name);
+    /* second directory on root */
+    offset += sb->u.minix_sb.s_dirsize;
+    de = (struct minix_dir_entry *)((char *)bh->b_data + offset);
+    printk("2ND: %s\n", de->name);
+
+    /*
+     *
+     */
+
+    if (bh)
+        brelse(bh);
+
     return 0;
 }
 
@@ -1923,46 +2099,18 @@ static __unused int minixfs_minix_inode(struct minix_inode *inode,
  *     +------+-----+-------------+----+-------------+-----------+
  *
  */
-static int minix_inode(struct inode *inode)
+static int minix_inode(struct inode *inode, struct super_block *sb)
 {
-    struct minix_inode *raw_inode;
-    struct super_block *sb;
-    struct buffer_head *bh;
-    int ino, block;
-
-    /*
-     * Read minix inode from Inode-Table on minix-fs. Inode-Table is behind
-     * of Zone-BitMap, so we can obtain inode-table block order as follow:
-     *  
-     *   block = 2 + s_imap_blocks + s_zmap_blocks
-     *
-     * And then, Inode-table maintain all minix_inode on these area. We can
-     * search speical inode by ino means inode order. The 'ino' hold on 
-     * VFS inode named 'i_ino'. On MINIX-FS, the number of minix_inode which
-     * each block managed is MINIX_INODES_PER_BLOCK. So in order to find
-     * special minix_inode on Inode-table as follow:
-     *
-     *   minix_inode = block + (ino - 1) / MINIX_INODES_PER_BLOCK 
-     */
-    ino = inode->i_ino;
-    sb = inode->i_sb;
-    block = 2 + sb->u.minix_sb.s_imap_blocks +
-                sb->u.minix_sb.s_zmap_blocks +
-            (ino - 1) / MINIX_INODES_PER_BLOCK;
-    printk("Block %d\n", block);
-    if (!(bh = bread(inode->i_dev, block, BLOCK_SIZE))) {
-        printk(KERN_ERR "Major problem, unable to read inode from disk\n");
-        return -EINVAL;
-    }
-    raw_inode = ((struct minix_inode *)bh->b_data) +
-                  (ino - 1) % MINIX_INODES_PER_BLOCK;
-
 #ifdef CONFIG_DEBUG_MINIX_INODE
-    minixfs_minix_inode(raw_inode, sb);
+    /* structure minix_inode */
+    minixfs_minix_inode(inode, sb);
 #endif
 
-    if (bh)
-        brelse(bh);
+#ifdef CONFIG_DEBUG_MINIX_DIR_ENTRY
+    /* structure minix_dir_entry */
+    minixfs_minix_dir_entry(sb);
+#endif
+
     return 0;
 }
 
@@ -1996,7 +2144,7 @@ asmlinkage int sys_demo_minixfs(int fd)
     /* Parse MINIX Filsystem layout */
     minix_layout(inode, sb);
     /* MINIX-FS inode */
-    minix_inode(inode);
+    minix_inode(inode, sb);
  
     return 0;
 }

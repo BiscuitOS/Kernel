@@ -41,9 +41,14 @@ config DEBUG_DATA_ZONE
 	  Data Zone on MINIX-fs.
 
 config DEBUG_MINIX_INODE
-	bool "minix_inode: parse structure and member"
+	bool "minix_inode: a inode on minix-fs"
 	help
 	  Sturcture of minix_inode.
+
+config DEBUG_MINIX_DIR_ENTRY
+	bool "minix_dir_entry: a direntory on minix-fs"
+	help
+	  Structure of minix_dir_entry
 
 endif
 
