@@ -359,7 +359,6 @@ Open
     The file is a pure procedure (shared text) file that is being executed 
     and oflag is O_WRONLY or O_RDWR.
 
-
 ### External link
 
   [open() - opengroup](http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html "open - opengroup.org")

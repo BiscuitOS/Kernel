@@ -11,6 +11,11 @@ config DEBUG_POSIX_READ
 
 if DEBUG_POSIX_READ
 
+config DEBUG_READ_ORIG
+	bool "read(): original read operation"
+	help
+	  Debug original read operation.
+
 config DEBUG_READ_ROOTFS
 	bool "Read routine on speical rootfs"
 	help

@@ -299,7 +299,7 @@ repeat:
         return NULL;
     result = getblk(inode->i_dev, tmp, BLOCK_SIZE);
     if (*p) {
-        minix_free_block(inode->i_sb,tmp);
+        minix_free_block(inode->i_sb, tmp);
         brelse(result);
         goto repeat;
     }
