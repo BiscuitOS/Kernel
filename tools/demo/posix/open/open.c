@@ -366,7 +366,7 @@ static int dir_namei(const char *pathname, int *namelen, const char **name,
  *  Which is a lot more logical, and also allows the "no perm" needed
  *  for syslinks (where the permissions are checked later).
  */
-static int parse_open_namei(const char *pathname, int flag, int mode,
+static __unused int parse_open_namei(const char *pathname, int flag, int mode,
                 struct inode **res_inode, struct inode *base)
 {
     const char *basename;

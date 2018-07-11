@@ -669,6 +669,7 @@ static int minix_add_entry(struct inode *dir, const char *name,
     *res_dir = NULL;
     if (!dir || !dir->i_sb)
         return -ENOENT;
+    /* MINIX-FS super block information */
     info = &dir->i_sb->u.minix_sb;
     if (namelen > info->s_namelen) {
 #ifdef NO_TRUNCATE
@@ -689,17 +690,20 @@ static int minix_add_entry(struct inode *dir, const char *name,
         }
         de = (struct minix_dir_entry *)(bh->b_data + offset);
         offset += info->s_dirsize;
+        /* Verify whether inode is over dir */
         if (block * bh->b_size + offset > dir->i_size) {
             de->inode = 0;
             dir->i_size = block * bh->b_size + offset;
             dir->i_dirt = 1;
         }
         if (de->inode) {
+            /* Same name on direntory */
             if (namecompare(namelen, info->s_namelen, name, de->name)) {
                 brelse(bh);
                 return -EEXIST;
             }
         } else {
+            /* Find a empty minix_dir_entry and initialize it. */
             dir->i_mtime = dir->i_ctime = CURRENT_TIME;
             for (i = 0; i < info->s_namelen; i++)
                 de->name[i] = (i < namelen) ? name[i] : 0;
@@ -718,6 +722,10 @@ static int minix_add_entry(struct inode *dir, const char *name,
     return 0;
 }
 
+/*
+ * new_inode_minix
+ *  Create a minix_inode.
+ */
 static struct inode *new_inode_minix(const struct inode *dir)
 {
     struct super_block *sb;
@@ -725,11 +733,34 @@ static struct inode *new_inode_minix(const struct inode *dir)
     struct buffer_head *bh;
     int i, j;
 
+    /* Allocate a new inode from VFS */
     if (!dir || !(inode = get_empty_inode()))
         return NULL;
     sb = dir->i_sb;
     inode->i_sb = sb;
     inode->i_flags = inode->i_sb->s_flags;
+    /*
+     * Allocate a minix-inode from MINIX-FS. The Inode-BitMap is used to 
+     * track a minix_inode whether used or unused. The new_inde_minix()
+     * serch a zero bit on Inode-BitMap. and then 'Inode-Table' manages
+     * all minix-inode, MINIX-FS utilize ino that from Inode-BitMap to 
+     * obtain special minix_inode.
+     *
+     * +------+------------+--------------+----+-------------+-----------+ 
+     * |      |            |              |    |             |           |
+     * | Boot | Superblock | Inode-BitMap | .. | Inode-Table | Data Zone |
+     * |      |            |              |    |             |           |
+     * +------+------------+--------------+----+-------------+-----------+ 
+     * 
+     * The Inode-BitMap is comprised of a lot of Zone, on MINIX-FS, the size
+     * of Zone is BLOCK_SIZE, it is 1KByte. So the number of inode for a Zone
+     * is:
+     *       number = 1024 * 8 bit = 8192 bit
+     * So, each zone can represents 8192 minix-inode. And then we can find 
+     * a zero bit as empty 'inode nr'. We can find a minix-inode in 
+     * 'inode nr' on Inode-Table.
+     * 
+     */
     j = 8192;
     for (i = 0; i < 8; i++)
         if ((bh = inode->i_sb->u.minix_sb.s_imap[i]) != NULL)
@@ -739,6 +770,7 @@ static struct inode *new_inode_minix(const struct inode *dir)
         iput(inode);
         return NULL;
     }
+    /* Mark as used minix-inode */
     if (set_bit(j, bh->b_data)) {  /* shouldn't happen */
         printk("new_inode: bit already set");
         iput(inode);
@@ -756,14 +788,19 @@ static struct inode *new_inode_minix(const struct inode *dir)
     inode->i_uid = current->euid;
     inode->i_gid = (dir->i_mode & S_ISGID) ? dir->i_gid : current->egid;
     inode->i_dirt = 1;
-    inode->i_ino  = j;
+    inode->i_ino  = j; /* setup inode nr */
     inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME;
     inode->i_op = NULL;
     inode->i_blocks = inode->i_blksize = 0;
+    /* Insert inode into Inode Hash_Table */
     insert_inode_hash(inode);
     return inode;
 }
 
+/*
+ * create_minix
+ *  Create a new inode and add into current directory.
+ */
 int create_minix(struct inode *dir, const char *name,
                     int len, int mode, struct inode **result)
 {
@@ -775,6 +812,7 @@ int create_minix(struct inode *dir, const char *name,
     *result = NULL;
     if (!dir)
         return -ENOENT;
+    /* Obtain a inode that contain minix-inode information */
     inode = new_inode_minix(dir);
     if (!inode) {
         iput(dir);
@@ -783,6 +821,7 @@ int create_minix(struct inode *dir, const char *name,
     inode->i_op = &minix_file_inode_operations;
     inode->i_mode = mode;
     inode->i_dirt = 1;
+    /* Insert inode into minix directory */
     error = minix_add_entry(dir, name, len, &bh, &de);
     if (error) {
         inode->i_nlink--;
