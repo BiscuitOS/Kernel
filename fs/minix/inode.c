@@ -312,51 +312,51 @@ repeat:
 static struct buffer_head * block_getblk(struct inode * inode, 
 	struct buffer_head * bh, int nr, int create)
 {
-	int tmp;
-	unsigned short *p;
-	struct buffer_head * result;
+    int tmp;
+    unsigned short *p;
+    struct buffer_head * result;
 
-	if (!bh)
-		return NULL;
-	if (!bh->b_uptodate) {
-		ll_rw_block(READ, 1, &bh);
-		wait_on_buffer(bh);
-		if (!bh->b_uptodate) {
-			brelse(bh);
-			return NULL;
-		}
-	}
-	p = nr + (unsigned short *) bh->b_data;
+    if (!bh)
+        return NULL;
+    if (!bh->b_uptodate) {
+        ll_rw_block(READ, 1, &bh);
+        wait_on_buffer(bh);
+        if (!bh->b_uptodate) {
+            brelse(bh);
+            return NULL;
+        }
+    }
+    p = nr + (unsigned short *) bh->b_data;
 repeat:
-	tmp = *p;
-	if (tmp) {
-		result = getblk(bh->b_dev, tmp, BLOCK_SIZE);
-		if (tmp == *p) {
-			brelse(bh);
-			return result;
-		}
-		brelse(result);
-		goto repeat;
-	}
-	if (!create) {
-		brelse(bh);
-		return NULL;
-	}
-	tmp = minix_new_block(inode->i_sb);
-	if (!tmp) {
-		brelse(bh);
-		return NULL;
-	}
-	result = getblk(bh->b_dev, tmp, BLOCK_SIZE);
-	if (*p) {
-		minix_free_block(inode->i_sb,tmp);
-		brelse(result);
-		goto repeat;
-	}
-	*p = tmp;
-	bh->b_dirt = 1;
-	brelse(bh);
-	return result;
+    tmp = *p;
+    if (tmp) {
+        result = getblk(bh->b_dev, tmp, BLOCK_SIZE);
+        if (tmp == *p) {
+            brelse(bh);
+            return result;
+        }
+        brelse(result);
+        goto repeat;
+    }
+    if (!create) {
+        brelse(bh);
+        return NULL;
+    }
+    tmp = minix_new_block(inode->i_sb);
+    if (!tmp) {
+        brelse(bh);
+        return NULL;
+    }
+    result = getblk(bh->b_dev, tmp, BLOCK_SIZE);
+    if (*p) {
+        minix_free_block(inode->i_sb, tmp);
+        brelse(result);
+        goto repeat;
+    }
+    *p = tmp;
+    bh->b_dirt = 1;
+    brelse(bh);
+    return result;
 }
 
 struct buffer_head * minix_getblk(struct inode * inode, int block, int create)
@@ -375,12 +375,12 @@ struct buffer_head * minix_getblk(struct inode * inode, int block, int create)
         return inode_getblk(inode, block, create);
     block -= 7;
     if (block < 512) {
-        bh = inode_getblk(inode,7,create);
+        bh = inode_getblk(inode, 7, create);
         return block_getblk(inode, bh, block, create);
     }
     block -= 512;
-    bh = inode_getblk(inode,8,create);
-    bh = block_getblk(inode, bh, block>>9, create);
+    bh = inode_getblk(inode, 8, create);
+    bh = block_getblk(inode, bh, block >> 9, create);
     return block_getblk(inode, bh, block & 511, create);
 }
 

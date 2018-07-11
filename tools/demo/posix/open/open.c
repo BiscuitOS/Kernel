@@ -17,28 +17,9 @@
 #include <linux/stat.h>
 #include <linux/locks.h>
 
-#ifdef CONFIG_MINIX_FS
-#include <linux/minix_fs.h>
-#endif
-
 #include <asm/bitops.h>
 
 #include <demo/debug.h>
-
-#define find_first_zero(addr) ({ \
-    int __res; \
-    __asm__("cld\n" \
-            "1:\tlodsl\n\t" \
-            "notl %%eax\n\t" \
-            "bsfl %%eax, %%edx\n\t" \
-            "jne 2f\n\t" \
-            "addl $32, %%ecx\n\t" \
-            "cmpl $8192,%%ecx\n\t" \
-            "jl 1b\n\t" \
-            "xorl %%edx,%%edx\n" \
-            "2:\taddl %%edx,%%ecx" \
-            :"=c" (__res):"0" (0), "S" (addr)); \
-    __res;})
 
 static inline _syscall1(int, close, int, fd);
 static inline _syscall3(int, read, unsigned int, fd, char *, buf,
@@ -46,6 +27,13 @@ static inline _syscall3(int, read, unsigned int, fd, char *, buf,
 
 #ifdef CONFIG_DEBUG_OPEN_ORIG
 static inline _syscall3(int, open, const char *, file, int, flag, int, mode);
+#endif
+
+#ifdef CONFIG_MINIX_FS
+extern int lookup_minix(struct inode *dir, const char *name,
+                    int len, struct inode **result);
+extern int create_minix(struct inode *dir, const char *name,
+                    int len, int mode, struct inode **result);
 #endif
 
 #ifdef CONFIG_DEBUG_FILE_DESCRIBE
@@ -136,218 +124,7 @@ static void parse_file_descriptor(struct file *f)
 }
 #endif
 
-#ifdef CONFIG_DEBUG_OPEN_NAMEI
-
 #define ACC_MODE(x) ("\000\004\002\006"[(x)&O_ACCMODE])
-
-#ifdef CONFIG_MINIX_FS
-extern int follow_link(struct inode * dir, struct inode * inode,
-        int flag, int mode, struct inode ** res_inode);
-extern struct buffer_head * minix_getblk(struct inode * inode, 
-                                  int block, int create);
-
-/*
- * bread_minix()
- *  Read a BLOCK from minixfs.
- */
-static struct buffer_head *bread_minix(struct inode *inode, int block,
-                        int create)
-{
-    struct buffer_head *bh;
-
-    bh = minix_getblk(inode, block, create);
-    if (!bh || bh->b_uptodate)
-        return bh;
-    ll_rw_block(READ, 1, &bh);
-    wait_on_buffer(bh);
-    if (bh->b_uptodate)
-        return bh;
-    brelse(bh);
-    return NULL;
-}
-
-static inline int namecompare(int len, int maxlen, 
-            const char *name, const char *buffer)
-{
-    /*
-     * If name matchs buffer, and 'buffer[len]' must be zero!
-     */
-    if (len >= maxlen || !buffer[len]) {
-        unsigned char same;
-
-        __asm__ ("repe ; cmpsb ; setz %0"
-                 : "=q" (same)
-                 : "S" ((long) name), "D" ((long) buffer), "c" (len));
-        return same;
-    }
-    return 0;
-}
-
-/*
- * ok, we cannot use strncmp, as the name is not in our data space.
- * Thus we'll have to use 'minix_match'. No big problem. Match also makes
- * some sanity tests.
- *
- * NOTE! unlike strncmp, minix_match returns 1 for success, 0 for failure.
- */
-static int minix_match(int len, const char *name,
-          struct buffer_head *bh, unsigned long *offset,
-          struct minix_sb_info *info)
-{
-    /*
-     * The 'minix_dir_entry' is used to manage a entry for special inode.
-     * It's defined in 'include/linux/minix_fs.h', as follow:
-     * 
-     *   struct minix_dir_entry {
-     *       unsigned short inode;
-     *       char name[0];
-     *   }
-     *
-     * The 'inode' points a special inode structure, and 'name' is a empty
-     * array but it is start address of name. 'name' is used to point a
-     * data zera that cotinuely connect after 'name'. 
-     *
-     *
-     * | <------------- s_namelen -------------> |
-     * 0-------2---------------------------------+
-     * |       |                                 |
-     * | inode | name (unknow length)            |
-     * |       |                                 |
-     * +-------+---------------------------------+
-     *         A
-     *         |
-     *         |
-     *         o---- start address of name string
-     * 
-     * sizeof(struct minix_dir_entry) = 2
-     */
-    struct minix_dir_entry *de;
-
-    de = (struct minix_dir_entry *)(bh->b_data + *offset);
-    /* Points next minix_dir_entry */
-    *offset += info->s_dirsize;
-    if (!de->inode || len > info->s_namelen)
-        return 0;
-    /* "" means "." ---> so paths like "/usr/lib//libc.a" work */
-    if (!len && (de->name[0] == '.') && (de->name[1] == '\0'))
-        return 1;
-    return namecompare(len, info->s_namelen, name, de->name);
-}
-
-/*
- * minix_find_entry()
- *  finds an entry in the specified directory with the wanted name. It
- *  returns the cache buffer in which the entry was found, and the entry
- *  itself (as a parameter - res_dir). It does NOT read the inode of the
- *  entry - you'll have to do that yourself if you want to.
- */
-static struct buffer_head *find_entry_minix(struct inode *dir,
-      const char *name, int namelen, struct minix_dir_entry **res_dir)
-{
-    unsigned long block, offset;
-    struct buffer_head *bh;
-    struct minix_sb_info *info;
-
-    *res_dir = NULL;
-    if (!dir || !dir->i_sb)
-        return NULL;
-    info = &dir->i_sb->u.minix_sb;
-    if (namelen > info->s_namelen) {
-#ifdef NO_TRUNCATE
-        return NULL;
-#else
-        namelen = info->s_namelen;
-#endif
-    }
-    bh = NULL;
-    block = offset = 0;
-    while (block * BLOCK_SIZE + offset < dir->i_size) {
-        if (!bh) {
-            bh = bread_minix(dir, block, 0);
-            if (!bh) {
-                block++;
-                continue;
-            }
-        }
-        /*
-         * The 'minix_bread' read special block from MINIX Filesystem.
-         * A special 'buffer_head' manage a buffer and 'b_data' points to
-         * data zera of buffer. The data zera of direntry inode contains
-         * a lot of 'minix_dir_entry' that describes the member information.
-         *
-         * 
-         * +-------------------------------------+
-         * |                                     |
-         * |         struct buffer_head          |
-         * |                                     |
-         * +-------------------------------------+ 
-         *                   |
-         *                   |
-         *                   |
-         *     b_data        |
-         * o-----------------o
-         * |
-         * |
-         * |
-         * V                 | <- s_dirsize -> |
-         * 0-----------------+-----------------+----+-----------------+
-         * |                 |                 |    |                 |
-         * | minix_dir_entry | minix_dir_entry | .. | minix_dir_entry |
-         * |                 |                 |    |                 |
-         * +-----------------+-----------------+----+-----------------+
-         * A <-- offset0 --> | <-- offset1 --> |    | <-- offsetn --> |
-         * |
-         * |
-         * o-----res_dir
-         *
-         */
-        *res_dir = (struct minix_dir_entry *)(bh->b_data + offset);
-        if (minix_match(namelen, name, bh, &offset, info))
-            return bh;
-        /* Continue search in current block */
-        if (offset < bh->b_size)
-            continue;
-        /* Search on next block */
-        brelse(bh);
-        bh = NULL;
-        offset = 0;
-        block++;
-    }
-    brelse(bh);
-    *res_dir = NULL;
-    return NULL;
-}
-
-static int lookup_minix(struct inode *dir, const char *name, 
-                    int len, struct inode **result)
-{
-    int ino;
-    struct minix_dir_entry *de;
-    struct buffer_head *bh;
-
-    *result = NULL;
-    if (!dir)
-        return -ENOENT;
-    if (!S_ISDIR(dir->i_mode)) {
-        iput(dir);
-        return -ENOENT;
-    }
-    /* find enty on dirent inode */
-    if (!(bh = find_entry_minix(dir, name, len, &de))) {
-        iput(dir);
-        return -ENOENT;
-    }
-    ino = de->inode;
-    brelse(bh);
-    /* Find special inode */
-    if (!(*result = iget(dir->i_sb, ino))) {
-        iput(dir);
-        return -EACCES;
-    }
-    iput(dir);
-    return 0;
-}
-#endif
 
 static __unused int lookup_rootfs(struct inode *inode, const char *name,
             int len, struct inode **result)
@@ -395,6 +172,12 @@ static int lookups(struct inode *dir, const char *name, int len,
         return -ENOENT;
     /* Check permissions before traversing mount-points */
     perm = permissions(dir, MAY_EXEC);
+    /* Chech pathname:
+     *  If the pathname contains ".." and we think path isn't be changed.
+     *  Such as "/etc/../rc" or "../rc"
+     *
+     *  pseudo-root?
+     */
     if (len == 2 && name[0] == '.' && name[1] == '.') {
         if (dir == current->root) {
             *result = dir;
@@ -444,162 +227,6 @@ static int follow_links(struct inode *dir, struct inode *inode,
     return inode->i_op->follow_link(dir, inode, flag, mode, res_inode);
 }
 
-#ifdef CONFIG_MINIX_FS
-
-/*
- *     minix_add_entry()
- *
- * adds a file entry to the specified directory, returning a possible
- * error value if it fails.
- *
- * NOTE!! The inode part of 'de' is left at 0 - which means you
- * may not sleep between calling this and putting something into
- * the entry, as someone else might have used it while you slept.
- */
-static int minix_add_entry(struct inode *dir, const char *name,
-      int namelen, struct buffer_head **res_buf,
-      struct minix_dir_entry **res_dir)
-{
-    int i;
-    unsigned long block, offset;
-    struct buffer_head *bh;
-    struct minix_dir_entry *de;
-    struct minix_sb_info *info;
-
-    *res_buf = NULL;
-    *res_dir = NULL;
-    if (!dir || !dir->i_sb)
-        return -ENOENT;
-    info = &dir->i_sb->u.minix_sb;
-    if (namelen > info->s_namelen) {
-#ifdef NO_TRUNCATE
-        return -ENAMETOOLONG;
-#else
-        namelen = info->s_namelen;
-#endif
-    }
-    if (!namelen)
-        return -ENOENT;
-    bh = NULL;
-    block = offset = 0;
-    while (1) {
-        if (!bh) {
-            bh = bread_minix(dir, block, 1);
-            if (!bh)
-                return -ENOSPC;
-        }
-        de = (struct minix_dir_entry *)(bh->b_data + offset);
-        offset += info->s_dirsize;
-        if (block * bh->b_size + offset > dir->i_size) {
-            de->inode = 0;
-            dir->i_size = block * bh->b_size + offset;
-            dir->i_dirt = 1;
-        }
-        if (de->inode) {
-            if (namecompare(namelen, info->s_namelen, name, de->name)) {
-                brelse(bh);
-                return -EEXIST;
-            }
-        } else {
-            dir->i_mtime = dir->i_ctime = CURRENT_TIME;
-            for (i = 0; i < info->s_namelen; i++)
-                de->name[i] = (i < namelen) ? name[i] : 0;
-            bh->b_dirt = 1;
-            *res_dir = de;
-            break;
-        }
-        if (offset < bh->b_size)
-            continue;
-        brelse(bh);
-        bh = NULL;
-        offset = 0;
-        block++;
-    }
-    *res_buf = bh;
-    return 0;
-}
-
-static struct inode *new_inode_minix(const struct inode *dir)
-{
-    struct super_block *sb;
-    struct inode *inode;
-    struct buffer_head *bh;
-    int i, j;
-
-    if (!dir || !(inode = get_empty_inode()))
-        return NULL;
-    sb = dir->i_sb;
-    inode->i_sb = sb;
-    inode->i_flags = inode->i_sb->s_flags;
-    j = 8192;
-    for (i = 0; i < 8; i++)
-        if ((bh = inode->i_sb->u.minix_sb.s_imap[i]) != NULL)
-            if ((j = find_first_zero(bh->b_data)) < 8192)
-                break;
-    if (!bh || j >= 8192) {
-        iput(inode);
-        return NULL;
-    }
-    if (set_bit(j, bh->b_data)) {  /* shouldn't happen */
-        printk("new_inode: bit already set");
-        iput(inode);
-        return NULL;
-    }
-    bh->b_dirt = 1;
-    j += i * 8192;
-    if (!j || j >= inode->i_sb->u.minix_sb.s_ninodes) {
-        iput(inode);
-        return NULL;
-    }
-    inode->i_count = 1;
-    inode->i_nlink = 1;
-    inode->i_dev = sb->s_dev;
-    inode->i_uid = current->euid;
-    inode->i_gid = (dir->i_mode & S_ISGID) ? dir->i_gid : current->egid;
-    inode->i_dirt = 1;
-    inode->i_ino  = j;
-    inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME;
-    inode->i_op = NULL;
-    inode->i_blocks = inode->i_blksize = 0;
-    insert_inode_hash(inode);
-    return inode;
-}
-
-static int create_minix(struct inode *dir, const char *name, int len,
-                             int mode, struct inode **result)
-{
-    int error;
-    struct inode *inode;
-    struct buffer_head *bh;
-    struct minix_dir_entry *de;
-
-    *result = NULL;
-    if (!dir)
-        return -ENOENT;
-    inode = new_inode_minix(dir);
-    if (!inode) {
-        iput(dir);
-        return -ENOSPC;
-    }
-    inode->i_op = &minix_file_inode_operations;
-    inode->i_mode = mode;
-    inode->i_dirt = 1;
-    error = minix_add_entry(dir, name, len, &bh, &de);
-    if (error) {
-        inode->i_nlink--;
-        inode->i_dirt = 1;
-        iput(inode);
-        iput(dir);
-        return error;
-    }
-    de->inode = inode->i_ino;
-    bh->b_dirt = 1;
-    brelse(bh);
-    iput(dir);
-    *result = inode;
-    return 0;
-}
-#endif
 
 #ifdef CONFIG_DEBUG_CREAT_ROOTFS
 static int create_rootfs(struct inode *dir, const char *name, int len,
@@ -625,6 +252,42 @@ static int dir_namei(const char *pathname, int *namelen, const char **name,
     int len, error;
     struct inode *inode;
 
+    /*
+     * Search direntry from current direntory. If the first chararcter of
+     * pathname is '/', we think current directory is root. And we search
+     * direntry from root direntory.
+     *
+     *
+     *              +---------+
+     *              |         |
+     *              |    /    |<----root
+     *              |         |
+     *              +---------+
+     *                   |
+     *                   |
+     *           o-------o-----o------------------o                   
+     *           |             |                  |
+     *           |             |                  |
+     *           V             V                  V
+     *      +---------+    +---------+       +---------+
+     *      |         |    |         |       |         |
+     *      |  /etc   |    |  /dev   | ....  |  /usr   |<----pwd
+     *      |         |    |         |       |         | 
+     *      +---------+    +---------+       +---------+
+     *                                            |
+     *                                            |
+     *                                    o-------o-------o
+     *                                    |               |
+     *                                    |               |
+     *                                    V               V
+     *                               +---------+      +---------+
+     *                               |         |      |         |
+     *                               |  /sbin  | .... |  /bin   |
+     *                               |         |      |         |
+     *                               +---------+      +---------+
+     *       
+     *       
+     */
     *res_inode = NULL;
     if (!base) {
         base = current->pwd;
@@ -637,6 +300,33 @@ static int dir_namei(const char *pathname, int *namelen, const char **name,
         base->i_count++;
     }
     while (1) {
+        /*
+         * Parse pathname
+         *  lookup special character untile '/', like "etc/rc"
+         *
+         *  +-------+--------------+--------------+-----+
+         *  |  len  |   thisname   |   pathname   |  c  |
+         *  +-------+--------------+--------------+-----+
+         *  |       | etc/rc       | etc/rc       |     |
+         *  +-------+--------------+--------------+-----+
+         *  | 0     | etc/rc       | tc/rc        |  e  |
+         *  +-------+--------------+--------------+-----+
+         *  | 1     | etc/rc       | c/rc         |  t  |
+         *  +-------+--------------+--------------+-----+
+         *  | 2     | etc/rc       | /rc          |  c  |
+         *  +-------+--------------+--------------+-----+
+         *  | 3     | etc/rc       | rc           |  /  |
+         *  +-------+--------------+--------------+-----+
+         *  |       | rc           | rc           |     |
+         *  +-------+--------------+--------------+-----+
+         *  | 0     | rc           | rc           |  r  |
+         *  +-------+--------------+--------------+-----+
+         *  | 1     | rc           | c            |  c  |
+         *  +-------+--------------+--------------+-----+
+         *  | 2     | rc           |              |     |
+         *  +-------+--------------+--------------+-----+
+         *
+         */
         thisname = pathname;
         for (len = 0; (c = *(pathname++)) && (c != '/'); len++)
             /* nothing */;
@@ -783,7 +473,6 @@ static int parse_open_namei(const char *pathname, int flag, int mode,
     *res_inode = inode;
     return 0;
 }
-#endif
 
 /*
  * Note that while the flag value (low tow bits) for sys_open means:

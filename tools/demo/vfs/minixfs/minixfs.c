@@ -1941,7 +1941,8 @@ static __unused int minixfs_minix_inode(struct inode *vfs_inode,
 static __unused int minixfs_minix_dir_entry(struct super_block *sb)
 {
     struct inode *inode;
-    int nr, blocks;
+    int __unused nr;
+    int __unused blocks;
     struct buffer_head *bh;
     unsigned long offset;
     struct minix_dir_entry *de;
@@ -2158,9 +2159,10 @@ static int debug_minixfs(void)
 
     fd = open("/etc/rc", O_RDONLY, 0);
     if (fd < 0) {
-        printk("Unable to read /etc/rc\n");
+        printf("Unable to read /etc/rc\n");
         return -1;
     }
+    printf("Userland minixfs fd: %d\n", fd);
 
     demo_minixfs(fd);
 

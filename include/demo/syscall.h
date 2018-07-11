@@ -19,6 +19,7 @@
 #define __NR_vfs_buffer           (DEBUG_SYSCALL_NR + 5)
 #define __NR_demo_write           (DEBUG_SYSCALL_NR + 6)
 #define __NR_demo_minixfs         (DEBUG_SYSCALL_NR + 7)
+#define __NR_demo_syscall         (DEBUG_SYSCALL_NR + 8)
 
 int demo_setup(void *BIOS);
 int demo_open(const char *filename, int flag, int mode);
@@ -28,6 +29,7 @@ int demo_read(unsigned int fd, char *buf, unsigned int count);
 int vfs_buffer(int fd);
 int demo_write(unsigned int fd, char *buf, unsigned int count);
 int demo_minixfs(int fd);
+int demo_syscall(const char *filename, int flag, int mode);
 
 #endif // __FILE_DEBUGCALL_NR__
 
@@ -89,6 +91,11 @@ extern int sys_demo_minixfs();
 #define sys_demo_minixfs sys_null
 #endif
 
+#ifdef CONFIG_DEBUG_SYSCALL
+extern int sys_demo_syscall();
+#else
+#define sys_demo_syscall sys_null
+#endif
 
 #endif // __FILE_SYS_DEBUGCALL__
 

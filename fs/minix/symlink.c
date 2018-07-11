@@ -41,39 +41,39 @@ struct inode_operations minix_symlink_inode_operations = {
 static int minix_follow_link(struct inode * dir, struct inode * inode,
 	int flag, int mode, struct inode ** res_inode)
 {
-	int error;
-	struct buffer_head * bh;
+    int error;
+    struct buffer_head * bh;
 
-	*res_inode = NULL;
-	if (!dir) {
-		dir = current->root;
-		dir->i_count++;
-	}
-	if (!inode) {
-		iput(dir);
-		return -ENOENT;
-	}
-	if (!S_ISLNK(inode->i_mode)) {
-		iput(dir);
-		*res_inode = inode;
-		return 0;
-	}
-	if (current->link_count > 5) {
-		iput(inode);
-		iput(dir);
-		return -ELOOP;
-	}
-	if (!(bh = minix_bread(inode, 0, 0))) {
-		iput(inode);
-		iput(dir);
-		return -EIO;
-	}
-	iput(inode);
-	current->link_count++;
-	error = open_namei(bh->b_data,flag,mode,res_inode,dir);
-	current->link_count--;
-	brelse(bh);
-	return error;
+    *res_inode = NULL;
+    if (!dir) {
+        dir = current->root;
+        dir->i_count++;
+    }
+    if (!inode) {
+        iput(dir);
+        return -ENOENT;
+    }
+    if (!S_ISLNK(inode->i_mode)) {
+        iput(dir);
+        *res_inode = inode;
+        return 0;
+    }
+    if (current->link_count > 5) {
+        iput(inode);
+        iput(dir);
+        return -ELOOP;
+    }
+    if (!(bh = minix_bread(inode, 0, 0))) {
+        iput(inode);
+        iput(dir);
+        return -EIO;
+    }
+    iput(inode);
+    current->link_count++;
+    error = open_namei(bh->b_data,flag,mode,res_inode,dir);
+    current->link_count--;
+    brelse(bh);
+    return error;
 }
 
 static int minix_readlink(struct inode * inode, char * buffer, int buflen)

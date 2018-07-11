@@ -9,6 +9,12 @@ config DEBUG_POSIX
 	help
 	  Debug System Call Mechanism on X86 Architecture.
 
+config DEBUG_SYSCALL
+	bool "Private POSIX system call on int $0x81"
+	select DEBUG_POSIX
+	help
+	  Debug Private system call mechanism on 'int $0x81'
+
 if DEBUG_POSIX
 
 # setup

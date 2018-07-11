@@ -67,34 +67,35 @@ static unsigned long count_used(struct buffer_head *map[], unsigned numblocks,
 
 void minix_free_block(struct super_block * sb, int block)
 {
-	struct buffer_head * bh;
-	unsigned int bit,zone;
+    struct buffer_head * bh;
+    unsigned int bit, zone;
 
-	if (!sb) {
-		printk("trying to free block on nonexistent device\n");
-		return;
-	}
-	if (block < sb->u.minix_sb.s_firstdatazone ||
-	    block >= sb->u.minix_sb.s_nzones) {
-		printk("trying to free block not in datazone\n");
-		return;
-	}
-	bh = get_hash_table(sb->s_dev,block,BLOCK_SIZE);
-	if (bh)
-		bh->b_dirt=0;
-	brelse(bh);
-	zone = block - sb->u.minix_sb.s_firstdatazone + 1;
-	bit = zone & 8191;
-	zone >>= 13;
-	bh = sb->u.minix_sb.s_zmap[zone];
-	if (!bh) {
-		printk("minix_free_block: nonexistent bitmap buffer\n");
-		return;
-	}
-	if (!clear_bit(bit,bh->b_data))
-		printk("free_block (%04x:%d): bit already cleared\n",sb->s_dev,block);
-	bh->b_dirt = 1;
-	return;
+    if (!sb) {
+        printk("trying to free block on nonexistent device\n");
+        return;
+    }
+    if (block < sb->u.minix_sb.s_firstdatazone ||
+            block >= sb->u.minix_sb.s_nzones) {
+        printk("trying to free block not in datazone\n");
+        return;
+    }
+    bh = get_hash_table(sb->s_dev, block, BLOCK_SIZE);
+    if (bh)
+        bh->b_dirt = 0;
+    brelse(bh);
+    zone = block - sb->u.minix_sb.s_firstdatazone + 1;
+    bit = zone & 8191;
+    zone >>= 13;
+    bh = sb->u.minix_sb.s_zmap[zone];
+    if (!bh) {
+        printk("minix_free_block: nonexistent bitmap buffer\n");
+        return;
+    }
+    if (!clear_bit(bit, bh->b_data))
+        printk("free_block (%04x:%d): bit already cleared\n",
+                               sb->s_dev, block);
+    bh->b_dirt = 1;
+    return;
 }
 
 int minix_new_block(struct super_block * sb)
