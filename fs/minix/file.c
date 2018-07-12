@@ -217,8 +217,8 @@ static int minix_file_write(struct inode * inode, struct file * filp, char * buf
             break;
         }
         c = BLOCK_SIZE - (pos % BLOCK_SIZE);
-        if (c > count-written)
-            c = count-written;
+        if (c > count - written)
+            c = count - written;
         if (c != BLOCK_SIZE && !bh->b_uptodate) {
             ll_rw_block(READ, 1, &bh);
             wait_on_buffer(bh);
@@ -236,7 +236,7 @@ static int minix_file_write(struct inode * inode, struct file * filp, char * buf
             inode->i_dirt = 1;
         }
         written += c;
-        memcpy_fromfs(p,buf,c);
+        memcpy_fromfs(p, buf, c);
         buf += c;
         bh->b_uptodate = 1;
         bh->b_dirt = 1;

@@ -17,7 +17,7 @@ config DEBUG_READ_ORIG
 	  Debug original read operation.
 
 config DEBUG_READ_ROOTFS
-	bool "Read routine on speical rootfs"
+	bool "read(): read operation on special rootfs"
 	help
 	  Debug routine on special rootfs.
 

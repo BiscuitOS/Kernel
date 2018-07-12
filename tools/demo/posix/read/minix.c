@@ -24,6 +24,26 @@
 extern void minix_free_block(struct super_block * sb, int block);
 extern int minix_new_block(struct super_block * sb);
 
+/*
+ * On MINIX-FS directly access buffer
+ *  The inode manages all block nr on 'inode->u.minix_i.i_data[x]'.
+ *  and then read data from disk to buffer via 'bread'.
+ *
+ *  +-----------+
+ *  |           |
+ *  |   inode   |
+ *  |           |                       +-----------------+
+ *  +-----------+                       |                 |
+ *  | u.minix_i |                       |   buffer_head   |
+ *  |           |                       |                 |
+ *  | i_data[0]-|-------> block_nr----->+-----------------+
+ *  |           |
+ *  | ....      |
+ *  |           |
+ *  |i_data[15] |
+ *  +-----------+
+ *
+ */
 static struct buffer_head *inode_getblks(struct inode *inode, int nr,
       int create)
 {
@@ -59,6 +79,55 @@ repeat:
     return result;
 }
 
+/*
+ * block_getblks
+ *  Obtain block nr from a block. For this way, MINIX-FS will one or two
+ *  indirectly access special block nr, as figure:
+ *
+ * One indirectly access
+ *
+ *
+ *                                                  +-------------+
+ *                                                  |             |
+ * +-------------+                block_array       | buffer_head |
+ * |             |              +-------------+     |             |
+ * | minix_inode |              | block_order-|---->+-------------+
+ * |             |              +-------------+
+ * +-------------+              | ..........  |
+ * |             |              +-------------+
+ * +-------------+  block_order | block_order |
+ * |  i_zone[7] -|------------->+-------------+
+ * +-------------+
+ * |             |
+ * +-------------+
+ *
+ * Twice indirectly access
+ *
+ *
+ *
+ *
+ *                                          block_array
+ *                                        +-------------+
+ *                                        | block_order |
+ *                                        +-------------+
+ *                                        |   ....      |
+ * +-------------+      block_array       +-------------+
+ * |             |    +-------------+     | block_order-|---------o
+ * | minix_inode |    | block_order-|---->+-------------+         |
+ * |             |    +-------------+                             |
+ * +-------------+    | ..........  |                             |
+ * |             |    +-------------+                             |
+ * +-------------+    | block_order |                             |
+ * |  i_zone[8] -|--->+-------------+                             |
+ * +-------------+                        +-------------+<--------o
+ *                                        |             |
+ *                                        | buffer_head |
+ *                                        |             |    
+ *                                        +-------------+
+ *          
+ *   
+ * 
+ */
 static struct buffer_head *block_getblks(struct inode *inode,
         struct buffer_head *bh, int nr, int create)
 {
@@ -104,6 +173,69 @@ repeat:
     return result;
 }
 
+/*
+ * Read Inode buffer
+ *  On MINIX-FS, each inode manage a series of data zones. Minix-inode
+ *  contains 3 type data zone.
+ *   
+ *    1) Directly access
+ *       The block nr is smaller then 7, inode can access buffer directly.
+ *
+ *    2) One indirect access
+ *       The block nr is 7 to 512, and inode should access buffer indirectly 
+ *       by once.
+ *
+ *    3) Two indirect access
+ *       The block nr is big then 512, and inode should access buffer 
+ *       indirectly by twice.
+ * 
+ *
+ *  minix_inode
+ *  
+ *  +-------------+
+ *  |             |
+ *  | Other parts |       +-------------+
+ *  |             |       |             |
+ *  +-------------+       | buffer_head |
+ *  |  i_zone[0] -|------>|             |
+ *  +-------------+       +-------------+
+ *  |  i_zone[1]  |
+ *  +-------------+                           +-------------+
+ *  |  i_zone[2]  |                           |             |
+ *  +-------------+                           | buffer_head |
+ *  |  i_zone[3]  |       +----------+        |             |
+ *  +-------------+       |  block0 -|------->+-------------+
+ *  |  i_zone[4]  |       +----------+
+ *  +-------------+       |  block1  |
+ *  |  i_zone[5]  |       +----------+
+ *  +-------------+       |  ......  |
+ *  |  i_zone[6]  |       +----------+
+ *  +-------------+       |  blockn  |        +-------------+
+ *  |  i_zone[7] -|------>+----------+        |             |
+ *  +-------------+                           | buffer_head |
+ *  |  i_zone[8] -|---o                       |             |
+ *  +-------------+   |                       +-------------+
+ *                    |                                     A
+ *                    |                                     |
+ *                    |                                     |
+ *                    |                     +----------+    |
+ *                    |                     |  block0 -|----o
+ *                    |                     +----------+
+ *                    |                     |  block1  |
+ *                    |                     +----------+
+ *                    |                     |  ......  |
+ *                    |                     +----------+
+ *                    o-->+----------+      |  blockn  |
+ *                        |  block0 -|----->+----------+
+ *                        +----------+
+ *                        |  block1  |
+ *                        +----------+
+ *                        |  ......  |
+ *                        +----------+
+ *                        |  blockn  |
+ *                        +----------+
+ *
+ */
 struct buffer_head *minix_getblks(struct inode *inode, int block,
                     int create)
 {
@@ -274,10 +406,10 @@ int file_read_minix(struct inode *inode, struct file *filp,
      * | Buffer_head | Buffer_head | ...      | Buffer_head | ...  |
      * |             |             |          |             |      |
      * +-------------+-------------+----------+-------------+------+
-     * A                                      A
-     * |                                      |
-     * |                                      |
-     * o----bhe                       bhb-----o
+     * A                                      
+     * |                                      
+     * |                                      
+     * o----bhe/bhb
      *
      *
      */
@@ -306,8 +438,8 @@ int file_read_minix(struct inode *inode, struct file *filp,
             *bhb = minix_getblks(inode, block++, 0);
             /*
              * The system invokes 'minix_getblks()' to get speical 
-             * 'buffer_head', and then 'bhreq' array hold 'buffer_head'.
-             * 'bhreq' array is used to read data from disk.
+             * 'buffer_head', and if b_uptodate on buffer_head that indicate
+             *  buffer need reload, and add buffer into request queue.
              *
              * bhreq[NBUF]
              * 
@@ -341,7 +473,24 @@ int file_read_minix(struct inode *inode, struct file *filp,
         if (bhrequest)
             ll_rw_block(READ, bhrequest, bhreq);
 
-        do { /* Finish off all I/O that has actually completed */
+        do { /* 
+              * Finish off all I/O that has actually completed
+              *
+              * buflist[NBUF]:
+              *
+              * +-------------+-------------+----------+-------------+------+
+              * |             |             |          |             |      |
+              * | Buffer_head | Buffer_head | ...      | Buffer_head | ...  |
+              * |             |             |          |             |      |
+              * +-------------+-------------+----------+-------------+------+
+              * A                                      A
+              * |                                      |
+              * |                                      |
+              * o----bhe                          bhb--o
+              *
+    printk("Value %s\n", value);
+              */ 
+
             if (*bhe) {
                 wait_on_buffer(*bhe);
                 if (!(*bhe)->b_uptodate) {    /* read error? */
