@@ -1,0 +1,26 @@
+#
+# POSIX: creat
+#
+
+menu "creat       create a new file or rewrite an existing one"
+
+config DEBUG_POSIX_CREAT
+	bool "creat(): create a new file or rewrite an existing one"
+	help
+	  Debug creat system Call Mechanism on X86 Architecture.
+
+if DEBUG_POSIX_CREAT
+
+config DEBUG_CREAT_ORIG
+	bool "creat(): original creat an nonexist file"
+	help
+	  Debug original creat().
+
+config DEBUG_CREAT_ROOTFS
+	bool "creat(): creat operation on speical rootfs"
+	help
+	  Close on special rootfs.
+
+endif
+
+endmenu

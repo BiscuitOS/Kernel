@@ -35,6 +35,9 @@ source tools/demo/posix/close/Kconfig
 # fork
 source tools/demo/posix/fork/Kconfig
 
+# creat
+source tools/demo/posix/creat/Kconfig
+
 endif
 
 endmenu
