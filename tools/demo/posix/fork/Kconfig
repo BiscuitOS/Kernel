@@ -1,0 +1,26 @@
+#
+# POSIX: fork
+#
+
+menu "fork        create a new process"
+
+config DEBUG_POSIX_FORK
+	bool "fork(): create a new process"
+	help
+	  Debug fork system Call Mechanism on X86 Architecture.
+
+if DEBUG_POSIX_FORK
+
+config DEBUG_FORK_ORIG
+	bool "fork(): original fork a new process"
+	help
+	  Debug original fork().
+
+config DEBUG_FORK_ROOTFS
+	bool "fork(): fork operation on speical rootfs"
+	help
+	  Fork on special rootfs.
+
+endif
+
+endmenu

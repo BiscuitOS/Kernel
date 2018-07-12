@@ -21,6 +21,7 @@
 #define __NR_demo_minixfs         (DEBUG_SYSCALL_NR + 7)
 #define __NR_demo_syscall         (DEBUG_SYSCALL_NR + 8)
 #define __NR_demo_close           (DEBUG_SYSCALL_NR + 9)
+#define __NR_demo_fork            (DEBUG_SYSCALL_NR + 10)
 
 int demo_setup(void *BIOS);
 int demo_open(const char *filename, int flag, int mode);
@@ -32,6 +33,7 @@ int demo_write(unsigned int fd, char *buf, unsigned int count);
 int demo_minixfs(int fd);
 int demo_syscall(const char *filename, int flag, int mode);
 int demo_close(unsigned int fd);
+int demo_fork(void);
 
 #endif // __FILE_DEBUGCALL_NR__
 
@@ -103,6 +105,12 @@ extern int sys_demo_syscall();
 extern int sys_demo_close();
 #else
 #define sys_demo_close sys_null
+#endif
+
+#ifdef CONFIG_DEBUG_POSIX_FORK
+extern int sys_demo_fork();
+#else
+#define sys_demo_fork sys_null
 #endif
 
 #endif // __FILE_SYS_DEBUGCALL__

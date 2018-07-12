@@ -124,56 +124,56 @@ int dup_mmap(struct task_struct * tsk)
  */
 asmlinkage int sys_fork(struct pt_regs regs)
 {
-	struct pt_regs * childregs;
-	struct task_struct *p;
-	int i,nr;
-	struct file *f;
-	unsigned long clone_flags = COPYVM | SIGCHLD;
+    struct pt_regs * childregs;
+    struct task_struct *p;
+    int i, nr;
+    struct file *f;
+    unsigned long clone_flags = COPYVM | SIGCHLD;
 
-	if(!(p = (struct task_struct*)__get_free_page(GFP_KERNEL)))
-		goto bad_fork;
-	nr = find_empty_process();
-	if (nr < 0)
-		goto bad_fork_free;
-	task[nr] = p;
-	*p = *current;
-	p->did_exec = 0;
-	p->kernel_stack_page = 0;
-	p->state = TASK_UNINTERRUPTIBLE;
-	p->flags &= ~(PF_PTRACED|PF_TRACESYS);
-	p->pid = last_pid;
-	p->swappable = 1;
-	p->p_pptr = p->p_opptr = current;
-	p->p_cptr = NULL;
-	SET_LINKS(p);
-	p->signal = 0;
-	p->it_real_value = p->it_virt_value = p->it_prof_value = 0;
-	p->it_real_incr = p->it_virt_incr = p->it_prof_incr = 0;
-	p->leader = 0;		/* process leadership doesn't inherit */
-	p->utime = p->stime = 0;
-	p->cutime = p->cstime = 0;
-	p->min_flt = p->maj_flt = 0;
-	p->cmin_flt = p->cmaj_flt = 0;
-	p->start_time = jiffies;
-/*
- * set up new TSS and kernel stack
- */
-	if (!(p->kernel_stack_page = __get_free_page(GFP_KERNEL)))
-		goto bad_fork_cleanup;
-	p->tss.es = KERNEL_DS;
-	p->tss.cs = KERNEL_CS;
-	p->tss.ss = KERNEL_DS;
-	p->tss.ds = KERNEL_DS;
-	p->tss.fs = USER_DS;
-	p->tss.gs = KERNEL_DS;
-	p->tss.ss0 = KERNEL_DS;
-	p->tss.esp0 = p->kernel_stack_page + PAGE_SIZE;
-	p->tss.tr = _TSS(nr);
-	childregs = ((struct pt_regs *) (p->kernel_stack_page + PAGE_SIZE)) - 1;
-	p->tss.esp = (unsigned long) childregs;
-	p->tss.eip = (unsigned long) ret_from_sys_call;
-	*childregs = regs;
-	childregs->eax = 0;
+    if(!(p = (struct task_struct*)__get_free_page(GFP_KERNEL)))
+        goto bad_fork;
+    nr = find_empty_process();
+    if (nr < 0)
+        goto bad_fork_free;
+    task[nr] = p;
+    *p = *current;
+    p->did_exec = 0;
+    p->kernel_stack_page = 0;
+    p->state = TASK_UNINTERRUPTIBLE;
+    p->flags &= ~(PF_PTRACED|PF_TRACESYS);
+    p->pid = last_pid;
+    p->swappable = 1;
+    p->p_pptr = p->p_opptr = current;
+    p->p_cptr = NULL;
+    SET_LINKS(p);
+    p->signal = 0;
+    p->it_real_value = p->it_virt_value = p->it_prof_value = 0;
+    p->it_real_incr = p->it_virt_incr = p->it_prof_incr = 0;
+    p->leader = 0;    /* process leadership doesn't inherit */
+    p->utime = p->stime = 0;
+    p->cutime = p->cstime = 0;
+    p->min_flt = p->maj_flt = 0;
+    p->cmin_flt = p->cmaj_flt = 0;
+    p->start_time = jiffies;
+    /*
+     * set up new TSS and kernel stack
+     */
+    if (!(p->kernel_stack_page = __get_free_page(GFP_KERNEL)))
+        goto bad_fork_cleanup;
+    p->tss.es = KERNEL_DS;
+    p->tss.cs = KERNEL_CS;
+    p->tss.ss = KERNEL_DS;
+    p->tss.ds = KERNEL_DS;
+    p->tss.fs = USER_DS;
+    p->tss.gs = KERNEL_DS;
+    p->tss.ss0 = KERNEL_DS;
+    p->tss.esp0 = p->kernel_stack_page + PAGE_SIZE;
+    p->tss.tr = _TSS(nr);
+    childregs = ((struct pt_regs *) (p->kernel_stack_page + PAGE_SIZE)) - 1;
+    p->tss.esp = (unsigned long) childregs;
+    p->tss.eip = (unsigned long) ret_from_sys_call;
+    *childregs = regs;
+    childregs->eax = 0;
 	p->tss.back_link = 0;
 	p->tss.eflags = regs.eflags & 0xffffcfff;	/* iopl is always 0 for a new process */
 	if (IS_CLONE) {

@@ -32,6 +32,9 @@ source tools/demo/posix/write/Kconfig
 # close
 source tools/demo/posix/close/Kconfig
 
+# fork
+source tools/demo/posix/fork/Kconfig
+
 endif
 
 endmenu
