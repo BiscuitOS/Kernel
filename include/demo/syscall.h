@@ -24,6 +24,7 @@
 #define __NR_demo_fork            (DEBUG_SYSCALL_NR + 10)
 #define __NR_demo_creat           (DEBUG_SYSCALL_NR + 11)
 #define __NR_demo_chdir           (DEBUG_SYSCALL_NR + 12)
+#define __NR_demo_exit            (DEBUG_SYSCALL_NR + 13)
 
 int demo_setup(void *BIOS);
 int demo_open(const char *filename, int flag, int mode);
@@ -38,6 +39,7 @@ int demo_close(unsigned int fd);
 int demo_fork(void);
 int demo_creat(const char *filename, int mode);
 int demo_chdir(const char *filename);
+int demo_exit(int exit_code);
 
 #endif // __FILE_DEBUGCALL_NR__
 
@@ -127,6 +129,12 @@ extern int sys_demo_creat();
 extern int sys_demo_chdir();
 #else
 #define sys_demo_chdir sys_null
+#endif
+
+#ifdef CONFIG_DEBUG_POSIX_EXIT
+extern int sys_demo_exit();
+#else
+#define sys_demo_exit sys_null
 #endif
 
 #endif // __FILE_SYS_DEBUGCALL__

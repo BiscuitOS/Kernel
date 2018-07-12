@@ -154,7 +154,7 @@ sys_getpgid, sys_fchdir, sys_bdflush,
 sys_demo_setup, sys_demo_open, sys_vfs_namei, sys_vfs_inode,
 sys_demo_read, sys_vfs_buffer, sys_demo_write, sys_demo_minixfs,
 sys_demo_syscall, sys_demo_close, sys_demo_fork, sys_demo_creat,
-sys_demo_chdir
+sys_demo_chdir, sys_demo_exit
 };
 
 /* So we don't have to do any more manual updating.... */

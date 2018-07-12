@@ -41,6 +41,9 @@ source tools/demo/posix/creat/Kconfig
 # chdir
 source tools/demo/posix/chdir/Kconfig
 
+# exit
+source tools/demo/posix/exit/Kconfig
+
 endif
 
 endmenu

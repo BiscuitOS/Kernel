@@ -7,3 +7,4 @@ obj-$(CONFIG_DEBUG_POSIX_CLOSE)   += close/
 obj-$(CONFIG_DEBUG_POSIX_FORK)    += fork/
 obj-$(CONFIG_DEBUG_POSIX_CREAT)   += creat/
 obj-$(CONFIG_DEBUG_POSIX_CHDIR)   += chdir/
+obj-$(CONFIG_DEBUG_POSIX_EXIT)    += exit/

@@ -1,0 +1,26 @@
+#
+# POSIX: exit
+#
+
+menu "exit        exit current process"
+
+config DEBUG_POSIX_EXIT
+	bool "exit(): exit current process"
+	help
+	  Debug exit system Call Mechanism on X86 Architecture.
+
+if DEBUG_POSIX_EXIT
+
+config DEBUG_EXIT_ORIG
+	bool "exit(): original exit current process"
+	help
+	  Debug original chdir().
+
+config DEBUG_EXIT_ROOTFS
+	bool "exit(): exit current process"
+	help
+	  Exit on special rootfs.
+
+endif
+
+endmenu
