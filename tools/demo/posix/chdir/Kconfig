@@ -1,0 +1,26 @@
+#
+# POSIX: chdir
+#
+
+menu "chdir       change working directory"
+
+config DEBUG_POSIX_CHDIR
+	bool "chdir(): change current working directory"
+	help
+	  Debug chdir system Call Mechanism on X86 Architecture.
+
+if DEBUG_POSIX_CHDIR
+
+config DEBUG_CHDIR_ORIG
+	bool "chdir(): original change current working directory"
+	help
+	  Debug original chdir().
+
+config DEBUG_CHDIR_ROOTFS
+	bool "chdir(): chdir operation on speical rootfs"
+	help
+	  Chdir on special rootfs.
+
+endif
+
+endmenu

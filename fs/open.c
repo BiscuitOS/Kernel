@@ -192,23 +192,23 @@ asmlinkage int sys_access(const char * filename,int mode)
 
 asmlinkage int sys_chdir(const char * filename)
 {
-	struct inode * inode;
-	int error;
+    struct inode * inode;
+    int error;
 
-	error = namei(filename,&inode);
-	if (error)
-		return error;
-	if (!S_ISDIR(inode->i_mode)) {
-		iput(inode);
-		return -ENOTDIR;
-	}
-	if (!permission(inode,MAY_EXEC)) {
-		iput(inode);
-		return -EACCES;
-	}
-	iput(current->pwd);
-	current->pwd = inode;
-	return (0);
+    error = namei(filename, &inode);
+    if (error)
+        return error;
+    if (!S_ISDIR(inode->i_mode)) {
+        iput(inode);
+        return -ENOTDIR;
+    }
+    if (!permission(inode, MAY_EXEC)) {
+        iput(inode);
+        return -EACCES;
+    }
+    iput(current->pwd);
+    current->pwd = inode;
+    return (0);
 }
 
 asmlinkage int sys_fchdir(unsigned int fd)

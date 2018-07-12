@@ -38,6 +38,9 @@ source tools/demo/posix/fork/Kconfig
 # creat
 source tools/demo/posix/creat/Kconfig
 
+# chdir
+source tools/demo/posix/chdir/Kconfig
+
 endif
 
 endmenu
