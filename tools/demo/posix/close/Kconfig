@@ -1,0 +1,26 @@
+#
+# POSIX: close
+#
+
+menu "close       Close file/Directory/socket/pipe etc"
+
+config DEBUG_POSIX_CLOSE
+	bool "close(): Close file/Directory/socket/pipe etc"
+	help
+	  Debug close system Call Mechanism on X86 Architecture.
+
+if DEBUG_POSIX_CLOSE
+
+config DEBUG_CLOSE_ORIG
+	bool "close(): original clsoe an opened file"
+	help
+	  Debug original close().
+
+config DEBUG_CLOSE_ROOTFS
+	bool "close(): close operation on speical rootfs"
+	help
+	  Close on special rootfs.
+
+endif
+
+endmenu

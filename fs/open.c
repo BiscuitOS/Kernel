@@ -19,7 +19,8 @@
 
 #include <asm/segment.h>
 
-extern void fcntl_remove_locks(struct task_struct *, struct file *, unsigned int fd);
+extern void fcntl_remove_locks(struct task_struct *, struct file *, 
+                              unsigned int fd);
 
 asmlinkage int sys_ustat(int dev, struct ustat * ubuf)
 {
@@ -441,38 +442,38 @@ asmlinkage int sys_creat(const char * pathname, int mode)
 
 int close_fp(struct file *filp, unsigned int fd)
 {
-	struct inode *inode;
+    struct inode *inode;
 
-	if (filp->f_count == 0) {
-		printk("VFS: Close: file count is 0\n");
-		return 0;
-	}
-	inode = filp->f_inode;
-	if (inode && S_ISREG(inode->i_mode))
-		fcntl_remove_locks(current, filp, fd);
-	if (filp->f_count > 1) {
-		filp->f_count--;
-		return 0;
-	}
-	if (filp->f_op && filp->f_op->release)
-		filp->f_op->release(inode,filp);
-	filp->f_count--;
-	filp->f_inode = NULL;
-	iput(inode);
-	return 0;
+    if (filp->f_count == 0) {
+        printk("VFS: Close: file count is 0\n");
+        return 0;
+    }
+    inode = filp->f_inode;
+    if (inode && S_ISREG(inode->i_mode))
+        fcntl_remove_locks(current, filp, fd);
+    if (filp->f_count > 1) {
+        filp->f_count--;
+        return 0;
+    }
+    if (filp->f_op && filp->f_op->release)
+        filp->f_op->release(inode, filp);
+    filp->f_count--;
+    filp->f_inode = NULL;
+    iput(inode);
+    return 0;
 }
 
 asmlinkage int sys_close(unsigned int fd)
 {	
-	struct file * filp;
+    struct file * filp;
 
-	if (fd >= NR_OPEN)
-		return -EBADF;
-	FD_CLR(fd, &current->close_on_exec);
-	if (!(filp = current->filp[fd]))
-		return -EBADF;
-	current->filp[fd] = NULL;
-	return (close_fp (filp, fd));
+    if (fd >= NR_OPEN)
+        return -EBADF;
+    FD_CLR(fd, &current->close_on_exec);
+    if (!(filp = current->filp[fd]))
+        return -EBADF;
+    current->filp[fd] = NULL;
+    return (close_fp(filp, fd));
 }
 
 /*
