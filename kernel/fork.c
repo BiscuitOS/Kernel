@@ -34,38 +34,38 @@ asmlinkage void ret_from_sys_call(void) __asm__("ret_from_sys_call");
 #define MIN_TASKS_LEFT_FOR_ROOT 4
 
 extern int shm_fork(struct task_struct *, struct task_struct *);
-long last_pid=0;
+long last_pid = 0;
 
 static int find_empty_process(void)
 {
-	int free_task;
-	int i, tasks_free;
-	int this_user_tasks;
+    int free_task;
+    int i, tasks_free;
+    int this_user_tasks;
 
 repeat:
-	if ((++last_pid) & 0xffff8000)
-		last_pid=1;
-	this_user_tasks = 0;
-	tasks_free = 0;
-	free_task = -EAGAIN;
-	i = NR_TASKS;
-	while (--i > 0) {
-		if (!task[i]) {
-			free_task = i;
-			tasks_free++;
-			continue;
-		}
-		if (task[i]->uid == current->uid)
-			this_user_tasks++;
-		if (task[i]->pid == last_pid || task[i]->pgrp == last_pid ||
-		    task[i]->session == last_pid)
-			goto repeat;
-	}
-	if (tasks_free <= MIN_TASKS_LEFT_FOR_ROOT ||
-	    this_user_tasks > MAX_TASKS_PER_USER)
-		if (current->uid)
-			return -EAGAIN;
-	return free_task;
+    if ((++last_pid) & 0xffff8000)
+        last_pid = 1;
+    this_user_tasks = 0;
+    tasks_free = 0;
+    free_task = -EAGAIN;
+    i = NR_TASKS;
+    while (--i > 0) {
+        if (!task[i]) {
+            free_task = i;
+            tasks_free++;
+            continue;
+        }
+        if (task[i]->uid == current->uid)
+            this_user_tasks++;
+        if (task[i]->pid == last_pid || task[i]->pgrp == last_pid ||
+                  task[i]->session == last_pid)
+            goto repeat;
+    }
+    if (tasks_free <= MIN_TASKS_LEFT_FOR_ROOT ||
+           this_user_tasks > MAX_TASKS_PER_USER)
+        if (current->uid)
+            return -EAGAIN;
+    return free_task;
 }
 
 static struct file * copy_fd(struct file * old_file)
@@ -174,61 +174,63 @@ asmlinkage int sys_fork(struct pt_regs regs)
     p->tss.eip = (unsigned long) ret_from_sys_call;
     *childregs = regs;
     childregs->eax = 0;
-	p->tss.back_link = 0;
-	p->tss.eflags = regs.eflags & 0xffffcfff;	/* iopl is always 0 for a new process */
-	if (IS_CLONE) {
-		if (regs.ebx)
-			childregs->esp = regs.ebx;
-		clone_flags = regs.ecx;
-		if (childregs->esp == regs.esp)
-			clone_flags |= COPYVM;
-	}
-	p->exit_signal = clone_flags & CSIGNAL;
-	p->tss.ldt = _LDT(nr);
-	if (p->ldt) {
-		p->ldt = (struct desc_struct*) vmalloc(LDT_ENTRIES*LDT_ENTRY_SIZE);
-		if (p->ldt != NULL)
-			memcpy(p->ldt, current->ldt, LDT_ENTRIES*LDT_ENTRY_SIZE);
-	}
-	p->tss.bitmap = offsetof(struct tss_struct,io_bitmap);
-	for (i = 0; i < IO_BITMAP_SIZE+1 ; i++) /* IO bitmap is actually SIZE+1 */
-		p->tss.io_bitmap[i] = ~0;
-	if (last_task_used_math == current)
-		__asm__("clts ; fnsave %0 ; frstor %0":"=m" (p->tss.i387));
-	p->semun = NULL; p->shm = NULL;
-	if (copy_vm(p) || shm_fork(current, p))
-		goto bad_fork_cleanup;
-	if (clone_flags & COPYFD) {
-		for (i=0; i<NR_OPEN;i++)
-			if ((f = p->filp[i]) != NULL)
-				p->filp[i] = copy_fd(f);
-	} else {
-		for (i=0; i<NR_OPEN;i++)
-			if ((f = p->filp[i]) != NULL)
-				f->f_count++;
-	}
-	if (current->pwd)
-		current->pwd->i_count++;
-	if (current->root)
-		current->root->i_count++;
-	if (current->executable)
-		current->executable->i_count++;
-	dup_mmap(p);
-	set_tss_desc(gdt+(nr<<1)+FIRST_TSS_ENTRY,&(p->tss));
-	if (p->ldt)
-		set_ldt_desc(gdt+(nr<<1)+FIRST_LDT_ENTRY,p->ldt, 512);
-	else
-		set_ldt_desc(gdt+(nr<<1)+FIRST_LDT_ENTRY,&default_ldt, 1);
+    p->tss.back_link = 0;
+    /* iopl is always 0 for a new process */
+    p->tss.eflags = regs.eflags & 0xffffcfff;
+    if (IS_CLONE) {
+        if (regs.ebx)
+            childregs->esp = regs.ebx;
+        clone_flags = regs.ecx;
+        if (childregs->esp == regs.esp)
+            clone_flags |= COPYVM;
+    }
+    p->exit_signal = clone_flags & CSIGNAL;
+    p->tss.ldt = _LDT(nr);
+    if (p->ldt) {
+        p->ldt = (struct desc_struct*) vmalloc(LDT_ENTRIES*LDT_ENTRY_SIZE);
+        if (p->ldt != NULL)
+            memcpy(p->ldt, current->ldt, LDT_ENTRIES*LDT_ENTRY_SIZE);
+    }
+    p->tss.bitmap = offsetof(struct tss_struct,io_bitmap);
+    /* IO bitmap is actually SIZE+1 */
+    for (i = 0; i < IO_BITMAP_SIZE + 1 ; i++)
+        p->tss.io_bitmap[i] = ~0;
+    if (last_task_used_math == current)
+        __asm__("clts ; fnsave %0 ; frstor %0":"=m" (p->tss.i387));
+    p->semun = NULL; p->shm = NULL;
+    if (copy_vm(p) || shm_fork(current, p))
+        goto bad_fork_cleanup;
+    if (clone_flags & COPYFD) {
+        for (i=0; i<NR_OPEN;i++)
+            if ((f = p->filp[i]) != NULL)
+                p->filp[i] = copy_fd(f);
+    } else {
+        for (i = 0; i < NR_OPEN; i++)
+            if ((f = p->filp[i]) != NULL)
+                f->f_count++;
+    }
+    if (current->pwd)
+        current->pwd->i_count++;
+    if (current->root)
+        current->root->i_count++;
+    if (current->executable)
+        current->executable->i_count++;
+    dup_mmap(p);
+    set_tss_desc(gdt + (nr << 1) + FIRST_TSS_ENTRY, &(p->tss));
+    if (p->ldt)
+        set_ldt_desc(gdt + (nr << 1) + FIRST_LDT_ENTRY, p->ldt, 512);
+    else
+        set_ldt_desc(gdt + (nr << 1) + FIRST_LDT_ENTRY, &default_ldt, 1);
 
-	p->counter = current->counter >> 1;
-	p->state = TASK_RUNNING;	/* do this last, just in case */
-	return p->pid;
+    p->counter = current->counter >> 1;
+    p->state = TASK_RUNNING;    /* do this last, just in case */
+    return p->pid;
 bad_fork_cleanup:
-	task[nr] = NULL;
-	REMOVE_LINKS(p);
-	free_page(p->kernel_stack_page);
+    task[nr] = NULL;
+    REMOVE_LINKS(p);
+    free_page(p->kernel_stack_page);
 bad_fork_free:
-	free_page((long) p);
+    free_page((long) p);
 bad_fork:
-	return -EAGAIN;
+    return -EAGAIN;
 }
