@@ -25,10 +25,6 @@
 #include <linux/string.h>
 #include <linux/locks.h>
 
-#ifdef CONFIG_DEBUG_DEBUGCALL
-#include <demo/debug.h>
-#endif
-
 extern int vsprintf (char *, const char *, va_list);
 
 void ext2_error (struct super_block * sb, const char * function,
@@ -368,9 +364,6 @@ struct super_block * ext2_read_super (struct super_block * sb, void * data,
     int fs_converted = 0;
 #endif
 
-#ifdef CONFIG_DEBUG_DEBUGCALL
-    do_debugcall(DEBUG_ROOTFS);
-#endif
     set_opt (sb->u.ext2_sb.s_mount_opt, CHECK_NORMAL);
     if (!parse_options ((char *) data, &sb_block,
             &sb->u.ext2_sb.s_mount_opt)) {

@@ -1606,6 +1606,7 @@ static __unused int ext2_inode(struct super_block *sb, struct inode *inode)
     unsigned long block_group;
     unsigned long group_desc;
     unsigned long desc;
+    unsigned long block;
     struct ext2_group_desc *gdp;
 
     /*
@@ -1642,23 +1643,72 @@ static __unused int ext2_inode(struct super_block *sb, struct inode *inode)
      *
      */
 
-    /*
-     * The value 'block_group' indicate the index of block group for 
-     * special inode.
-     */
     block_group = (inode->i_ino - 1) / EXT2_INODES_PER_GROUP(inode->i_sb);
     if (block_group >= inode->i_sb->u.ext2_sb.s_groups_count)
         panic("EXT2-fs: group > groups count");
     
     group_desc = block_group / EXT2_DESC_PER_BLOCK(inode->i_sb);
     desc = block_group % EXT2_DESC_PER_BLOCK(inode->i_sb);
+    /* buffer of group descriptor */
     bh = inode->i_sb->u.ext2_sb.s_group_desc[group_desc];
     if (!bh)
         printk("Descriptor not loaded\n");
+    /*
+     * 
+     * +-------------+-------------+-------------+----+-------------+
+     * |             |             |             |    |             |
+     * | block group | block group | block group | .. | block group |
+     * | descriptor  | descriptor  | descriptor  |    |             |
+     * |             |             |             |    |             |
+     * +-------------+-------------+-------------+----+-------------+
+     * A
+     * |
+     * |
+     * |
+     * |
+     * o---gpd       
+     *
+     * bg_inode_table
+     *   32bit block id of the first block of the 'inode table' for the
+     *   represented group.
+     *
+     * EXT2_INODES_PER_GROUP
+     *   Macro indicating the number of inode per group.
+     *
+     * EXT2_INODES_PER_BLOCK
+     *   Macro indicating the number of inode per group.
+     *
+     * block group descriptor
+     * +-----------------+
+     * |                 |   
+     * |                 |   
+     * |                 |   
+     * +-----------------+            +--------------------------------+
+     * | bg_inode_table -|----------->| first block id of inode table  | 
+     * +-----------------+            +--------------------------------+
+     * |                 |            | second block id of inode table |
+     * |                 |            +--------------------------------+
+     * +-----------------+            | third block id of inode table  |
+     *                                +--------------------------------+
+     *                                |      .......                   |
+     *                                +--------------------------------+
+     *                                | xth block id of inode table    |
+     *                                +--------------------------------+
+     *
+     *
+     */
     gdp = (struct ext2_group_desc *)bh->b_data;
-    block = gdp[desc].bg_inodes_table +
+    block = gdp[desc].bg_inode_table +
                 (((inode->i_ino - 1) % EXT2_INODES_PER_GROUP(inode->i_sb)) /
                 EXT2_INODES_PER_BLOCK(inode->i_sb));
+
+    /* read block from EXT2-fs */
+    if (!(bh = bread(inode->i_dev, block, inode->i_sb->s_blocksize)))
+        printk(KERN_ERR "unable to read inode block\n");
+
+    /* Read ext2_inode from EXT2-fs */
+    raw_inode = ((struct ext2_inode *) bh->b_data) +
+               ((inode->i_ino - 1) % EXT2_INODES_PER_BLOCK(inode->i_sb));
 
     /*
      * i_mode
@@ -1698,11 +1748,18 @@ static __unused int ext2_inode(struct super_block *sb, struct inode *inode)
      *   EXT2_S_IXOTH              0x0001      others execute
      *   ------------------------------------------------------------
      */
+    if (inode->i_mode != raw_inode->i_mode)
+        panic("Error on i_mode");
 
     /*
      * i_uid
      *   16bit user id associated with the file.
+     *
+     * i_gid
+     *   16bit value of the POSIX group having access to this file.
      */
+    if (inode->i_uid != raw_inode->i_uid)
+        panic("Error on i_uid");
  
     /*
      * i_size
@@ -1711,6 +1768,57 @@ static __unused int ext2_inode(struct super_block *sb, struct inode *inode)
      *   regular file, this represents the lower 32-bit of the file size.
      *   The upper 32-bit is located in the i_dir_acl.
      */
+    if (inode->i_size != raw_inode->i_size)
+        panic("Error on i_size");
+    
+    /*
+     * Time field
+     *
+     *   i_atime
+     *     32bit value representing the number of seconds since january 1st
+     *     1970 of the last time this inode was accessed.
+     *
+     *   i_ctime
+     *     32bit value representing the number of seconds since january 1st
+     *     1970, of when the inode was created.
+     *
+     *   i_mtime
+     *     32bit value representing the number of seconds since january 1st
+     *     1970, of the last time this inode was modify.
+     *
+     *   i_dtime
+     *     32bit value representing the number of seconds since january 1st
+     *     1970, of when the inode was deleted.
+     */
+    if (inode->i_ctime != raw_inode->i_ctime)
+        panic("Error on create time!\n");
+
+    /*
+     * i_links_count
+     *   16bit value indicating how many times this particular inode is
+     *   linked (referred to). Most files will have a link count of 1.
+     *   Files with hard links pointing to them will have an additional
+     *   count for each hard link.
+     *
+     *   Symbolic links do not affect the link count of an inode. When
+     *   the link count reaches 0 the inode and all its associated blocks
+     *   are freed.
+     */
+    if (inode->i_nlink != raw_inode->i_links_count)
+        panic("Error on symbolic link.");
+
+    /*
+     * i_blocks
+     *   32bit value representing the total number of 512-bytes blocks
+     *   reserved to contain the data of this inode, regardless if these
+     *   blocks are used or not. The block number of these reserved blocks
+     *   are contained in the i_block_array.
+     *
+     *   Since this value represents 512-byte block and not file system
+     *   blocks, this value should 
+     *
+     */
+
     return 0;
 }
 
