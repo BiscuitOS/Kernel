@@ -25,6 +25,7 @@
 #define __NR_demo_creat           (DEBUG_SYSCALL_NR + 11)
 #define __NR_demo_chdir           (DEBUG_SYSCALL_NR + 12)
 #define __NR_demo_exit            (DEBUG_SYSCALL_NR + 13)
+#define __NR_vfs_ext2fs           (DEBUG_SYSCALL_NR + 14)
 
 int demo_setup(void *BIOS);
 int demo_open(const char *filename, int flag, int mode);
@@ -40,6 +41,7 @@ int demo_fork(void);
 int demo_creat(const char *filename, int mode);
 int demo_chdir(const char *filename);
 int demo_exit(int exit_code);
+int vfs_ext2fs(const char *filename);
 
 #endif // __FILE_DEBUGCALL_NR__
 
@@ -135,6 +137,12 @@ extern int sys_demo_chdir();
 extern int sys_demo_exit();
 #else
 #define sys_demo_exit sys_null
+#endif
+
+#ifdef CONFIG_DEBUG_VFS_EXT2
+extern int sys_vfs_ext2fs();
+#else
+#define sys_vfs_ext2fs sys_null
 #endif
 
 #endif // __FILE_SYS_DEBUGCALL__

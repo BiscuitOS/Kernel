@@ -119,7 +119,7 @@ static void check_partition(struct gendisk *hd, unsigned int dev)
             if (!(hd->part[minor].nr_sects = p->nr_sects))
                 continue;
             hd->part[minor].start_sect = first_sector + p->start_sect;
-            printk(" %s%c%d", hd->major_name,'a' + 
+            printk(" %s%c%d", hd->major_name, 'a' + 
                    (minor >> hd->minor_shift), i);
             if ((current_minor & 0x3f) >= 60)
                 continue;
@@ -183,7 +183,6 @@ static void setup_dev(struct gendisk *dev)
     int major = dev->major << 8;
     int drive;
 	
-
     for (i = 0 ; i < j; i++)  {
         dev->part[i].start_sect = 0;
         dev->part[i].nr_sects = 0;

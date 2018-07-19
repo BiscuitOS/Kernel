@@ -22,6 +22,9 @@ source "tools/demo/vfs/core/Kconfig"
 # MINIX Fileystem
 source "tools/demo/vfs/minixfs/Kconfig"
 
+# EXT2 Fileystem
+source "tools/demo/vfs/ext2/Kconfig"
+
 endif
 
 endmenu

@@ -30,8 +30,7 @@
 		"rep\n\t" \
 		"stosl" \
 		: \
-		:"a" (value), "c" (size / 4), "D" ((long) (addr)) \
-		:"cx", "di")
+		:"a" (value), "c" (size / 4), "D" ((long) (addr)))
 
 static int ext2_secrm_seed = 152;	/* Random generator base */
 
@@ -189,16 +188,17 @@ repeat:
 	for (i = 0; i < addr_per_block; i++)
 		if (*(ind++))
 			break;
-	if (i >= addr_per_block)
-		if (ind_bh->b_count != 1)
+	if (i >= addr_per_block) {
+		if (ind_bh->b_count != 1) {
 			retry = 1;
-		else {
+		} else {
 			tmp = *p;
 			*p = 0;
 			inode->i_blocks -= blocks;
 			inode->i_dirt = 1;
 			ext2_free_blocks (inode->i_sb, tmp, 1);
 		}
+        }
 	if (IS_SYNC(inode) && ind_bh->b_dirt) {
 		ll_rw_block (WRITE, 1, &ind_bh);
 		wait_on_buffer (ind_bh);
@@ -249,16 +249,17 @@ repeat:
 	for (i = 0; i < addr_per_block; i++)
 		if (*(dind++))
 			break;
-	if (i >= addr_per_block)
-		if (dind_bh->b_count != 1)
+	if (i >= addr_per_block) {
+		if (dind_bh->b_count != 1) {
 			retry = 1;
-		else {
+		} else {
 			tmp = *p;
 			*p = 0;
 			inode->i_blocks -= blocks;
 			inode->i_dirt = 1;
 			ext2_free_blocks (inode->i_sb, tmp, 1);
 		}
+        }
 	if (IS_SYNC(inode) && dind_bh->b_dirt) {
 		ll_rw_block (WRITE, 1, &dind_bh);
 		wait_on_buffer (dind_bh);
@@ -308,7 +309,7 @@ repeat:
 	for (i = 0; i < addr_per_block; i++)
 		if (*(tind++))
 			break;
-	if (i >= addr_per_block)
+	if (i >= addr_per_block) {
 		if (tind_bh->b_count != 1)
 			retry = 1;
 		else {
@@ -318,6 +319,7 @@ repeat:
 			inode->i_dirt = 1;
 			ext2_free_blocks (inode->i_sb, tmp, 1);
 		}
+        }
 	if (IS_SYNC(inode) && tind_bh->b_dirt) {
 		ll_rw_block (WRITE, 1, &tind_bh);
 		wait_on_buffer (tind_bh);

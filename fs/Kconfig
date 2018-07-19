@@ -12,4 +12,6 @@ source "fs/msdos/Kconfig"
 
 source "fs/proc/Kconfig"
 
+source "fs/ext2/Kconfig"
+
 endmenu # "File systems"

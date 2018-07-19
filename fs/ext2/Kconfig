@@ -1,0 +1,12 @@
+#
+# EXT2-FS
+#
+
+menu "Ext2 Filesystem"
+
+config EXT2_FS
+	bool "Ext2 Filesystem"
+	help
+	  Ext2 Filesystem
+
+endmenu # "File systems"

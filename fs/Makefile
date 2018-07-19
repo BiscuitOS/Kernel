@@ -22,3 +22,4 @@ obj-$(CONFIG_MINIX_FS)  += minix/
 obj-$(CONFIG_FS_EXT)    += ext/
 obj-$(CONFIG_FS_MSDOS)  += msdos/
 obj-$(CONFIG_FS_PROC)   += proc/
+obj-$(CONFIG_EXT2_FS)   += ext2/

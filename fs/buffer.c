@@ -400,43 +400,46 @@ struct buffer_head * get_hash_table(dev_t dev, int block, int size)
 
 void set_blocksize(dev_t dev, int size)
 {
-	int i;
-	struct buffer_head * bh, *bhnext;
+    int i;
+    struct buffer_head * bh, *bhnext;
 
-	if (!blksize_size[MAJOR(dev)])
-		return;
+    if (!blksize_size[MAJOR(dev)])
+        return;
 
-	switch(size) {
-		default: panic("Invalid blocksize passed to set_blocksize");
-		case 512: case 1024: case 2048: case 4096:;
-	}
+    switch(size) {
+        default: panic("Invalid blocksize passed to set_blocksize");
+        case 512: case 1024: case 2048: case 4096:;
+    }
 
-	if (blksize_size[MAJOR(dev)][MINOR(dev)] == 0 && size == BLOCK_SIZE) {
-		blksize_size[MAJOR(dev)][MINOR(dev)] = size;
-		return;
-	}
-	if (blksize_size[MAJOR(dev)][MINOR(dev)] == size)
-		return;
-	sync_buffers(dev, 2);
-	blksize_size[MAJOR(dev)][MINOR(dev)] = size;
+    if (blksize_size[MAJOR(dev)][MINOR(dev)] == 0 && size == BLOCK_SIZE) {
+        blksize_size[MAJOR(dev)][MINOR(dev)] = size;
+        return;
+    }
+    if (blksize_size[MAJOR(dev)][MINOR(dev)] == size)
+        return;
+    sync_buffers(dev, 2);
+    blksize_size[MAJOR(dev)][MINOR(dev)] = size;
 
-  /* We need to be quite careful how we do this - we are moving entries
-     around on the free list, and we can get in a loop if we are not careful.*/
+    /* 
+     * We need to be quite careful how we do this - we are moving 
+     * entries around on the free list, and we can get in a loop if we 
+     * are not careful.
+     */
 
-	bh = free_list;
-	for (i = nr_buffers*2 ; --i > 0 ; bh = bhnext) {
-		bhnext = bh->b_next_free; 
-		if (bh->b_dev != dev)
-			continue;
-		if (bh->b_size == size)
-			continue;
+    bh = free_list;
+    for (i = nr_buffers * 2 ; --i > 0 ; bh = bhnext) {
+        bhnext = bh->b_next_free; 
+        if (bh->b_dev != dev)
+            continue;
+        if (bh->b_size == size)
+            continue;
 
-		wait_on_buffer(bh);
-		if (bh->b_dev == dev && bh->b_size != size)
-			bh->b_uptodate = bh->b_dirt = 0;
-		remove_from_hash_queue(bh);
-/*    put_first_free(bh); */
-	}
+        wait_on_buffer(bh);
+        if (bh->b_dev == dev && bh->b_size != size)
+            bh->b_uptodate = bh->b_dirt = 0;
+        remove_from_hash_queue(bh);
+     /* put_first_free(bh); */
+    }
 }
 
 /*

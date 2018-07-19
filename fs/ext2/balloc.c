@@ -37,129 +37,121 @@
 		"rep\n\t" \
 		"stosl" \
 		: \
-		:"a" (0), "c" (size / 4), "D" ((long) (addr)) \
-		:"cx", "di")
+		:"a" (0), "c" (size / 4), "D" ((long) (addr)))
 
 #define in_range(b, first, len)		((b) >= (first) && (b) <= (first) + (len) - 1)
 
 static inline int find_first_zero_bit (unsigned long * addr, unsigned size)
 {
-	int res;
+    int res;
 
-	if (!size)
-		return 0;
-	__asm__("
-		cld
-		movl $-1,%%eax
-		repe; scasl
-		je 1f
-		subl $4,%%edi
-		movl (%%edi),%%eax
-		notl %%eax
-		bsfl %%eax,%%edx
-		jmp 2f
-1:		xorl %%edx,%%edx
-2:		subl %%ebx,%%edi
-		shll $3,%%edi
-		addl %%edi,%%edx"
-		:"=d" (res)
-		:"c" ((size + 31) >> 5), "D" (addr), "b" (addr)
-		:"ax", "bx", "cx", "di");
-	return res;
+    if (!size)
+        return 0;
+    __asm__("cld\n\t"
+            "movl $-1,%%eax\n\t"
+            "repe; scasl\n\t"
+            "je 1f\n\t"
+            "subl $4,%%edi\n\t"
+            "movl (%%edi),%%eax\n\t"
+            "notl %%eax\n\t"
+            "bsfl %%eax,%%edx\n\t"
+            "jmp 2f\n\t"
+            "1: xorl %%edx,%%edx\n\t"
+            "2: subl %%ebx,%%edi\n\t"
+            "shll $3,%%edi\n\t"
+            "addl %%edi,%%edx"
+            :"=d" (res)
+            :"c" ((size + 31) >> 5), "D" (addr), "b" (addr));
+    return res;
 }
 
 static inline int find_next_zero_bit (unsigned long * addr, int size,
 				      int offset)
 {
-	unsigned long * p = ((unsigned long *) addr) + (offset >> 5);
-	int set = 0, bit = offset & 31, res;
+    unsigned long * p = ((unsigned long *) addr) + (offset >> 5);
+    int set = 0, bit = offset & 31, res;
 	
-	if (bit) {
-		/*
-		 * Look for zero in first byte
-		 */
-		__asm__("
-			bsfl %1,%0
-			jne 1f
-			movl $32, %0
-1:			"
-			: "=r" (set)
-			: "r" (~(*p >> bit)));
-		if (set < (32 - bit))
-			return set + offset;
-		set = 32 - bit;
-		p++;
-	}
-	/*
-	 * No zero yet, search remaining full bytes for a zero
-	 */
-	res = find_first_zero_bit (p, size - 32 * (p - addr));
-	return (offset + set + res);
+    if (bit) {
+        /*
+         * Look for zero in first byte
+         */
+        __asm__("bsfl %1,%0\n\t"
+                "jne 1f\n\t"
+                "movl $32, %0\n\t"
+                "1:"
+                : "=r" (set)
+                : "r" (~(*p >> bit)));
+    if (set < (32 - bit))
+        return set + offset;
+    set = 32 - bit;
+    p++;
+    }
+    /*
+     * No zero yet, search remaining full bytes for a zero
+     */
+    res = find_first_zero_bit (p, size - 32 * (p - addr));
+    return (offset + set + res);
 }
 
 static inline char * find_first_zero_byte (char * addr, int size)
 {
-	char *res;
+    char *res;
 
-	if (!size)
-		return 0;
-	__asm__("
-		cld
-		mov $0,%%eax
-		repnz; scasb
-		jnz 1f
-		dec %%edi
-1:		"
-		: "=D" (res)
-		: "0" (addr), "c" (size)
-		: "ax");
-	return res;
+    if (!size)
+        return 0;
+    __asm__("cld\n\t"
+            "mov $0,%%eax\n\t"
+            "repnz; scasb\n\t"
+            "jnz 1f\n\t"
+            "dec %%edi\n\t"
+            "1:	"
+            : "=D" (res)
+            : "0" (addr), "c" (size));
+    return res;
 }
 
 static struct ext2_group_desc * get_group_desc (struct super_block * sb,
-						unsigned int block_group,
-						struct buffer_head ** bh)
+            unsigned int block_group, struct buffer_head ** bh)
 {
-	unsigned long group_desc;
-	unsigned long desc;
-	struct ext2_group_desc * gdp;
+    unsigned long group_desc;
+    unsigned long desc;
+    struct ext2_group_desc * gdp;
 
-	if (block_group >= sb->u.ext2_sb.s_groups_count)
-		ext2_panic (sb, "get_group_desc",
-			    "block_group >= groups_count\n"
-			    "block_group = %d, groups_count = %lu",
-			    block_group, sb->u.ext2_sb.s_groups_count);
+    if (block_group >= sb->u.ext2_sb.s_groups_count)
+        ext2_panic (sb, "get_group_desc",
+                        "block_group >= groups_count\n"
+                        "block_group = %d, groups_count = %lu",
+                          block_group, sb->u.ext2_sb.s_groups_count);
 
-	group_desc = block_group / EXT2_DESC_PER_BLOCK(sb);
-	desc = block_group % EXT2_DESC_PER_BLOCK(sb);
-	if (!sb->u.ext2_sb.s_group_desc[group_desc])
-		ext2_panic (sb, "get_group_desc",
-			    "Group descriptor not loaded\n"
-			    "block_group = %d, group_desc = %lu, desc = %lu",
-			     block_group, group_desc, desc);
-	gdp = (struct ext2_group_desc *) 
-	      sb->u.ext2_sb.s_group_desc[group_desc]->b_data;
-	if (bh)
-		*bh = sb->u.ext2_sb.s_group_desc[group_desc];
-	return gdp + desc;
+    group_desc = block_group / EXT2_DESC_PER_BLOCK(sb);
+    desc = block_group % EXT2_DESC_PER_BLOCK(sb);
+    if (!sb->u.ext2_sb.s_group_desc[group_desc])
+        ext2_panic (sb, "get_group_desc",
+                        "Group descriptor not loaded\n"
+                        "block_group = %d, group_desc = %lu, desc = %lu",
+                           block_group, group_desc, desc);
+    gdp = (struct ext2_group_desc *) 
+              sb->u.ext2_sb.s_group_desc[group_desc]->b_data;
+    if (bh)
+        *bh = sb->u.ext2_sb.s_group_desc[group_desc];
+    return gdp + desc;
 }
 
 static void read_block_bitmap (struct super_block * sb,
-			       unsigned int block_group,
-			       unsigned long bitmap_nr)
+              unsigned int block_group, unsigned long bitmap_nr)
 {
-	struct ext2_group_desc * gdp;
-	struct buffer_head * bh;
+    struct ext2_group_desc * gdp;
+    struct buffer_head * bh;
 	
-	gdp = get_group_desc (sb, block_group, NULL);
-	bh = bread (sb->s_dev, gdp->bg_block_bitmap, sb->s_blocksize);
-	if (!bh)
-		ext2_panic (sb, "read_block_bitmap",
-			    "Cannot read block bitmap\n"
-			    "block_group = %d, block_bitmap = %lu",
-			    block_group, gdp->bg_block_bitmap);
-	sb->u.ext2_sb.s_block_bitmap_number[bitmap_nr] = block_group;
-	sb->u.ext2_sb.s_block_bitmap[bitmap_nr] = bh;
+    gdp = get_group_desc (sb, block_group, NULL);
+    bh = bread (sb->s_dev, gdp->bg_block_bitmap, sb->s_blocksize);
+    if (!bh)
+        ext2_panic (sb, "read_block_bitmap",
+                        "Cannot read block bitmap\n"
+                        "block_group = %d, block_bitmap = %lu",
+                           block_group, gdp->bg_block_bitmap);
+    sb->u.ext2_sb.s_block_bitmap_number[bitmap_nr] = block_group;
+    sb->u.ext2_sb.s_block_bitmap[bitmap_nr] = bh;
 }
 
 /*
@@ -176,74 +168,74 @@ static void read_block_bitmap (struct super_block * sb,
 static int load__block_bitmap (struct super_block * sb,
 			       unsigned int block_group)
 {
-	int i, j;
-	unsigned long block_bitmap_number;
-	struct buffer_head * block_bitmap;
+    int i, j;
+    unsigned long block_bitmap_number;
+    struct buffer_head * block_bitmap;
 
-	if (block_group >= sb->u.ext2_sb.s_groups_count)
-		ext2_panic (sb, "load_block_bitmap",
-			    "block_group >= groups_count\n"
-			    "block_group = %d, groups_count = %lu",
-			    block_group, sb->u.ext2_sb.s_groups_count);
+    if (block_group >= sb->u.ext2_sb.s_groups_count)
+        ext2_panic (sb, "load_block_bitmap",
+                        "block_group >= groups_count\n"
+                        "block_group = %d, groups_count = %lu",
+                          block_group, sb->u.ext2_sb.s_groups_count);
 
-	if (sb->u.ext2_sb.s_groups_count <= EXT2_MAX_GROUP_LOADED) {
-		if (sb->u.ext2_sb.s_block_bitmap[block_group]) {
-			if (sb->u.ext2_sb.s_block_bitmap_number[block_group] !=
-			    block_group)
-				ext2_panic (sb, "load_block_bitmap",
-					    "block_group != block_bitmap_number");
-			else
-				return block_group;
-		} else {
-			read_block_bitmap (sb, block_group, block_group);
-			return block_group;
-		}
-	}
+    if (sb->u.ext2_sb.s_groups_count <= EXT2_MAX_GROUP_LOADED) {
+        if (sb->u.ext2_sb.s_block_bitmap[block_group]) {
+            if (sb->u.ext2_sb.s_block_bitmap_number[block_group] !=
+                                      block_group)
+                ext2_panic (sb, "load_block_bitmap",
+                                "block_group != block_bitmap_number");
+            else
+                return block_group;
+        } else {
+            read_block_bitmap (sb, block_group, block_group);
+            return block_group;
+        }
+    }
 
-	for (i = 0; i < sb->u.ext2_sb.s_loaded_block_bitmaps &&
-		    sb->u.ext2_sb.s_block_bitmap_number[i] != block_group; i++)
-		;
-	if (i < sb->u.ext2_sb.s_loaded_block_bitmaps &&
-  	    sb->u.ext2_sb.s_block_bitmap_number[i] == block_group) {
-		block_bitmap_number = sb->u.ext2_sb.s_block_bitmap_number[i];
-		block_bitmap = sb->u.ext2_sb.s_block_bitmap[i];
-		for (j = i; j > 0; j--) {
-			sb->u.ext2_sb.s_block_bitmap_number[j] =
-				sb->u.ext2_sb.s_block_bitmap_number[j - 1];
-			sb->u.ext2_sb.s_block_bitmap[j] =
-				sb->u.ext2_sb.s_block_bitmap[j - 1];
-		}
-		sb->u.ext2_sb.s_block_bitmap_number[0] = block_bitmap_number;
-		sb->u.ext2_sb.s_block_bitmap[0] = block_bitmap;
-	} else {
-		if (sb->u.ext2_sb.s_loaded_block_bitmaps < EXT2_MAX_GROUP_LOADED)
-			sb->u.ext2_sb.s_loaded_block_bitmaps++;
-		else
-			brelse (sb->u.ext2_sb.s_block_bitmap[EXT2_MAX_GROUP_LOADED - 1]);
-		for (j = sb->u.ext2_sb.s_loaded_block_bitmaps - 1; j > 0;  j--) {
-			sb->u.ext2_sb.s_block_bitmap_number[j] =
-				sb->u.ext2_sb.s_block_bitmap_number[j - 1];
-			sb->u.ext2_sb.s_block_bitmap[j] =
-				sb->u.ext2_sb.s_block_bitmap[j - 1];
-		}
-		read_block_bitmap (sb, block_group, 0);
-	}
-	return 0;
+    for (i = 0; i < sb->u.ext2_sb.s_loaded_block_bitmaps &&
+                sb->u.ext2_sb.s_block_bitmap_number[i] != block_group; i++)
+        ;
+    if (i < sb->u.ext2_sb.s_loaded_block_bitmaps &&
+                sb->u.ext2_sb.s_block_bitmap_number[i] == block_group) {
+        block_bitmap_number = sb->u.ext2_sb.s_block_bitmap_number[i];
+        block_bitmap = sb->u.ext2_sb.s_block_bitmap[i];
+        for (j = i; j > 0; j--) {
+            sb->u.ext2_sb.s_block_bitmap_number[j] =
+                     sb->u.ext2_sb.s_block_bitmap_number[j - 1];
+            sb->u.ext2_sb.s_block_bitmap[j] =
+                     sb->u.ext2_sb.s_block_bitmap[j - 1];
+        }
+        sb->u.ext2_sb.s_block_bitmap_number[0] = block_bitmap_number;
+        sb->u.ext2_sb.s_block_bitmap[0] = block_bitmap;
+    } else {
+        if (sb->u.ext2_sb.s_loaded_block_bitmaps < EXT2_MAX_GROUP_LOADED)
+            sb->u.ext2_sb.s_loaded_block_bitmaps++;
+        else
+            brelse (sb->u.ext2_sb.s_block_bitmap[EXT2_MAX_GROUP_LOADED - 1]);
+        for (j = sb->u.ext2_sb.s_loaded_block_bitmaps - 1; j > 0;  j--) {
+            sb->u.ext2_sb.s_block_bitmap_number[j] =
+                     sb->u.ext2_sb.s_block_bitmap_number[j - 1];
+            sb->u.ext2_sb.s_block_bitmap[j] =
+                     sb->u.ext2_sb.s_block_bitmap[j - 1];
+        }
+        read_block_bitmap (sb, block_group, 0);
+    }
+    return 0;
 }
 
 static inline int load_block_bitmap (struct super_block * sb,
 				     unsigned int block_group)
 {
-	if (sb->u.ext2_sb.s_loaded_block_bitmaps > 0 &&
-	    sb->u.ext2_sb.s_block_bitmap_number[0] == block_group)
-		return 0;
+    if (sb->u.ext2_sb.s_loaded_block_bitmaps > 0 &&
+                sb->u.ext2_sb.s_block_bitmap_number[0] == block_group)
+        return 0;
 	
-	if (sb->u.ext2_sb.s_groups_count <= EXT2_MAX_GROUP_LOADED && 
-	    sb->u.ext2_sb.s_block_bitmap_number[block_group] == block_group &&
-	    sb->u.ext2_sb.s_block_bitmap[block_group]) 
-		return block_group;
+    if (sb->u.ext2_sb.s_groups_count <= EXT2_MAX_GROUP_LOADED && 
+         sb->u.ext2_sb.s_block_bitmap_number[block_group] == block_group &&
+         sb->u.ext2_sb.s_block_bitmap[block_group]) 
+        return block_group;
 
-	return load__block_bitmap (sb, block_group);
+    return load__block_bitmap (sb, block_group);
 }
 
 void ext2_free_blocks (struct super_block * sb, unsigned long block,
@@ -562,105 +554,106 @@ got_block:
 unsigned long ext2_count_free_blocks (struct super_block * sb)
 {
 #ifdef EXT2FS_DEBUG
-	struct ext2_super_block * es;
-	unsigned long desc_count, bitmap_count, x;
-	int bitmap_nr;
-	struct ext2_group_desc * gdp;
-	int i;
+    struct ext2_super_block * es;
+    unsigned long desc_count, bitmap_count, x;
+    int bitmap_nr;
+    struct ext2_group_desc * gdp;
+    int i;
 	
-	lock_super (sb);
-	es = sb->u.ext2_sb.s_es;
-	desc_count = 0;
-	bitmap_count = 0;
-	gdp = NULL;
-	for (i = 0; i < sb->u.ext2_sb.s_groups_count; i++) {
-		gdp = get_group_desc (sb, i, NULL);
-		desc_count += gdp->bg_free_blocks_count;
-		bitmap_nr = load_block_bitmap (sb, i);
-		x = ext2_count_free (sb->u.ext2_sb.s_block_bitmap[bitmap_nr],
-				     sb->s_blocksize);
-		printk ("group %d: stored = %d, counted = %lu\n",
-			i, gdp->bg_free_blocks_count, x);
-		bitmap_count += x;
-	}
-	printk("ext2_count_free_blocks: stored = %lu, computed = %lu, %lu\n",
-	       es->s_free_blocks_count, desc_count, bitmap_count);
-	unlock_super (sb);
-	return bitmap_count;
+    lock_super (sb);
+    es = sb->u.ext2_sb.s_es;
+    desc_count = 0;
+    bitmap_count = 0;
+    gdp = NULL;
+    for (i = 0; i < sb->u.ext2_sb.s_groups_count; i++) {
+        gdp = get_group_desc (sb, i, NULL);
+        desc_count += gdp->bg_free_blocks_count;
+        bitmap_nr = load_block_bitmap (sb, i);
+        x = ext2_count_free (sb->u.ext2_sb.s_block_bitmap[bitmap_nr],
+                      sb->s_blocksize);
+        printk ("group %d: stored = %d, counted = %lu\n",
+                   i, gdp->bg_free_blocks_count, x);
+        bitmap_count += x;
+    }
+    printk("ext2_count_free_blocks: stored = %lu, computed = %lu, %lu\n",
+           es->s_free_blocks_count, desc_count, bitmap_count);
+    unlock_super (sb);
+    return bitmap_count;
 #else
-	return sb->u.ext2_sb.s_es->s_free_blocks_count;
+    return sb->u.ext2_sb.s_es->s_free_blocks_count;
 #endif
 }
 
 static inline int block_in_use (unsigned long block,
-				struct super_block * sb,
-				unsigned char * map)
+              struct super_block * sb, unsigned char * map)
 {
-	return test_bit ((block - sb->u.ext2_sb.s_es->s_first_data_block) %
-			 EXT2_BLOCKS_PER_GROUP(sb), map);
+    return test_bit ((block - sb->u.ext2_sb.s_es->s_first_data_block) %
+                        EXT2_BLOCKS_PER_GROUP(sb), map);
 }
 
 void ext2_check_blocks_bitmap (struct super_block * sb)
 {
-	struct buffer_head * bh;
-	struct ext2_super_block * es;
-	unsigned long desc_count, bitmap_count, x;
-	unsigned long desc_blocks;
-	int bitmap_nr;
-	struct ext2_group_desc * gdp;
-	int i, j;
+    struct buffer_head * bh;
+    struct ext2_super_block * es;
+    unsigned long desc_count, bitmap_count, x;
+    unsigned long desc_blocks;
+    int bitmap_nr;
+    struct ext2_group_desc * gdp;
+    int i, j;
 
-	lock_super (sb);
-	es = sb->u.ext2_sb.s_es;
-	desc_count = 0;
-	bitmap_count = 0;
-	gdp = NULL;
-	desc_blocks = (sb->u.ext2_sb.s_groups_count + EXT2_DESC_PER_BLOCK(sb) - 1) /
-		      EXT2_DESC_PER_BLOCK(sb);
-	for (i = 0; i < sb->u.ext2_sb.s_groups_count; i++) {
-		gdp = get_group_desc (sb, i, NULL);
-		desc_count += gdp->bg_free_blocks_count;
-		bitmap_nr = load_block_bitmap (sb, i);
-		bh = sb->u.ext2_sb.s_block_bitmap[bitmap_nr];
+    lock_super (sb);
+    es = sb->u.ext2_sb.s_es;
+    desc_count = 0;
+    bitmap_count = 0;
+    gdp = NULL;
+    desc_blocks = (sb->u.ext2_sb.s_groups_count + 
+                   EXT2_DESC_PER_BLOCK(sb) - 1) /
+                   EXT2_DESC_PER_BLOCK(sb);
+    for (i = 0; i < sb->u.ext2_sb.s_groups_count; i++) {
+        gdp = get_group_desc (sb, i, NULL);
+        desc_count += gdp->bg_free_blocks_count;
+        bitmap_nr = load_block_bitmap (sb, i);
+        bh = sb->u.ext2_sb.s_block_bitmap[bitmap_nr];
 
-		if (!test_bit (0, bh->b_data))
-			ext2_error (sb, "ext2_check_blocks_bitmap",
-				    "Superblock in group %d is marked free", i);
+        if (!test_bit (0, bh->b_data))
+              ext2_error (sb, "ext2_check_blocks_bitmap",
+                       "Superblock in group %d is marked free", i);
 
-		for (j = 0; j < desc_blocks; j++)
-			if (!test_bit (j + 1, bh->b_data))
-				ext2_error (sb, "ext2_check_blocks_bitmap",
-					    "Descriptor block #%d in group "
-					    "%d is marked free", j, i);
+        for (j = 0; j < desc_blocks; j++)
+            if (!test_bit (j + 1, bh->b_data))
+                ext2_error (sb, "ext2_check_blocks_bitmap",
+                                "Descriptor block #%d in group "
+                                "%d is marked free", j, i);
 
-		if (!block_in_use (gdp->bg_block_bitmap, sb, bh->b_data))
-			ext2_error (sb, "ext2_check_blocks_bitmap",
-				    "Block bitmap for group %d is marked free",
-				    i);
+        if (!block_in_use (gdp->bg_block_bitmap, sb, 
+                          (unsigned char *)bh->b_data))
+            ext2_error (sb, "ext2_check_blocks_bitmap",
+                            "Block bitmap for group %d is marked free", i);
 
-		if (!block_in_use (gdp->bg_inode_bitmap, sb, bh->b_data))
-			ext2_error (sb, "ext2_check_blocks_bitmap",
-				    "Inode bitmap for group %d is marked free",
-				    i);
+        if (!block_in_use (gdp->bg_inode_bitmap, sb, 
+                          (unsigned char *)bh->b_data))
+            ext2_error (sb, "ext2_check_blocks_bitmap",
+                            "Inode bitmap for group %d is marked free", i);
 
-		for (j = 0; j < sb->u.ext2_sb.s_itb_per_group; j++)
-			if (!block_in_use (gdp->bg_inode_table + j, sb, bh->b_data))
-				ext2_error (sb, "ext2_check_blocks_bitmap",
-					    "Block #%d of the inode table in "
-					    "group %d is marked free", j, i);
+        for (j = 0; j < sb->u.ext2_sb.s_itb_per_group; j++)
+            if (!block_in_use (gdp->bg_inode_table + j, sb, 
+                        (unsigned char *)bh->b_data))
+                ext2_error (sb, "ext2_check_blocks_bitmap",
+                                "Block #%d of the inode table in "
+                                "group %d is marked free", j, i);
 
-		x = ext2_count_free (bh, sb->s_blocksize);
-		if (gdp->bg_free_blocks_count != x)
-			ext2_error (sb, "ext2_check_blocks_bitmap",
-				    "Wrong free blocks count for group %d, "
-				    "stored = %d, counted = %lu", i,
-				    gdp->bg_free_blocks_count, x);
-		bitmap_count += x;
-	}
-	if (es->s_free_blocks_count != bitmap_count)
-		ext2_error (sb, "ext2_check_blocks_bitmap",
-			    "Wrong free blocks count in super block, "
-			    "stored = %lu, counted = %lu",
-			    es->s_free_blocks_count, bitmap_count);
-	unlock_super (sb);
+        x = ext2_count_free (bh, sb->s_blocksize);
+        if (gdp->bg_free_blocks_count != x)
+            ext2_error (sb, "ext2_check_blocks_bitmap",
+                            "Wrong free blocks count for group %d, "
+                            "stored = %d, counted = %lu", i,
+                               gdp->bg_free_blocks_count, x);
+        bitmap_count += x;
+    }
+    if (es->s_free_blocks_count != bitmap_count)
+        ext2_error (sb, "ext2_check_blocks_bitmap",
+                        "Wrong free blocks count in super block, "
+                        "stored = %lu, counted = %lu",
+                         es->s_free_blocks_count, bitmap_count);
+    unlock_super (sb);
 }

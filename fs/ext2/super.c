@@ -25,6 +25,10 @@
 #include <linux/string.h>
 #include <linux/locks.h>
 
+#ifdef CONFIG_DEBUG_DEBUGCALL
+#include <demo/debug.h>
+#endif
+
 extern int vsprintf (char *, const char *, va_list);
 
 void ext2_error (struct super_block * sb, const char * function,
@@ -267,315 +271,318 @@ static int parse_options (char * options, unsigned long * sb_block,
 static void ext2_setup_super (struct super_block * sb,
 			      struct ext2_super_block * es)
 {
-	if (!(sb->s_flags & MS_RDONLY)) {
-		if (!(sb->u.ext2_sb.s_mount_state & EXT2_VALID_FS))
-			printk ("EXT2-fs warning: mounting unchecked fs, "
-				"running e2fsck is recommended\n");
-		else if ((sb->u.ext2_sb.s_mount_state & EXT2_ERROR_FS))
-			printk ("EXT2-fs warning: mounting fs with errors, "
-				"running e2fsck is recommended\n");
-		else if (es->s_max_mnt_count >= 0 &&
-		         es->s_mnt_count >= (unsigned short) es->s_max_mnt_count)
-			printk ("EXT2-fs warning: maximal mount count reached, "
-				"running e2fsck is recommended\n");
-		else if (es->s_checkinterval &&
-			(es->s_lastcheck + es->s_checkinterval <= CURRENT_TIME))
-			printk ("EXT2-fs warning: checktime reached, "
-				"running e2fsck is recommended\n");
-		es->s_state &= ~EXT2_VALID_FS;
-		if (!es->s_max_mnt_count)
-			es->s_max_mnt_count = EXT2_DFL_MAX_MNT_COUNT;
-		es->s_mnt_count++;
-		es->s_mtime = CURRENT_TIME;
-		sb->u.ext2_sb.s_sbh->b_dirt = 1;
-		sb->s_dirt = 1;
-		if (test_opt (sb, DEBUG))
-			printk ("[EXT II FS %s, %s, bs=%lu, fs=%lu, gc=%lu, "
-				"bpg=%lu, ipg=%lu, mo=%04lx]\n",
-				EXT2FS_VERSION, EXT2FS_DATE, sb->s_blocksize,
-				sb->u.ext2_sb.s_frag_size,
-				sb->u.ext2_sb.s_groups_count,
-				EXT2_BLOCKS_PER_GROUP(sb),
-				EXT2_INODES_PER_GROUP(sb),
-				sb->u.ext2_sb.s_mount_opt);
-		if (test_opt (sb, CHECK)) {
-			ext2_check_blocks_bitmap (sb);
-			ext2_check_inodes_bitmap (sb);
-		}
-	}
+    if (!(sb->s_flags & MS_RDONLY)) {
+        if (!(sb->u.ext2_sb.s_mount_state & EXT2_VALID_FS))
+            printk ("EXT2-fs warning: mounting unchecked fs, "
+                          "running e2fsck is recommended\n");
+        else if ((sb->u.ext2_sb.s_mount_state & EXT2_ERROR_FS))
+            printk ("EXT2-fs warning: mounting fs with errors, "
+                          "running e2fsck is recommended\n");
+        else if (es->s_max_mnt_count >= 0 &&
+                 es->s_mnt_count >= (unsigned short) es->s_max_mnt_count)
+            printk ("EXT2-fs warning: maximal mount count reached, "
+                    "running e2fsck is recommended\n");
+        else if (es->s_checkinterval &&
+                (es->s_lastcheck + es->s_checkinterval <= CURRENT_TIME))
+            printk ("EXT2-fs warning: checktime reached, "
+                    "running e2fsck is recommended\n");
+        es->s_state &= ~EXT2_VALID_FS;
+        if (!es->s_max_mnt_count)
+            es->s_max_mnt_count = EXT2_DFL_MAX_MNT_COUNT;
+        es->s_mnt_count++;
+        es->s_mtime = CURRENT_TIME;
+        sb->u.ext2_sb.s_sbh->b_dirt = 1;
+        sb->s_dirt = 1;
+        if (test_opt (sb, DEBUG))
+             printk ("[EXT II FS %s, %s, bs=%lu, fs=%lu, gc=%lu, "
+                        "bpg=%lu, ipg=%lu, mo=%04lx]\n",
+                        EXT2FS_VERSION, EXT2FS_DATE, sb->s_blocksize,
+                        sb->u.ext2_sb.s_frag_size,
+                        sb->u.ext2_sb.s_groups_count,
+                        EXT2_BLOCKS_PER_GROUP(sb),
+                        EXT2_INODES_PER_GROUP(sb),
+                        sb->u.ext2_sb.s_mount_opt);
+        if (test_opt (sb, CHECK)) {
+            ext2_check_blocks_bitmap (sb);
+            ext2_check_inodes_bitmap (sb);
+        }
+    }
 }
 
 static int ext2_check_descriptors (struct super_block * sb)
 {
-	int i;
-	int desc_block = 0;
-	unsigned long block = sb->u.ext2_sb.s_es->s_first_data_block;
-	struct ext2_group_desc * gdp = NULL;
+    int i;
+    int desc_block = 0;
+    unsigned long block = sb->u.ext2_sb.s_es->s_first_data_block;
+    struct ext2_group_desc * gdp = NULL;
 
-	ext2_debug ("Checking group descriptors");
+    ext2_debug ("Checking group descriptors");
 
-	for (i = 0; i < sb->u.ext2_sb.s_groups_count; i++)
-	{
-		if ((i % EXT2_DESC_PER_BLOCK(sb)) == 0)
-			gdp = (struct ext2_group_desc *) sb->u.ext2_sb.s_group_desc[desc_block++]->b_data;
-		if (gdp->bg_block_bitmap < block ||
-		    gdp->bg_block_bitmap >= block + EXT2_BLOCKS_PER_GROUP(sb))
-		{
-			ext2_error (sb, "ext2_check_desciptors",
-				    "Block bitmap for group %d"
-				    " not in group (block %lu)!",
-				    i, gdp->bg_block_bitmap);
-			return 0;
-		}
-		if (gdp->bg_inode_bitmap < block ||
-		    gdp->bg_inode_bitmap >= block + EXT2_BLOCKS_PER_GROUP(sb))
-		{
-			ext2_error (sb, "ext2_check_desciptors",
-				    "Inode bitmap for group %d"
-				    " not in group (block %lu)!",
-				    i, gdp->bg_inode_bitmap);
-			return 0;
-		}
-		if (gdp->bg_inode_table < block ||
-		    gdp->bg_inode_table + sb->u.ext2_sb.s_itb_per_group >=
-		    block + EXT2_BLOCKS_PER_GROUP(sb))
-		{
-			ext2_error (sb, "ext2_check_desciptors",
-				    "Inode table for group %d"
-				    " not in group (block %lu)!",
-				    i, gdp->bg_inode_table);
-			return 0;
-		}
-		block += EXT2_BLOCKS_PER_GROUP(sb);
-		gdp++;
-	}
-	return 1;
+    for (i = 0; i < sb->u.ext2_sb.s_groups_count; i++) {
+        if ((i % EXT2_DESC_PER_BLOCK(sb)) == 0)
+            gdp = (struct ext2_group_desc *)(
+                   sb->u.ext2_sb.s_group_desc[desc_block++]->b_data);
+        if (gdp->bg_block_bitmap < block ||
+                    gdp->bg_block_bitmap >= block + 
+                       EXT2_BLOCKS_PER_GROUP(sb)) {
+            ext2_error (sb, "ext2_check_desciptors",
+                              "Block bitmap for group %d"
+                                " not in group (block %lu)!",
+                                  i, gdp->bg_block_bitmap);
+            return 0;
+        }
+        if (gdp->bg_inode_bitmap < block ||
+            gdp->bg_inode_bitmap >= block + EXT2_BLOCKS_PER_GROUP(sb)) {
+            ext2_error (sb, "ext2_check_desciptors",
+                               "Inode bitmap for group %d"
+                                 " not in group (block %lu)!",
+                                   i, gdp->bg_inode_bitmap);
+            return 0;
+        }
+        if (gdp->bg_inode_table < block ||
+                gdp->bg_inode_table + sb->u.ext2_sb.s_itb_per_group >=
+                     block + EXT2_BLOCKS_PER_GROUP(sb)) {
+            ext2_error (sb, "ext2_check_desciptors",
+                               "Inode table for group %d"
+                                  " not in group (block %lu)!",
+                                    i, gdp->bg_inode_table);
+            return 0;
+        }
+        block += EXT2_BLOCKS_PER_GROUP(sb);
+        gdp++;
+    }
+    return 1;
 }
 
 struct super_block * ext2_read_super (struct super_block * sb, void * data,
 				      int silent)
 {
-	struct buffer_head * bh;
-	struct ext2_super_block * es;
-	unsigned long sb_block = 1;
-	unsigned long logic_sb_block = 1;
-	int dev = sb->s_dev;
-	int bh_count;
-	int i, j;
+    struct buffer_head * bh;
+    struct ext2_super_block * es;
+    unsigned long sb_block = 1;
+    unsigned long logic_sb_block = 1;
+    int dev = sb->s_dev;
+    int bh_count;
+    int i, j;
 #ifdef EXT2FS_PRE_02B_COMPAT
-	int fs_converted = 0;
+    int fs_converted = 0;
 #endif
 
-	set_opt (sb->u.ext2_sb.s_mount_opt, CHECK_NORMAL);
-	if (!parse_options ((char *) data, &sb_block,
-	    &sb->u.ext2_sb.s_mount_opt)) {
-		sb->s_dev = 0;
-		return NULL;
-	}
-
-	lock_super (sb);
-	set_blocksize (dev, BLOCK_SIZE);
-	if (!(bh = bread (dev, sb_block, BLOCK_SIZE))) {
-		sb->s_dev = 0;
-		unlock_super (sb);
-		printk ("EXT2-fs: unable to read superblock\n");
-		return NULL;
-	}
-	/*
-	 * Note: s_es must be initialized s_es as soon as possible because
-	 * some ext2 macro-instructions depend on its value
-	 */
-	es = (struct ext2_super_block *) bh->b_data;
-	sb->u.ext2_sb.s_es = es;
-	sb->s_magic = es->s_magic;
-	if (sb->s_magic != EXT2_SUPER_MAGIC
-#ifdef EXT2FS_PRE_02B_COMPAT
-	   && sb->s_magic != EXT2_PRE_02B_MAGIC
+#ifdef CONFIG_DEBUG_DEBUGCALL
+    do_debugcall(DEBUG_ROOTFS);
 #endif
-	   ) {
-		sb->s_dev = 0;
-		unlock_super (sb);
-		brelse (bh);
-		if (!silent)
-			printk ("VFS: Can't find an ext2 filesystem on dev %d/%d.\n",
-				MAJOR(dev), MINOR(dev));
-		return NULL;
-	}
-	sb->s_blocksize = EXT2_MIN_BLOCK_SIZE << es->s_log_block_size;
-	sb->s_blocksize_bits = EXT2_BLOCK_SIZE_BITS(sb);
-	if (sb->s_blocksize != BLOCK_SIZE && 
-	    (sb->s_blocksize == 1024 || sb->s_blocksize == 2048 ||  
-	     sb->s_blocksize == 4096)) {
-		unsigned long offset;
+    set_opt (sb->u.ext2_sb.s_mount_opt, CHECK_NORMAL);
+    if (!parse_options ((char *) data, &sb_block,
+            &sb->u.ext2_sb.s_mount_opt)) {
+            sb->s_dev = 0;
+            return NULL;
+    }
 
-		brelse (bh);
-		set_blocksize (dev, sb->s_blocksize);
-		logic_sb_block = sb_block / sb->s_blocksize;
-		offset = sb_block % sb->s_blocksize;
-		bh = bread (dev, logic_sb_block, sb->s_blocksize);
-		if(!bh)
-			return NULL;
-		es = (struct ext2_super_block *) (((char *)bh->b_data) + offset);
-		sb->u.ext2_sb.s_es = es;
-		if (es->s_magic != EXT2_SUPER_MAGIC) {
-			sb->s_dev = 0;
-			unlock_super (sb);
-			brelse (bh);
-			printk ("EXT2-fs: Magic mismatch, very weird !\n");
-			return NULL;
-		}
-	}
-	sb->u.ext2_sb.s_frag_size = EXT2_MIN_FRAG_SIZE <<
+    lock_super (sb);
+    set_blocksize (dev, BLOCK_SIZE);
+    if (!(bh = bread (dev, sb_block, BLOCK_SIZE))) {
+        sb->s_dev = 0;
+        unlock_super (sb);
+        printk ("EXT2-fs: unable to read superblock\n");
+        return NULL;
+    }
+    /*
+     * Note: s_es must be initialized s_es as soon as possible because
+     * some ext2 macro-instructions depend on its value
+     */
+    es = (struct ext2_super_block *) bh->b_data;
+    sb->u.ext2_sb.s_es = es;
+    sb->s_magic = es->s_magic;
+    if (sb->s_magic != EXT2_SUPER_MAGIC
+#ifdef EXT2FS_PRE_02B_COMPAT
+        && sb->s_magic != EXT2_PRE_02B_MAGIC
+#endif
+                             ) {
+        sb->s_dev = 0;
+        unlock_super (sb);
+        brelse (bh);
+        if (!silent)
+            printk ("VFS: Can't find an ext2 filesystem on dev %d/%d.\n",
+                MAJOR(dev), MINOR(dev));
+        return NULL;
+    }
+    sb->s_blocksize = EXT2_MIN_BLOCK_SIZE << es->s_log_block_size;
+    sb->s_blocksize_bits = EXT2_BLOCK_SIZE_BITS(sb);
+    if (sb->s_blocksize != BLOCK_SIZE && 
+          (sb->s_blocksize == 1024 || sb->s_blocksize == 2048 ||  
+           sb->s_blocksize == 4096)) {
+        unsigned long offset;
+
+        brelse (bh);
+        set_blocksize (dev, sb->s_blocksize);
+        logic_sb_block = sb_block / sb->s_blocksize;
+        offset = sb_block % sb->s_blocksize;
+        bh = bread (dev, logic_sb_block, sb->s_blocksize);
+        if(!bh)
+            return NULL;
+        es = (struct ext2_super_block *) (((char *)bh->b_data) + offset);
+        sb->u.ext2_sb.s_es = es;
+        if (es->s_magic != EXT2_SUPER_MAGIC) {
+            sb->s_dev = 0;
+            unlock_super (sb);
+            brelse (bh);
+            printk ("EXT2-fs: Magic mismatch, very weird !\n");
+            return NULL;
+        }
+    }
+    sb->u.ext2_sb.s_frag_size = EXT2_MIN_FRAG_SIZE <<
 				   es->s_log_frag_size;
-	if (sb->u.ext2_sb.s_frag_size)
-		sb->u.ext2_sb.s_frags_per_block = sb->s_blocksize /
-						  sb->u.ext2_sb.s_frag_size;
-	else
-		sb->s_magic = 0;
-	sb->u.ext2_sb.s_blocks_per_group = es->s_blocks_per_group;
-	sb->u.ext2_sb.s_frags_per_group = es->s_frags_per_group;
-	sb->u.ext2_sb.s_inodes_per_group = es->s_inodes_per_group;
-	sb->u.ext2_sb.s_inodes_per_block = sb->s_blocksize /
-					   sizeof (struct ext2_inode);
-	sb->u.ext2_sb.s_itb_per_group = sb->u.ext2_sb.s_inodes_per_group /
-				        sb->u.ext2_sb.s_inodes_per_block;
-	sb->u.ext2_sb.s_desc_per_block = sb->s_blocksize /
-					 sizeof (struct ext2_group_desc);
-	sb->u.ext2_sb.s_sbh = bh;
-	sb->u.ext2_sb.s_es = es;
-	sb->u.ext2_sb.s_mount_state = es->s_state;
-	sb->u.ext2_sb.s_rename_lock = 0;
-	sb->u.ext2_sb.s_rename_wait = NULL;
+    if (sb->u.ext2_sb.s_frag_size)
+        sb->u.ext2_sb.s_frags_per_block = sb->s_blocksize /
+		sb->u.ext2_sb.s_frag_size;
+    else
+        sb->s_magic = 0;
+    sb->u.ext2_sb.s_blocks_per_group = es->s_blocks_per_group;
+    sb->u.ext2_sb.s_frags_per_group = es->s_frags_per_group;
+    sb->u.ext2_sb.s_inodes_per_group = es->s_inodes_per_group;
+    sb->u.ext2_sb.s_inodes_per_block = sb->s_blocksize /
+        sizeof (struct ext2_inode);
+    sb->u.ext2_sb.s_itb_per_group = sb->u.ext2_sb.s_inodes_per_group /
+               sb->u.ext2_sb.s_inodes_per_block;
+    sb->u.ext2_sb.s_desc_per_block = sb->s_blocksize /
+               sizeof (struct ext2_group_desc);
+    sb->u.ext2_sb.s_sbh = bh;
+    sb->u.ext2_sb.s_es = es;
+    sb->u.ext2_sb.s_mount_state = es->s_state;
+    sb->u.ext2_sb.s_rename_lock = 0;
+    sb->u.ext2_sb.s_rename_wait = NULL;
 #ifdef EXT2FS_PRE_02B_COMPAT
-	if (sb->s_magic == EXT2_PRE_02B_MAGIC) {
-		if (es->s_blocks_count > 262144) {
-			/*
-			 * fs > 256 MB can't be converted
-			 */ 
-			sb->s_dev = 0;
-			unlock_super (sb);
-			brelse (bh);
-			printk ("EXT2-fs: trying to mount a pre-0.2b file"
-				"system which cannot be converted\n");
-			return NULL;
-		}
-		printk ("EXT2-fs: mounting a pre 0.2b file system, "
-			"will try to convert the structure\n");
-		if (!(sb->s_flags & MS_RDONLY)) {
-			sb->s_dev = 0;
-			unlock_super (sb);
-			brelse (bh);
-			printk ("EXT2-fs: cannot convert a read-only fs\n");
-			return NULL;
-		}
-		if (!convert_pre_02b_fs (sb, bh)) {
-			sb->s_dev = 0;
-			unlock_super (sb);
-			brelse (bh);
-			printk ("EXT2-fs: conversion failed !!!\n");
-			return NULL;
-		}
-		printk ("EXT2-fs: conversion succeeded !!!\n");
-		fs_converted = 1;
-	}
+    if (sb->s_magic == EXT2_PRE_02B_MAGIC) {
+        if (es->s_blocks_count > 262144) {
+            /*
+             * fs > 256 MB can't be converted
+             */ 
+            sb->s_dev = 0;
+            unlock_super (sb);
+            brelse (bh);
+            printk ("EXT2-fs: trying to mount a pre-0.2b file"
+                    "system which cannot be converted\n");
+            return NULL;
+        }
+        printk ("EXT2-fs: mounting a pre 0.2b file system, "
+                "will try to convert the structure\n");
+        if (!(sb->s_flags & MS_RDONLY)) {
+            sb->s_dev = 0;
+            unlock_super (sb);
+            brelse (bh);
+            printk ("EXT2-fs: cannot convert a read-only fs\n");
+            return NULL;
+        }
+        if (!convert_pre_02b_fs (sb, bh)) {
+            sb->s_dev = 0;
+            unlock_super (sb);
+            brelse (bh);
+            printk ("EXT2-fs: conversion failed !!!\n");
+            return NULL;
+        }
+        printk ("EXT2-fs: conversion succeeded !!!\n");
+        fs_converted = 1;
+    }
 #endif
-	if (sb->s_magic != EXT2_SUPER_MAGIC) {
-		sb->s_dev = 0;
-		unlock_super (sb);
-		brelse (bh);
-		if (!silent)
-			printk ("VFS: Can't find an ext2 filesystem on dev %d/%d.\n",
-				MAJOR(dev), MINOR(dev));
-		return NULL;
-	}
-	if (sb->s_blocksize != bh->b_size) {
-		sb->s_dev = 0;
-		unlock_super (sb);
-		brelse (bh);
-		if (!silent)
-			printk ("VFS: Unsupported blocksize on dev 0x%04x.\n",
-				dev);
-		return NULL;
-	}
+    if (sb->s_magic != EXT2_SUPER_MAGIC) {
+        sb->s_dev = 0;
+        unlock_super (sb);
+        brelse (bh);
+        if (!silent)
+            printk ("VFS: Can't find an ext2 filesystem on dev %d/%d.\n",
+                    MAJOR(dev), MINOR(dev));
+        return NULL;
+    }
+    if (sb->s_blocksize != bh->b_size) {
+        sb->s_dev = 0;
+        unlock_super (sb);
+        brelse (bh);
+        if (!silent)
+            printk ("VFS: Unsupported blocksize on dev 0x%04x.\n",
+                      dev);
+        return NULL;
+    }
 
-	if (sb->s_blocksize != sb->u.ext2_sb.s_frag_size) {
-		sb->s_dev = 0;
-		unlock_super (sb);
-		brelse (bh);
-		printk ("EXT2-fs: fragsize %lu != blocksize %lu (not supported yet)\n",
-			sb->u.ext2_sb.s_frag_size, sb->s_blocksize);
-		return NULL;
-	}
+    if (sb->s_blocksize != sb->u.ext2_sb.s_frag_size) {
+        sb->s_dev = 0;
+        unlock_super (sb);
+        brelse (bh);
+        printk ("EXT2-fs: fragsize %lu != blocksize %lu "
+                "(not supported yet)\n",
+                sb->u.ext2_sb.s_frag_size, sb->s_blocksize);
+        return NULL;
+    }
 
-	sb->u.ext2_sb.s_groups_count = (es->s_blocks_count -
-				        es->s_first_data_block +
-				       EXT2_BLOCKS_PER_GROUP(sb) - 1) /
-				       EXT2_BLOCKS_PER_GROUP(sb);
-	for (i = 0; i < EXT2_MAX_GROUP_DESC; i++)
-		sb->u.ext2_sb.s_group_desc[i] = NULL;
-	bh_count = (sb->u.ext2_sb.s_groups_count + EXT2_DESC_PER_BLOCK(sb) - 1) /
-		   EXT2_DESC_PER_BLOCK(sb);
-	if (bh_count > EXT2_MAX_GROUP_DESC) {
-		sb->s_dev = 0;
-		unlock_super (sb);
-		brelse (bh);
-		printk ("EXT2-fs: file system is too big\n");
-		return NULL;
-	}
-	for (i = 0; i < bh_count; i++) {
-		sb->u.ext2_sb.s_group_desc[i] = bread (dev, logic_sb_block + i + 1,
-						       sb->s_blocksize);
-		if (!sb->u.ext2_sb.s_group_desc[i]) {
-			sb->s_dev = 0;
-			unlock_super (sb);
-			for (j = 0; j < i; j++)
-				brelse (sb->u.ext2_sb.s_group_desc[j]);
-			brelse (bh);
-			printk ("EXT2-fs: unable to read group descriptors\n");
-			return NULL;
-		}
-	}
-	if (!ext2_check_descriptors (sb)) {
-		sb->s_dev = 0;
-		unlock_super (sb);
-		for (j = 0; j < i; j++)
-			brelse (sb->u.ext2_sb.s_group_desc[j]);
-		brelse (bh);
-		printk ("EXT2-fs: group descriptors corrupted !\n");
-		return NULL;
-	}
-	for (i = 0; i < EXT2_MAX_GROUP_LOADED; i++) {
-		sb->u.ext2_sb.s_inode_bitmap_number[i] = 0;
-		sb->u.ext2_sb.s_inode_bitmap[i] = NULL;
-		sb->u.ext2_sb.s_block_bitmap_number[i] = 0;
-		sb->u.ext2_sb.s_block_bitmap[i] = NULL;
-	}
-	sb->u.ext2_sb.s_loaded_inode_bitmaps = 0;
-	sb->u.ext2_sb.s_loaded_block_bitmaps = 0;
-	unlock_super (sb);
-	/*
-	 * set up enough so that it can read an inode
-	 */
-	sb->s_dev = dev;
-	sb->s_op = &ext2_sops;
-	if (!(sb->s_mounted = iget (sb, EXT2_ROOT_INO))) {
-		sb->s_dev = 0;
-		for (i = 0; i < EXT2_MAX_GROUP_DESC; i++)
-			if (sb->u.ext2_sb.s_group_desc[i])
-				brelse (sb->u.ext2_sb.s_group_desc[i]);
-		brelse (bh);
-		printk ("EXT2-fs: get root inode failed\n");
-		return NULL;
-	}
+    sb->u.ext2_sb.s_groups_count = (es->s_blocks_count -
+                         es->s_first_data_block +
+                         EXT2_BLOCKS_PER_GROUP(sb) - 1) /
+                         EXT2_BLOCKS_PER_GROUP(sb);
+    for (i = 0; i < EXT2_MAX_GROUP_DESC; i++)
+        sb->u.ext2_sb.s_group_desc[i] = NULL;
+    bh_count = (sb->u.ext2_sb.s_groups_count + 
+                         EXT2_DESC_PER_BLOCK(sb) - 1) /
+                EXT2_DESC_PER_BLOCK(sb);
+    if (bh_count > EXT2_MAX_GROUP_DESC) {
+        sb->s_dev = 0;
+        unlock_super (sb);
+        brelse (bh);
+        printk ("EXT2-fs: file system is too big\n");
+        return NULL;
+    }
+    for (i = 0; i < bh_count; i++) {
+        sb->u.ext2_sb.s_group_desc[i] = bread (dev, 
+                    logic_sb_block + i + 1, sb->s_blocksize);
+        if (!sb->u.ext2_sb.s_group_desc[i]) {
+            sb->s_dev = 0;
+            unlock_super (sb);
+            for (j = 0; j < i; j++)
+                brelse (sb->u.ext2_sb.s_group_desc[j]);
+            brelse (bh);
+            printk ("EXT2-fs: unable to read group descriptors\n");
+            return NULL;
+        }
+    }
+    if (!ext2_check_descriptors (sb)) {
+        sb->s_dev = 0;
+        unlock_super (sb);
+        for (j = 0; j < i; j++)
+            brelse (sb->u.ext2_sb.s_group_desc[j]);
+        brelse (bh);
+        printk ("EXT2-fs: group descriptors corrupted !\n");
+        return NULL;
+    }
+    for (i = 0; i < EXT2_MAX_GROUP_LOADED; i++) {
+        sb->u.ext2_sb.s_inode_bitmap_number[i] = 0;
+        sb->u.ext2_sb.s_inode_bitmap[i] = NULL;
+        sb->u.ext2_sb.s_block_bitmap_number[i] = 0;
+        sb->u.ext2_sb.s_block_bitmap[i] = NULL;
+    }
+    sb->u.ext2_sb.s_loaded_inode_bitmaps = 0;
+    sb->u.ext2_sb.s_loaded_block_bitmaps = 0;
+    unlock_super (sb);
+    /*
+     * set up enough so that it can read an inode
+     */
+    sb->s_dev = dev;
+    sb->s_op = &ext2_sops;
+    if (!(sb->s_mounted = iget (sb, EXT2_ROOT_INO))) {
+        sb->s_dev = 0;
+        for (i = 0; i < EXT2_MAX_GROUP_DESC; i++)
+            if (sb->u.ext2_sb.s_group_desc[i])
+                brelse (sb->u.ext2_sb.s_group_desc[i]);
+        brelse (bh);
+        printk ("EXT2-fs: get root inode failed\n");
+        return NULL;
+    }
 #ifdef EXT2FS_PRE_02B_COMPAT
-	if (fs_converted) {
-		for (i = 0; i < bh_count; i++)
-			sb->u.ext2_sb.s_group_desc[i]->b_dirt = 1;
-		sb->s_dirt = 1;
-	}
+    if (fs_converted) {
+        for (i = 0; i < bh_count; i++)
+            sb->u.ext2_sb.s_group_desc[i]->b_dirt = 1;
+        sb->s_dirt = 1;
+    }
 #endif
-	ext2_setup_super (sb, es);
-	return sb;
+    ext2_setup_super (sb, es);
+    return sb;
 }
 
 static void ext2_commit_super (struct super_block * sb,

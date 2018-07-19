@@ -1,0 +1,35 @@
+#
+# Debug Filesystem: EXT2 filesystem
+#
+menu "Ext2     Second extended file system"
+
+config DEBUG_VFS_EXT2
+        bool "ext2-fs: second extended file system"
+        help
+	  EXT2 File system.
+
+if DEBUG_VFS_EXT2
+
+config DEBUG_EXT2_SUPERBLOCK
+	bool "ext2-fs: super block on disk"
+	help
+	  Parse the value from super block on Ext2-FS.
+
+config DEBUG_EXT2_SUPERBLOCK_VFS
+	bool "ext2-fs: super block on VFS"
+	help
+	  Parse the value from super block on VFS
+
+config DEBUG_EXT2_GROUP_DESC
+	bool "ext2-fs: groups descriptor"
+	help
+	  Parse the value from group descriptor.
+
+config DEBUG_EXT2_INODE
+	bool "ext2-fs: inode (index node)"
+	help
+	  Parse the value from inode.
+
+endif
+
+endmenu

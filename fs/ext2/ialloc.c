@@ -35,28 +35,26 @@
 
 static inline int find_first_zero_bit (unsigned long * addr, unsigned size)
 {
-	int res;
+    int res;
 
-	if (!size)
-		return 0;
-	__asm__("
-		cld
-		movl $-1,%%eax
-		repe; scasl
-		je 1f
-		subl $4,%%edi
-		movl (%%edi),%%eax
-		notl %%eax
-		bsfl %%eax,%%edx
-		jmp 2f
-1:		xorl %%edx,%%edx
-2:		subl %%ebx,%%edi
-		shll $3,%%edi
-		addl %%edi,%%edx"
-		: "=d" (res)
-		: "c" ((size + 31) >> 5), "D" (addr), "b" (addr)
-		: "ax", "bx", "cx", "di");
-	return res;
+    if (!size)
+        return 0;
+    __asm__("cld\n\t"
+            "movl $-1,%%eax\n\t"
+            "repe; scasl\n\t"
+            "je 1f\n\t"
+            "subl $4,%%edi\n\t"
+            "movl (%%edi),%%eax\n\t"
+            "notl %%eax\n\t"
+            "bsfl %%eax,%%edx\n\t"
+            "jmp 2f\n\t"
+            "1: xorl %%edx,%%edx\n\t"
+            "2: subl %%ebx,%%edi\n\t"
+            "shll $3,%%edi\n\t"
+            "addl %%edi,%%edx"
+            : "=d" (res)
+            : "c" ((size + 31) >> 5), "D" (addr), "b" (addr));
+    return res;
 }
 
 static struct ext2_group_desc * get_group_desc (struct super_block * sb,
@@ -88,20 +86,19 @@ static struct ext2_group_desc * get_group_desc (struct super_block * sb,
 }
 
 static void read_inode_bitmap (struct super_block * sb,
-			       unsigned long block_group,
-			       unsigned int bitmap_nr)
+            unsigned long block_group, unsigned int bitmap_nr)
 {
-	struct ext2_group_desc * gdp;
-	struct buffer_head * bh;
+    struct ext2_group_desc * gdp;
+    struct buffer_head * bh;
 
-	gdp = get_group_desc (sb, block_group, NULL);
-	bh = bread (sb->s_dev, gdp->bg_inode_bitmap, sb->s_blocksize);
-	if (!bh)
-		ext2_panic (sb, "read_inode_bitmap", "Cannot read inode bitmap\n"
-			    "block_group = %lu, inode_bitmap = %lu",
-			    block_group, gdp->bg_inode_bitmap);
-	sb->u.ext2_sb.s_inode_bitmap_number[bitmap_nr] = block_group;
-	sb->u.ext2_sb.s_inode_bitmap[bitmap_nr] = bh;
+    gdp = get_group_desc (sb, block_group, NULL);
+    bh = bread (sb->s_dev, gdp->bg_inode_bitmap, sb->s_blocksize);
+    if (!bh)
+        ext2_panic (sb, "read_inode_bitmap", "Cannot read inode bitmap\n"
+                        "block_group = %lu, inode_bitmap = %lu",
+                          block_group, gdp->bg_inode_bitmap);
+    sb->u.ext2_sb.s_inode_bitmap_number[bitmap_nr] = block_group;
+    sb->u.ext2_sb.s_inode_bitmap[bitmap_nr] = bh;
 }
 
 /*
@@ -118,61 +115,61 @@ static void read_inode_bitmap (struct super_block * sb,
 static int load_inode_bitmap (struct super_block * sb,
 			      unsigned int block_group)
 {
-	int i, j;
-	unsigned long inode_bitmap_number;
-	struct buffer_head * inode_bitmap;
+    int i, j;
+    unsigned long inode_bitmap_number;
+    struct buffer_head * inode_bitmap;
 
-	if (block_group >= sb->u.ext2_sb.s_groups_count)
-		ext2_panic (sb, "load_inode_bitmap",
-			    "block_group >= groups_count\n"
-			    "block_group = %d, groups_count = %lu",
-			     block_group, sb->u.ext2_sb.s_groups_count);
-	if (sb->u.ext2_sb.s_loaded_inode_bitmaps > 0 &&
-	    sb->u.ext2_sb.s_inode_bitmap_number[0] == block_group)
-		return 0;
-	if (sb->u.ext2_sb.s_groups_count <= EXT2_MAX_GROUP_LOADED) {
-		if (sb->u.ext2_sb.s_inode_bitmap[block_group]) {
-			if (sb->u.ext2_sb.s_inode_bitmap_number[block_group] != block_group)
-				ext2_panic (sb, "load_inode_bitmap",
-					    "block_group != inode_bitmap_number");
-			else
-				return block_group;
-		} else {
-			read_inode_bitmap (sb, block_group, block_group);
-			return block_group;
-		}
-	}
+    if (block_group >= sb->u.ext2_sb.s_groups_count)
+        ext2_panic (sb, "load_inode_bitmap",
+                        "block_group >= groups_count\n"
+                        "block_group = %d, groups_count = %lu",
+                           block_group, sb->u.ext2_sb.s_groups_count);
+    if (sb->u.ext2_sb.s_loaded_inode_bitmaps > 0 &&
+            sb->u.ext2_sb.s_inode_bitmap_number[0] == block_group)
+        return 0;
+    if (sb->u.ext2_sb.s_groups_count <= EXT2_MAX_GROUP_LOADED) {
+        if (sb->u.ext2_sb.s_inode_bitmap[block_group]) {
+            if (sb->u.ext2_sb.s_inode_bitmap_number[block_group] != 
+                                             block_group)
+                ext2_panic (sb, "load_inode_bitmap",
+                                "block_group != inode_bitmap_number");
+            else
+                return block_group;
+        } else {
+            read_inode_bitmap (sb, block_group, block_group);
+            return block_group;
+        }
+    }
 
-	for (i = 0; i < sb->u.ext2_sb.s_loaded_inode_bitmaps &&
-		    sb->u.ext2_sb.s_inode_bitmap_number[i] != block_group;
-	     i++)
-		;
-	if (i < sb->u.ext2_sb.s_loaded_inode_bitmaps &&
-  	    sb->u.ext2_sb.s_inode_bitmap_number[i] == block_group) {
-		inode_bitmap_number = sb->u.ext2_sb.s_inode_bitmap_number[i];
-		inode_bitmap = sb->u.ext2_sb.s_inode_bitmap[i];
-		for (j = i; j > 0; j--) {
-			sb->u.ext2_sb.s_inode_bitmap_number[j] =
-				sb->u.ext2_sb.s_inode_bitmap_number[j - 1];
-			sb->u.ext2_sb.s_inode_bitmap[j] =
-				sb->u.ext2_sb.s_inode_bitmap[j - 1];
-		}
-		sb->u.ext2_sb.s_inode_bitmap_number[0] = inode_bitmap_number;
-		sb->u.ext2_sb.s_inode_bitmap[0] = inode_bitmap;
-	} else {
-		if (sb->u.ext2_sb.s_loaded_inode_bitmaps < EXT2_MAX_GROUP_LOADED)
-			sb->u.ext2_sb.s_loaded_inode_bitmaps++;
-		else
-			brelse (sb->u.ext2_sb.s_inode_bitmap[EXT2_MAX_GROUP_LOADED - 1]);
-		for (j = sb->u.ext2_sb.s_loaded_inode_bitmaps - 1; j > 0; j--) {
-			sb->u.ext2_sb.s_inode_bitmap_number[j] =
-				sb->u.ext2_sb.s_inode_bitmap_number[j - 1];
-			sb->u.ext2_sb.s_inode_bitmap[j] =
-				sb->u.ext2_sb.s_inode_bitmap[j - 1];
-		}
-		read_inode_bitmap (sb, block_group, 0);
-	}
-	return 0;
+    for (i = 0; i < sb->u.ext2_sb.s_loaded_inode_bitmaps &&
+             sb->u.ext2_sb.s_inode_bitmap_number[i] != block_group; i++)
+        ;
+    if (i < sb->u.ext2_sb.s_loaded_inode_bitmaps &&
+             sb->u.ext2_sb.s_inode_bitmap_number[i] == block_group) {
+        inode_bitmap_number = sb->u.ext2_sb.s_inode_bitmap_number[i];
+        inode_bitmap = sb->u.ext2_sb.s_inode_bitmap[i];
+        for (j = i; j > 0; j--) {
+            sb->u.ext2_sb.s_inode_bitmap_number[j] =
+                  sb->u.ext2_sb.s_inode_bitmap_number[j - 1];
+            sb->u.ext2_sb.s_inode_bitmap[j] =
+                  sb->u.ext2_sb.s_inode_bitmap[j - 1];
+        }
+        sb->u.ext2_sb.s_inode_bitmap_number[0] = inode_bitmap_number;
+        sb->u.ext2_sb.s_inode_bitmap[0] = inode_bitmap;
+    } else {
+        if (sb->u.ext2_sb.s_loaded_inode_bitmaps < EXT2_MAX_GROUP_LOADED)
+            sb->u.ext2_sb.s_loaded_inode_bitmaps++;
+        else
+            brelse (sb->u.ext2_sb.s_inode_bitmap[EXT2_MAX_GROUP_LOADED - 1]);
+        for (j = sb->u.ext2_sb.s_loaded_inode_bitmaps - 1; j > 0; j--) {
+            sb->u.ext2_sb.s_inode_bitmap_number[j] =
+                 sb->u.ext2_sb.s_inode_bitmap_number[j - 1];
+            sb->u.ext2_sb.s_inode_bitmap[j] =
+                 sb->u.ext2_sb.s_inode_bitmap[j - 1];
+        }
+        read_inode_bitmap (sb, block_group, 0);
+    }
+    return 0;
 }
 
 /*
@@ -544,34 +541,34 @@ unsigned long ext2_count_free_inodes (struct super_block * sb)
 
 void ext2_check_inodes_bitmap (struct super_block * sb)
 {
-	struct ext2_super_block * es;
-	unsigned long desc_count, bitmap_count, x;
-	int bitmap_nr;
-	struct ext2_group_desc * gdp;
-	int i;
+    struct ext2_super_block * es;
+    unsigned long desc_count, bitmap_count, x;
+    int bitmap_nr;
+    struct ext2_group_desc * gdp;
+    int i;
 
-	lock_super (sb);
-	es = sb->u.ext2_sb.s_es;
-	desc_count = 0;
-	bitmap_count = 0;
-	gdp = NULL;
-	for (i = 0; i < sb->u.ext2_sb.s_groups_count; i++) {
-		gdp = get_group_desc (sb, i, NULL);
-		desc_count += gdp->bg_free_inodes_count;
-		bitmap_nr = load_inode_bitmap (sb, i);
-		x = ext2_count_free (sb->u.ext2_sb.s_inode_bitmap[bitmap_nr],
-				     EXT2_INODES_PER_GROUP(sb) / 8);
-		if (gdp->bg_free_inodes_count != x)
-			ext2_error (sb, "ext2_check_inodes_bitmap",
-				    "Wrong free inodes count in group %d, "
-				    "stored = %d, counted = %lu", i,
-				    gdp->bg_free_inodes_count, x);
-		bitmap_count += x;
-	}
-	if (es->s_free_inodes_count != bitmap_count)
-		ext2_error (sb, "ext2_check_inodes_bitmap",
-			    "Wrong free inodes count in super block, "
-			    "stored = %lu, counted = %lu",
-			    es->s_free_inodes_count, bitmap_count);
-	unlock_super (sb);
+    lock_super (sb);
+    es = sb->u.ext2_sb.s_es;
+    desc_count = 0;
+    bitmap_count = 0;
+    gdp = NULL;
+    for (i = 0; i < sb->u.ext2_sb.s_groups_count; i++) {
+        gdp = get_group_desc (sb, i, NULL);
+        desc_count += gdp->bg_free_inodes_count;
+        bitmap_nr = load_inode_bitmap (sb, i);
+        x = ext2_count_free (sb->u.ext2_sb.s_inode_bitmap[bitmap_nr],
+                     EXT2_INODES_PER_GROUP(sb) / 8);
+        if (gdp->bg_free_inodes_count != x)
+            ext2_error (sb, "ext2_check_inodes_bitmap",
+                            "Wrong free inodes count in group %d, "
+                            "stored = %d, counted = %lu", i,
+                               gdp->bg_free_inodes_count, x);
+        bitmap_count += x;
+    }
+    if (es->s_free_inodes_count != bitmap_count)
+        ext2_error (sb, "ext2_check_inodes_bitmap",
+                        "Wrong free inodes count in super block, "
+                        "stored = %lu, counted = %lu",
+                            es->s_free_inodes_count, bitmap_count);
+    unlock_super (sb);
 }

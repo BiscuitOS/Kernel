@@ -59,8 +59,7 @@ static int ext2_match (int len, const char * const name,
 		"repe ; cmpsb\n\t"
 		"setz %0"
 		:"=q" (same)
-		:"S" ((long) name), "D" ((long) de->name), "c" (len)
-		:"cx", "di", "si");
+		:"S" ((long) name), "D" ((long) de->name), "c" (len));
 	return (int) same;
 }
 
@@ -73,129 +72,128 @@ static int ext2_match (int len, const char * const name,
  * entry - you'll have to do that yourself if you want to.
  */
 static struct buffer_head * ext2_find_entry (struct inode * dir,
-					     const char * const name, int namelen,
-					     struct ext2_dir_entry ** res_dir)
+     const char * const name, int namelen, struct ext2_dir_entry ** res_dir)
 {
-	struct super_block * sb;
-	struct buffer_head * bh_use[NAMEI_RA_SIZE];
-	struct buffer_head * bh_read[NAMEI_RA_SIZE];
-	unsigned long offset;
-	int block, toread, i, err;
+    struct super_block * sb;
+    struct buffer_head * bh_use[NAMEI_RA_SIZE];
+    struct buffer_head * bh_read[NAMEI_RA_SIZE];
+    unsigned long offset;
+    int block, toread, i, err;
 
-	*res_dir = NULL;
-	if (!dir)
-		return NULL;
-	sb = dir->i_sb;
+    *res_dir = NULL;
+    if (!dir)
+        return NULL;
+    sb = dir->i_sb;
 
 #ifdef NO_TRUNCATE
-	if (namelen > EXT2_NAME_LEN)
-		return NULL;
+    if (namelen > EXT2_NAME_LEN)
+        return NULL;
 #else
-	if (namelen > EXT2_NAME_LEN)
-		namelen = EXT2_NAME_LEN;
+    if (namelen > EXT2_NAME_LEN)
+        namelen = EXT2_NAME_LEN;
 #endif
 
-	memset (bh_use, 0, sizeof (bh_use));
-	toread = 0;
-	for (block = 0; block < NAMEI_RA_SIZE; ++block) {
-		struct buffer_head * bh;
+    memset (bh_use, 0, sizeof (bh_use));
+    toread = 0;
+    for (block = 0; block < NAMEI_RA_SIZE; ++block) {
+        struct buffer_head * bh;
 
-		if ((block << EXT2_BLOCK_SIZE_BITS (sb)) >= dir->i_size)
-			break;
-		bh = ext2_getblk (dir, block, 0, &err);
-		bh_use[block] = bh;
-		if (bh && !bh->b_uptodate)
-			bh_read[toread++] = bh;
-	}
+        if ((block << EXT2_BLOCK_SIZE_BITS (sb)) >= dir->i_size)
+            break;
+        bh = ext2_getblk (dir, block, 0, &err);
+        bh_use[block] = bh;
+        if (bh && !bh->b_uptodate)
+            bh_read[toread++] = bh;
+    }
 
-	block = 0;
-	offset = 0;
-	while (offset < dir->i_size) {
-		struct buffer_head * bh;
-		struct ext2_dir_entry * de;
-		char * dlimit;
+    block = 0;
+    offset = 0;
+    while (offset < dir->i_size) {
+        struct buffer_head * bh;
+        struct ext2_dir_entry * de;
+        char * dlimit;
 
-		if ((block % NAMEI_RA_BLOCKS) == 0 && toread) {
-			ll_rw_block (READ, toread, bh_read);
-			toread = 0;
-		}
-		bh = bh_use[block % NAMEI_RA_SIZE];
-		if (!bh)
-			ext2_panic (sb, "ext2_find_entry",
-				    "buffer head pointer is NULL");
-		wait_on_buffer (bh);
-		if (!bh->b_uptodate) {
-			/*
-			 * read error: all bets are off
-			 */
-			break;
-		}
+        if ((block % NAMEI_RA_BLOCKS) == 0 && toread) {
+            ll_rw_block (READ, toread, bh_read);
+            toread = 0;
+        }
+        bh = bh_use[block % NAMEI_RA_SIZE];
+        if (!bh)
+            ext2_panic (sb, "ext2_find_entry",
+                            "buffer head pointer is NULL");
+        wait_on_buffer (bh);
+        if (!bh->b_uptodate) {
+            /*
+             * read error: all bets are off
+             */
+            break;
+        }
 
-		de = (struct ext2_dir_entry *) bh->b_data;
-		dlimit = bh->b_data + sb->s_blocksize;
-		while ((char *) de < dlimit) {
-			if (!ext2_check_dir_entry ("ext2_find_entry", dir,
-						   de, bh, offset))
-				goto failure;
-			if (de->inode != 0 && ext2_match (namelen, name, de)) {
-				for (i = 0; i < NAMEI_RA_SIZE; ++i) {
-					if (bh_use[i] != bh)
-						brelse (bh_use[i]);
-				}
-				*res_dir = de;
-				return bh;
-			}
-			offset += de->rec_len;
-			de = (struct ext2_dir_entry *)
-				((char *) de + de->rec_len);
-		}
+        de = (struct ext2_dir_entry *) bh->b_data;
+        dlimit = bh->b_data + sb->s_blocksize;
+        while ((char *) de < dlimit) {
+            if (!ext2_check_dir_entry ("ext2_find_entry", dir,
+                             de, bh, offset))
+                goto failure;
+            if (de->inode != 0 && ext2_match (namelen, name, de)) {
+                for (i = 0; i < NAMEI_RA_SIZE; ++i) {
+                    if (bh_use[i] != bh)
+                        brelse (bh_use[i]);
+                }
+                *res_dir = de;
+                return bh;
+            }
+            offset += de->rec_len;
+            de = (struct ext2_dir_entry *)
+                           ((char *) de + de->rec_len);
+        }
 
-		brelse (bh);
-		if (((block + NAMEI_RA_SIZE) << EXT2_BLOCK_SIZE_BITS (sb)) >=
-		    dir->i_size)
-			bh = NULL;
-		else
-			bh = ext2_getblk (dir, block + NAMEI_RA_SIZE, 0, &err);
-		bh_use[block++ % NAMEI_RA_SIZE] = bh;
-		if (bh && !bh->b_uptodate)
-			bh_read[toread++] = bh;
-	}
+        brelse (bh);
+        if (((block + NAMEI_RA_SIZE) << EXT2_BLOCK_SIZE_BITS (sb)) >=
+                     dir->i_size)
+            bh = NULL;
+        else
+            bh = ext2_getblk (dir, block + NAMEI_RA_SIZE, 0, &err);
+        bh_use[block++ % NAMEI_RA_SIZE] = bh;
+        if (bh && !bh->b_uptodate)
+            bh_read[toread++] = bh;
+    }
 
 failure:
-	for (i = 0; i < NAMEI_RA_SIZE; ++i)
-		brelse (bh_use[i]);
-	return NULL;
+    for (i = 0; i < NAMEI_RA_SIZE; ++i)
+        brelse (bh_use[i]);
+    return NULL;
 }
 
 int ext2_lookup (struct inode * dir, const char * name, int len,
 		 struct inode ** result)
 {
-	unsigned long ino;
-	struct ext2_dir_entry * de;
-	struct buffer_head * bh;
+    unsigned long ino;
+    struct ext2_dir_entry * de;
+    struct buffer_head * bh;
 
-	*result = NULL;
-	if (!dir)
-		return -ENOENT;
-	if (!S_ISDIR(dir->i_mode)) {
-		iput (dir);
-		return -ENOENT;
-	}
+    *result = NULL;
+    if (!dir)
+        return -ENOENT;
+    if (!S_ISDIR(dir->i_mode)) {
+        iput (dir);
+        return -ENOENT;
+    }
 #ifndef DONT_USE_DCACHE
-	if (!(ino = ext2_dcache_lookup (dir->i_dev, dir->i_ino, name, len))) {
+    if (!(ino = ext2_dcache_lookup (dir->i_dev, dir->i_ino, name, len))) {
 #endif
-		if (!(bh = ext2_find_entry (dir, name, len, &de))) {
-			iput (dir);
-			return -ENOENT;
-		}
-		ino = de->inode;
+        if (!(bh = ext2_find_entry (dir, name, len, &de))) {
+            iput (dir);
+            return -ENOENT;
+        }
+        ino = de->inode;
 #ifndef DONT_USE_DCACHE
-		ext2_dcache_add (dir->i_dev, dir->i_ino, de->name,
-				 de->name_len, ino);
+        ext2_dcache_add (dir->i_dev, dir->i_ino, de->name,
+                             de->name_len, ino);
 #endif
-		brelse (bh);
+        brelse (bh);
 #ifndef DONT_USE_DCACHE
-	}
+    }
 #endif
 	if (!(*result = iget (dir->i_sb, ino))) {
 		iput (dir);
