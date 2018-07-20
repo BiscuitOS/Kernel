@@ -188,66 +188,66 @@ int ext2_bmap (struct inode * inode, int block)
 static struct buffer_head * inode_getblk (struct inode * inode, int nr,
 					  int create, int new_block, int * err)
 {
-	int tmp, goal = 0;
-	unsigned long * p;
-	struct buffer_head * result;
-	int blocks = inode->i_sb->s_blocksize / 512;
+    int tmp, goal = 0;
+    unsigned long * p;
+    struct buffer_head * result;
+    int blocks = inode->i_sb->s_blocksize / 512;
 
-	p = inode->u.ext2_i.i_data + nr;
+    p = inode->u.ext2_i.i_data + nr;
 repeat:
-	tmp = *p;
-	if (tmp) {
-		result = getblk (inode->i_dev, tmp, inode->i_sb->s_blocksize);
-		if (tmp == *p)
-			return result;
-		brelse (result);
-		goto repeat;
-	}
-	if (!create || new_block >= 
-	    (current->rlim[RLIMIT_FSIZE].rlim_cur >>
-	     EXT2_BLOCK_SIZE_BITS(inode->i_sb))) {
-		*err = -EFBIG;
-		return NULL;
-	}
-	if (inode->u.ext2_i.i_next_alloc_block == new_block)
-		goal = inode->u.ext2_i.i_next_alloc_goal;
+    tmp = *p;
+    if (tmp) {
+        result = getblk (inode->i_dev, tmp, inode->i_sb->s_blocksize);
+        if (tmp == *p)
+            return result;
+            brelse (result);
+            goto repeat;
+    }
+    if (!create || new_block >= 
+            (current->rlim[RLIMIT_FSIZE].rlim_cur >>
+                EXT2_BLOCK_SIZE_BITS(inode->i_sb))) {
+        *err = -EFBIG;
+        return NULL;
+    }
+    if (inode->u.ext2_i.i_next_alloc_block == new_block)
+        goal = inode->u.ext2_i.i_next_alloc_goal;
 
-	ext2_debug ("hint = %d,", goal);
+    ext2_debug ("hint = %d,", goal);
 
-	if (!goal) {
-		for (tmp = nr - 1; tmp >= 0; tmp--) {
-			if (inode->u.ext2_i.i_data[tmp]) {
-				goal = inode->u.ext2_i.i_data[tmp];
-				break;
-			}
-		}
-		if (!goal)
-			goal = (inode->u.ext2_i.i_block_group * 
-				EXT2_BLOCKS_PER_GROUP(inode->i_sb)) +
-			       inode->i_sb->u.ext2_sb.s_es->s_first_data_block;
-	}
+    if (!goal) {
+        for (tmp = nr - 1; tmp >= 0; tmp--) {
+            if (inode->u.ext2_i.i_data[tmp]) {
+                goal = inode->u.ext2_i.i_data[tmp];
+                break;
+            }
+        }
+        if (!goal)
+            goal = (inode->u.ext2_i.i_block_group * 
+                       EXT2_BLOCKS_PER_GROUP(inode->i_sb)) +
+                       inode->i_sb->u.ext2_sb.s_es->s_first_data_block;
+    }
 
-	ext2_debug ("goal = %d.\n", goal);
+    ext2_debug ("goal = %d.\n", goal);
 
-	tmp = ext2_alloc_block (inode, goal);
-	if (!tmp)
-		return NULL;
-	result = getblk (inode->i_dev, tmp, inode->i_sb->s_blocksize);
-	if (*p) {
-		ext2_free_blocks (inode->i_sb, tmp, 1);
-		brelse (result);
-		goto repeat;
-	}
-	*p = tmp;
-	inode->u.ext2_i.i_next_alloc_block = new_block;
-	inode->u.ext2_i.i_next_alloc_goal = tmp;
-	inode->i_ctime = CURRENT_TIME;
-	inode->i_blocks += blocks;
-	if (IS_SYNC(inode))
-		ext2_sync_inode (inode);
-	else
-		inode->i_dirt = 1;
-	return result;
+    tmp = ext2_alloc_block (inode, goal);
+    if (!tmp)
+        return NULL;
+    result = getblk (inode->i_dev, tmp, inode->i_sb->s_blocksize);
+    if (*p) {
+        ext2_free_blocks (inode->i_sb, tmp, 1);
+        brelse (result);
+        goto repeat;
+    }
+    *p = tmp;
+    inode->u.ext2_i.i_next_alloc_block = new_block;
+    inode->u.ext2_i.i_next_alloc_goal = tmp;
+    inode->i_ctime = CURRENT_TIME;
+    inode->i_blocks += blocks;
+    if (IS_SYNC(inode))
+        ext2_sync_inode (inode);
+    else
+        inode->i_dirt = 1;
+    return result;
 }
 
 static struct buffer_head * block_getblk (struct inode * inode,

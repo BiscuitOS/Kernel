@@ -41,7 +41,7 @@ int demo_fork(void);
 int demo_creat(const char *filename, int mode);
 int demo_chdir(const char *filename);
 int demo_exit(int exit_code);
-int vfs_ext2fs(const char *filename);
+int vfs_ext2fs(int fd);
 
 #endif // __FILE_DEBUGCALL_NR__
 

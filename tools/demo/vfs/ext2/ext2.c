@@ -17,6 +17,7 @@
 #include <linux/locks.h>
 #include <linux/stat.h>
 #include <linux/unistd.h>
+#include <linux/fcntl.h>
 
 #include <asm/bitops.h>
 
@@ -1641,6 +1642,49 @@ static __unused int ext2_inode(struct super_block *sb, struct inode *inode)
      * |              |              |             |               |
      * +--------------+--------------+-------------+---------------+
      *
+     *
+     * Inodes are all numerically ordered. The "inode number" is an index
+     * in the inode table to an inode structure. The size of the inode
+     * table is fixed at format time. It's built to hold a maximum number
+     * of entries. Due to the large amount of entries created, the table
+     * is quite big and thus, it is split equally amount all the block
+     * groups.
+     *
+     * The s_inodes_per_group field in the superblock structure tells us
+     * how many inodes are defined per gorup. Knowing that inode 1 is the
+     * first inode defined in the inode table. one can use the following
+     * formulaes:
+     *
+     *   block group = (inode - 1) / s_inodes_per_group
+     *   or
+     *   block group = (inode - 1) / EXT2_INODES_PER_GROUP(sb)
+     *
+     * Once the block is identified, the local inode index for the local
+     * inode table can be identified using:
+     *
+     *   local inode index = (inode - 1) % s_inodes_per_group
+     *
+     * Here are a couple of sample values that could be used to test yuour
+     * implementation.
+     *
+     * Table: Sample Inode Computations
+     *
+     *  s_inodes_per_group = 1712
+     *
+     *  Inode Number       Block Group Number       Local Inode Index
+     * ------------------------------------------------------------------
+     *  1                  0                        0
+     *  963                0                        962
+     *  1712               0                        1711
+     *  1713               1                        0
+     *  3424               1                        1711
+     *  3425               2                        0
+     * ------------------------------------------------------------------
+     *  
+     * As many of you are most likely already familiar with, an index of 0
+     * means the first entry. The reason behind using 0 rather than 1 is 
+     * that it can more easily be multiplied by the structure size to find
+     * the final byte offset of its location in memory or on disk.
      */
 
     block_group = (inode->i_ino - 1) / EXT2_INODES_PER_GROUP(inode->i_sb);
@@ -1815,10 +1859,155 @@ static __unused int ext2_inode(struct super_block *sb, struct inode *inode)
      *   are contained in the i_block_array.
      *
      *   Since this value represents 512-byte block and not file system
-     *   blocks, this value should 
+     *   blocks, this value should not directory used as an index to the 
+     *   i_block_array. Rather, the maximum index of the i_block array
+     *   should be computed from i_blocks / ((1024 << s_log_block_size) / 
+     *   512), or once simplified, i_blocks / (2 << s_log_block_size). 
      *
      */
+    if (inode->i_blocks != raw_inode->i_blocks)
+        panic("Error on block number");
+    
+    /*
+     * i_flags
+     *   32bit value indicating how the ext2 implementation should behave
+     *   when accessing the data for this inode.
+     *
+     *   Table: Defined i_flags value
+     *   
+     *    Constant Name          Value        Descriptor   
+     *   ----------------------------------------------------------------
+     *   EXT2_SECRM_FL           0x00000001   secure delection
+     *   EXT2_UNRM_FL            0x00000002   record for undelete
+     *   EXT2_COMPR_FL           0x00000004   compressed file
+     *   EXT2_SYNC_FL            0x00000008   synchronous updates
+     *   EXT2_IMMUTABLE_FL       0x00000010   immutable file
+     *   EXT2_APPEND_FL          0x00000020   append only
+     *   EXT2_NODUMP_FL          0x00000040   do not dump/delete file
+     *   EXT2_NOATIME_FL         0x00000080   do not update .i_atime
+     *   ----------------------------------------------------------------
+     *    -- Reserved for compression usage --
+     *   ----------------------------------------------------------------
+     *   EXT2_DIRTY_FL           0x00000100   Dirty (modified)
+     *   EXT2_COMPRBLK_FL        0x00000200   compressed blocks
+     *   EXT2_NOCOMPR_FL         0x00000400   accss raw compressed data
+     *   EXT2_ECOMPR_FL          0x00000800   compression error
+     *   ----------------------------------------------------------------
+     *    -- End of compression flags --
+     *   ----------------------------------------------------------------
+     *   EXT2_BTREE_FL           0x00001000   b-tree format directory
+     *   EXT2_INDEX_FL           0x00001000   hash indexed directory
+     *   EXT2_IMAGIC_FL          0x00002000   AFS directory
+     *   EXT2_JOURNAL_DATA_FL    0x00004000   journal file data
+     *   EXT2_RESERVED_FL        0x00008000   reserved for ext2 library
+     *   ----------------------------------------------------------------
+     */
+    if (inode->i_flags != raw_inode->i_flags)
+        panic("Error on inode flags");
 
+    /*
+     * i_block
+     *   15 * 32bit block numbers pointing to block containing the data
+     *   for this inode. The first 12 blocks are direct block. The 13th
+     *   entry in this array is the block number of the first indirect
+     *   block. Which is a block containing an array of block ID containing
+     *   the data. Therefore, the 13th block of the file will be the block
+     *   ID contained in the indirect block. With a 1KiB block size, block 
+     *   13 to 268 of the file data are contained in this indirect block.
+     *
+     *   The 14th entry in this array is the block number of the first
+     *   double-indirect block, which is a block containing an array of
+     *   indirect block IDs, with each of those indirect blocks containing
+     *   an array of blocks containing the data. In a 1KiB block size, 
+     *   there would be 256 indirect blocks per double-indirect block,
+     *   with 256 direct blocks per indirect block for a total of 65536
+     *   blocks per double-indirect block.
+     *
+     *   The 15th entry in this array is the block number of the triply-
+     *   indirect block, which is a block containing an array of double-
+     *   indirect block IDs, with each of those doubly-indirect block
+     *   containing an array of indirect block, and each of those indirect
+     *   block containing an array of direct block. In a 1KiB file system,
+     *   this would be a total of 16777216 blocks per triply-indirect
+     *   block.
+     *
+     *   A value of 0 in this array effectively terminates it with no
+     *   further block being defined. All the remaining entries of the
+     *   array should still be set to 0.
+     *
+     *
+     *   ext2_inode
+     *
+     *   +--------+            direct block           direct block
+     *   |        |             +--------+              +-------+
+     *   |        |             |        |              |       |
+     *   |        |             |        |              |       |
+     *   |        |        o--->+--------+         o--->+-------+
+     *   |        |        |                       |
+     *   |        |        |                       |
+     *   |        |        |       indirct block   |   direct block
+     *   |        |        |         +--------+    |    +--------+
+     *   |        |        |         |        |    |    |        |
+     *   |        |        |         +--------+    |    |        |
+     *   |        |        |         |       -|----o    +--------+<----o
+     *   |        |        |         +--------+                        |
+     *   |        |        |         |        |                        |
+     *   |        |        |         +--------+       indirect block   |
+     *   |        |        |         |        |         +--------+     |
+     *   |        |        |   o---->+--------+         |        |     |
+     *   |        |        |   |                        +--------+     |
+     *   |        |        |   |     double-indirect    |        |     |
+     *   |        |        |   |          block         +--------+     |
+     *   |        |        |   |        +-------+       |        |     |
+     *   |        |        |   |        |       |       +--------+     |
+     *   |        |        |   |        +-------+       |       -|-----o
+     *   +--------+        |   |        |      -|------>+--------+
+     *   |i_block-|--------o   |        +-------+
+     *   +--------+            |        |       |
+     *   |i_block-|------------o        +-------+
+     *   +--------+                     |       |
+     *   |i_block-|-------------------->+-------+
+     *   +--------+
+     *   |i_block-|-------o
+     *   +--------+       |                               
+     *                    |                                
+     *   triply-indirect  |                                
+     *     block          |                               direct block
+     *   +--------+<------o                                +--------+
+     *   |        |                      indirect block    |        |
+     *   +--------+                        +--------+      |        |
+     *   |        |    double-indirect     |       -|----->+--------+
+     *   +--------+       block            +--------+
+     *   |       -|----->+--------+        |        |
+     *   +--------+      |        |        +--------+
+     *                   +--------+        |        |
+     *                   |       -|------->+--------+
+     *                   +--------+
+     *                   |        |
+     *                   +--------+
+     *
+     */          
+    if (S_ISCHR(raw_inode->i_mode) || S_ISBLK(raw_inode->i_mode))
+        if (inode->i_rdev != raw_inode->i_block[0])
+            panic("Error Rdev for character and block device");
+    if (inode->u.ext2_i.i_data[0] != raw_inode->i_block[0])
+        panic("Error block nr");
+
+    /*
+     * i_file_acl
+     *   32bit value indicating the block number containing the extened
+     *   attributes. In revision 0 this value is always 0.
+     *
+     * i_dir_acl
+     *   In revision 0 this 32bit value is always 0. In revision 1, for
+     *   regular files this 32bit value contains the high 32 bits of
+     *   the 64bit file size.
+     */
+    if (inode->u.ext2_i.i_dir_acl != raw_inode->i_dir_acl)
+        panic("Error i_dir_acl");
+
+    if (bh)
+        brelse(bh);
     return 0;
 }
 
@@ -1842,15 +2031,112 @@ static __unused int ext2_inode(struct super_block *sb, struct inode *inode)
  *   store additional file records. When filename are removed, some
  *   implementations do not free theses additional blocks.
  */
+static __unused int ext2_directory(struct super_block *sb, 
+                                           struct inode *inode)
+{
+    unsigned long *p;
+    unsigned int tmp;
+    struct buffer_head *bh;
+    struct ext2_dir_entry *de;
+    char *dlimit;
 
-asmlinkage int sys_vfs_ext2fs(const char *filename)
+    /*
+     * Directory are used to hierarchically organize files. Each directory
+     * can contain other directories, regular files and special files.
+     *
+     *                  +-----------+
+     *                  |           |
+     *                  | Directory |
+     *                  |           |
+     *                  +-----------+
+     *                    |   |   |  
+     *                    |   |   |
+     *       o------------o   |   o------------o
+     *       |                |                |
+     *       |                |                |
+     *       V                V                V
+     * +-----------+    +-----------+    +-----------+
+     * |           |    |           |    |           |
+     * | Directory |    |   Files   |    |  Special  |
+     * |           |    |           |    |   Files   |
+     * +-----------+    +-----------+    |           |
+     *                                   +-----------+
+     *        
+     *
+     * Directories are stored as data block and refrenced by an inode. They
+     * can be identified by the file type EXT2_S_IFDIR stored in the i_mode
+     * field of the inode structure.
+     */
+    if (!S_ISDIR(inode->i_mode))
+        panic("Inode is not a directory");
+
+    /*
+     * The second entry of the Inode table contains the inode pointing
+     * to the data of the root directory. As defined by the 
+     * EXT2_ROOT_INO constant.
+     *
+     * In revision 0 directory could only be stored in a linked list. 
+     * Revision 1 and later introduced indexed directories. The indexed
+     * directory is backward compatiblie with the linked list directory,
+     * this is achieved by inserting empty directory entry records to 
+     * skip over the hash index.
+     *
+     */
+    
+    p = inode->u.ext2_i.i_data;
+    tmp = *p;
+    if (!tmp)
+        panic("Empty inode number");
+    if (!(bh = bread(inode->i_dev, tmp, sb->s_blocksize))) {
+        printk("Unable to read block from Disk\n");
+        return -EINVAL;
+    }
+    
+    /*
+     * A directory file is a linked list of directory entry structure. 
+     * Each structure contains the name of the entry, the inode associated
+     * with the data of this entry, and the distance within the directory
+     * file to the next entry.
+     *
+     * In revision 0, the type of the entry (file, directory, special file,
+     * etc) has to be looked up in the inode of the file. In revision 0.5
+     * and later, the file type is also contained in the directory entry
+     * structure.
+     *
+     * Table: Linked Directory Entry Structure
+     * 
+     *  Offset(bytes)   Size(bytes)      Description
+     * --------------------------------------------------------------
+     *  0               4                inode
+     *  4               2                rec_len
+     *  6               1                namelen
+     *  7               1                file_type
+     *  8               0-255            name
+     *
+     * Note:
+     *  Revision 0 of EXT2 used a 16bit name_len, since most implementations
+     *  restricted filename to a maxumum of 255 characters this value was
+     *  truncated to 8bit with the upper 8bit recycled as file_typ,
+     *  7               1                file_type
+     */
+    de = (struct ext2_dir_entry *)bh->b_data;
+    dlimit = bh->b_data + sb->s_blocksize;
+
+     
+    return 0;
+}
+
+asmlinkage int sys_vfs_ext2fs(int fd)
 {
     struct super_block *sb, *raw_sb;
-    struct inode *inode;
+    struct file *filp;
+    struct inode *inode, *root;
 
-    /* Obtain root */
-    inode = current->root;
+    filp = current->filp[fd];
+    inode = filp->f_inode;
     inode->i_count++;
+    root = current->root;
+    root->i_count++;
 
     /* Obtain super block for EXT2-fs */
     sb = inode->i_sb;
@@ -1877,19 +2163,34 @@ asmlinkage int sys_vfs_ext2fs(const char *filename)
 #ifdef CONFIG_DEBUG_EXT2_INODE
     ext2_inode(sb, inode);
 #endif
+#ifdef CONFIG_DEBUG_EXT2_DIRECTORY
+    ext2_directory(sb, root);
+#endif
 
-    kfree(sb);
+    kfree(raw_sb);
+    iput(root);
     iput(inode);
 
     return 0;
 }
 
 /* System call entry */
-inline _syscall1(int, vfs_ext2fs, const char *, filename);
+inline _syscall1(int, vfs_ext2fs, int, fd);
+static inline _syscall3(int, open, const char *, file, int, flag, int, mode);
+static inline _syscall1(int, close, int, fd);
 
 static int debug_ext2fs(void)
 {
-    vfs_ext2fs("/ect/rc");
+    int fd;
+
+    fd = open("/etc/rc", O_RDWR, 0);
+    if (fd < 0) {
+        printf("Unable to open /etc/rc\n");
+        return -1;
+    }
+    vfs_ext2fs(fd);
+
+    close(fd);
     return 0;
 }
 user1_debugcall(debug_ext2fs);

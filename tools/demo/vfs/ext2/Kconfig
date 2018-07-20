@@ -30,6 +30,11 @@ config DEBUG_EXT2_INODE
 	help
 	  Parse the value from inode.
 
+config DEBUG_EXT2_DIRECTORY
+	bool "ext2-fs: directory (hierarchically organize files)"
+	help
+	  Parse the value of directory.
+
 endif
 
 endmenu
