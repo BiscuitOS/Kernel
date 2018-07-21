@@ -65,27 +65,27 @@ struct inode_operations ext2_dir_inode_operations = {
 };
 
 int ext2_check_dir_entry (char * function, struct inode * dir,
-			  struct ext2_dir_entry * de, struct buffer_head * bh,
-			  unsigned long offset)
+             struct ext2_dir_entry * de, struct buffer_head * bh,
+             unsigned long offset)
 {
-	char * error_msg = NULL;
+    char * error_msg = NULL;
 
-	if (de->rec_len < EXT2_DIR_REC_LEN(1))
-		error_msg = "rec_len is smaller than minimal";
-	else if (de->rec_len % 4 != 0)
-		error_msg = "rec_len % 4 != 0";
-	else if (de->rec_len < EXT2_DIR_REC_LEN(de->name_len))
-		error_msg = "rec_len is too small for name_len";
-	else if (dir && ((char *) de - bh->b_data) + de->rec_len >
-		 dir->i_sb->s_blocksize)
-		error_msg = "directory entry across blocks";
+    if (de->rec_len < EXT2_DIR_REC_LEN(1))
+        error_msg = "rec_len is smaller than minimal";
+    else if (de->rec_len % 4 != 0)
+        error_msg = "rec_len % 4 != 0";
+    else if (de->rec_len < EXT2_DIR_REC_LEN(de->name_len))
+        error_msg = "rec_len is too small for name_len";
+    else if (dir && ((char *) de - bh->b_data) + de->rec_len >
+                        dir->i_sb->s_blocksize)
+        error_msg = "directory entry across blocks";
 
-	if (error_msg != NULL)
-		ext2_error (dir->i_sb, function, "bad directory entry: %s\n"
-			    "offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
-			    error_msg, offset, de->inode, de->rec_len,
-			    de->name_len);
-	return error_msg == NULL ? 1 : 0;
+    if (error_msg != NULL)
+        ext2_error (dir->i_sb, function, "bad directory entry: %s\n"
+             "offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
+              error_msg, offset, de->inode, de->rec_len,
+                 de->name_len);
+    return error_msg == NULL ? 1 : 0;
 }
 
 static int ext2_readdir (struct inode * inode, struct file * filp,

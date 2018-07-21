@@ -2116,12 +2116,78 @@ static __unused int ext2_directory(struct super_block *sb,
      * Note:
      *  Revision 0 of EXT2 used a 16bit name_len, since most implementations
      *  restricted filename to a maxumum of 255 characters this value was
-     *  truncated to 8bit with the upper 8bit recycled as file_typ,
-     *  7               1                file_type
+     *  truncated to 8bit with the upper 8bit recycled as file_type.
+     *
+     *  Not available in revision 0. This field was part of the 16bit 
+     *  name_len field.
+     *
+     * Inode
+     *   32bit inode number of the file entry. A value of 0 indicate that
+     *   the entry is not used.
+     *
+     * rec_len
+     *   16bit unsigned displacement to the next directory entry from the
+     *   current directory entry. This field must have a value at least 
+     *   equal to the length of the current record.
+     *
+     *   The directory entries must be alignment on 4-bytes boundaries and
+     *   there cannot be any directory entry spanning multiple data blocks.
+     *   If an entry cannot completely fit in one block, it must be pushed
+     *   to the next data block and the rec_len of the previous entry
+     *   properly adjusted.
+     *
+     *   Note:
+     *     Since this value cannot be negative, when a file is remove the 
+     *     previous record within the block has to be modified to point to
+     *     the next valid record within the block or to the end of the block
+     *     when no other directory entry is present.
+     *
+     *     If the first entry within block is removed, a block record will 
+     *     be created and point to the next directory entry or to the end
+     *     of the block.
+     *
+     * name_len
+     *   16bit unsigned value indicating how many bytes of character data
+     *   are contained in the name.
+     *
+     *   Note:
+     *     This value must never be larger than rec_len - 8. If the directory
+     *     entry name is updated and cannot fit in the existing directory
+     *     entry, the entry may have to be relocated in a new directory entry
+     *     of sufficient size and possibly stored in a new data block.
+     *
+     * name
+     *   Name of the entry. The ISO-Latin-1 character set is expected in
+     *   most system. The name must be no longer than 255 bytes after 
+     *   encoding.
+     *
      */
     de = (struct ext2_dir_entry *)bh->b_data;
     dlimit = bh->b_data + sb->s_blocksize;
+    while ((char *) de < dlimit) {
+        if (de->inode != 0)
+            printk(" %s", de->name);
+        /*
+         *
+         * 0-----------------+----------------+-----+----------------4k
+         * |                 |                |     |                |
+         * | ext2_dir_entry  | ext2_dir_entry | ... | ext2_dir_entry |
+         * |                 |                |     |                |
+         * +-----------------+----------------+-----+----------------+
+         * A <-de->rec_len-> A
+         * |                 |
+         * |                 |
+         * |                 |
+         * |                 |
+         * o--de      (de + de->rec_len)
+         *
+         */
+        de = (struct ext2_dir_entry *)
+                  ((char *) de + de->rec_len);
+    }
 
+    if (bh)
+        brelse(bh);
      
     return 0;
 }
