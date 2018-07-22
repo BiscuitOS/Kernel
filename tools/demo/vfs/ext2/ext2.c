@@ -1608,7 +1608,11 @@ static __unused int ext2_inode(struct super_block *sb, struct inode *inode)
     unsigned long group_desc;
     unsigned long desc;
     unsigned long block;
+    unsigned long offset;
+    unsigned long addr_per_block;
     struct ext2_group_desc *gdp;
+    struct buffer_head *mbh;
+    char *buffer;
 
     /*
      * The filesytem is divided into block group, on revision 0, special
@@ -1987,11 +1991,291 @@ static __unused int ext2_inode(struct super_block *sb, struct inode *inode)
      *                   +--------+
      *
      */          
-    if (S_ISCHR(raw_inode->i_mode) || S_ISBLK(raw_inode->i_mode))
-        if (inode->i_rdev != raw_inode->i_block[0])
-            panic("Error Rdev for character and block device");
-    if (inode->u.ext2_i.i_data[0] != raw_inode->i_block[0])
-        panic("Error block nr");
+
+    offset = 0;
+    block = offset / inode->i_sb->s_blocksize;
+    addr_per_block = EXT2_ADDR_PER_BLOCK(inode->i_sb);
+
+    /* 
+     * Direct block 
+     *
+     * ext2_inode
+     * +--------------+
+     * |              |                    direct block
+     * |              |                +-----------------+
+     * |              |                |                 |
+     * |              |                |                 |
+     * +--------------+                |                 |
+     * | i_data[0]   -|--------------->+-----------------+
+     * +--------------+
+     * | ....         |
+     * +--------------+
+     * | i_data[11]   |
+     * +--------------+
+     * |              |
+     * +--------------+
+     * |              |
+     * +--------------+
+     * |              |
+     * +--------------+
+     *
+     *
+     * Here are a couple of sample values that could be used to test yuour
+     * implementation.
+     *
+     * Table: Sample direct block 
+     *
+     *  addr_per_block = 1024 / 4
+     *
+     *  Range: 0 to 11
+     *
+     *  index   triply-indirect    double-indirect    indirect   block nr
+     * ------------------------------------------------------------------
+     *  0       x                  x                  x          254
+     *  1       x                  x                  x          258
+     *  2       x                  x                  x          345
+     *  3       x                  x                  x          287
+     *  4       x                  x                  x          29
+     *  5       x                  x                  x          437
+     *  6       x                  x                  x          8
+     *  7       x                  x                  x          167
+     *  8       x                  x                  x          34
+     *  9       x                  x                  x          90
+     *  10      x                  x                  x          91
+     *  11      x                  x                  x          92
+     * ------------------------------------------------------------------
+     *
+     */
+    if (block < EXT2_NDIR_BLOCKS) {
+        block = inode->u.ext2_i.i_data[block];
+        goto load_block;
+    }
+    /* 
+     * Indirect block 
+     *
+     * ext2_inode
+     * +--------------+
+     * |              |                
+     * |              |                
+     * |              |                
+     * |              |                             direct block
+     * +--------------+    indirect block       +-----------------+
+     * | i_data[0]    |     +----------+        |                 |
+     * +--------------+     |          |        |                 |
+     * | ....         |     +----------+        |                 |
+     * +--------------+     |         -|------->+-----------------+
+     * | i_data[11]   |     +----------+
+     * +--------------+     |          |
+     * | i_data[12]  -|---->+----------+
+     * +--------------+
+     * |              |
+     * +--------------+
+     * |              |
+     * +--------------+
+     *
+     *
+     *
+     * Here are a couple of sample values that could be used to test yuour
+     * implementation.
+     *
+     * Table: Sample indirect block 
+     *
+     *  addr_per_block = 1024 / 4
+     *  
+     *  Range: 12 to 267
+     *
+     *  index   triply-indirect    double-indirect    indirect   block nr
+     * ------------------------------------------------------------------
+     *  12      x                  x                  0          269
+     *  13      x                  x                  1          332
+     *  19      x                  x                  7          190
+     *  100     x                  x                  88         27
+     *  156     x                  x                  144        97
+     *  199     x                  x                  187        637
+     *  200     x                  x                  189        638
+     *  250     x                  x                  238        107
+     *  254     x                  x                  242        734
+     *  255     x                  x                  243        735
+     *  267     x                  x                  255        789
+     * ------------------------------------------------------------------
+     *
+     */
+    block -= EXT2_NDIR_BLOCKS; /* first block is 12 */
+    if (block < addr_per_block) {
+        struct buffer_head *ibh;
+        unsigned long *tmp;
+
+        if (!(ibh = bread(inode->i_dev, 
+                inode->u.ext2_i.i_data[EXT2_IND_BLOCK], 
+                                  inode->i_sb->s_blocksize)))
+            panic("Unable to read indirect-block");
+
+        tmp = (unsigned long *) ibh->b_data + block;
+        block = *tmp;
+        brelse(ibh);
+        goto load_block;
+    }
+    /* 
+     * Double-indirect block 
+     * 
+     * ext2_inode
+     * +--------------+
+     * |              |                                        direct block
+     * |              |                                         +---------+
+     * |              |                                         |         |
+     * |              |                        indirect block   |         |
+     * +--------------+                         +---------+     |         |
+     * | i_data[0]    |    double-indirect      |        -|---->+---------+
+     * +--------------+          block          +---------+
+     * | ....         |      +----------+       |         |
+     * +--------------+      |          |       +---------+
+     * | i_data[11]   |      +----------+       |         |
+     * +--------------+      |         -|------>+---------+
+     * | i_data[12]   |      +----------+
+     * +--------------+      |          |
+     * | i_data[13]  -|----->+----------+
+     * +--------------+
+     * |              |
+     * +--------------+
+     *
+     *
+     *
+     * Here are a couple of sample values that could be used to test yuour
+     * implementation.
+     *
+     * Table: Sample Double-indirect block 
+     *
+     *  addr_per_block = 1024 / 4
+     *  
+     *  Range: 268 to 65803
+     *
+     *  index   triply-indirect    double-indirect    indirect   block nr
+     * ------------------------------------------------------------------
+     *  268     x                  0                  0          522
+     *  523     x                  0                  255        589
+     *  524     x                  1                  0          356
+     *  779     x                  1                  255        527
+     *  1876    x                  6                  72         497
+     *  34567   x                  133                251        797
+     *  43321   x                  168                45         109
+     *  65279   x                  253                243        134
+     *  65803   x                  255                255        35
+     * ------------------------------------------------------------------
+     *
+     */
+
+    block -= addr_per_block; /* first block is (12 + 256) */
+    if (block < addr_per_block * addr_per_block) {
+        struct buffer_head *dbh;
+        unsigned long *tmp;
+
+        /* Double-indirect block */
+        if (!(dbh = bread(inode->i_dev,
+              inode->u.ext2_i.i_data[EXT2_DIND_BLOCK],
+                     inode->i_sb->s_blocksize)))
+            panic("Unable to load double-block one");
+        
+        tmp = (unsigned long *)dbh->b_data + (block / addr_per_block);
+        brelse(dbh);
+
+        /* Indirect block */
+        if (!(dbh = bread(inode->i_dev, *tmp, inode->i_sb->s_blocksize)))
+            panic("Unable to load double-block two");
+        tmp = (unsigned long *)dbh->b_data + (block % addr_per_block);
+        block = *tmp;
+        brelse(dbh);
+        goto load_block;
+    }
+    /* 
+     * Triply-indirect block 
+     *      
+     *      
+     *                                                          direct block
+     *                                               indirect     +------+
+     * ext2_inode                                      block      |      |
+     * +--------------+                               +-----+     |      |
+     * |              |                               |    -|---->+------+
+     * |              |                               +-----+
+     * |              |              double-indirect  |     |
+     * |              |                    block      +-----+
+     * +--------------+                  +------+     |     |
+     * | i_data[0]    |                  |     -|---->+-----+
+     * +--------------+                  +------+
+     * | ....         | triply-indirect  |      |
+     * +--------------+     block        +------+
+     * | i_data[11]   |   +-------+      |      |
+     * +--------------+   |      -|----->+------+
+     * | i_data[12]   |   +-------+
+     * +--------------+   |       |
+     * | i_data[13]   |   +-------+
+     * +--------------+   |       |
+     * | i_data[14]  -|-->+-------+
+     * +--------------+
+     *
+     *
+     * Here are a couple of sample values that could be used to test yuour
+     * implementation.
+     *
+     * Table: Sample Triply-indirect block 
+     *
+     *  addr_per_block = 1024 / 4
+     *  
+     *  Range: 65804 to 16843019
+     *
+     *  index     triply-indirect   double-indirect   indirect   block nr
+     * ------------------------------------------------------------------
+     *  65804     0                 0                 0          1220
+     *  131339    0                 255               255        1589
+     *  453456    5                 234               68         1956
+     *  898765    12                181               193        4676
+     *  999999    14                65                51         5497
+     *  10843000  164               114               108        11797
+     *  15643600  237               178               196        21091
+     *  16842764  255               255               0          87301
+     *  16843019  255               255               255        87654
+     * ------------------------------------------------------------------
+     *
+     */
+
+    if ((block -= addr_per_block * addr_per_block) > 0) {
+        struct buffer_head *tbh;
+        unsigned long *tmp;
+
+        /* load triply-indirect block */
+        if (!(tbh = bread(inode->i_dev, EXT2_TIND_BLOCK, 
+                                 inode->i_sb->s_blocksize)))
+            panic("Unable to load triply-block one");
+        
+        tmp = (unsigned long *)tbh->b_data + (block / 
+                                (addr_per_block * addr_per_block));
+        brelse(tbh);
+        
+        /* load double-indirect block */
+        if (!(tbh = bread(inode->i_dev, *tmp, inode->i_sb->s_blocksize)))
+            panic("Unable to load triply-block two");
+
+        tmp = (unsigned long *)tbh->b_data + 
+                       ((block / addr_per_block) % addr_per_block);
+        brelse(tbh);
+
+        /* load indirect block */
+        if (!(tbh = bread(inode->i_dev, *tmp, inode->i_sb->s_blocksize)))
+            panic("Unable to load triply-block three");
+
+        tmp = (unsigned long *)tbh->b_data + (block % addr_per_block);
+
+        block = *tmp;
+        brelse(tbh);
+        goto load_block;
+    }
+
+load_block:
+    if (!(mbh = bread(inode->i_dev, block, inode->i_sb->s_blocksize)))
+        panic("Unable to load buffer from disk");
+
+    /* The buffer point the data block for inode */
+    buffer = (char *)mbh->b_data;
+    printk("Buffer:\n%s\n", buffer);
 
     /*
      * i_file_acl
@@ -2006,8 +2290,12 @@ static __unused int ext2_inode(struct super_block *sb, struct inode *inode)
     if (inode->u.ext2_i.i_dir_acl != raw_inode->i_dir_acl)
         panic("Error i_dir_acl");
 
+    if (mbh)
+        brelse(mbh);
+
     if (bh)
         brelse(bh);
+
     return 0;
 }
 
