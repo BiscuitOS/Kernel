@@ -23,6 +23,9 @@ source "tools/demo/mmu/storage/register/Kconfig"
 # I/O Port
 source "tools/demo/mmu/storage/ioports/Kconfig"
 
+# Stack
+source "tools/demo/mmu/storage/stack/Kconfig"
+
 endif
 
 endmenu
