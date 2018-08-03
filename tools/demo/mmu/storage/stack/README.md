@@ -131,10 +131,25 @@ instructions all perform operations on the current stack.
 
   The stack is typically divide into frames. Each stack frame can then 
   contain local variables, parameters to be passed to another procedure,
-  and procedure linking information. The 
+  and procedure linking information. The stack-frame base pointer (
+  contained in the `EBP` register) identifies a fixed reference point
+  within the stack frame for the called procedure. To use the stack-frame
+  base pointer, the called procedure typically copies the contents of
+  the `ESP` register into the `EBP` register prior to pushing any local
+  variables on the stack. The stack-frame base pointer then permits easy
+  access to data structures passed on the stack, to the return instruction
+  pointer, and to local variables added to the stack by the called 
+  procedure.
 
+  Like the `ESP` register, the `EBP` register automatically points to an
+  address in the current stack segment (that is, the segment specified by
+  the current contents of the `SS` register).
 
+#### Return Instruction Pointer
 
+  Prior to branching to the first instruction of the called procedure,
+  the `CALL` instruction pushes the address in the `EIP` register onto
+  the current stack. This address is 
 
 
 
