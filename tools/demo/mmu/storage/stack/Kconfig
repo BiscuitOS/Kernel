@@ -2,12 +2,34 @@
 # Stack
 #
 
-menu "Stack: An execution stack, program stack, control stack"
+menu "Stack:    An execution stack, program stack, control stack"
 
 config DEBUG_STACK
 	bool "An execution stack, program stack, control stack"
 	help
 	  An execution stack, program stack, control stack, run-time 
 	  stack, or machine stack
+
+if DEBUG_STACK
+
+config DEBUG_CALL_INSTR
+	bool "CALL: Branch to the called procedure."
+	help
+	  Saves procedure linking information on the stack and branches
+	  to the called procedure specified using the target operand.
+
+if DEBUG_CALL_INSTR
+
+config DEBUG_NEAR_CALL
+	bool "near call: Invoke procedure on same segment."
+	help
+	  A call to a procedure in the current code segment (the
+	  segment currently pointed to by the CS register), sometime 
+	  referred to as an intra-segment call.
+
+
+endif
+
+endif
 
 endmenu

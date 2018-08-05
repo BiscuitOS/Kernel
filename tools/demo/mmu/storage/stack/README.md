@@ -149,27 +149,31 @@ instructions all perform operations on the current stack.
 
   Prior to branching to the first instruction of the called procedure,
   the `CALL` instruction pushes the address in the `EIP` register onto
-  the current stack. This address is 
+  the current stack. This address is then called the return-instruction
+  pointer and it points to the instruction where execution of the calling
+  procedure should resume following a return from the called procedure.
+  Upon returning from a called procedure, the `RET` instruction pops the 
+  return-instruction pointer from the stack back into the `EIP` register.
+  Execution of the calling procedure then resumes.
 
+  The processor does not keep track of the location of the return-
+  instruction pointer. It is thus up to the programmer to insure that 
+  stack pointer is pointing to the return-struction pointer on the stack,
+  prior to issuing a `RET` instrcution. A common way to reset the stack
+  pointer to the point to the return-instruction pointer is to move the
+  contents of the `EBP` register into the `ESP` register. If the `EBP`
+  register is loaded with the stack pointer immediately following a
+  procedure call, it should point to the return instruction pointer
+  on the stack.
 
+  The processor does not require that the return instruction pointer
+  point back to the calling procedure. Prior to executing the `RET`
+  instruction, the return instruction pointer can be manipulated in 
+  software to point to any address in the current code segment (near return)
+  or another code segment (far return). Performing such an operation,
+  however, should be undertaken very cautiously, using only well defined
+  code entry points.
 
+## Link
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  [Intel Architectures Software Developer's Manual: Combined Volumes: 1 -- Chapter 6 Procedure Calls, Interrupts, and Exception](https://software.intel.com/en-us/articles/intel-sdm)
