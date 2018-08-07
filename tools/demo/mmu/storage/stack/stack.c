@@ -171,10 +171,28 @@
 /*
  * Near Call
  *
- *   When executing a near call. the processor pushes the value of the EIP
- *   register (which contains the offset the instruction following the 
- *   CALL instruction) on the task (for use later as a return-instruction
- *   pointer).
+ *   When executing a near call, the processor pushes the value of the EIP
+ *   register (which contains the offset of the instruction following the
+ *   the CALL instruction) on stack (for use later as a return-instruction
+ *   pointer). The processor then branches to the address in the current
+ *   code segment specified by the target operand. The target relative
+ *   offset (a signed displacement relative to the current value of the
+ *   instruction pointer in the EIP register, this value points to the 
+ *   instruction following the CALL instruction). The CS register is not
+ *   changed on near calls.
+ *
+ *   For a near call absolute, an absolute offset is specified indirectly
+ *   in a general-purpose register or a memory location (r/m16, r/m32). 
+ *   The operand-size attribute determines the size of the target operand (
+ *   16, 32 or 64 bits). Absolute offsets are loaded directly into the 
+ *   EIP(RIP) register. If the operand size attribute is 16, the upper
+ *   two bytes of the EIP register are cleared, resulting in a maximum
+ *   instruction pointer size of 16 bits. When accessing an absolute offset
+ *   indirectly using the stack pointer [ESP] as the base register, the
+ *   base value used is the value of the ESP before the instruction executes.
+ *   
+ *   A example, the calling procedure is 'debug_near_call()' and called
+ *   procedure is "near_call_procedure()".
  */
 
 /*
@@ -724,6 +742,23 @@ static __unused int debug_near_call(void)
              "c" (c), "d" (&c) );
     return 0;
 }
+
+/*
+ * Far Calls in Protected Mode
+ *
+ *   When the processor is operating in protected mode, the CALL instruction
+ *   can be used to perform the following types of the far calls:
+ *
+ *   * Far call to the same privilege level
+ *   * Far call to a different privilege level (inter-privilege level call)
+ *   * Task switch (far call to another task)
+ *
+ *   In protected mode, the processor always uses the segment selector part
+ *   of the far address to access the corresponding descriptor in the GDT
+ *   or LDT. The descriptor type (code segment, call gate, task gate, or
+ *   TSS) and access rights determine the type of call operation to be
+ *   performed.
+ */
 
 #ifdef CONFIG_DEBUG_CALL_INSTR
 static int debug_CALL_RETURN_instr(void)

@@ -10,8 +10,11 @@ config DEBUG_REGISTER
 
 if DEBUG_REGISTER
 
+# GDTR Register
+source "tools/demo/mmu/storage/register/GDTR/Kconfig"
+
 # CS Register
-source "tools/demo/mmu/storage/register/cs/Kconfig"
+source "tools/demo/mmu/storage/register/CS/Kconfig"
 
 endif
 

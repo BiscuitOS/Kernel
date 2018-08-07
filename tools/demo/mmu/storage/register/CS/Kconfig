@@ -2,7 +2,7 @@
 # CS: Code selector Register
 #
 
-menu "CS: Code selector Register"
+menu "CS:       Code selector Register"
 
 config DEBUG_REGISTER_CS
 	bool "CS: Code selector Register"

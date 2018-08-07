@@ -1,0 +1,26 @@
+#
+# GDTR: Global Descriptor Table Register
+#
+
+menu "GDTR:     Global Descriptor Table Register"
+
+config DEBUG_REGISTER_GDTR
+	bool "GDTR: Global Descriptor table regsiter"
+	help
+	  Debug GDTR Register.
+
+if DEBUG_REGISTER_GDTR
+
+config DEBUG_GDTR_SGDT
+	bool "SGDT: Store Global Descriptor Table Register"
+	help
+	  Store GDTR into linear address.
+
+config DEBUG_GDTR_LGDT
+	bool "LGDT: Load  Global Descriptor Table Register"
+	help
+	  Load linear address into GDTR.
+
+endif
+
+endmenu

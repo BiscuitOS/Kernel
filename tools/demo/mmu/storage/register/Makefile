@@ -1,1 +1,2 @@
-obj-$(CONFIG_DEBUG_REGISTER_CS)    += cs/
+obj-$(CONFIG_DEBUG_REGISTER_GDTR)       += GDTR/
+obj-$(CONFIG_DEBUG_REGISTER_CS)         += CS/
