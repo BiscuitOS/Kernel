@@ -50,12 +50,73 @@ struct gdtr_desc
  *
  */
 /* Operand of SGDT */
-static __unused int gdtr_sdtr(void)
+static __unused int gdtr_sgdt(void)
 {
     struct gdtr_desc gdtr;
 
     __asm__ ("sgdt %0" : "=m" (gdtr));
 
+    /*
+     * limit
+     *   The table limit specifies the number of bytes in the table.
+     *   On GDT, the number of bytes for a segment descriptor is 8 bytes,
+     *   and the first eight of GDT is reserved by system, detail as follow:
+     *
+     *   +----------------------------------------------------+
+     *   |   Number   |              Describe                 |
+     *   +----------------------------------------------------+
+     *   | 0          | NULL Descriptor                       | 
+     *   +----------------------------------------------------+
+     *   | 1          | no use                                | 
+     *   +----------------------------------------------------+
+     *   | 2          | Kernel Code segment descriptor        | 
+     *   +----------------------------------------------------+
+     *   | 3          | Kernel Data segment descriptor        | 
+     *   +----------------------------------------------------+
+     *   | 4          | User Code segment descriptor          | 
+     *   +----------------------------------------------------+
+     *   | 5          | User Data segment descriptor          | 
+     *   +----------------------------------------------------+
+     *   | 6          | no use                                | 
+     *   +----------------------------------------------------+
+     *   | 7          | no use                                | 
+     *   +----------------------------------------------------+
+     *   | 8          | Task0 LDT segment descriptor          | 
+     *   +----------------------------------------------------+
+     *   | 9          | Task0 TSS segment descriptor          | 
+     *   +----------------------------------------------------+
+     *   | ....       | ....                                  | 
+     *   +----------------------------------------------------+
+     *
+     *   The system defined a structure to manage GDT that named 'gdt' which
+     *   defined on 'arch/x86/boot/head.S' as follow:
+     *
+     *   .align 4
+     *   gdt:
+     *       .quad 0x0000000000000000   NULL descriptor
+     *       .quad 0x0000000000000000   not used 
+     *       .quad 0xc0c39a000000ffff   0x10 kernel 1GB code at 0xC0000000
+     *       .quad 0xc0c392000000ffff   0x18 kernel 1GB data at 0xC0000000
+     *       .quad 0x00cbfa000000ffff   0x23 user   3GB code at 0x00000000
+     *       .quad 0x00cbf2000000ffff   0x2b user   3GB data at 0x00000000
+     *       .quad 0x0000000000000000   not used
+     *       .quad 0x0000000000000000   not used
+     *       .fill 2*NR_TASKS,8,0       space for LDT's and TSS's etc
+     *
+     *   On GDT, the first eight segment descriptor reserved by system, and
+     *   each task contain two segment descriptor (TSS and LDT). So the 
+     *   number of segment descriptor on GDT is:
+     *
+     *       number = 8 + 2 * NR_TASKS
+     *   
+     *   So the total number of byte for GDT is:
+     * 
+     *       total = (8 + 2 * NR_TASKS) * 8
+     *
+     *   Becase the first byte of GDT is 0, so the total number of GDT is:
+     *
+     *       total = (8 + 2 * NR_TASKS) * 8 - 1
+     */
     if (gdtr.limit != ((8 + 2 * NR_TASKS) * 8 - 1))
         panic("SGDT: invalid gdtr limit");
     return 0;
@@ -102,7 +163,7 @@ static __unused int gdtr_lgdt(void)
 static int debug_gdtr(void)
 {
 #ifdef CONFIG_DEBUG_GDTR_SGDT
-    gdtr_sdtr();
+    gdtr_sgdt();
 #endif
 
 #ifdef CONFIG_DEBUG_GDTR_LGDT

@@ -13,6 +13,9 @@ if DEBUG_REGISTER
 # GDTR Register
 source "tools/demo/mmu/storage/register/GDTR/Kconfig"
 
+# LDTR Register
+source "tools/demo/mmu/storage/register/LDTR/Kconfig"
+
 # CS Register
 source "tools/demo/mmu/storage/register/CS/Kconfig"
 
