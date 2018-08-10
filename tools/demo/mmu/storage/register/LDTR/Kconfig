@@ -7,19 +7,19 @@ menu "LDTR:     Local Descriptor Table Register"
 config DEBUG_REGISTER_LDTR
 	bool "LDTR: Local Descriptor table regsiter"
 	help
-	  Debug GDTR Register.
+	  Debug LDTR Register.
 
 if DEBUG_REGISTER_LDTR
 
-config DEBUG_GDTR_SLDT
+config DEBUG_LDTR_SLDT
 	bool "SLDT: Store Local Descriptor Table Register"
 	help
 	  Store LDTR into linear address.
 
-config DEBUG_GDTR_LLDT
+config DEBUG_LDTR_LLDT
 	bool "LLDT: Load  Local Descriptor Table Register"
 	help
-	  Load linear address into GLTR.
+	  Load linear address into LDTR.
 
 endif
 

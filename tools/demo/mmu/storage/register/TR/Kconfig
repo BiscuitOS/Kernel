@@ -1,0 +1,26 @@
+#
+# TR: Task Register
+#
+
+menu "TR:       Task Register"
+
+config DEBUG_REGISTER_TR
+	bool "TR: Task Register"
+	help
+	  Debug TR Register.
+
+if DEBUG_REGISTER_TR
+
+config DEBUG_TR_STR
+	bool "STR: Store Task Register"
+	help
+	  Store TR into linear address.
+
+config DEBUG_TR_LTR
+	bool "LTR: Load  Task Register"
+	help
+	  Load linear address into TR.
+
+endif
+
+endmenu

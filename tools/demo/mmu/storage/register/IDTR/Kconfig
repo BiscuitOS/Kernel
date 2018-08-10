@@ -1,0 +1,26 @@
+#
+# IDTR: Interrupt Descriptor Table Register
+#
+
+menu "IDTR:     Interrupt Descriptor Table Register"
+
+config DEBUG_REGISTER_IDTR
+	bool "IDTR: Interrupt descriptor Table Register"
+	help
+	  Debug IDTR Register.
+
+if DEBUG_REGISTER_IDTR
+
+config DEBUG_IDTR_SIDT
+	bool "SIDT: Store Interrupt Descriptor Table Register"
+	help
+	  Store IDTR into linear address.
+
+config DEBUG_IDTR_LIDT
+	bool "LIDT: Load  Interrupt Descriptor Table Register"
+	help
+	  Load linear address into IDTR.
+
+endif
+
+endmenu

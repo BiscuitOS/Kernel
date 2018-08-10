@@ -1,3 +1,5 @@
 obj-$(CONFIG_DEBUG_REGISTER_GDTR)       += GDTR/
 obj-$(CONFIG_DEBUG_REGISTER_LDTR)       += LDTR/
+obj-$(CONFIG_DEBUG_REGISTER_IDTR)       += IDTR/
+obj-$(CONFIG_DEBUG_REGISTER_TR)         += TR/
 obj-$(CONFIG_DEBUG_REGISTER_CS)         += CS/

@@ -88,15 +88,15 @@ static __unused int ldtr_lldt(void)
     return 0;
 }
 
-static int debug_gdtr(void)
+static int debug_ldtr(void)
 {
-#ifdef CONFIG_DEBUG_GDTR_SLDT
+#ifdef CONFIG_DEBUG_LDTR_SLDT
     ldtr_sldt();
 #endif
 
-#ifdef CONFIG_DEBUG_GDTR_LLDT
+#ifdef CONFIG_DEBUG_LDTR_LLDT
     ldtr_lldt();
 #endif
     return 0;
 }
-late_debugcall(debug_gdtr);
+late_debugcall(debug_ldtr);

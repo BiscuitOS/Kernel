@@ -16,6 +16,12 @@ source "tools/demo/mmu/storage/register/GDTR/Kconfig"
 # LDTR Register
 source "tools/demo/mmu/storage/register/LDTR/Kconfig"
 
+# IDTR Register
+source "tools/demo/mmu/storage/register/IDTR/Kconfig"
+
+# TR Register
+source "tools/demo/mmu/storage/register/TR/Kconfig"
+
 # CS Register
 source "tools/demo/mmu/storage/register/CS/Kconfig"
 
