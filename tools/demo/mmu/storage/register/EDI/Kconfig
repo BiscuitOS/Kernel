@@ -1,0 +1,12 @@
+#
+# EDI: Destination pointer for string operation
+#
+
+menu "EDI:      Destination pointer for string operation"
+
+config DEBUG_REGISTER_EDI
+	bool "EDI: Destination pointer for string operations"
+	help
+	  Debug EDI Register.
+
+endmenu

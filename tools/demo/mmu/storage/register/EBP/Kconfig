@@ -1,0 +1,12 @@
+#
+# EBP: Pointer to data on the stack (in the SS segment)
+#
+
+menu "EBP:      Pointer to data on the stack (in the SS segment)"
+
+config DEBUG_REGISTER_EBP
+	bool "EBP: Pointer to data on the stack (in the SS segment)"
+	help
+	  Debug EBP Register.
+
+endmenu

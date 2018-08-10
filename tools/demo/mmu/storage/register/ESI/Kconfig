@@ -1,0 +1,12 @@
+#
+# ESI: Pointer to data in the segment pointer to by the DS register
+#
+
+menu "ESI:      Source pointer for string operations"
+
+config DEBUG_REGISTER_ESI
+	bool "ESI: Source pointer for string operations"
+	help
+	  Debug ESI Register.
+
+endmenu

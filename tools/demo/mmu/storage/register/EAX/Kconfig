@@ -1,0 +1,12 @@
+#
+# EAX: Accumulator for operands and result data
+#
+
+menu "EAX:      Accumulator for operands and result data"
+
+config DEBUG_REGISTER_EAX
+	bool "EAX: Accumulator for operands and result data"
+	help
+	  Debug EAX Register.
+
+endmenu

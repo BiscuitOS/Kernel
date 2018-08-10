@@ -1,0 +1,12 @@
+#
+# ECX: Counter for string and loop operations
+#
+
+menu "ECX:      Counter for string and loop operations"
+
+config DEBUG_REGISTER_ECX
+	bool "ECX: Counter for string and loop operations"
+	help
+	  Debug ECX Register.
+
+endmenu

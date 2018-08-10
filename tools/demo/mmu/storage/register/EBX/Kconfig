@@ -1,0 +1,12 @@
+#
+# EBX: Pointer to data in the DS segment
+#
+
+menu "EBX:      Pointer to data in the DS segment"
+
+config DEBUG_REGISTER_EBX
+	bool "EBX: Pointer to data in the DS segment"
+	help
+	  Debug EBX Register.
+
+endmenu

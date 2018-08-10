@@ -1,0 +1,12 @@
+#
+# EDX: I/O pointer
+#
+
+menu "EDX:      I/O pointer"
+
+config DEBUG_REGISTER_EDX
+	bool "EDX: I/O pointer"
+	help
+	  Debug EDX Register.
+
+endmenu

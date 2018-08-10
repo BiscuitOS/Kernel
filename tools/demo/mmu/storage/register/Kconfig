@@ -22,6 +22,30 @@ source "tools/demo/mmu/storage/register/IDTR/Kconfig"
 # TR Register
 source "tools/demo/mmu/storage/register/TR/Kconfig"
 
+# EAX Register
+source "tools/demo/mmu/storage/register/EAX/Kconfig"
+
+# EBX Register
+source "tools/demo/mmu/storage/register/EBX/Kconfig"
+
+# ECX Register
+source "tools/demo/mmu/storage/register/ECX/Kconfig"
+
+# EDX Register
+source "tools/demo/mmu/storage/register/EDX/Kconfig"
+
+# ESI Register
+source "tools/demo/mmu/storage/register/ESI/Kconfig"
+
+# EDI Register
+source "tools/demo/mmu/storage/register/EDI/Kconfig"
+
+# ESP Register
+source "tools/demo/mmu/storage/register/ESP/Kconfig"
+
+# EBP Register
+source "tools/demo/mmu/storage/register/EBP/Kconfig"
+
 # CS Register
 source "tools/demo/mmu/storage/register/CS/Kconfig"
 

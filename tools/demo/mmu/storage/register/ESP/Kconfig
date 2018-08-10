@@ -1,0 +1,12 @@
+#
+# ESP: Stack pointer (in the SS segment)
+#
+
+menu "ESP:      Stack pointer (in the SS segment)"
+
+config DEBUG_REGISTER_ESP
+	bool "ESP: Stack pointer (in the SS segment)"
+	help
+	  Debug ESP Register.
+
+endmenu
