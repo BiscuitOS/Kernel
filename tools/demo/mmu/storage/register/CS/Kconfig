@@ -9,18 +9,4 @@ config DEBUG_REGISTER_CS
 	help
 	  Debug Code selector Register.
 
-if DEBUG_REGISTER_CS
-
-config DEBUG_SEGMENT_SELECTOR_CS
-	bool "Parse CS segment selector."
-	help
-	  Parse CS Segment selector.
-
-config DEBUG_SEGMENT_DESCRIPTOR_CS
-	bool "Parse segment descriptor for CS."
-	help
-	  Parse Segment descriptor for CS.
-
-endif
-
 endmenu

@@ -1,0 +1,12 @@
+#
+# DS: Data selector Register
+#
+
+menu "DS:       Data selector Register"
+
+config DEBUG_REGISTER_DS
+	bool "DS: Data selector Register"
+	help
+	  Debug Data selector Register.
+
+endmenu

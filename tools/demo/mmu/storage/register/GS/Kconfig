@@ -1,0 +1,12 @@
+#
+# GS: Data selector Register for sharing with another program
+#
+
+menu "GS:       Data selector Register for sharing with another program"
+
+config DEBUG_REGISTER_GS
+	bool "GS: Data selecotr register for sharing with another program"
+	help
+	  Debug GS Data selector Register.
+
+endmenu

@@ -1,5 +1,5 @@
 /*
- * CS: Code selector Register
+ * GS: Data selector Register for sharing with another program.
  *
  * (C) 2018.08.12 BiscuitOS <buddy.zhang@aliyun.com>
  *
@@ -11,8 +11,8 @@
 
 #include <demo/debug.h>
 
-static int debug_cs(void)
+static int debug_gs(void)
 {
     return 0;
 }
-late_debugcall(debug_cs);
+late_debugcall(debug_gs);

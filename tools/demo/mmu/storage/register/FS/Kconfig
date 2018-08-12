@@ -1,0 +1,12 @@
+#
+# FS: Data selector Register for exporting from a higher-level module
+#
+
+menu "FS:       Data selector Register for exporting from a higher-level module"
+
+config DEBUG_REGISTER_FS
+	bool "FS: Data selecotr register for exporting from a higher-level module"
+	help
+	  Debug FS Data selector Register.
+
+endmenu

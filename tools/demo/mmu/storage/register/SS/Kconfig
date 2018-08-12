@@ -1,0 +1,12 @@
+#
+# SS: Stack selector Register
+#
+
+menu "SS:       Stack selector Register"
+
+config DEBUG_REGISTER_SS
+	bool "SS: Stack selector Register"
+	help
+	  Debug Stack selector Register.
+
+endmenu

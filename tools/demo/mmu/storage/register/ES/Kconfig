@@ -1,0 +1,12 @@
+#
+# ES: Data selector Register
+#
+
+menu "ES:       Data selector Register for dynamically created data structure"
+
+config DEBUG_REGISTER_ES
+	bool "ES: Data selecotr register for dynamically created data structure"
+	help
+	  Debug ES Data selector Register.
+
+endmenu
