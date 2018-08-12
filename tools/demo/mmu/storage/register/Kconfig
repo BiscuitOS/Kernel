@@ -64,6 +64,9 @@ source "tools/demo/mmu/storage/register/FS/Kconfig"
 # SS Register
 source "tools/demo/mmu/storage/register/SS/Kconfig"
 
+# EFLAGS Register
+source "tools/demo/mmu/storage/register/EFLAGS/Kconfig"
+
 endif
 
 endmenu

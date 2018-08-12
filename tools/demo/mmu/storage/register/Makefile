@@ -16,3 +16,4 @@ obj-$(CONFIG_DEBUG_REGISTER_SS)         += SS/
 obj-$(CONFIG_DEBUG_REGISTER_ES)         += ES/
 obj-$(CONFIG_DEBUG_REGISTER_GS)         += GS/
 obj-$(CONFIG_DEBUG_REGISTER_FS)         += FS/
+obj-$(CONFIG_DEBUG_REGISTER_EFLAGS)     += EFLAGS/

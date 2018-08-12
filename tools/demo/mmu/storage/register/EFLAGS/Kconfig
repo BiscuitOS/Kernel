@@ -1,0 +1,36 @@
+#
+# EFLAGS: Current Status register of processor
+#
+
+menu "EFLAGS:   Current status register of processor"
+
+config DEBUG_REGISTER_EFLAGS
+	bool "EFLAGS: Current status register of processor"
+	help
+	  Debug EFLAGS Register.
+
+if DEBUG_REGISTER_EFLAGS
+
+config DEBUG_EFLAGS_LAHF
+	bool "EFLAGS: Load Status Flags into AH Register"
+	help
+	  Obtain EFLAGS register via "LAHF" instrcution.
+
+config DEBUG_EFLAGS_SAHF
+	bool "EFLAGS: Store AH into Flags"
+	help
+	  Store AH into EFLAGS via "SAHF" instruction.
+
+config DEBUG_EFLAGS_PUSHF
+	bool "EFLAGS: Push EFLAGS Register onto the Stack"
+	help
+	  Push EFLAGS register onto the stack.
+
+config DEBUG_EFLAGS_POPF
+	bool "EFLAGS: Pop Stack into EFLAGS Register"
+	help
+	  Push value onto the EFLAGS register.
+
+endif
+
+endmenu

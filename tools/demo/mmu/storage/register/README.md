@@ -306,3 +306,45 @@ follow:
   find the stack segment. Unlike the `CS` register, the `SS` register can
   be loaded explicitly, which permits application program to set up multiple
   stacks and switch among them.
+
+## EFLAGS
+
+  The 32-bit `EFLAGS` register contains a group of status flags, a control 
+  flag, and a group of system flags. Figure defines the flags within this 
+  register. Following initialization of the processor (either by asserting
+  the `RESET` pin or the `INIT` pin), the start of the `EFLAGS` register
+  is 0x00000002H. Bits 1,3,5,15, and 22 through 31 of this regsiter are 
+  reserved. Software should not use or depend on the states of any of these
+  bits.
+
+  Some of the flags in the `EFLAGS` register can be modified directly, using
+  special-purpose instruction (described in the following sections). There
+  are no instructions that allow the whole register to be examined or modified
+  directly.
+
+  The following instrcution can be used to move groups of flag to and from
+  the procedure stack or the `EAX` register: `LAHF`, `SAHF`, `PUSHF`, `PUSHFD`,
+  `POPF`, and `POPFD`. After the contents of the `EFLAGS` register have been
+  transferred to the procedure stack or `EAX` register, the flags can be 
+  examined and modified using the processor's bit manipulation instructions (
+  `BT`, `BTS`, `BTR`, and `BTC`).
+
+  When suspending a task (using the processor's multitasking facilities), the
+  processor automatically saves the state of the `EFLAGS` register in the task
+  state segment (TSS) for the task being suspend. When binding itself to a new
+  task, the processor loads the `EFLAGS` register with data from the new
+  task's `TSS`.
+
+  When a call is made to an interrupt or exception handler procedure, the 
+  processor automatically saves the state of the `EFLAGS` registers on the 
+  procedure stack. When an interrupt or exception is handled with a task 
+  switch, the state of the `EFLAGS` register is saved in the `TSS` for the 
+  task being suspended.
+
+  ![EFLAGS Register](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000001.png)
+
+  As the `IA-32` Architecture has evolved, flags have been added to the 
+  `EFLAGS` register, but the function and placement of existing flags have
+  remained the same from one family of the `IA-32` processor to the next.
+  As a result, code that accesses or modifies these flags for one family
+  `IA-32` processors works as expected when run on later families of processor.
