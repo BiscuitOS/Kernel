@@ -1,0 +1,1 @@
+obj-$(CONFIG_DEBUG_BASE_DATA) += Base/

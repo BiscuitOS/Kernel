@@ -1,0 +1,19 @@
+#
+# Base Data Type
+#
+
+menu "Base Data Types: BCD, int, float, pointer, and so on"
+
+config DEBUG_BASE_DATA
+	bool "Debug Base Data types: BCD, int, float, pointer, and so on"
+	help
+	  Debug Base Data types: BCD, int, float, pointer, and so on
+
+if DEBUG_BASE_DATA
+
+# BCD
+source "tools/demo/Data/Base/BCD/Kconfig"
+
+endif
+
+endmenu

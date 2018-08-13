@@ -1,0 +1,40 @@
+#
+# BCD: Unpacked BCD and Packed BCD
+#
+
+menu "BCD: Unpacked BCD and Packed BCD"
+
+config DEBUG_DATA_BCD
+	bool "BCD: Unpacked BCD and Packed BCD"
+	help
+	  Debug Unpacked BCD and Packed BCD.
+
+if DEBUG_DATA_BCD
+
+config DEBUG_UNPACKED_BCD
+	bool "BCD: Unpacked BCD integers"
+	help
+	  Debug Unpacked BCD integer.
+
+if DEBUG_UNPACKED_BCD
+
+config DEBUG_UNPACKED_BCD_ADD
+	bool "BCD: Addition with Unpacked BCD"
+	help
+	  Debug addition with Unpacked BCD.
+
+config DEBUG_UNPACKED_BCD_SUB
+	bool "BCD: Subtraction with Unpacked BCD"
+	help
+	  Debug subtraction with Unpacked BCD.
+
+endif
+
+config DEBUG_PACKED_BCD
+	bool "BCD: Packed BCD integers"
+	help
+	  Debug Packed BCD integers.
+
+endif
+
+endmenu

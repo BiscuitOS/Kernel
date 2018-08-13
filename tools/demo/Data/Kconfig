@@ -1,0 +1,19 @@
+#
+# Data Type
+#
+
+menu "Data Types: list, tree, BCD, and so on"
+
+config DEBUG_DATA
+	bool "Debug Data types: list, tree, BCD, and so on."
+	help
+	  Debug Data types: list, tree, BCD, and so on.
+
+if DEBUG_DATA
+
+# BASE Date Type
+source "tools/demo/Data/Base/Kconfig"
+
+endif
+
+endmenu
