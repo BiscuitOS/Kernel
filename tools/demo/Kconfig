@@ -29,6 +29,9 @@ source "tools/demo/posix/Kconfig"
 # Drivers
 source "tools/demo/drivers/Kconfig"
 
+# Data Type
+source "tools/demo/Data/Kconfig"
+
 endif
 
 endmenu

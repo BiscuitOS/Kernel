@@ -31,6 +31,20 @@ config DEBUG_EFLAGS_POPF
 	help
 	  Push value onto the EFLAGS register.
 
+config DEBUG_EFLAGS_CF
+	bool "EFLAGS: CF - Carry flag (bit 0)"
+	help
+	  Carry flag - bit0.
+
+if DEBUG_EFLAGS_CF
+
+config DEBUG_CF_AAA
+	bool "CF: Carry on unpacked BCD via AAA instrcution"
+	help
+	  Carry on unpacked BCD via AAA instruction.
+
+endif # DEBUG_EFLAGS_CF
+
 endif
 
 endmenu

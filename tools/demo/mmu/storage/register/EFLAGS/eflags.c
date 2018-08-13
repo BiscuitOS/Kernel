@@ -10,6 +10,8 @@
 #include <linux/kernel.h>
 #include <demo/debug.h>
 
+#define CF_BIT              0x00
+#define PF_BIT              0x02
 
 /*
  * LAHF -- Load Status Flags into AH Register
@@ -173,6 +175,63 @@ static __unused int eflags_POPF(void)
     return 0;
 }
 
+/*
+ * CF (bit 0) -- Carry flag
+ *
+ *   Carry flag -- Set if an arithmetic operation generates a carry or a
+ *   borrow out of the most-significant bit of the result; cleared otherwise.
+ *   This flag indicates an overflow condition for unsigned-integer 
+ *   arithmetic. It is also used in multiple-precision arithmetic.
+ */
+static __unused int eflags_CF(void)
+{
+    unsigned char __unused EFLAGS;
+    unsigned short __unused AX;
+
+#ifdef CONFIG_DEBUG_CF_AAA
+    /* 
+     * Case0: AAA -- ASCII Adjust After Addition 
+     *   Adjust the sum of two unpacked BCD value to create an unpacked BCD
+     *   result. The AL register is the implied source and destination
+     *   operand for this instruction. The AAA instruction is only useful
+     *   when it follows an ADD instruction that adds (binary addition) two
+     *   unpacked BCD values and stores a byte result in the AL register. 
+     *   The AAA instruction then adjust the contents of the AL register to
+     *   contain the correct 1-digit unpacked BCD result.
+     *
+     *   If the addition produces a decimal carry, the AH register increments
+     *   by 1, and the CF and AF flags are set. If there was no decimal 
+     *   carry, the CF and AF flags are clear and the AH register is 
+     *   unchanged. In either case, bits 4 through 7 of the AL register are
+     *   set to 0.
+     *
+     *   IF instruction AAA
+     *       IF ((AL AND 0FH) > 9) or (AF = 1)
+     *           THEN
+     *               AX <---- AX + 106H
+     *               AF <---- 1
+     *               CF <---- 1
+     *           ELSE
+     *               AF <---- 0
+     *               CF <---- 0
+     *       FI
+     *       AL <---- AL AND 0FH
+     *   FI
+     */ 
+    __asm__ ("mov $0x9, %%ax\n\r"
+             "add $0x8, %%al\n\r"
+             "aaa\n\r"
+             "pushf\n\r"
+             "pop %0\n\r" 
+             "mov %%eax, %1": "=m" (EFLAGS), "=m" (AX) :);
+    if (EFLAGS & 0x1)
+        printk("CF has carry on AAA instruction. Unpacked BCD: %#x\n", AX);
+
+#endif
+
+    return 0;
+}
+
 static int debug_eflags(void)
 {
 #ifdef CONFIG_DEBUG_EFLAGS_LAHF
@@ -189,6 +248,10 @@ static int debug_eflags(void)
 
 #ifdef CONFIG_DEBUG_EFLAGS_POPF
     eflags_POPF();
+#endif
+
+#ifdef CONFIG_DEBUG_EFLAGS_CF
+    eflags_CF();
 #endif
 
     return 0;
