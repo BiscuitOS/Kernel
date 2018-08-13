@@ -43,6 +43,11 @@ config DEBUG_CF_AAA
 	help
 	  Carry on unpacked BCD via AAA instruction.
 
+config DEBUG_CF_AAS
+	bool "CF: Borrow on unpacked BCD via AAS instruction"
+	help
+	  Borrow on unpacked BCD via AAS instruction.
+
 endif # DEBUG_EFLAGS_CF
 
 endif
