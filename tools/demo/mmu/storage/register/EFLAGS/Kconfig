@@ -109,9 +109,19 @@ config DEBUG_CF_MUL
 	  Unsigned multiply.
 
 config DEBUG_CF_SUB
-	bool "SUB     Subtract"
+	bool "SUB     Integer subtraction"
 	help
 	  Subtraction.
+
+config DEBUG_CF_SBB
+	bool "SBB     Integer subtraction with borrow"
+	help
+	  Subtraction with borrow.
+
+config DEBUG_CF_SHL
+	bool "SHL     Shitf logical left"
+	help
+	  Shift logical left.
 
 endif # DEBUG_EFLAGS_CF
 
