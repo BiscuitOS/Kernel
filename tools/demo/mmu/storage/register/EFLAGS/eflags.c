@@ -899,6 +899,32 @@ static __unused int eflags_CF(void)
                                 ECX, EBX, EDX, EAX);
 #endif
 
+#ifdef CONFIG_DEBUG_CF_SUB
+    CX = 0x1;
+    DX = 0x2;
+    __asm__ ("mov %2, %%al\n\r"
+             "mov %3, %%bl\n\r"
+             "sub %%bl, %%al\n\r"
+             "jc CF_SET15\n\r"
+             "jnc CF_CLEAR15\n\r"
+    "CF_SET15:\n\r"
+             "mov $1, %%bx\n\r"
+             "jmp out15\n\r"
+  "CF_CLEAR15:\n\r"
+             "mov $0, %%bx\n\r"
+       "out15:\n\r"
+             "mov %%bx, %0\n\r"
+             "mov %%ax, %1"
+             : "=m" (CF), "=m" (AX)
+             : "m" (CX), "m" (DX));
+    if (CF)
+        printk("SUB 8: CF has set on %#x - %#x = %#x\n", CX, DX, 
+                                            ~(AX & 0xFF) + 1);
+    else
+        printk("SUB 8: CF has cleared on %#x - %#x = %#x\n", CX, DX, 
+                                            AX & 0xFF);
+#endif
+
     return 0;
 }
 

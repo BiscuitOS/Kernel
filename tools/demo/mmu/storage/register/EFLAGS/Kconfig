@@ -17,7 +17,7 @@ config DEBUG_EFLAGS_LAHF
 	  Obtain EFLAGS register via "LAHF" instrcution.
 
 config DEBUG_EFLAGS_SAHF
-	bool "SAHF    Store AH into Flags"
+	bool "SAHF    Store AH into EFLAGS register"
 	help
 	  Store AH into EFLAGS via "SAHF" instruction.
 
@@ -71,7 +71,7 @@ config DEBUG_CF_DAA
 config DEBUG_CF_DAS
 	bool "DAS     Decimal adjust AL after subtraction"
 	help
-	  Debug DAS instruction for borrow on.
+	  Debug DAS instruction for borrow from.
 
 config DEBUG_CF_BT
 	bool "BT      Test bit"
@@ -107,6 +107,11 @@ config DEBUG_CF_MUL
 	bool "MUL     Unsigned multiply"
 	help
 	  Unsigned multiply.
+
+config DEBUG_CF_SUB
+	bool "SUB     Subtract"
+	help
+	  Subtraction.
 
 endif # DEBUG_EFLAGS_CF
 
