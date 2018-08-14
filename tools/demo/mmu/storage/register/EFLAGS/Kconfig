@@ -12,56 +12,86 @@ config DEBUG_REGISTER_EFLAGS
 if DEBUG_REGISTER_EFLAGS
 
 config DEBUG_EFLAGS_LAHF
-	bool "EFLAGS: Load Status Flags into AH Register"
+	bool "LAHF    Load Status Flags into AH Register"
 	help
 	  Obtain EFLAGS register via "LAHF" instrcution.
 
 config DEBUG_EFLAGS_SAHF
-	bool "EFLAGS: Store AH into Flags"
+	bool "SAHF    Store AH into Flags"
 	help
 	  Store AH into EFLAGS via "SAHF" instruction.
 
 config DEBUG_EFLAGS_PUSHF
-	bool "EFLAGS: Push EFLAGS Register onto the Stack"
+	bool "PUSHF   Push EFLAGS Register onto the Stack"
 	help
 	  Push EFLAGS register onto the stack.
 
 config DEBUG_EFLAGS_POPF
-	bool "EFLAGS: Pop Stack into EFLAGS Register"
+	bool "POPF    Pop Stack into EFLAGS Register"
 	help
 	  Push value onto the EFLAGS register.
 
 config DEBUG_EFLAGS_CF
-	bool "EFLAGS: CF - Carry flag (bit 0)"
+	bool "CF      Carry flag (bit 0)"
 	help
 	  Carry flag - bit0.
 
 if DEBUG_EFLAGS_CF
 
 config DEBUG_CF_AAA
-	bool "CF: Carry on unpacked BCD via AAA instrcution"
+	bool "AAA     Carry on unpacked BCD"
 	help
 	  Carry on unpacked BCD via AAA instruction.
 
 config DEBUG_CF_AAS
-	bool "CF: Borrow on unpacked BCD via AAS instruction"
+	bool "AAS     Borrow on unpacked BCD"
 	help
 	  Borrow on unpacked BCD via AAS instruction.
 
 config DEBUG_CF_ADC
-	bool "CF: Addition with carry via ADC instruction"
+	bool "ADC     Addition with carry bit"
 	help
 	  Addition with carry via ADC instruction.
 
 config DEBUG_CF_ADCX
-	bool "CF: Addition of two operands with Carry flag"
+	bool "ADCX    Addition of two operands with Carry flag"
 	help
 	  Unsigned integer addition of two operands with Carry flag
 
 config DEBUG_CF_ADD
-	bool "CF: Carroy on ADD instruction"
+	bool "ADD     Carroy on addition"
 	help
 	  Debug ADD instruction for carrying on.
+
+config DEBUG_CF_BT
+	bool "BT      Test bit"
+	help
+	  CF will be set on bit is set.
+
+config DEBUG_CF_BTC
+	bool "BTC     Test bit and Complement special bit"
+	help
+	  CF will be set that bit is set and complement special bit.
+
+config DEBUG_CF_BTR
+	bool "BTR     Test bit and reset special bit"
+	help
+	  CF will be set that bit is set and reset special bit.
+
+config DEBUG_CF_BTS
+	bool "BTS     Test bit and set special bit"
+	help
+	  CF will be set that bit is set and set special bit. 
+
+config DEBUG_CF_CLC
+	bool "CLC     Clear Carry flag on EFLAGS register"
+	help
+	  Clears the CF flag in the EFLAGS register.
+
+config DEBUG_CF_STC
+	bool "STC     Set Carry flag on EFLAGS register"
+	help
+	  Set up the CF flag in the EFLAGS register.
 
 endif # DEBUG_EFLAGS_CF
 

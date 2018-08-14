@@ -188,6 +188,8 @@ static __unused int eflags_CF(void)
     unsigned char  __unused CF;
     unsigned short __unused AX;
     unsigned short __unused BX;
+    unsigned short __unused CX;
+    unsigned short __unused DX;
     unsigned int   __unused EAX;
 
 #ifdef CONFIG_DEBUG_CF_AAA
@@ -445,6 +447,218 @@ static __unused int eflags_CF(void)
              : "=m" (CF), "=m" (AX) :);
     if (CF) 
         printk("ADD: Carry on 0xFFFF + 0x1 = %#x\n", AX);
+#endif
+
+#ifdef CONFIG_DEBUG_CF_BT
+    /*
+     * BT -- Bit Test
+     *
+     * Select the bit in a bit string (specified with the first operand, 
+     * called the bit base) at the bit-position designated by the bit offset
+     * (specified by the second operand) and stores the value of the bit
+     * in the CF flag. The bit base operand can be a register or memory 
+     * location; the bit offset operand can be a register or an immediate
+     * value:
+     *
+     * * If the bit base operand specifies a register, the instruction takes
+     *   the modulo 16, 32, or 64 of the bit offset operand (modulo size 
+     *   depends on the mode and register size).
+     *
+     * * If the bit base operand specifies a memory location, the operand
+     *   represents the address of the byte in memory that contains the bit
+     *   base (bit 0 of the specified byte) of the bit string. The range of
+     *   the bit position that can be referenced by the offset operand depends
+     *   on the operand size.
+     *
+     * CF <---- Bit(BitBase, BitOffset)
+     * 
+     * The CF flag contains the value of the selected bit. The ZF flag is 
+     * unaffected. The OF, SF, AF, and PF flags are undefined.
+     */
+    DX = 0x3;
+    __asm__ ("mov %1, %%ax\n\r"
+             "bt $0, %%ax\n\r"
+             "jc CF_SET\n\r"
+             "jnc CF_CLEAR\n\r"
+      "CF_SET:\n\r"
+             "mov $1, %%bx\n\r"
+             "jmp out\n\r"
+    "CF_CLEAR:\n\r"
+             "mov $0, %%bx\n\r"
+         "out:\n\r"
+             "mov %%bx, %0"
+             : "=m" (CF) : "m" (DX));
+    if (CF)
+        printk("BT: %#x test bit 0 is set\n", DX);
+    else
+        printk("BT: %#x test bit 0 is cleared\n", DX);
+#endif
+
+#ifdef CONFIG_DEBUG_CF_BTC
+    /*
+     * BTC -- Bit Test and Complement
+     *
+     * Selects the bit in a bit string (specified with the first operand, 
+     * called the bit base) at the bit-position designated by the bit offset
+     * operand (second operand), stores the value of the bit in the CF flag,
+     * and complements the selected bit in the bit string. The bit base 
+     * operand can be a register or a memory location; the bit offset operand
+     * can be a register or an immediate value.
+     *
+     * CF <---- Bit(BitBase, BitOffset)
+     * Bit(BitBase, BitOffset) <---- BOT Bit(BitBase, BitOffset)
+     *
+     * The CF flag contains the value of the selected bit before it is 
+     * complemented. The ZF flag is unaffected. The OF, SF, AF, and PF flags
+     * are undefined.
+     */
+    CX = 0x3;
+    __asm__ ("mov %2, %%ax\n\r"
+             "btc $0, %%ax\n\r"
+             "jc CF_SET\n\r"
+             "jnc CF_CLEAR\n\r"
+      "CF_SET:\n\r"
+             "mov $1, %%bx\n\r"
+             "jmp out\n\r"
+    "CF_CLEAR:\n\r"
+             "mov $0, %%bx\n\r"
+         "out:\n\r"
+             "mov %%bx, %0\n\r"
+             "mov %%ax, %1"
+             : "=m" (CF), "=m" (AX) : "m" (CX));
+    if (CF) 
+        printk("BTC: %#x Bit 0 has set and invert bit 0 as %#x\n", CX, AX);
+    else
+        printk("BTC: %#x Bit 0 has cleared and invert bit 0 as %#x\n", 
+                                            CX, AX);
+#endif
+
+#ifdef CONFIG_DEBUG_CF_BTR
+    /*
+     * BTR -- Bit Test and Reset
+     *
+     * Selector the bit in a bit string (specified with the first operand,
+     * called the bit base) at the bit-position designated by the bit offset
+     * operand (second operand), stores the value of the bit in the CF flag,
+     * and clears the selected bit in the bit string to 0.
+     *
+     * CF <---- Bit(BitBase, BitOffset)
+     * Bit(BitBase, BitOffset) <---- 0
+     *
+     * The CF flag contains the value of the selected bit before it is 
+     * cleared. The ZF flag is unaffected. The OF, SF, AF, and PF flags
+     * are undefined.
+     */
+    DX = 0x203;
+    __asm__ ("mov %2, %%ax\n\r"
+             "btr $0, %%ax\n\r"
+             "jc CF_SET\n\r"
+             "jnc CF_CLEAR\n\r"
+      "CF_SET:\n\r"
+             "mov $1, %%bx\n\r"
+             "jmp out\n\r"
+    "CF_CLEAR:\n\r"
+             "mov $0, %%bx\n\r"
+         "out:\n\r"
+             "mov %%bx, %0\n\r"
+             "mov %%ax, %1"
+             : "=m" (CF), "=m" (AX) : "m" (DX));
+    if (CF)
+        printk("BTR: %#x Bit 0 has set and clear bit 0 as %#x\n", DX, AX);
+    else
+        printk("BTR: %#x Bit 0 has clear and clear bit 0 as %#x\n", DX, AX);
+#endif
+
+#ifdef CONFIG_DEBUG_CF_BTS
+    /*
+     * BTS -- Bit Test and Set
+     *
+     * Selects the bit in a bit string (specified with the first operand,
+     * called the bit base) at the bit-position designated by the bit offset
+     * operand (second operand), stores the value of the bit in the CF flag,
+     * and sets the selected bit in the bit string to 1.
+     *
+     * CF <---- Bit(BitBase, BitOffset)
+     * Bit(BitBase, BitOffset) <---- 1
+     *
+     * The CF flag contains the value of the selected bit before it is set.
+     * The ZF flag is unaffected. The OF, SF, AF, and PF flags are undefined.
+     */
+    DX = 0x203;
+    __asm__ ("mov %2, %%ax\n\r"
+             "bts $0, %%ax\n\r"
+             "jc CF_SET\n\r"
+             "jnc CF_CLEAR\n\r"
+      "CF_SET:\n\r"
+             "mov $1, %%bx\n\r"
+             "jmp out\n\r"
+    "CF_CLEAR:\n\r"
+             "mov $0, %%bx\n\r"
+         "out:\n\r"
+             "mov %%bx, %0\n\r"
+             "mov %%ax, %1"
+             : "=m" (CF), "=m" (AX) : "m" (DX));
+    if (CF)
+        printk("BTS: %#x Bit 0 has set and set bit 0 as %#x\n", DX, AX);
+    else
+        printk("BTS: %#x Bit 0 has clear and set bit 0 as %#x\n", DX, AX);
+#endif
+
+#ifdef CONFIG_DEBUG_CF_CLC
+    /*
+     * CLC -- Clear Carry Flag
+     *
+     * Clears the CF flag in the EFLAGS register. Operation is the same in
+     * all modes.
+     *
+     * CF <---- 0
+     *
+     * The CF flag is set to 0. The OF, ZF, SF, AF, and PF flags are
+     * unaffected.
+     */
+    __asm__ ("clc\n\r"
+             "jc CF_SET\n\r"
+             "jnc CF_CLEAR\n\r"
+      "CF_SET:\n\r"
+             "mov $1, %%bx\n\r"
+             "jmp out\n\r"
+    "CF_CLEAR:\n\r"
+             "mov $0, %%bx\n\r"
+         "out:\n\r"
+             "mov %%bx, %0"
+             : "=m" (CF) :);
+    if (CF)
+        panic("CLC: CF doesn't clear on EFLAGS register");
+    else
+        printk("CLC: CF has cleared on EFLAGS register\n");
+#endif
+
+#ifdef CONFIG_DEBUG_CF_STC
+    /*
+     * STC -- Set Carry Flag
+     *
+     * Sets the CF flag in the EFLAGS register. Operation is the same in 
+     * all modes.
+     *
+     * CF <---- 1
+     *
+     * The CF flag is set. The OF, ZF, SF, AF, and PF flags are unaffected.
+     */
+    __asm__ ("stc\n\r"
+             "jc CF_SET\n\r"
+             "jnc CF_CLEAR\n\r"
+      "CF_SET:\n\r"
+             "mov $1, %%bx\n\r"
+             "jmp out\n\r"
+    "CF_CLEAR:\n\r"
+             "mov $0, %%bx\n\r"
+         "out:\n\r"
+             "mov %%bx, %0"
+             : "=m" (CF) :);
+    if (CF)
+        printk("STC: CF has set on EFLAGS register\n");
+    else
+        panic("STC: CF has cleared on EFLAGS register");
 #endif
 
     return 0;
