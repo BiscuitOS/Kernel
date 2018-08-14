@@ -48,6 +48,21 @@ config DEBUG_CF_AAS
 	help
 	  Borrow on unpacked BCD via AAS instruction.
 
+config DEBUG_CF_ADC
+	bool "CF: Addition with carry via ADC instruction"
+	help
+	  Addition with carry via ADC instruction.
+
+config DEBUG_CF_ADCX
+	bool "CF: Addition of two operands with Carry flag"
+	help
+	  Unsigned integer addition of two operands with Carry flag
+
+config DEBUG_CF_ADD
+	bool "CF: Carroy on ADD instruction"
+	help
+	  Debug ADD instruction for carrying on.
+
 endif # DEBUG_EFLAGS_CF
 
 endif
