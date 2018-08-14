@@ -63,6 +63,16 @@ config DEBUG_CF_ADD
 	help
 	  Debug ADD instruction for carrying on.
 
+config DEBUG_CF_DAA
+	bool "DAA     Decimal adjust AL after addition"
+	help
+	  Debug DAA instruction for carrying on.
+
+config DEBUG_CF_DAS
+	bool "DAS     Decimal adjust AL after subtraction"
+	help
+	  Debug DAS instruction for borrow on.
+
 config DEBUG_CF_BT
 	bool "BT      Test bit"
 	help
@@ -92,6 +102,11 @@ config DEBUG_CF_STC
 	bool "STC     Set Carry flag on EFLAGS register"
 	help
 	  Set up the CF flag in the EFLAGS register.
+
+config DEBUG_CF_MUL
+	bool "MUL     Unsigned multiply"
+	help
+	  Unsigned multiply.
 
 endif # DEBUG_EFLAGS_CF
 
