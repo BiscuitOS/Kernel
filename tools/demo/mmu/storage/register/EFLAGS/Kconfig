@@ -123,6 +123,21 @@ config DEBUG_CF_SHL
 	help
 	  Shift logical left.
 
+config DEBUG_CF_SHR
+	bool "SHR     Shift logical right"
+	help
+	  Shift logical right.
+
+config DEBUG_CF_SAL
+	bool "SAL     Shift arithmetic left"
+	help
+	  Shift arithmetic left.
+
+config DEBUG_CF_SAR
+	bool "SAR     Shift arithmetic right"
+	help
+	  Shift arithmetic right.
+
 endif # DEBUG_EFLAGS_CF
 
 endif
