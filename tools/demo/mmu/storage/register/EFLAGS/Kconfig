@@ -138,6 +138,26 @@ config DEBUG_CF_SAR
 	help
 	  Shift arithmetic right.
 
+config DEBUG_CF_RCL
+	bool "RCL     Rotate through carry left"
+	help
+	  Rotate through carry left.
+
+config DEBUG_CF_RCR
+	bool "RCR     Rotate through carry right"
+	help
+	  Rotate through carry right.
+
+config DEBUG_CF_ROL
+	bool "ROL     Rotate left"
+	help
+	  Rotate left.
+
+config DEBUG_CF_ROR
+	bool "ROR     Rotate right"
+	help
+	  Rotate right.
+
 endif # DEBUG_EFLAGS_CF
 
 endif
