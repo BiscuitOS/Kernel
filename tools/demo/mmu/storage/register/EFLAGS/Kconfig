@@ -119,7 +119,7 @@ config DEBUG_CF_SBB
 	  Subtraction with borrow.
 
 config DEBUG_CF_SHL
-	bool "SHL     Shitf logical left"
+	bool "SHL     Shift logical left"
 	help
 	  Shift logical left.
 
