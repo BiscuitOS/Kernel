@@ -257,7 +257,7 @@ static __unused int eflags_CF(void)
      *   and destination operand for this instruction. The AAS instruction
      *   is only useful when it follows a SUB instruction that subtracts (
      *   binary subtraction) one unpacked BCD value from another and stores
-     *   a byte result in the AL register. The AAA instruction then adjusts
+     *   a byte result in the AL register. The AAS instruction then adjusts
      *   the contents of the AL register to contain the correct 1-digit
      *   unpacked BCD result.
      *
@@ -337,7 +337,7 @@ static __unused int eflags_CF(void)
      * (-9). To check the answer, note that the first digit is 9, which means
      * negative. This seems to be correct, since "8 - 9" should result in a 
      * negative number. To check the rest of the digits, represent them in
-     * decimal. "0000 1001" is 9. Then ten's complement of 9 is "10 - 9"
+     * decimal. "0000 1001" is 9. Then ten's compleent of 9 is "10 - 9"
      * = "9 - 9 + 1" = "0 + 1" = 1. so the calculated answer is "-1".
      */
     if (CF)
