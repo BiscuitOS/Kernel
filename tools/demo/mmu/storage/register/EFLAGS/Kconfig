@@ -198,9 +198,14 @@ config DEBUG_PF_CMP
 	  Debug CMP instruction for Parity Bit.
 
 config DEBUG_PF_CMPSB
-	bool "CMPSB   Compare string operands"
+	bool "CMPSB   Compare string operands in byte"
 	help
 	  Debug CMPSB instruction for Parity Bit.
+
+config DEBUG_PF_CMPSW
+	bool "CMPSW   Compare string operands in word"
+	help
+	  Debug CMPSW instruction for Parity Bit.
 
 endif # DEBUG_EFLAGS_PF
 
