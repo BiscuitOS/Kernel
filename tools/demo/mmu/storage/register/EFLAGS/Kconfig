@@ -160,6 +160,50 @@ config DEBUG_CF_ROR
 
 endif # DEBUG_EFLAGS_CF
 
-endif
+config DEBUG_EFLAGS_PF
+        bool "PF      Parity flag (bit 2)"
+        help
+          Parity flag - bit2.
+
+if DEBUG_EFLAGS_PF
+
+config DEBUG_PF_AAD
+	bool "AAD     ASCII adjust AX before division"
+	help
+	  ASCII adjust AX before division.
+
+config DEBUG_PF_AAM
+	bool "AAM     ASCII adjust AX after multiply"
+	help
+	  ASCII adjust AX after multiply
+
+config DEBUG_PF_ADC
+	bool "ADC     Addition with carry bit"
+	help
+	  Addition with carry via ADC instruction.
+
+config DEBUG_PF_ADD
+	bool "ADD     Carroy on addition"
+	help
+	  Debug ADD instruction for carrying on.
+
+config DEBUG_PF_AND
+	bool "AND     Logical AND"
+	help
+	  Debug AND instruction for Parity Bit.
+
+config DEBUG_PF_CMP
+	bool "CMP     Compare two operands"
+	help
+	  Debug CMP instruction for Parity Bit.
+
+config DEBUG_PF_CMPSB
+	bool "CMPSB   Compare string operands"
+	help
+	  Debug CMPSB instruction for Parity Bit.
+
+endif # DEBUG_EFLAGS_PF
+
+endif # DEBUG_REGISTER_EFLAGS
 
 endmenu

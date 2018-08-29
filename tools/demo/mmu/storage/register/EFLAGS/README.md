@@ -19,6 +19,11 @@ indicate the results of arithmetic instructions, such as the `ADD`, `SUB`,
   `MUL`, `SUB`, `SBB`, `SHL`, `SHR`, `SAL`, `SAR`, `RCL`, `RCR`, `ROR`, and
   `ROL` instructions will effect CF flag on an arithmetic operation.
 
+* **PF (bit 2)**
+
+  **Parity flag** -- Set if the least-significant byte of the result 
+  contains an even number of 1 bits.
+
 ## link
 
   [Intel Architectures Software Developer's Manual: Combined Volumes: 1 -- Chapter 3 Basic Execution Environment: 3.4 Basic Program Execution Register](https://software.intel.com/en-us/articles/intel-sdm)
