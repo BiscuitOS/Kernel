@@ -235,7 +235,32 @@ config DEBUG_PF_INC
 config DEBUG_PF_NEG
 	bool "NEG     Two's complement negation"
 	help
-	  Debug NEG instruction for Parity Bit
+	  Debug NEG instruction for Parity Bit.
+
+config DEBUG_PF_OR
+	bool "OR      Logical Inclusive OR"
+	help
+	  Debug OR instruction for Parity Bit.
+
+config DEBUG_PF_SAL
+	bool "SAL     Shift arithmetic left"
+	help
+	  Shift arithmetic left for Parity Bit.
+
+config DEBUG_PF_SAR
+	bool "SAR     Shift arithmetic right"
+	help
+	  Shift arithmetic right for Parity Bit.
+
+config DEBUG_PF_SHR
+	bool "SHR     Shift logical right"
+	help
+	  Shift logical right for Parity Bit.
+
+config DEBUG_PF_SHL
+	bool "SHL     Shift logical left"
+	help
+	  Shift logical left for Parity Bit.
 
 endif # DEBUG_EFLAGS_PF
 

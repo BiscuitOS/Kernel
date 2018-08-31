@@ -2594,6 +2594,223 @@ static __unused int eflags_PF(void)
         printk("NEG: odd number -> ~(%#x) + 1 = %#x\n", CX, AX & 0xFF);
 #endif
 
+#ifdef CONFIG_DEBUG_PF_OR
+    /*
+     * OR -- Logical inclusive OR
+     *
+     * Performs a bitwise inclusive OR operation between the destination 
+     * (first) and source (second) operands and stores the result int the
+     * destination operand location. The source operand can be an immediate,
+     * a register, or a memory location; the destination operand can be a
+     * register or a memory location. (However, two memory operands cannot
+     * be used in one instruction.) Each bit of the result of the OR 
+     * instruction is set to 0 if both corresponding bits of the first and
+     * second operands are 0; otherwise, each bit is set to 1.
+     *
+     * DEST <---- DEST OR SRC;
+     */
+    CX = 0x3;
+    DX = 0x1;
+    __asm__ ("mov %2, %%al\n\r"
+             "mov %3, %%bl\n\r"
+             "or %%bl, %%al\n\r"
+             "jp PF_SG\n\r"
+             "jnp PF_CG\n\r"
+       "PF_SG:\n\r"
+             "mov $1, %%dx\n\r"
+             "jmp outG\n\r"
+       "PF_CG:\n\r"
+             "mov $0, %%dx\n\r"
+        "outG:\n\r"
+             "mov %%dx, %0\n\r"
+             "mov %%ax, %1"
+             : "=m" (PF), "=m" (AX)
+             : "m" (CX), "m" (DX));
+    if (PF)
+        printk("OR: even number -> %#x OR %#x = %#x\n\r", CX, DX, AX & 0xF);
+    else
+        printk("OR: odd number -> %#x OR %#x = %#x\n\r", CX, DX, AX & 0xF);
+#endif
+
+#ifdef CONFIG_DEBUG_PF_SAL
+    /*
+     * SAL -- Shift arithmetic left
+     * 
+     * SAL r/m8, CL
+     * SAL r/m16, CL
+     * SAL r/m32, CL
+     *
+     * Shifts the bits in the first operand (destination operand) to the left
+     * by the number of bits specified in the second operand (count operand).
+     * Bits shifted beyond the destination operand boundary are first shifted
+     * into the CF flag, then discarded. At the end of the shift operation, 
+     * the CF flag contains the last bit shifted out of the destination 
+     * operand.
+     *
+     * The shift arithmetic left (SAL) and shift logical left (SHL) 
+     * instructions perform the same operation; they shift the bits in the 
+     * destination operand to the left (toward more significant bit locations).
+     * For each shift count, the most significant bit of the destination 
+     * operand is shifted into the CF flag, and the least significant bit is
+     * cleared.
+     */
+    CX = 0x8F;
+    DX = 2;
+    __asm__("mov %2, %%al\n\r"
+            "mov %3, %%cl\n\r"
+            "sal %%cl, %%al\n\r"
+            "jp PF_SH\n\r"
+            "jnp PF_CH\n\r"
+      "PF_SH:\n\r"
+            "mov $1, %%dx\n\r"
+            "jmp outH\n\r"
+      "PF_CH:\n\r"
+            "mov $0, %%dx\n\r"
+       "outH:\n\r"
+            "mov %%dx, %0\n\r"
+            "mov %%ax, %1"
+            : "=m" (PF), "=m" (AX)
+            : "m" (CX), "m" (DX));
+    if (PF)
+        printk("SAL: even number -> %#x << %#x = %#x\n", CX, DX, AX & 0xFF);
+    else
+        printk("SAL: odd number -> %#x << %#x = %#x\n", CX, DX, AX & 0xFF);
+#endif
+
+#ifdef CONFIG_DEBUG_PF_SAR
+    /*
+     * SAR -- Shift arithmetic right
+     *
+     * SAR r/m8, CL
+     * SAR r/m16, CL
+     * SAR r/m32, CL
+     *
+     * Shifts the bits in the first operand (destination operand) to the right
+     * by the number of bits specified in the second operand (count operand).
+     * Bits shifted beyond the destination operand boundary are first into
+     * the CF flag, then discarded. At the end of the shift operation, the 
+     * CF flag contains the last bit shifted out of the destination operand.
+     *
+     * The shift arithmetic right (SAR) instruction shift the bits of the 
+     * bits of the destination operand to the right (toward less significant
+     * bit locations). For each shift count, the least significant bit of the
+     * destination operand is shifted into the CF flag, and the most 
+     * significant bit is either set or clear depending on the instruction
+     * type. The SAR instruction sets or clears the most significant bit to
+     * correspond to the sign (most significant bit) of the original value
+     * in the destination operand. In effect, the SAR instruction fills the
+     * empty bit position's shifted value with the sign of the unshifted value.
+     */
+    CX = 0x27;
+    DX = 0x2;
+    __asm__ ("mov %2, %%al\n\r"
+             "mov %3, %%cl\n\r"
+             "sar %%cl, %%al\n\r"
+             "jp PF_SI\n\r"
+             "jnp PF_CI\n\r"
+       "PF_SI:\n\r"
+             "mov $1, %%dx\n\r"
+             "jmp outI\n\r"
+       "PF_CI:\n\r"
+             "mov $0, %%dx\n\r"
+        "outI:\n\r"
+             "mov %%dx, %0\n\r"
+             "mov %%ax, %1"
+             : "=m" (PF), "=m" (AX)
+             : "m" (CX), "m" (DX));
+    if (PF)
+        printk("SAR: even number -> %#x >> %#x = %#x\n", CX, DX, AX & 0xFF);
+    else
+        printk("SAR: odd number -> %#x >> %#x = %#x\n", CX, DX, AX & 0xFF);
+#endif
+
+#ifdef CONFIG_DEBUG_PF_SHR
+    /*
+     * SHR --- Shift logical right
+     *
+     * SHR r/m8, CL
+     * SHR r/m16, CL
+     * SHR r/m32, CL
+     *
+     * Shift the bit the first operand (destination operand) to the right by
+     * the number of bits specified in the second operand (count operand).
+     * Bits shifted beyond the destination operand boundary are first shift
+     * into the CF flag, hten discared. At the end of the shift operation, 
+     * the CF flag contains the last bit shifted out of the destination 
+     * operand.
+     *
+     * The shift logical right (SHR) instrution shift the bits of the 
+     * destination operand to the right (toward less significant bit location).
+     * For each shift count, the least significant bit of the destination
+     * operand is shifted into the CF flag, and the most significant bit is
+     * either set or cleared depending on the instruction type. 
+     */
+    CX = 0x27;
+    DX = 0x2;
+    __asm__ ("mov %2, %%al\n\r"
+             "mov %3, %%cl\n\r"
+             "shr %%cl, %%al\n\r"
+             "jp PF_SJ\n\r"
+             "jnp PF_CJ\n\r"
+       "PF_SJ:\n\r"
+             "mov $1, %%dx\n\r"
+             "jmp outJ\n\r"
+       "PF_CJ:\n\r"
+             "mov $0, %%dx\n\r"
+        "outJ:\n\r"
+             "mov %%dx, %0\n\r"
+             "mov %%ax, %1"
+             : "=m" (PF), "=m" (AX)
+             : "m" (CX), "m" (DX));
+    if (PF)
+        printk("SHR: even number -> %#x >> %#x = %#x\n", CX, DX, AX & 0xFF);
+    else
+        printk("SHR: odd number -> %#x >> %#x = %#x\n", CX, DX, AX & 0xFF);
+#endif
+
+#ifdef CONFIG_DEBUG_PF_SHL
+    /*
+     * SHL -- Shift logical Left
+     *
+     * SHL r/m8,  cl
+     * SHL r/m16, cl
+     * SHL r/m32, cl
+     *
+     * Shifts the bits in the first operand (destination operand) to the left
+     * by the number of bits specified in the second operand (count operand).
+     * Bits shifted beyond the destination operand boundary are first shifted
+     * into the CF flag, then discared. At the end of the shift operation, the
+     * CF flag contains the last bit shifted out of the destination operand.
+     * 
+     * The shift logical left (SHL) instruction perform the same operation;
+     * they shift the bits in the destination operand to the left (toward
+     * more significant bit locations). For each shift count, the most 
+     * significant bit of the destination operand is shifted into the CF flag,
+     * and the least significant bit is cleared.
+     */
+    CX = 0x8F;
+    DX = 0x2;
+    __asm__ ("mov %2, %%al\n\r"
+             "mov %3, %%cl\n\r"
+             "shl %%cl, %%al\n\r"
+             "jp PF_SK\n\r"
+             "jnp PF_CK\n\r"
+       "PF_SK:\n\r"
+             "mov $1, %%dx\n\r"
+             "jmp outK\n\r"
+       "PF_CK:\n\r"
+             "mov $0, %%dx\n\r"
+        "outK:\n\r"
+             "mov %%dx, %0\n\r"
+             "mov %%ax, %1"
+             : "=m" (PF), "=m" (AX)
+             : "m" (CX), "m" (DX));
+    if (PF)
+        printk("SHL: even number -> %#x << %#x = %#x\n", CX, DX, AX & 0xFF);
+    else
+        printk("SHL: odd number -> %#x << %#x = %#x\n", CX, DX, AX & 0xFF);
+#endif
+
     return 0;
 }
 
