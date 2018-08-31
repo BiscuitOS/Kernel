@@ -207,6 +207,36 @@ config DEBUG_PF_CMPSW
 	help
 	  Debug CMPSW instruction for Parity Bit.
 
+config DEBUG_PF_CMPSD
+	bool "CMPSD   Compare string operands in double-word"
+	help
+	  Debug CMPSD instruction for Parity Bit.
+
+config DEBUG_PF_DAA
+	bool "DAA     Decimal adjust AL after addition"
+	help
+	  Debug DAA instruction for Parity Bit.
+
+config DEBUG_PF_DAS
+	bool "DAS     Decimal adjust AL after subtraction"
+	help
+	  Debug DAS instruction for Parity Bit.
+
+config DEBUG_PF_DEC
+	bool "DEC     Decrement by 1"
+	help
+	  Debug DEC instrcution for Parity Bit.
+
+config DEBUG_PF_INC
+	bool "INC     Increment by 1"
+	help
+	  Debug INC instruction for Parity Bit.
+
+config DEBUG_PF_NEG
+	bool "NEG     Two's complement negation"
+	help
+	  Debug NEG instruction for Parity Bit
+
 endif # DEBUG_EFLAGS_PF
 
 endif # DEBUG_REGISTER_EFLAGS
