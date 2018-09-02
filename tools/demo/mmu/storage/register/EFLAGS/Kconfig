@@ -262,6 +262,31 @@ config DEBUG_PF_SHL
 	help
 	  Shift logical left for Parity Bit.
 
+config DEBUG_PF_SBB
+	bool "SBB     Integer subtraction with borrow"
+	help
+	  Subtraction with borrow for Parity Bit.
+
+config DEBUG_PF_SCASB
+	bool "SCASB   Scan string in byte"
+	help
+	  Scanning string in byte for Parity Bit.
+
+config DEBUG_PF_SCASW
+	bool "SCASW   Scan string in word"
+	help
+	  Scanning string in word for Parity Bit.
+
+config DEBUG_PF_SUB
+	bool "SUB     Subtract"
+	help
+	  Subtract for Parity Bit.
+
+config DEBUG_PF_TEST
+	bool "TEST    Logical Compare"
+	help
+	  Logical compare for Parity Bit.
+
 endif # DEBUG_EFLAGS_PF
 
 endif # DEBUG_REGISTER_EFLAGS
