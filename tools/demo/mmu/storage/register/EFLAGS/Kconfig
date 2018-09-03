@@ -232,6 +232,26 @@ config DEBUG_PF_INC
 	help
 	  Debug INC instruction for Parity Bit.
 
+config DEBUG_PF_JP
+	bool "JP      Jump short if parity"
+	help
+	  Debug JP instruction for Parity Bit.
+
+config DEBUG_PF_JPE
+	bool "JPE     Jump short if parity even (PF = 1)"
+	help
+	  Debug JPE instruction for Parity Bit.
+
+config DEBUG_PF_JPO
+	bool "JPO     Jump short if parity odd (PF = 0)"
+	help
+	  Debug JPO instruction for Parity Bit.
+
+config DEBUG_PF_JNP
+	bool "JNP     Jump short if not parity"
+	help
+	  Debug JNP instruction for Parity Bit.
+
 config DEBUG_PF_NEG
 	bool "NEG     Two's complement negation"
 	help
