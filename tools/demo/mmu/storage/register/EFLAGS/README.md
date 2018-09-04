@@ -22,7 +22,12 @@ indicate the results of arithmetic instructions, such as the `ADD`, `SUB`,
 * **PF (bit 2)**
 
   **Parity flag** -- Set if the least-significant byte of the result 
-  contains an even number of 1 bits.
+  contains an even number of 1 bits. `AAD`, `AAM`, `ADC`, `ADD`, `AND`,
+  `CMP`, `CMPSB`, `CMPSW`, `CMPSD`, `DAA`, `DAS`, `DEC`, `INC`, `JP`,
+  `JPE`, `JPO`, `JNP`, `NEG`, `OR`, `SAL`, `SAR`, `SHR`, `SHL`, `SBB`,
+  `SCASB`, `SCASW`, `SUB`, and `TEST` instruction will effect PF flag
+  on an arithmetic operation.
+
 
 ## link
 
