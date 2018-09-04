@@ -59,7 +59,7 @@ config DEBUG_CF_ADCX
 	  Unsigned integer addition of two operands with Carry flag
 
 config DEBUG_CF_ADD
-	bool "ADD     Carroy on addition"
+	bool "ADD     Carry on addition"
 	help
 	  Debug ADD instruction for carrying on.
 
@@ -183,7 +183,7 @@ config DEBUG_PF_ADC
 	  Addition with carry via ADC instruction.
 
 config DEBUG_PF_ADD
-	bool "ADD     Carroy on addition"
+	bool "ADD     Carry on addition"
 	help
 	  Debug ADD instruction for carrying on.
 
