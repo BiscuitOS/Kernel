@@ -28,6 +28,11 @@ indicate the results of arithmetic instructions, such as the `ADD`, `SUB`,
   `SCASB`, `SCASW`, `SUB`, and `TEST` instruction will effect PF flag
   on an arithmetic operation.
 
+* **AF (bit 4)**
+
+  **Auxiliary Carry flag** -- Set if an arithmetic operation generates a 
+  carry or a borrow out of bit 3 of the result; cleared otherwise. This flag
+  is used in binary-coded decimal (BCD) arithmetic.
 
 ## link
 
