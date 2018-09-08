@@ -31,6 +31,8 @@ config DEBUG_EFLAGS_POPF
 	help
 	  Push value onto the EFLAGS register.
 
+comment "EFLAGS Register Bit Map"
+
 config DEBUG_EFLAGS_CF
 	bool "CF      Carry flag (bit 0)"
 	help
