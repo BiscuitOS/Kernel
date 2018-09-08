@@ -34,6 +34,10 @@ indicate the results of arithmetic instructions, such as the `ADD`, `SUB`,
   carry or a borrow out of bit 3 of the result; cleared otherwise. This flag
   is used in binary-coded decimal (BCD) arithmetic.
 
+* **ZA (bit 6)**
+
+  **Zero flag** -- Set if the result is zero; deared otherwise.
+
 ## link
 
   [Intel Architectures Software Developer's Manual: Combined Volumes: 1 -- Chapter 3 Basic Execution Environment: 3.4 Basic Program Execution Register](https://software.intel.com/en-us/articles/intel-sdm)
