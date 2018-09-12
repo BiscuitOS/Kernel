@@ -5,7 +5,7 @@
 -include $(srctree)/tools/debug/Makefile
 
 quiet_cmd_running_linux = RUN     vmlinux
-      cmd_running_linux = $(QEMU) $(QEMU_FLAGS) > /dev/null 2>&1
+      cmd_running_linux = $(QEMU) $(QEMU_FLAGS) > /dev/null 2>&1 
 
 quiet_cmd_debug_linux = DEBUG      vmlinux
       cmd_debug_linux = $(QEMU) $(QEMU_FLAGS) -s -S > /dev/null 2>&1

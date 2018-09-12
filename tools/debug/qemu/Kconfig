@@ -13,6 +13,20 @@ config QEMU
 
 if QEMU
 
+config QEMU_BOOT_BIOS
+	bool "Original BIOS from source code"
+	help
+	  BIOS on Qemu
+
+if QEMU_BOOT_BIOS
+
+config QEMU_BOOT_BIOS_NAME
+	string "BIOS Full-Path Name"
+	help
+	  BIOS full path.
+
+endif
+
 config QEMU_BOOT_FLOPPY
 	bool "Boot from floppy"
 	depends on QEMU

@@ -120,6 +120,15 @@ else
 endif
 #QEMU_FLAGS += $(RTC)
 
+ifdef CONFIG_QEMU_BOOT_BIOS
+# ----------------------------------
+# BIOS
+# ----------------------------------
+  BIOS := -bios $(srctree)/$(CONFIG_QEMU_BOOT_BIOS_NAME)
+else
+  BIOS :=
+endif
+QEMU_FLAGS += $(BIOS)
 
 # ----------------------------------
 # Serial Settings
