@@ -577,6 +577,16 @@ config DEBUG_ZF_OR
 	help
 	  OR instruction for Zero flag.
 
+config DEBUG_ZF_REPZ
+	bool "REPZ    Find matching bytes in ES:[(E)DI] and DS:[(E)SI]"
+	help
+	  REPZ instruction for Zero flag.
+
+config DEBUG_ZF_REPNZ
+	bool "REPNZ   Find non-matching bytes in ES:[(E)DI] and DS:[(E)SI]"
+	help
+	  REPNZ instruction for Zero flag.
+
 config DEBUG_ZF_RSM
 	bool "RSM     Decimal adjust AL after subtraction"
 	help
