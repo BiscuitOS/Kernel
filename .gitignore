@@ -5,6 +5,7 @@ bootloader
 bootsect
 setup
 vmlinux.bin
+SeaBIOS
 
 # Ignore indicate file
 *.o
