@@ -488,12 +488,12 @@ config DEBUG_ZF_CMPXCHG
 	  CMPXCHG instruction for Zero flag.
 
 config DEBUG_ZF_CMPXCHG8B
-	bool "CMPXCHG8B   Compare and exchange bytes"
+	bool "CMPXCHG8B   Compare and exchange 64bit"
 	help
 	  CMPXCHGBB instruction for Zero flag.
 
 config DEBUG_ZF_CMPXCHG16B
-	bool "CMPXCHG16B  Compare and exchange bytes"
+	bool "CMPXCHG16B  Compare and exchange 128bit"
 	help
 	  CMPXCHGBB instruction for Zero flag.
 
@@ -532,10 +532,20 @@ config DEBUG_ZF_JLE
 	help
 	  JLE instruction for Zero flag.
 
+config DEBUG_ZF_JA
+	bool "JA      Jump short if above"
+	help
+	  JNA instruction for Zero flag.
+
 config DEBUG_ZF_JNA
 	bool "JNA     Jump short if not above"
 	help
 	  JNA instruction for Zero flag.
+
+config DEBUG_ZF_JG
+	bool "JG      Jump short if greater"
+	help
+	  JNG instruction for Zero flag.
 
 config DEBUG_ZF_JNG
 	bool "JNG     Jump short if not greater or equal"
@@ -578,12 +588,12 @@ config DEBUG_ZF_OR
 	  OR instruction for Zero flag.
 
 config DEBUG_ZF_REPZ
-	bool "REPZ    Find matching bytes in ES:[(E)DI] and DS:[(E)SI]"
+	bool "REPZ    Repeat while zero"
 	help
 	  REPZ instruction for Zero flag.
 
 config DEBUG_ZF_REPNZ
-	bool "REPNZ   Find non-matching bytes in ES:[(E)DI] and DS:[(E)SI]"
+	bool "REPNZ   Repeat while no zero"
 	help
 	  REPNZ instruction for Zero flag.
 
