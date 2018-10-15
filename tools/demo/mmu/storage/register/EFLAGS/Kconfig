@@ -662,7 +662,182 @@ config DEBUG_ZF_XOR
 	help
 	  XOR instruction for Zero flag.
 
-endif
+endif # DEBUG_EFLAGS_ZF
+
+config DEBUG_EFLAGS_SF
+        bool "SF      Sign flag (bit 7)"
+        help
+          Sign flag - bit7.
+
+if DEBUG_EFLAGS_SF
+
+config DEBUG_SF_AAD
+	bool "AAD     ASCII Adjust Before Division"
+	help
+	  AAD instruction for Sign flag.
+
+config DEBUG_SF_AAM
+	bool "AAM     ASCII Adjust After Multiply"
+	help
+	  AAM instruction for Sign flag.
+
+config DEBUG_SF_ADC
+	bool "ADC     Add with Carry"
+	help
+	  ADC instruction for Sign flag.
+
+config DEBUG_SF_ADD
+	bool "ADD     Add"
+	help
+	  ADD instruction for Sign flag.
+
+config DEBUG_SF_AND
+	bool "AND     Logical AND"
+	help
+	  AND instruction for Sign flag.
+
+config DEBUG_SF_CMP
+	bool "CMP     Compare two operands"
+	help
+	  CMP instruction for Sign flag.
+
+config DEBUG_SF_CMPSB
+	bool "CMPSB   Compare string with Byte"
+	help
+	  CMPSB instruction for Sign flag.
+
+config DEBUG_SF_CMPSW
+	bool "CMPSW   Compare string with word"
+	help
+	  CMPSW instruction for Sign flag.
+
+config DEBUG_SF_CMPSD
+	bool "CMPSD   Compare string with double-word"
+	help
+	  CMPSD instruction for Sign flag.
+
+config DEBUG_SF_DAA
+	bool "DAA     Decimal Adjust AL after Addition"
+	help
+	  DAA instruction for Sign flag.
+
+config DEBUG_SF_DAS
+	bool "DAS     Decimal Adjust AL after Subtraction"
+	help
+	  DAS instruction for Sign flag.
+
+config DEBUG_SF_DEC
+	bool "DEC     Decrement by 1"
+	help
+	  DEC instruction for Sign flag.
+
+config DEBUG_SF_INC
+	bool "INC     Increament by 1"
+	help
+	  INC instruction for Sign flag.
+
+config DEBUG_SF_JS
+	bool "JS      Jump short if sign (SF = 1)"
+	help
+	  JS instruction for Sign flag.
+
+config DEBUG_SF_JNS
+	bool "JNS     Jump short if not sign (SF = 0)"
+	help
+	  JNS instruction for Sign flag.
+
+config DEBUG_SF_NEG
+	bool "NEG     Two's Complement Negation"
+	help
+	  NEG instruction for Sign flag.
+
+config DEBUG_SF_OR
+	bool "OR      Logical inclusive OR"
+	help
+	  OR instruction for Sign flag.
+
+config DEBUG_SF_RSM
+	bool "RSM     Resume from System Management Mode"
+	help
+	  RSM instruction for Sign flag.
+
+config DEBUG_SF_SAL
+	bool "SAL     Shift arithmetic left"
+	help
+	  SAL instruction for Sign flag.
+
+config DEBUG_SF_SAR
+	bool "SAR     Shift arithmetic right"
+	help
+	  SAR instruction for Sign flag.
+
+config DEBUG_SF_SHL
+	bool "SAL     Shift logical left"
+	help
+	  SHL instruction for Sign flag.
+
+config DEBUG_SF_SHR
+	bool "SHR     Shift arithmetic right"
+	help
+	  SHR instruction for Sign flag.
+
+config DEBUG_SF_SBB
+	bool "SBB     Integer Subtraction with Borrow"
+	help
+	  SBB instruction for Sign flag.
+
+config DEBUG_SF_SCASB
+	bool "SCASB   Scan string with byte"
+	help
+	  SCASB instruction for Sign flag.
+
+config DEBUG_SF_SCASW
+	bool "SCASW   Scan string with word"
+	help
+	  SCASW instruction for Sign flag.
+
+config DEBUG_SF_SETS
+	bool "SETS    Set byte if sign (SF = 1)"
+	help
+	  SETS instruction for Sign flag.
+
+config DEBUG_SF_SETNS
+	bool "SETNS   Set byte if not sign (SF = 0)"
+	help
+	  SETNS instruction for Sign flag.
+
+config DEBUG_SF_SHLD
+	bool "SHLD    Double precision shift left"
+	help
+	  SHLD instruction for Sign flag.
+
+config DEBUG_SF_SHRD
+	bool "SHRD    Double precision shift right"
+	help
+	  SHRD instruction for Sign flag.
+
+config DEBUG_SF_SUB
+	bool "SUB     Subtract"
+	help
+	  SUB instruction for Sign flag.
+
+config DEBUG_SF_TEST
+	bool "TEST    Logical Compare"
+	help
+	  TEST instruction for Sign flag.
+
+config DEBUG_SF_XADD
+	bool "XADD    Exchange and Add"
+	help
+	  XADD instruction for Sign flag.
+
+config DEBUG_SF_XOR
+	bool "XOR     Logical Exclusive OR"
+	help
+	  XOR instruction for Sign flag.
+
+
+endif # DEBUG_EFLAGS_SF
 
 endif # DEBUG_REGISTER_EFLAGS
 
