@@ -7,7 +7,7 @@ assigned a unique address, called a physical address. The physical address
 space ranges from zero to a maximum of 2^36 - 1 (64GBytes) if the processor
 does not support Intel 64 architecture.
 
-# IA-32 Memory models
+## Memory models
 
 When employing the processor's memory management facilities, programs do not
 directly address physical memory. Instead, they access memory using one of
@@ -50,17 +50,27 @@ three memory models: **flat**, **segmented**, or **read address** mode.
   an array of segments of up to 64 KBytes in size each. The maximum size of 
   the linear address space in real-address mode is 2^20 bytes.
 
-# Paging and Virtual Memory
+## Logical Address
 
-With the flat or the segmented memory model, linear address space is mapped 
-into the processor's physical address space either directly or through paging.
-When using direct mapping (paging disable), each linear address has a 
-one-to-one correspondence with a physical address. Linear addresses are sent
-out on the processor's address line without translation.
+Even with the minimum use of segments, every byte in the processor's address
+space is accessed with a logical address. A **logical address** consists of a
+16-bit segment selector and a 32-bit offset. The segment selector
+identifies the segment the byte is located in and the offset specifies the 
+location of the byte in the segment relative to the base address of the 
+segment.
 
-When using the IA-32 architecture's paging mechanism (paging enabled), linear
-address space is divided into pages which are mapped to virtual memory. The
-pages of virtual memory are then mapped as needed into physical memory. When
-an operating system or executive uses paging, the paging mechanism is 
-transparent to an application program. All that the application sees is linear
-address space.
+```
+Logical Address:
+
+ 15              0   31                           0
+ +---------------+   +----------------------------+
+ | Seg. Selector |   | Offset (Effective Address) |
+ +---------------+   +----------------------------+
+```
+
+More detail **logical address** see: logical_address/README.md
+
+## Linear Address
+
+
+
