@@ -5052,6 +5052,458 @@ static __unused int eflags_ZF(void)
     return 0;
 }
 
+/*
+ * SF (bit 7) -- Sign flag
+ *
+ *   Parity flag -- Set if the least-significant byte of the result
+ *   contains an even number of 1 bits.
+ */
+static __unused int eflags_SF(void)
+{
+    unsigned char  __unused AL;
+    unsigned short __unused AX;
+    unsigned short __unused BX;
+    unsigned short __unused CX;
+    unsigned short __unused DX;
+    unsigned short __unused SF;
+    unsigned int   __unused EAX;
+    unsigned int   __unused EBX;
+    unsigned int   __unused ECX;
+    unsigned int   __unused EDX;
+
+#ifdef CONFIG_DEBUG_SF_AAD
+    /*
+     * AAD -- ASCII Adjust AX Before Division
+     *
+     * Adjusts two unpacked BCD digits (the least-significant digit in the AL
+     * register and the most-significant digit in the AH register) so that a
+     * division operation performed on the result will yield a correct
+     * unoacked BCD value. The AAD instruction is only useful when it precedes
+     * a DIV instruction that divides (binary division) the adjusted value
+     * in the AX register by an unpacked BCD value.
+     *
+     * The AAD instruction sets the value in the AL register to (AL + (10 * AH))
+     * and then clears the AH register to 00H. The value in the AX register
+     * is then equal to the binary equivalent of the original unpacked two-
+     * digit (base 10) number in register AH and AL.
+     *
+     * The generalized version of this instruction allows adjustment of two
+     * unpacked digits of any number base, by setting the imm8 byte to the 
+     * selected number base (for example, 08H for octal, 0AH for decimal, or
+     * 0CH for base 12 numbers). The AAD mnemonic is interpreted by all 
+     * assemblyers to means adjust ASCII (base 10) values. To adjust values in
+     * another number base, the instruction must be hand coded in machine
+     * code (D5 imm8)
+     *
+     * IF AAD instruction
+     *     THEN
+     *         tempAL <---- AL;
+     *         tmepAH <---- AH;
+     *         AL <---- (tmpAL + (tmpAH * imm8)) AND 0xFFH;
+     *         (* imm8 is set to 0AH for the AAD mnemonic *)
+     *         AH <---- 0
+     * FI
+     */
+    CX = 0x0909;
+    DX = 0x1;
+    __asm__ ("mov %2, %%ax\n\r"
+             "mov %3, %%bx\n\r"
+             "mov $0, %%dx\n\r"
+             "aad\n\r"
+             "sets %%dl\n\r"
+             "div %%bl\n\r"
+             "mov %%dx, %0\n\r"
+             "mov %%ax, %1"
+             : "=m" (SF), "=m" (AX)
+             : "m" (CX), "m" (DX));
+    if (SF & 0xFF)
+        printk("AAD(EFLAGS:SF = 1) -> %#x / %#x = %#x\n", CX, DX, AX);
+    else
+        printk("AAD(EFLAGS:SF = 0) -> %#x / %#x = %#x\n", CX, DX, AX);
+
+#endif
+
+#ifdef CONFIG_DEBUG_SF_AAM
+    /*
+     * AAM -- ASCII adjust AX after multiply
+     *
+     * Adjust the result of the multiplication of two unpacked BCD values to
+     * create a pair of unpacked (base 10) BCD values. The AX register is 
+     * the implied source and destination operand for this instruction. The
+     * The AAM instruction is only useful when it follows an MUL instruction
+     * that multiplies (binary multiplication) two unpacked BCD values and 
+     * stores a word result in the AX register. The AAM instruction then 
+     * adjusts contents of the AX register to contain the correct 2-digit 
+     * unpacked (base 10) BCD result.
+     *
+     * The general version of this instruction allows adjustment of the 
+     * contents of the AX to create two unpacked digits of any number base.
+     * Here, the imm8 byte is set to the selected number base (for example,
+     * 0x08H for octal, 0AH for decimal, or 0CH for base 12 numbers). The 
+     * AAM mnemonic is interpreted by all assemblers to mean adjust to ASCII
+     * (base 10) values. To adjust to values in another number base, the 
+     * instruction must be hand coded inb machine code (D4 imm8)
+     *
+     * IF instruction AAM
+     *     THEN
+     *         temp <---- AL;
+     *         AH <---- tempAL / imm8; 
+     *         (* imm8 is set to 0AH for the AAM mnemonic *)
+     *         AL <---- temp MODE imm8
+     * FI
+     */
+    CX = 0x9;
+    DX = 0x9;
+    __asm__ ("mov %3, %%al\n\r"
+             "mov %4, %%bl\n\r"
+             "mov $0, %%dx\n\r"
+             "mul %%bl\n\r"
+             "mov %%ax, %0\n\r"
+             "aam\n\r"
+             "sets %%dl\n\r"
+             "mov %%ax, %1\n\r"
+             "mov %%dx, %2"
+             : "=m" (AX), "=m" (BX), "=m" (SF)
+             : "m" (CX), "m" (DX));
+    if (SF)
+        printk("AAM(EFLAGS: SF = 1) --> %#x * %#x = %#x(Unpacked-BCD: %#x)\n",
+                        CX, DX, AX, BX);
+    else
+        printk("AAM(EFLAGS: SF = 0) --> %#x * %#x = %#x(Unpacked-BCD: %#x)\n",
+                        CX, DX, AX, BX);
+#endif
+
+#ifdef CONFIG_DEBUG_SF_ADC
+    /*
+     * ADC -- Add with Carry
+     *
+     * Adds the destination operand (first operand), the source operand (
+     * second operand), and the carry (CF) flag and stores the result in the
+     * destination operand. The destination operand can be a register or a
+     * memory location; the source operand can be an immediate, a register,
+     * or a memory location. (However, two memory operand cannot be used in
+     * one instruction.) The state of the CF flag represents a carry from
+     * a previous addition. When an immediate value is used as an operand,
+     * it is sign-extended to the length of the destination operand format.
+     *
+     * The ADC instruction does not distinguish between signed or unsigned
+     * operands. Instead, the processor evaluates the result for both data
+     * types and sets the OF and CF flags to indicate a carry in the signed
+     * unsigned result, respectively. The SF flags indicates the sign of the
+     * signed result.
+     *
+     * DEST <---- DEST + SRC + CF
+     *
+     */
+     CX = -6;
+     DX = 1;
+     __asm__ ("stc\n\r"
+              "mov %2, %%al\n\r"
+              "mov %3, %%bl\n\r"
+              "mov $0, %%dx\n\r"
+              "adc %%bl, %%al\n\r"
+              "sets %%dl\n\r"
+              "mov %%al, %0\n\r"
+              "mov %%dx, %1"
+              : "=m" (AX), "=m" (SF)
+              : "m" (CX), "m" (DX));
+    if (SF)
+        printk("ADC(EFLAGS: SF = 1) --> %#x + %#x + 1 = %#x\n", CX, DX, AX);
+    else
+        printk("ADC(EFLAGS: SF = 0) --> %#x + %#x + 1 = %#x\n", CX, DX, AX); 
+#endif
+
+#ifdef CONFIG_DEBUG_SF_ADD
+    /*
+     * ADD -- Addition with two operands.
+     *
+     * Adds the destination operand (first operand) and the source operand (
+     * second operand) and then stores the result in the destination operand.
+     * The destination operand can be a register or a memory location; the 
+     * source operand can be an immediate, a register, or a memory location.
+     * (However, two memory operands cannot be used in one instruction.) When
+     * an immediate value is used as an operand, it it sign-extended to the
+     * length of the destination operand format.
+     * 
+     * The ADD instruction performs integer addition. It evaluates the result
+     * for both signed and unsigned integer operands and sets the CF and
+     * OF flags to indicate a carry (overflow) in the signed or unsigned 
+     * result, respectively. The SF flag indicates the sign of the signed 
+     * result.
+     *
+     * DEST <---- DEST + SRC
+     *
+     * The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
+     */
+    CX = -6;
+    DX = 1;
+    __asm__ ("mov %2, %%al\n\r"
+             "mov %3, %%bl\n\r"
+             "mov $0, %%dx\n\r"
+             "add %%bl, %%al\n\r"
+             "sets %%dl\n\r"
+             "mov %%dx, %0\n\r"
+             "mov %%al, %1"
+             : "=m" (SF), "=m" (AX)
+             : "m" (CX), "m" (DX));
+    if (SF)
+        printk("ADD(EFLAGS: SF = 1) --> %#x + %#x = %#x\n", CX, DX, AX);
+    else
+        printk("ADD(EFLAGS: SF = 0) --> %#x + %#x = %#x\n", CX, DX, AX);
+#endif
+
+#ifdef CONFIG_DEBUG_SF_AND
+    /*
+     * AND -- Logical AND
+     *
+     * Performs a bitwise AND operation on the destination (first) and source
+     * (second) operands and stores the result in the destination operand
+     * location. The source operand can be an immediate, a register, or a 
+     * memory location; the destination operand can be a register or a memory
+     * location. (However, two memory operands cannot be used in one 
+     * instruction.) Each bit of the result is set to 1 if both corresponding
+     * bits of the first and second operands are 1; otherwise, it is set to 0.
+     *
+     * DEST <---- DEST AND SRC
+     */
+    CX = 0x81;
+    DX = 0x80;
+    __asm__ ("mov %2, %%ax\n\r"
+             "mov %3, %%bx\n\r"
+             "mov $0, %%dl\n\r"
+             "and %%bl, %%al\n\r"
+             "sets %%dl\n\r"
+             "mov %%dl, %0\n\r"
+             "mov %%ax, %1"
+             : "=m" (SF), "=m" (AX)
+             : "m" (CX), "m" (DX));
+    if (SF)
+        printk("AND(EFLAGS: SF = 1) --> %#x AND %#x = %#x\n", CX, DX, AX);
+    else
+        printk("AND(EFLAGS: SF = 0) --> %#x AND %#x = %#x\n", CX, DX, AX);
+#endif
+
+#ifdef CONFIG_DEBUG_SF_CMP
+    /*
+     * CMP -- Compare two operands
+     *
+     * Compares the first source operand with the second source operand and
+     * the status flags in the EFLAGS register according to the result. The
+     * comparison is performed by subtracting the second operand from the
+     * first operand and then setting the status flags in the same manner
+     * as the SUB instruction. When an immediate value is used as an operand,
+     * it is sign-extended to the length of the first operand.
+     *
+     * temp <---- SRC1 - SignExtend(SRC2);
+     * ModifyStatusFlags; 
+     * (* Modify status flags in the same manner as the SUB instruction *)
+     */
+    CX = 0x81;
+    DX = 0x1;
+    __asm__ ("mov %2, %%ax\n\r"
+             "mov %3, %%bx\n\r"
+             "mov $0, %%dx\n\r"
+             "cmp %%bl, %%al\n\r"
+             "sets %%dl\n\r"
+             "mov %%dx, %0\n\r"
+             "mov %%ax, %1"
+             : "=m" (SF), "=m" (AX)
+             : "m" (CX), "m" (DX));
+    if (SF)
+        printk("CMP(EFLAGS: SF = 1) --> %#x - %#x = %#x\n", CX, DX, AX);
+    else
+        printk("CMP(EFLAGS: SF = 0) --> %#x - %#x = %#x\n", CX, DX, AX);
+#endif
+
+#ifdef CONFIG_DEBUG_SF_CMPSB
+    /*
+     * CMPSB -- Compare string operands in byte
+     *
+     * Compares the byte with the first source operand with the byte specified
+     * with the second source operand and sets the status flags in EFLAGS 
+     * register according to the result.
+     *
+     * Both source operands are located in memory. The address of the first
+     * source operand is read from DS:SI (depending on the address-size 
+     * attribute of the instruction is 16). The address of the second source
+     * operand is read from ES:DI (again depending on the address-size 
+     * attribute of the instruction is 16). The DS segment may be overriden
+     * with a segment override prefix, but the ES segment cannot be overridden.
+     *
+     * At the assembly-code level, two forms of this instruction are allowed:
+     * the "explicit-operands" from and the "no-operands" from. The explicit-
+     * operands form (specified with the CMPS mnemonic) allows the two source
+     * operands to the specified explicitly. Here, the source operands should
+     * be symbols that indicate the size and location of the source values.
+     * This explicit-operand form is provided to allow documentation. However,
+     * not that the documentation provided by this form can be misleading.
+     * That is, the source operand symbols must specify the correct type
+     * (size) of the operands (bytes), but they do not have to specify the
+     * correct location. Locations of the source operands are always specified
+     * by the DS:SI and ES:DI register, which must be loaded correctly before
+     * the compare string instruction is executed.
+     *
+     * The size of the source operands is selected with the mnemonic: CMPSB
+     * (byte comparison). After the comparison, the SI and DI registers
+     * increment or decrement automatically according to the setting of the
+     * DF flag in the EFLAGS register. (If the DF flags is 0, the SI and DI
+     * register increment; if the DF flag is 1, the register decrement.) The
+     * register increment or decrement by 1 for byte operations.
+     *
+     * The CMPSB instruction can be preceded by the REP prefix for block
+     * comparisons. More often, however, these instructions will be used in 
+     * a LOOP construct that takes some action based on the setting of the 
+     * status flags before the next comparison is made.
+     */
+    ECX = (unsigned int)(unsigned long)&"Hello World"[0];
+    EDX = (unsigned int)(unsigned long)&"Hello a BiscuitOS"[0];
+    CX = 8;
+    __asm__ ("movl %2, %%esi\n\r"
+             "movl %3, %%edi\n\r"
+             "mov %4, %%cx\n\r"
+             "mov $0, %%dx\n\r"
+             "cld\n\r"
+             "repz cmpsb\n\r"
+             "sets %%dl\n\r"
+             "mov %%dl, %0\n\r"
+             "mov %%cx, %1"
+             : "=m" (SF), "=m" (BX)
+             : "m" (ECX), "m" (EDX), "m" (CX));
+    if (SF)
+        printk("CMPSB(EFLAGS: SF = 1) -->\n");
+    else
+        printk("CMPSB(EFLAGS: SF = 0) -->\n");
+    printk("\"%s\" Diff \"%s\" in %#x bytes\n", 
+                     (char *)(unsigned long)ECX,
+                     (char *)(unsigned long)EDX, CX - BX - 1);
+#endif
+
+#ifdef CONFIG_DEBUG_SF_CMPSW
+    /*
+     * CMPSW -- Compare string operands in word
+     *
+     * Compares the byte with the first source operand with the byte specified
+     * with the second source operand and sets the status flags in EFLAGS 
+     * register according to the result.
+     *
+     * Both source operands are located in memory. The address of the first
+     * source operand is read from DS:SI (depending on the address-size 
+     * attribute of the instruction is 16). The address of the second source
+     * operand is read from ES:DI (again depending on the address-size 
+     * attribute of the instruction is 16). The DS segment may be overriden
+     * with a segment override prefix, but the ES segment cannot be overridden.
+     *
+     * At the assembly-code level, two forms of this instruction are allowed:
+     * the "explicit-operands" from and the "no-operands" from. The explicit-
+     * operands form (specified with the CMPS mnemonic) allows the two source
+     * operands to the specified explicitly. Here, the source operands should
+     * be symbols that indicate the size and location of the source values.
+     * This explicit-operand form is provided to allow documentation. However,
+     * not that the documentation provided by this form can be misleading.
+     * That is, the source operand symbols must specify the correct type
+     * (size) of the operands (bytes), but they do not have to specify the
+     * correct location. Locations of the source operands are always specified
+     * by the DS:SI and ES:DI register, which must be loaded correctly before
+     * the compare string instruction is executed.
+     *
+     * The size of the source operands is selected with the mnemonic: CMPSW
+     * (word comparison). After the comparison, the SI and DI registers
+     * increment or decrement automatically according to the setting of the
+     * DF flag in the EFLAGS register. (If the DF flags is 0, the SI and DI
+     * register increment; if the DF flag is 1, the register decrement.) The
+     * register increment or decrement by 1 for byte operations.
+     *
+     * The CMPSW instruction can be preceded by the REP prefix for block
+     * comparisons. More often, however, these instructions will be used in 
+     * a LOOP construct that takes some action based on the setting of the 
+     * status flags before the next comparison is made.
+     */
+    ECX = (unsigned int)(unsigned long)&"Hello  World"[0];
+    EDX = (unsigned int)(unsigned long)&"Hello  a BiscuitOS"[0];
+    CX = 15;
+    __asm__ ("movl %2, %%esi\n\r"
+             "movl %3, %%edi\n\r"
+             "mov %4, %%cx\n\r"
+             "mov $0, %%dx\n\r"
+             "cld\n\r"
+             "repz cmpsw\n\r"
+             "sets %%dl\n\r"
+             "mov %%dx, %0\n\r"
+             "mov %%cx, %1"
+             : "=m" (SF), "=m" (BX)
+             : "m" (ECX), "m" (EDX), "m" (CX));
+    if (SF)
+        printk("CMPSW(EFLAGS: SF = 1) -->\n");
+    else
+        printk("CMPSW(EFLAGS: SF = 0) -->\n");
+    printk("\"%s\" DIFF \"%s\" in %d word\n", (char *)(unsigned long)ECX, 
+                     (char *)(unsigned long)EDX, CX - BX - 1);
+#endif
+
+#ifdef CONFIG_DEBUG_SF_CMPSD
+    /*
+     * CMPSD -- Compare string operands in Double-word
+     *
+     * Compares the byte with the irst source operand with the byte specified
+     * with the second source operand and sets the status flags in EFLAGS 
+     * register according to the result.
+     *
+     * Both source operands are located in memory. The address of the first
+     * source operand is read from EDS:ESI (depending on the address-size 
+     * attribute of the instruction is 32). The address of the second source
+     * operand is read from ES:EDI (again depending on the address-size 
+     * attribute of the instruction is 32). The DS segment may be overriden
+     * with a segment override prefix, but the ES segment cannot be overridden.
+     *
+     * At the assembly-code level, two forms of this instruction are allowed:
+     * the "explicit-operands" from and the "no-operands" from. The explicit-
+     * operands form (specified with the CMPS mnemonic) allows the two source
+     * operands to the specified explicitly. Here, the source operands should
+     * be symbols that indicate the size and location of the source values.
+     * This explicit-operand form is provided to allow documentation. However,
+     * not that the documentation provided by this form can be misleading.
+     * That is, the source operand symbols must specify the correct type
+     * (size) of the operands (bytes), but they do not have to specify the
+     * correct location. Locations of the source operands are always specified
+     * by the DS:ESI and ES:EDI register, which must be loaded correctly before
+     * the compare string instruction is executed.
+     *
+     * The size of the source operands is selected with the mnemonic: CMPSD
+     * (double-word comparison). After the comparison, the ESI and EDI registers
+     * increment or decrement automatically according to the setting of the
+     * DF flag in the EFLAGS register. (If the DF flags is 0, the SI and DI
+     * register increment; if the DF flag is 1, the register decrement.) The
+     * register increment or decrement by 1 for byte operations.
+     *
+     * The CMPSD instruction can be preceded by the REP prefix for block
+     * comparisons. More often, however, these instructions will be used in 
+     * a LOOP construct that takes some action based on the setting of the 
+     * status flags before the next comparison is made.
+     */
+    ECX = (unsigned int)(unsigned long)&"HellW World"[0];
+    EDX = (unsigned int)(unsigned long)&"Hella World"[0];
+    CX = 15;
+    __asm__ ("movl %2, %%esi\n\r"
+             "movl %3, %%edi\n\r"
+             "mov %4, %%cx\n\r"
+             "mov $0, %%dx\n\r"
+             "cld\n\r"
+             "repz cmpsd\n\r"
+             "sets %%dl\n\r"
+             "mov %%dx, %0\n\r"
+             "mov %%cx, %1"
+             : "=m" (SF), "=m" (BX)
+             : "m" (ECX), "m" (EDX), "m" (CX));
+    if (SF)
+        printk("CMPSD(EFLAGS: SF = 1) -->\n");
+    else
+        printk("CMPSD(EFLAGS: SF = 0) -->\n");
+    printk("\"%s\" DIFF \"%s\" in %d Double-word\n", 
+         (char *)(unsigned long)ECX, (char *)(unsigned long)EDX, CX - BX - 1);
+#endif
+
+    return 0;
+}
 static int debug_eflags(void)
 {
 
@@ -5081,6 +5533,10 @@ static int debug_eflags(void)
 
 #ifdef CONFIG_DEBUG_EFLAGS_ZF
     eflags_ZF();
+#endif
+
+#ifdef CONFIG_DEBUG_EFLAGS_SF
+    eflags_SF();
 #endif
 
     return 0;

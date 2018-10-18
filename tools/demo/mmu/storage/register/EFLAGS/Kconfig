@@ -312,7 +312,7 @@ config DEBUG_PF_TEST
 endif # DEBUG_EFLAGS_PF
 
 config DEBUG_EFLAGS_AF
-	bool "AF      Auxiliary Carry flag (bit 2)"
+	bool "AF      Auxiliary Carry flag (bit 4)"
 	help
 	  Bit 3 carry or borrow.
 
@@ -838,6 +838,66 @@ config DEBUG_SF_XOR
 
 
 endif # DEBUG_EFLAGS_SF
+
+config DEBUG_EFLAGS_TF
+	bool "TF      Trap flag (bit 8)"
+	help
+	  Trap flag - bit8.
+
+config DEBUG_EFLAGS_IF
+	bool "IF      Interrupt enable flag (bit 9)"
+	help
+	  Interrupt enable flag - bit9.
+
+config DEBUG_EFLAGS_DF
+	bool "DF      Direction flag (bit 10)"
+	help
+	  Direction flag - bit10.
+
+config DEBUG_EFLAGS_OF
+	bool "OF      Overflow flag (bit 11)"
+	help
+	  Overflow flag - bit11.
+
+config DEBUG_EFLAGS_IOPL
+	bool "IOPL    I/O privilege level (bit 12 - 13)"
+	help
+	  I/O privilege level - bit12-13.
+
+config DEBUG_EFLAGS_NT
+	bool "NT      Nested Task (bit 14)"
+	help
+	  Nested Task - bit14.
+
+config DEBUG_EFLAGS_RF
+	bool "RF      Resume flag (bit 16)"
+	help
+	  Resume flag - bit16.
+
+config DEBUG_EFLAGS_VM
+	bool "VM      Virtual-8086 Mode (bit 17)"
+	help
+	  Virtual-8086 mode - bit17.
+
+config DEBUG_EFLAGS_AC
+	bool "AC      Alignment Check/Access Control (bit 18)"
+	help
+	  Alignment Check/ Access control - bit18.
+
+config DEBUG_EFLAGS_VIF
+	bool "VIF     Virtual interrupt flag (bit 19)"
+	help
+	  Virtual interrupt flag - bit19.
+
+config DEBUG_EFLAGS_VIP
+	bool "VIP     Virtual interrupt pending (bit 20)"
+	help
+	  Virtual interrupt pending - bit20.
+
+config DEBUG_EFLAGS_ID
+	bool "ID      ID flag (bit 21)"
+	help
+	  ID flag - bit10.
 
 endif # DEBUG_REGISTER_EFLAGS
 
