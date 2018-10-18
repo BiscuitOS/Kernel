@@ -11,9 +11,6 @@ config DEBUG_ADDRESSING
 
 if DEBUG_ADDRESSING
 
-# Paging mechanism
-source "tools/demo/mmu/addressing/paging/Kconfig"
-
 endif
 
 endmenu
