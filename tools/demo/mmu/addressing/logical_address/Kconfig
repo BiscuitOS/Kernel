@@ -1,0 +1,73 @@
+#
+# Logical-address Mechanism
+#
+
+menu "logical-address addressable/addresssing"
+
+config DEBUG_MMU_LA
+	bool "Logical-address"
+	help
+	  Debug logical address mechanism.
+
+if DEBUG_MMU_LA
+
+comment "Kernel or Userland space"
+
+choice
+	prompt "Logical-address on kernel/userland space"
+	default DEBUG_LA_KERNEL
+
+config DEBUG_LA_KERNEL
+	bool "Logical-address on kernel space"
+	help
+	  Logical-address on kernel space.
+
+config DEBUG_LA_USERLAND
+	bool "Logical-address on userland space"
+	help
+	  Logical-address on userland space.
+
+endchoice
+
+comment "Segment Selector: Code, Data, and Stack"
+
+config DEBUG_LA_SEL_DS
+	bool "DS: Data selector"
+	help
+	  Data selector for logical-address.
+
+config DEBUG_LA_SEL_CS
+	bool "CS: Code selector"
+	help
+	  Code selector for logical-address.
+
+config DEBUG_LA_SEL_SS
+	bool "SS: Stack selector"
+	help
+	  Stack selector for logical-address.
+
+comment "Various logical-address: local/global/stack variable"
+
+config DEBUG_LA_LOCAL
+	bool "local variable"
+	help
+	  Local variable for logical-address
+
+config DEBUG_LA_GLOBAL
+	bool "Global variable"
+	help
+	  Global variable for logical-address
+
+config DEBUG_LA_STACK
+	bool "Stack variable"
+	help
+	  Stack variable for logical-address
+
+config DEBUG_LA_CODE
+	bool "Instruction"
+	help
+	  Instruction for logical-address
+
+endif ## DEBUG_MMU_LA
+
+endmenu

@@ -1,1 +1,1 @@
-obj-$(CONFIG_DEBUG_MMU_PAGING) += paging/
+obj-$(CONFIG_DEBUG_MMU_LA) += logical_address/
