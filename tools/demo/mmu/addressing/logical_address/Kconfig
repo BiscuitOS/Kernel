@@ -46,6 +46,11 @@ config DEBUG_LA_SEL_SS
 	help
 	  Stack selector for logical-address.
 
+config DEBUG_LA_SEL_FS
+	bool "FS: userland data selector"
+	help
+	  Userland data selector for logical-address.
+
 comment "Various logical-address: local/global/stack variable"
 
 config DEBUG_LA_LOCAL
@@ -67,6 +72,25 @@ config DEBUG_LA_CODE
 	bool "Instruction"
 	help
 	  Instruction for logical-address
+
+comment "Translation for logical, virtual, and linear address"
+
+config DEBUG_LA_2_VA
+	bool "Logical-address to virtual-address"
+	select DEBUG_VA_2_LA
+	help
+	  Translate logical-address to virtual-address.
+
+config DEBUG_VA_2_LA
+	bool "Virtual-address to logical-address"
+	help
+	  Translate virtual-adderss to logical-address.
+
+config DEBUG_LA_2_LNA
+	bool "Logical-address to linear-address"
+	select DEBUG_VA_2_LA
+	help
+	  Translate logical-address to linear-address.
 
 endif ## DEBUG_MMU_LA
 
