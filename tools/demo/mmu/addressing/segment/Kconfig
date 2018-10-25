@@ -1,0 +1,87 @@
+menu "Segmentation mechanism: segment/selector/descriptor"
+
+config DEBUG_MMU_SEGMENT
+	bool "Segmentation mechanism on IA32"
+	help
+	  Debug segmentation mechanism on IA32. 
+
+
+if DEBUG_MMU_SEGMENT
+
+config DEBUG_SEG_SEL
+	bool "Segment selector: Register and Instructions"
+	help
+	  Segment Selector.
+
+if DEBUG_SEG_SEL
+
+config DEBUG_SEG_CS
+	bool "Code segment selector"
+	help
+	  Code segment selector.
+
+config DEBUG_SEG_DS
+	bool "Data segment selector"
+	help
+	  Data segment selector.
+
+config DEBUG_SEG_SS
+	bool "Stack segment selector"
+	help
+	  Stack segment selector.
+
+config DEBUG_SEG_FS
+	bool "User data segment selector"
+	help
+	  User data segment selector.
+	  
+config DEBUG_SEG_INS_MOV
+	bool "MOV instruction to loading Sel (visible)"
+	help
+	  MOV instruction to loading Segment selector (visible).
+
+config DEBUG_SEG_INS_POP
+	bool "POP instruction to loading Sel (visible)"
+	help
+	  POP instruction to loading Segment selector (visible).
+
+config DEBUG_SEG_INS_LDS
+	bool "LDS: loading a far pointer into DS segment selector"
+	help
+	  Loading a far pointer into DS segment selector.
+
+config DEBUG_SEG_INS_LES
+	bool "LES: loading a far pointer into ES segment selector"
+	help
+	  Loading a far pointer into ES segment selector.
+
+config DEBUG_SEG_INS_LFS
+	bool "LFS: loading a far pointer into FS segment selector"
+	help
+	  Loading a far pointer into FS segment selector.
+
+config DEBUG_SEG_INS_LGS
+	bool "LGS: loading a far pointer into GS segment selector"
+	help
+	  Loading a far pointer into GS segment selector.
+
+config DEBUG_SEG_INS_LSS
+	bool "LSS: loading a far pointer into SS segment selector"
+	help
+	  Loading a far pointer into SS segment selector.
+
+config DEBUG_SEG_INS_LSL
+	bool "LSL: loading segment limit for specify segment."
+	help
+	  Loading segment limit for specify segment.
+
+config DEBUG_SEG_INS_LAR
+	bool "LAR: loading segment access right byte"
+	help
+	  Loading segment access right byte.
+
+endif # DEBUG_SEG_SEL
+
+endif # DEBUG_MMU_SEGMENT
+
+endmenu
