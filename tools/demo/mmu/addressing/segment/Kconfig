@@ -82,6 +82,26 @@ config DEBUG_SEG_INS_LAR
 
 endif # DEBUG_SEG_SEL
 
+config DEBUG_MMU_GDTR
+        bool "GDTR: Global Descriptor Table Register and Instruction"
+        help
+          Debug Global descriptor table register.
+
+if DEBUG_MMU_GDTR
+
+config DEBUG_GDTR_SGDT
+	bool "SGDT: store Global Descriptor Table register"
+	help
+	  Store Global descriptor table register.
+
+config DEBUG_GDTR_LGDT
+	bool "LGDT: load Global Descriptor Table register"
+	select DEBUG_GDTR_SGDT
+	help
+	  Load Global descriptor table register.
+
+endif # DEBUG_MMU_GDTR
+
 endif # DEBUG_MMU_SEGMENT
 
 endmenu

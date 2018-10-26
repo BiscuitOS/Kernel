@@ -394,6 +394,121 @@ static int segment_selector_entence(void)
     printk("Sel: %#x right: %#x\n", Sel, right);
 #endif
 
+#ifdef CONFIG_DEBUG_SEG_INS_MOV
+    /*
+     * MOV instruction
+     */
+    /* Obtain special register */
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+    /* Moving CS to DS */
+    __asm__ ("mov %%cs, %0" : "=m" (CS));
+    /* Destination segment selector */
+    __asm__ ("mov %1, %0" : "=r" (Sel) : "r" (CS));
+    printk("Orignal DS: %#x => %#x\n", DS, Sel);
+#endif
+
+#ifdef CONFIG_DEBUG_SEG_INS_POP
+    /*
+     * POP instruction
+     */
+    /* prepare seg */
+    __asm__ ("mov %%cs, %0\n\r"
+             "mov %%ds, %1" : "=m" (CS), "=m" (DS));
+    __asm__ ("push %1\n\r"
+             "pop %%ds\n\r"
+             "mov %%ds, %0" : "=m" (Sel) : "m" (CS));
+
+    printk("Orignal DS: %#x => %#x\n", DS, Sel);
+#endif
+
+#ifdef CONFIG_DEBUG_SEG_CS
+
+#endif
+
+    return 0;
+}
+
+/*
+ * Global Descriptor Table Register(GDTR)
+ *
+ * The GDTR regsiter holds the base address (32 bits in protected mode) 
+ * and the 16-bit table limit for the GDT. The base address specifies 
+ * the linear address of byte 0 of the GDT; the table limit specifies 
+ * the number of bytes in the table.
+ *
+ *
+ *      47                             16 15                      0
+ *      +--------------------------------+------------------------+
+ * GDTR |   32-bit linear Base address   |   16-bit Table limit   |
+ *      +--------------------------------+------------------------+
+ *
+ *
+ * The LGDT and SGDT instruction load and store the GDTR register, 
+ * respectively. On power up or reset of the processor, the base address 
+ * is set to the default value of 0 and the limit is set to 0xFFFFH. A 
+ * new base address must be loaded into the GDTR as part of the processor 
+ * initialization process for protected-mode operation.
+ */
+static int GDTR_entence(void)
+{
+    unsigned int __unused base;
+    unsigned int __unused limit;
+    unsigned short __unused GDTR[3];
+
+#ifdef CONFIG_DEBUG_GDTR_SGDT
+    /*
+     * SGDT -- Store Global Descriptor Table Register
+     *
+     * Stores the content of the global descriptor table register (GDTR) in
+     * the destination operand. The destination operand specifies a memory
+     * location.
+     *
+     * In legacy or compatibility mode, the destination operand is a 6-byte
+     * memory location. If the operand-size attribute is 16 or 32 bits, the
+     * 16-bit limit field of the register is stored in the low 2 bytes of 
+     * the memory location and the 32-bit base address is stored in the high
+     * 4 bytes.
+     *
+     * SGDT is useful only by operating-system software. However, it can be
+     * used in application programs without causing an exception to be 
+     * generated if CR4.UMIP = 0.
+     */
+
+    __asm__ ("sgdt %0" : "=m" (GDTR));
+    /* Base address */
+    base = GDTR[1] | (GDTR[2] << 16);
+    /* Limit */
+    limit = GDTR[0];
+    
+    printk("SGDT: GDTR-base: %#x limit %#x\n", base, limit);
+#endif
+
+#ifdef CONFIG_DEBUG_GDTR_LGDT
+    /*
+     * LGDT -- Load Global Descriptor Table Register
+     *
+     * Loads the values in the source operand into the global descriptor 
+     * table register (GDTR). The source operand specifies a 6-byte memory
+     * location that contains the base address (a linear address) and the
+     * limit (size of table in bytes) of the global descriptor table (GDT).
+     * If operand-size attribute is 32 bits, a 16-bit limit (lower 2 bytes
+     * of the 6-byte data operand) and a 32-bit base address (upper 4 bytes
+     * of the data operand) are loaded into the register. If the operand-size
+     * attribute is 16 bits, a 16-bit limit (lower 2 bytes) and a 24-bit 
+     * base address (third, fourth, and fifth byte) are loaded. Here, the 
+     * high-order byte of the operand is not used and the high-order byte
+     * of the base address in the GDTR is filled with zeros.
+     * 
+     * The LGDT instruction are used only in operating-system software; they
+     * are not used in application programs. They are the only instructions
+     * that directly load a linear address (that is, not a segment-relative
+     * address) and a limit in protected mode. They are commonly executed in
+     * real-address mode to allow processor initialization prior to 
+     * switching to protected mode.
+     */
+    __asm__ ("lgdt %0" :: "m" (GDTR));
+#endif
+
     return 0;
 }
 
@@ -401,6 +516,9 @@ static int segment_entence(void)
 {
     /* Segment selector entence */
     segment_selector_entence();
+
+    /* Global Descriptor Table Register */
+    GDTR_entence();
 
     return 0;
 }

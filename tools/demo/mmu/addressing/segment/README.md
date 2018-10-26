@@ -325,6 +325,68 @@ Two kinds of load instructions are provided for loading the segment registers:
 The MOV instruction can also be used to store the visible part of a segment
 register in a general-purpose register.
 
+### Global Descriptor Table Register (GDTR)
+
+The GDTR regsiter holds the base address (32 bits in protected mode) and the
+16-bit table limit for the GDT. The base address specifies the linear address
+of byte 0 of the GDT; the table limit specifies the number of bytes in the 
+table.
+
+```
+     47                             16 15                      0
+     +--------------------------------+------------------------+
+GDTR |   32-bit linear Base address   |   16-bit Table limit   |
+     +--------------------------------+------------------------+
+
+```
+
+The LGDT and SGDT instruction load and store the GDTR register, respectively.
+On power up or reset of the processor, the base address is set to the default
+value of 0 and the limit is set to 0xFFFFH. A new base address must be loaded
+into the GDTR as part of the processor initialization process for protected-
+mode operation.
+
+
+# Segment Descriptor
+
+A segment descriptor is a data struction in a GDT or LDT that provides the
+processor with the size and location of a segment, as well as access control
+and status information. Segment descriptors are typically created by 
+compilers, linkers, loaders, or the operating system or executive, but not 
+application programs. Figure illustrates the general descriptor format for
+all types of segment descriptors.
+
+![Segment Descriptor](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000395.png)
+
+The flags and fields in a segment descriptor are as follows:
+
+**Segment limit field**
+          
+     Specifies the size of the segment. The processor puts together the two
+     segment limit fields to form a 20-bit value. The processor interprets 
+     the segment limit in one of two ways, depending on the setting of the
+     **G** (granularity) flag:
+
+     * If the granularity flag is clear, the segment size can range from 1 
+       byte to 1 Mbyte, in byte increments.
+
+     * If the granularity flag is set, the segment size can range from 4KBytes
+       to 4GBytes, in 4-KByte increments.
+
+     The processor uses the segment limit in two different ways, depending on
+     whether the segment is an expand-up or an expand-down segment. For 
+     expand-up segments, the offset in a logical address can range from 0 to
+     the segment limit. Offsets greater than the segment limit generate 
+     general-protection exceptions (#GP, for all segments other than SS) or
+     stack-fault exception (#SS for the SS segment). For expand-down segments,
+     the segment limit has the reverse function; the offset can range from
+     the segment limit plus 1 to FFFFFFFFH or FFFFH, depending on the setting
+     of the B flag. Offsets less than or equal to the segment limit generate
+     general-protection exceptions or stack-fault exceptions. Decreasing the
+     value in the segment limit field for an expand-down segment allocates 
+     new memory at the bottom of the segment's address space, rather than at
+     the top. IA-32 architecture stacks always grow downwards, making this
+     mechanism convenient for expandable stacks.
 
 
 
