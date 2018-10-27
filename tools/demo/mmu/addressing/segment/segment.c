@@ -8,6 +8,8 @@
  * published by the Free Software Foundation.
  */
 #include <linux/kernel.h>
+#include <linux/sched.h>
+
 #include <demo/debug.h>
 
 /*
@@ -453,7 +455,11 @@ static int GDTR_entence(void)
 {
     unsigned int __unused base;
     unsigned int __unused limit;
+    unsigned int __unused virtual;
+    unsigned int __unused linear;
     unsigned short __unused GDTR[3];
+    unsigned short __unused Sel;
+    struct desc_struct __unused *desc;
 
 #ifdef CONFIG_DEBUG_GDTR_SGDT
     /*
@@ -480,6 +486,26 @@ static int GDTR_entence(void)
     /* Limit */
     limit = GDTR[0];
     
+    /* Virtual address of GDT */
+    virtual = (unsigned int)(unsigned long)gdt;
+    /* Logical-address of GDT.
+     *  Sel: DS (kernel data segment selector)
+     *  Offset: virtual address of 'gdt'.
+     *  => Sel:Offset 
+     */
+    __asm__ ("mov %%ds, %0" : "=m" (Sel));
+
+    /* linear address of GDT */
+    if (Sel & 0x4) {
+        /* Segment Selector locate on LDT */
+        desc = current->ldt + (Sel >> 3);
+    } else {
+        /* Segment Selector locate on GDT */
+        desc = gdt + (Sel >> 3);
+    }
+    linear = get_base(*desc) + virtual;
+    
+    printk("GDT linear address: %#x\n", linear);
     printk("SGDT: GDTR-base: %#x limit %#x\n", base, limit);
 #endif
 
@@ -506,6 +532,36 @@ static int GDTR_entence(void)
      * real-address mode to allow processor initialization prior to 
      * switching to protected mode.
      */
+
+    /* Step0: Obtain the virtual address of 'gdt' */
+    virtual = (unsigned int)(unsigned long)gdt;
+
+    /* Step1: Obtian the logical-address
+     *  The 'gdt' locate on kernel Data segment, so DS as segment selector.
+     *  And virtual address as offset for logical address.
+     */
+    __asm__ ("mov %%ds, %0" : "=m" (Sel));
+
+    /* Step2: Obtian the linear-address
+     *  The linear-address contain the base address of segment and offset.
+     */
+    if (Sel & 0x4) {
+        /* Segment locate on LDT */
+        desc = current->ldt + (Sel >> 3);
+    } else {
+        /* Segment locate on GDT */
+        desc = gdt + (Sel >> 3);
+    }
+    if (virtual > get_limit(Sel))
+        panic("The Offset over segment limit");
+    linear = get_base(*desc) + virtual;
+
+    /* Step3: Obtain gdt limit */
+
+    /* Step4: Load the base address and limit into GDTR */
+    GDTR[1] = linear & 0xFFFF;
+    GDTR[2] = (linear >> 16) & 0xFFFF;
+
     __asm__ ("lgdt %0" :: "m" (GDTR));
 #endif
 
