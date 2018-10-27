@@ -96,7 +96,6 @@ config DEBUG_GDTR_SGDT
 
 config DEBUG_GDTR_LGDT
 	bool "LGDT: Load Global Descriptor Table register"
-	select DEBUG_GDTR_SGDT
 	help
 	  Load Global descriptor table register.
 

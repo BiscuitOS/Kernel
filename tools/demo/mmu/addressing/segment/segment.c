@@ -456,6 +456,7 @@ static int GDTR_entence(void)
     unsigned int __unused base;
     unsigned int __unused limit;
     unsigned int __unused virtual;
+    unsigned int __unused offset;
     unsigned int __unused linear;
     unsigned short __unused GDTR[3];
     unsigned short __unused Sel;
@@ -480,33 +481,16 @@ static int GDTR_entence(void)
      * generated if CR4.UMIP = 0.
      */
 
+    /*
+     * Obtain base address and limit from GDTR
+     */
     __asm__ ("sgdt %0" : "=m" (GDTR));
     /* Base address */
     base = GDTR[1] | (GDTR[2] << 16);
     /* Limit */
     limit = GDTR[0];
     
-    /* Virtual address of GDT */
-    virtual = (unsigned int)(unsigned long)gdt;
-    /* Logical-address of GDT.
-     *  Sel: DS (kernel data segment selector)
-     *  Offset: virtual address of 'gdt'.
-     *  => Sel:Offset 
-     */
-    __asm__ ("mov %%ds, %0" : "=m" (Sel));
-
-    /* linear address of GDT */
-    if (Sel & 0x4) {
-        /* Segment Selector locate on LDT */
-        desc = current->ldt + (Sel >> 3);
-    } else {
-        /* Segment Selector locate on GDT */
-        desc = gdt + (Sel >> 3);
-    }
-    linear = get_base(*desc) + virtual;
-    
-    printk("GDT linear address: %#x\n", linear);
-    printk("SGDT: GDTR-base: %#x limit %#x\n", base, limit);
+    printk("SGDT ==> GDTR-base: %#x limit %#x\n", base, limit);
 #endif
 
 #ifdef CONFIG_DEBUG_GDTR_LGDT
@@ -531,38 +515,124 @@ static int GDTR_entence(void)
      * address) and a limit in protected mode. They are commonly executed in
      * real-address mode to allow processor initialization prior to 
      * switching to protected mode.
+     *
+     * The kernel define a variable 'gdt' to point Global Descriptor Table
+     * on memory, and the location of 'gdt' is arch/x86/boot/head.S.
+     * And assembly code as follow:
+     *
+     * arch/x86/boot/head.S
+     * 
+     * .globl gdt
+     *
+     * .align 4
+     * .word 0
+     * gdt_descr:
+     *     .word (8+2*NR_TASKS)*8-1
+     *     .long 0xC0000000+gdt
+     *
+     * .align 4
+     * gdt:
+     *    .quad 0x0000000000000000    ; NULL descriptor
+     *    .quad 0x0000000000000000    ; not used 
+     *    .quad 0xc0c39a000000ffff    ; 0x10 kernel 1GB code at 0xC0000000
+     *    .quad 0xc0c392000000ffff    ; 0x18 kernel 1GB data at 0xC0000000
+     *    .quad 0x00cbfa000000ffff    ; 0x23 user   3GB code at 0x00000000
+     *    .quad 0x00cbf2000000ffff    ; 0x2b user   3GB data at 0x00000000
+     *    .quad 0x0000000000000000    ; not used
+     *    .quad 0x0000000000000000    ; not used
+     *    .fill 2*NR_TASKS,8,0        ; space for LDT's and TSS's etc
+     *
+     *
+     * According above assembly code, the procdure can setup GDTR as follow: 
      */
 
-    /* Step0: Obtain the virtual address of 'gdt' */
+     /* Step 0:
+      *  Obtain the virtual-address of 'gdt'.
+      */
     virtual = (unsigned int)(unsigned long)gdt;
 
-    /* Step1: Obtian the logical-address
-     *  The 'gdt' locate on kernel Data segment, so DS as segment selector.
-     *  And virtual address as offset for logical address.
+    /*
+     * Step 1:
+     *  Obtain the logical-address of 'gdt'
+     *  Becase the logical-address contains a segment selector and an offset
+     *  on linear space, and 'gdt' locates on kernel data segment, the 
+     *  logical-address as follow:
+     *     DS : Offset
+     *  Here, the offset is equal to virtual-address.
      */
     __asm__ ("mov %%ds, %0" : "=m" (Sel));
+    offset = virtual;
 
-    /* Step2: Obtian the linear-address
-     *  The linear-address contain the base address of segment and offset.
+    /*
+     * Step 2:
+     *  Obtain the linear-address of 'gdt'
+     *  The linear-address is a 32-bit address that consists a base address
+     *  of segment addition a offset on segment. The process should check
+     *  whether the offset over limit of segment. So linear-address as fllow:
+     *    Base address + Offset
+     *  Here, the base address from segment descriptor. The processor use 
+     *  specify segment selector to point a segment descriptor.
      */
     if (Sel & 0x4) {
-        /* Segment locate on LDT */
+        /* Segment descriptor locate on LDT */
         desc = current->ldt + (Sel >> 3);
     } else {
-        /* Segment locate on GDT */
+        /* Segment descriptor locate on GDT */
         desc = gdt + (Sel >> 3);
     }
-    if (virtual > get_limit(Sel))
-        panic("The Offset over segment limit");
-    linear = get_base(*desc) + virtual;
+    /* Check whether offset over segment */
+    if (offset > get_limit(Sel))
+        panic("The Offset over segment");
+    linear = get_base(*desc) + offset;
 
-    /* Step3: Obtain gdt limit */
+    /*
+     * Step 3:
+     *  Obtain the limit of GDT
+     *  As assembly code on 'arch/x86/boot/head.S', the processor defines and
+     *  initialization a Global Descriptor Table on kernel data segment. As
+     *  follow:
+     *
+     * .align 4
+     * gdt:
+     *    .quad 0x0000000000000000    ; NULL descriptor
+     *    .quad 0x0000000000000000    ; not used 
+     *    .quad 0xc0c39a000000ffff    ; 0x10 kernel 1GB code at 0xC0000000
+     *    .quad 0xc0c392000000ffff    ; 0x18 kernel 1GB data at 0xC0000000
+     *    .quad 0x00cbfa000000ffff    ; 0x23 user   3GB code at 0x00000000
+     *    .quad 0x00cbf2000000ffff    ; 0x2b user   3GB data at 0x00000000
+     *    .quad 0x0000000000000000    ; not used
+     *    .quad 0x0000000000000000    ; not used
+     *    .fill 2*NR_TASKS,8,0        ; space for LDT's and TSS's etc
+     *
+     * And the limit of GDT indicate the number byte of GDT. As definition,
+     * the processor define 8 fixed member on GDT, e.g. 
+     * 1) NULL descriptor
+     * 2) 3 reserved descriptors
+     * 3) kernel code segment
+     * 4) kernel data segment
+     * 5) user code segment
+     * 6) user data segment
+     * 
+     * And remain members are used to store LDT or TSS segment descriptor.
+     * So the number of segment descriptor on GDT is:
+     *     8 + 2 * NR_TASKS 
+     * The 'NR_TASKS' indicates the number of task. On GDTR register, the 
+     * lower 2 byte indicates the numbe byte of limit which begin with 0, so
+     * limit as follow:
+     */
+    limit = (8 + 2 * NR_TASKS) * 8 - 1;
 
-    /* Step4: Load the base address and limit into GDTR */
+    /*
+     * Step 4:
+     *  Invoke 'LGDT' instruction to load base linear address and limit to 
+     *  GDTR, as follow:
+     */
+    GDTR[0] = limit;
     GDTR[1] = linear & 0xFFFF;
     GDTR[2] = (linear >> 16) & 0xFFFF;
 
     __asm__ ("lgdt %0" :: "m" (GDTR));
+    printk("LGDT ==> GDTR-base: %#x limit %#x\n", linear, limit);
 #endif
 
     return 0;
