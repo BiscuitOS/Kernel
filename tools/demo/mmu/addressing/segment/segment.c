@@ -861,6 +861,24 @@ static int TR_entence(void)
     return 0;
 }
 
+/*
+ * Segment Descriptor
+ *
+ * A segment descriptor is a data struction in a GDT or LDT that provides the
+ * processor with the size and location of a segment, as well as access 
+ * control and status information. Segment descriptors are typically created 
+ * by compilers, linkers, loaders, or the operating system or executive, but 
+ * not application programs. 
+ */
+static int segment_descriptor_entence(void)
+{
+    unsigned short __unused Sel;
+    struct desc_struct __unused * desc;
+
+
+    return 0;
+}
+
 static int segment_entence(void)
 {
     /* Segment selector entence */
@@ -877,6 +895,9 @@ static int segment_entence(void)
 
     /* Task Register */
     TR_entence();
+
+    /* Segment Descriptor */
+    segment_descriptor_entence();
     return 0;
 }
 

@@ -142,7 +142,7 @@ config DEBUG_IDTR_LIDT
 endif # DEBUG_MMU_IDTR
 
 config DEBUG_MMU_TR
-	bool "TR: Task Register"
+	bool "TR:   Task Register"
 	help
 	  Task Register.
 
@@ -160,6 +160,43 @@ config DEBUG_TR_LTR
 	  Load Task Register.
 
 endif # DEBUG_MMU_TR
+
+config DEBUG_MMU_SEG_DESC
+	bool "Segment Descriptor"
+	help
+	  Segment Descriptor
+
+if DEBUG_MMU_SEG_DESC
+
+choice
+	prompt "Select specify segment selector"
+
+config SEG_DESC_KERNEL_CS
+	bool "CS: Kernel code segment selector"
+
+config SEG_DESC_KERNEL_DS
+	bool "DS: Kernel data segment selector"
+
+config SEG_DESC_USER_CS
+	bool "CS: User code segment selector"
+
+config SEG_DESC_USER_DS
+	bool "DS: User data segment selector"
+
+config SEG_DESC_LDT
+	bool "LDT: Local descriptor Table segment selector"
+
+config SEG_DESC_TSS
+	bool "TSS: Task Status segment selector"
+
+endchoice
+
+config DEBUG_SEG_DESC_NODE
+	bool "Common procedure to obtain a segment descriptor"
+	help
+	  Common procedure to obtain a segment descriptor.
+
+endif # DEBUG_MMU_SEG_DESC
 
 endif # DEBUG_MMU_SEGMENT
 
