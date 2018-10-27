@@ -399,6 +399,35 @@ IDTR
 
 ```
 
+### Task Register (TR)
+
+The task register holds the 16-bit segment selector, base address (32 bits in
+protected mode), segment limit, and descriptor attribute for the TSS of the
+current task. The selector references the TSS descriptor in the GDT. The base
+address specifies the linear address of byte 0 of the TSS; the segment limit
+specifies the number of bytes in the TSS.
+
+```
+ Task Register
+
+ 15            0
+ +-------------+  +----------------------------+---------------+-----------+
+ |   Seg.Sel   |  | 32-bit linear base address | Segment limit | Attribute |
+ +-------------+  +----------------------------+---------------+-----------+
+```
+
+The LTR and STR instructions load and store the segment selector part of the 
+task register, respectively. When the LTR instruction loads a segment selector
+in the task register, the base address, limit, and descriptor attribute from
+the TSS descriptor are automatically loaded into the task register. On power
+up or reset of the processor, the base address is set to the default value of
+0 and the limit is set to 0xFFFFH.
+
+When a task switch occurs, the task register is automatically loaded with the
+segment selector and descriptor for the TSS for the new task. The contents
+of the task register are not automatically saved prior to writing the new
+TSS information into the register.
+
 # Segment Descriptor
 
 A segment descriptor is a data struction in a GDT or LDT that provides the
@@ -438,40 +467,3 @@ stack-fault exceptions. Decreasing the value in the segment limit field for
 an expand-down segment allocates new memory at the bottom of the segment's 
 address space, rather than at the top. IA-32 architecture stacks always grow 
 downwards, making this mechanism convenient for expandable stacks.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

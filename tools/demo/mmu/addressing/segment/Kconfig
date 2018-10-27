@@ -9,7 +9,7 @@ config DEBUG_MMU_SEGMENT
 if DEBUG_MMU_SEGMENT
 
 config DEBUG_SEG_SEL
-	bool "Segment selector: Register and Instructions"
+	bool "Segment Selector: Register and Instructions"
 	help
 	  Segment Selector.
 
@@ -141,6 +141,26 @@ config DEBUG_IDTR_LIDT
 	  Load Interrupt Descriptor Table.
 
 endif # DEBUG_MMU_IDTR
+
+config DEBUG_MMU_TR
+	bool "TR: Task Register"
+	help
+	  Task Register.
+
+if DEBUG_MMU_TR
+
+config DEBUG_TR_STR
+	bool "STR: Store Task Register"
+	help
+	  Store Task Register.
+
+config DEBUG_TR_LTR
+	bool "LTR: Load Task Register"
+	select DEBUG_TR_STR
+	help
+	  Load Task Register.
+
+endif # DEBUG_MMU_TR
 
 endif # DEBUG_MMU_SEGMENT
 

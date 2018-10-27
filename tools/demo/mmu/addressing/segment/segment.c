@@ -585,7 +585,7 @@ static int LDTR_entence(void)
      * to descriptors in the LDT (except by the LAR, VERR, VERW or LSL 
      * instructions) cause a general protection exception (#GP).
      */
-    __asm__ ("lldt %0" : "=m" (Sel));
+    __asm__ ("lldt %0" :: "m" (Sel));
 #endif
     return 0;
 }
@@ -654,7 +654,83 @@ static int IDTR_entence(void)
      * high-order byte of the operand is not used and the high-order byte of
      * the base address in the IDTR is filled with zero.
      */
-    __asm__ ("lidt %0" : "=m" (IDTR));
+    __asm__ ("lidt %0" :: "m" (IDTR));
+#endif
+    return 0;
+}
+
+/*
+ * Task Register (TR)
+ *
+ * The task register holds the 16-bit segment selector, base address (32 bits 
+ * in protected mode), segment limit, and descriptor attribute for the TSS of 
+ * the current task. The selector references the TSS descriptor in the GDT. 
+ * The base address specifies the linear address of byte 0 of the TSS; the 
+ * segment limit specifies the number of bytes in the TSS.
+ *
+ *
+ * Task Register
+ *
+ * 15            0
+ * +-------------+  +----------------------------+---------------+-----------+
+ * |   Seg.Sel   |  | 32-bit linear base address | Segment limit | Attribute |
+ * +-------------+  +----------------------------+---------------+-----------+
+ *
+ *
+ * The LTR and STR instructions load and store the segment selector part of 
+ * the task register, respectively. When the LTR instruction loads a segment 
+ * selector in the task register, the base address, limit, and descriptor 
+ * attribute from the TSS descriptor are automatically loaded into the task 
+ * register. On power up or reset of the processor, the base address is set 
+ * to the default value of 0 and the limit is set to 0xFFFFH.
+ *
+ * When a task switch occurs, the task register is automatically loaded with 
+ * the segment selector and descriptor for the TSS for the new task. The 
+ * contents of the task register are not automatically saved prior to writing 
+ * the new TSS information into the register.
+ *
+ */
+static int TR_entence(void)
+{
+    unsigned short __unused TR;
+
+#ifdef CONFIG_DEBUG_TR_STR
+    /*
+     * STR -- Store Task Register
+     *
+     * Stores the segment selector from the task register (TR) in the 
+     * destination operand. The destination operand can be a general-purpose
+     * register or a memory location. The segment selector stored with this
+     * instruction points to the task state segment (TSS) for the currently
+     * running task.
+     *
+     * When the destination operand is a 32-bit register, the 16-bit segment
+     * selector is copied into the lower 16 bits of the register and the upper
+     * 16 bits of the register are cleared. When the destination operand is a
+     * memory location, the segment selector is written to memory as a 16-bit
+     * quantity, regardless of operand size.
+     */
+    __asm__ ("str %0" : "=m" (TR));
+
+    printk("Task Register: Sel %#x\n", TR);
+#endif
+
+#ifdef CONFIG_DEBUG_TR_LTR
+    /*
+     * LTR -- Load Task Register
+     *
+     * Loads the source operand into the segment selector field of the task
+     * register. The source operand (a general-purpose register or a memory
+     * location) contains a segment selector that points to a task state 
+     * segment (TSS). After the segment selector is loaded in the task 
+     * register, the processor uses the segment selector to locate the segment
+     * descriptor for the TSS in the global descriptor (GDT). It then loads 
+     * the segment limit and base address for the TSS from the segment 
+     * descriptor into the task register. The task pointed to by the task
+     * register is marked busy, but a switch to the task does not occur.
+     *
+     */
+    __asm__ ("ltr %0" :: "m" (TR));
 #endif
     return 0;
 }
@@ -673,6 +749,8 @@ static int segment_entence(void)
     /* Interrupt Descriptor Table Register */
     IDTR_entence();
 
+    /* Task Register */
+    TR_entence();
     return 0;
 }
 
