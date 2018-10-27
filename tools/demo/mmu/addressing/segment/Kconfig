@@ -90,17 +90,37 @@ config DEBUG_MMU_GDTR
 if DEBUG_MMU_GDTR
 
 config DEBUG_GDTR_SGDT
-	bool "SGDT: store Global Descriptor Table register"
+	bool "SGDT: Store Global Descriptor Table register"
 	help
 	  Store Global descriptor table register.
 
 config DEBUG_GDTR_LGDT
-	bool "LGDT: load Global Descriptor Table register"
+	bool "LGDT: Load Global Descriptor Table register"
 	select DEBUG_GDTR_SGDT
 	help
 	  Load Global descriptor table register.
 
 endif # DEBUG_MMU_GDTR
+
+config DEBUG_MMU_LDTR
+	bool "LDTR: Local Descriptor Table Register and Instructions"
+	help
+	  Debug Local descriptor table register.
+
+if DEBUG_MMU_LDTR
+
+config DEBUG_LDTR_SLDT
+	bool "SLDT: Store Local Descriptor table register"
+	help
+	  Store Global descriptor table register.
+
+config DEBUG_LDTR_LLDT
+	bool "LLDT: Load Local Descriptor table register"
+	select DEBUG_LDTR_SLDT
+	help
+	  Load Local descriptor table register.
+
+endif # DEBUG_MMU_LDTR
 
 endif # DEBUG_MMU_SEGMENT
 

@@ -512,6 +512,84 @@ static int GDTR_entence(void)
     return 0;
 }
 
+/*
+ * Local Descriptor Table (LDTR)
+ *
+ * The LDTR register holds the 16-bit segment selector, base address (32 bits
+ * in protected mode), segment limit, and descriptor attributes for the LDT.
+ * The base address specifies the linear address of byte 0 of the LDT segment;
+ * the segment limit specifies the number of bytes in the segment.
+ *
+ *
+ * LDTR
+ *
+ * 15            0
+ * +-------------+  +----------------------------+---------------+-----------+
+ * |   Seg.Sel   |  | 32-bit linear base address | Segment limit | Attribute |
+ * +-------------+  +----------------------------+---------------+-----------+
+ *
+ *
+ * The LLDT and SLDT instructions load and store the segment selector part of
+ * the LDTR register, respectively. The segment that contains the LDT must have
+ * a segment descriptor in the GDT. When the LLDT instruction loads a segment
+ * selector in the LDTR: the base address, limit, and descriptor attribute from
+ * the LDT descriptor are automatically loaded in the LDTR.
+ *
+ * When a task switch occurs, the LDTR is automatically loaded with the segment
+ * selector and descriptor for the LDT for the new task. The contents of the
+ * LDTR are not automatically saved prior to writing the new LDT information
+ * into the register.
+ *
+ * On power up or reset of the processor, the segment selector and base address
+ * are set to the default value of 0 and the limit is set to 0x0FFFFH.
+ */
+static int LDTR_entence(void)
+{
+    unsigned short __unused Sel;
+
+#ifdef CONFIG_DEBUG_LDTR_SLDT
+    /*
+     * SLDT -- Store local descriptor table register
+     *
+     * Stores the segment selector from the local descriptor table register (
+     * LDTR) in the destination operand. The destination operand can be a
+     * general-purpose register or a memory location. The segment selector 
+     * stored with this instruction points to the segment descriptor (located
+     * in the GDT) for the current LDT. This instruction can only by executed
+     * in protected mode.
+     *
+     * DEST <---- LDTR(SegmentSelector);
+     */
+    __asm__ ("sldt %0" : "=m" (Sel));
+
+    printk("SLDT: Sel for LDT => %#x\n", Sel);
+#endif
+
+#ifdef CONFIG_DEBUG_LDTR_LLDT
+    /*
+     * LLDT -- Load local descriptor table register
+     *
+     * Loads the source operand into the segment selector field of the local
+     * descriptor table register (LDTR). The source operand (a general-purpose
+     * register or a memory location) contains a segment selector that points
+     * to a local descriptor table (LDT). After the segment selector is loaded
+     * in the LDTR, the processor uses the segment selector to locate the 
+     * segment descriptor for the LDT in the global descriptor table (GDT).
+     * It then loads the segment limit and base address for the LDT from the 
+     * segment descriptor into the LDTR. The segment register DS, ES, SS, FS,
+     * GS, and CS are not affectd by this instruction, nor is the LDTR field
+     * in the task segment (TSS) for the current task.
+     *
+     * If bits 2-15 of the source operand are 0, LDTR is marked invalid and
+     * LLDT instruction completes silently. However, all subsequent references
+     * to descriptors in the LDT (except by the LAR, VERR, VERW or LSL 
+     * instructions) cause a general protection exception (#GP).
+     */
+    __asm__ ("lldt %0" : "=m" (Sel));
+#endif
+    return 0;
+}
+
 static int segment_entence(void)
 {
     /* Segment selector entence */
@@ -520,6 +598,8 @@ static int segment_entence(void)
     /* Global Descriptor Table Register */
     GDTR_entence();
 
+    /* Local Descriptor Table Register */
+    LDTR_entence();
     return 0;
 }
 
