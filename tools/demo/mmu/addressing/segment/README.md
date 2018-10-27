@@ -412,33 +412,32 @@ all types of segment descriptors.
 
 The flags and fields in a segment descriptor are as follows:
 
-**Segment limit field**
-          
-     Specifies the size of the segment. The processor puts together the two
-     segment limit fields to form a 20-bit value. The processor interprets 
-     the segment limit in one of two ways, depending on the setting of the
-     **G** (granularity) flag:
+### Segment limit field
 
-     * If the granularity flag is clear, the segment size can range from 1 
-       byte to 1 Mbyte, in byte increments.
+Specifies the size of the segment. The processor puts together the two 
+segment limit fields to form a 20-bit value. The processor interprets the 
+segment limit in one of two ways, depending on the setting of the **G** (
+granularity) flag:
 
-     * If the granularity flag is set, the segment size can range from 4KBytes
-       to 4GBytes, in 4-KByte increments.
+* If the granularity flag is clear, the segment size can range from 1 byte to 
+  1 Mbyte, in byte increments.
 
-     The processor uses the segment limit in two different ways, depending on
-     whether the segment is an expand-up or an expand-down segment. For 
-     expand-up segments, the offset in a logical address can range from 0 to
-     the segment limit. Offsets greater than the segment limit generate 
-     general-protection exceptions (#GP, for all segments other than SS) or
-     stack-fault exception (#SS for the SS segment). For expand-down segments,
-     the segment limit has the reverse function; the offset can range from
-     the segment limit plus 1 to FFFFFFFFH or FFFFH, depending on the setting
-     of the B flag. Offsets less than or equal to the segment limit generate
-     general-protection exceptions or stack-fault exceptions. Decreasing the
-     value in the segment limit field for an expand-down segment allocates 
-     new memory at the bottom of the segment's address space, rather than at
-     the top. IA-32 architecture stacks always grow downwards, making this
-     mechanism convenient for expandable stacks.
+* If the granularity flag is set, the segment size can range from 4KBytes
+  to 4GBytes, in 4-KByte increments.
+
+The processor uses the segment limit in two different ways, depending on
+whether the segment is an expand-up or an expand-down segment. For expand-up 
+segments, the offset in a logical address can range from 0 to the segment 
+limit. Offsets greater than the segment limit generate general-protection 
+exceptions (#GP, for all segments other than SS) or stack-fault exception (#SS 
+for the SS segment). For expand-down segments, the segment limit has the 
+reverse function; the offset can range from the segment limit plus 1 to 
+FFFFFFFFH or FFFFH, depending on the setting of the B flag. Offsets less than 
+or equal to the segment limit generate general-protection exceptions or 
+stack-fault exceptions. Decreasing the value in the segment limit field for 
+an expand-down segment allocates new memory at the bottom of the segment's 
+address space, rather than at the top. IA-32 architecture stacks always grow 
+downwards, making this mechanism convenient for expandable stacks.
 
 
 
