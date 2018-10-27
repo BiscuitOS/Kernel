@@ -378,6 +378,27 @@ into the register.
 On power up or reset of the processor, the segment selector and base address
 are set to the default value of 0 and the limit is set to 0x0FFFFH.
 
+### IDTR Interrupt Descriptor Table Register
+
+The IDTR register holds the base address (32 bits in protected mode) and 
+16-bit table limit for the IDT. The base address specifies the linear address
+of byte 0 of the IDT; the table limit specifies the number of bytes in the
+table. The LIDT and SIDT instructions load and store the IDTR register, 
+reppectively. On power up or reset of the processor, the base address is set
+to the default value of 0 and the limit is set to 0x0FFFFH. The base address
+and limit in the register can then be changed as part of the processor
+initialization process.
+
+```
+IDTR
+
+     47                             16 15                      0
+     +--------------------------------+------------------------+
+     |   32-bit linear Base address   |   16-bit Table limit   |
+     +--------------------------------+------------------------+
+
+```
+
 # Segment Descriptor
 
 A segment descriptor is a data struction in a GDT or LDT that provides the

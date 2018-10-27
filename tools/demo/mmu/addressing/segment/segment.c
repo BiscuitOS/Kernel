@@ -590,6 +590,75 @@ static int LDTR_entence(void)
     return 0;
 }
 
+/*
+ * IDTR Interrupt Descriptor Table Register
+ *
+ * The IDTR register holds the base address (32 bits in protected mode) and
+ * 16-bit table limit for the IDT. The base address specifies the linear 
+ * address of byte 0 of the IDT; the table limit specifies the number of 
+ * bytes in the table. The LIDT and SIDT instructions load and store the IDTR 
+ * register, reppectively. On power up or reset of the processor, the base 
+ * address is set to the default value of 0 and the limit is set to 0x0FFFFH. 
+ * The base address and limit in the register can then be changed as part of 
+ * the processor initialization process.
+ *
+ *
+ * IDTR
+ * 
+ *      47                             16 15                      0
+ *      +--------------------------------+------------------------+
+ *      |   32-bit linear Base address   |   16-bit Table limit   |
+ *      +--------------------------------+------------------------+
+ *
+ */
+static int IDTR_entence(void)
+{
+    unsigned short __unused IDTR[3];
+    unsigned short __unused limit;
+    unsigned int __unused base;
+
+#ifdef CONFIG_DEBUG_IDTR_SIDT
+    /*
+     * SIDT -- Store Interrupt Descriptor Table Register
+     *
+     * Stores the content the interrupt descriptor table register (IDTR) in
+     * the destination oprand. The destination operand specifies a 6-byte 
+     * memory location.
+     * 
+     * The 16-bit limit field of the register is stored in the low 2 bytes of
+     * the memory location and the 32-bit base address is stored in the high
+     * 4 bytes.
+     */
+    __asm__ ("sidt %0" : "=m" (IDTR));
+    /* Base linear address of IDTR */
+    base = IDTR[1] | (IDTR[2] << 16);
+    /* Limit of IDTR */
+    limit = IDTR[0];
+
+    printk("SIDT: IDTR base: %#x limit %#x\n", base, limit);
+#endif
+
+#ifdef CONFIG_DEBUG_IDTR_LIDT
+    /*
+     * LIDT -- Load Interrupt Descriptor Table Register.
+     *
+     * Loads the values in the source operand into the interrupt descriptor
+     * table register (IDTR). The source operand specifies a 6-byte memory
+     * location that contains the base address (a linear address) and the 
+     * limit (size of table in bytes) of the interrupt descriptor table.
+     * If operand-size attribute is 32 bits, a 16-bit limit (lower 2 bytes of
+     * the 6-byte data operand) and a 32-bit base address (upper 4 bytes of
+     * the data operand) are loaded into the register. If the operand-size
+     * attribute is 16 bits, a 16-bit limit (lower 2 bytes) and a 24-bit
+     * base address (third, fourth, and fifth byte) are loaded. Here, the
+     * high-order byte of the operand is not used and the high-order byte of
+     * the base address in the IDTR is filled with zero.
+     */
+    __asm__ ("lidt %0" : "=m" (IDTR));
+#endif
+    return 0;
+}
+
 static int segment_entence(void)
 {
     /* Segment selector entence */
@@ -600,6 +669,10 @@ static int segment_entence(void)
 
     /* Local Descriptor Table Register */
     LDTR_entence();
+
+    /* Interrupt Descriptor Table Register */
+    IDTR_entence();
+
     return 0;
 }
 

@@ -122,6 +122,26 @@ config DEBUG_LDTR_LLDT
 
 endif # DEBUG_MMU_LDTR
 
+config DEBUG_MMU_IDTR
+	bool "IDTR: Interrupt Descriptor Table Register"
+	help
+	  Interrupt Descriptor Table register.
+
+if DEBUG_MMU_IDTR
+
+config DEBUG_IDTR_SIDT
+	bool "SIDT: Store Interrupt Descriptor Table Register"
+	help
+	  Store Interrupt Descriptor Table.
+
+config DEBUG_IDTR_LIDT
+	bool "LIDT: Load Interrupt Descriptor Table Register"
+	select DEBUG_IDTR_SIDT
+	help
+	  Load Interrupt Descriptor Table.
+
+endif # DEBUG_MMU_IDTR
+
 endif # DEBUG_MMU_SEGMENT
 
 endmenu
