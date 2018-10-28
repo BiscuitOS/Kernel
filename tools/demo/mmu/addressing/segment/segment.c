@@ -1077,6 +1077,26 @@ static int segment_descriptor_entence(void)
     printk("Limit from LSL instruction: %#x\n", limit + 1);
 #endif
 
+#ifdef CONFIG_DEBUG_SEG_DESC_BASE
+    /*
+     * Base address field
+     *
+     * Defines the location of byte 0 of the segment within the 4-GByte linear
+     * address space. The processor puts together the three base address fields
+     * to from a single 32-bit value. Segment base addresses should be aligned
+     * to 16-byte boundaries. Although 16-byte alignment is not required, this
+     * alignment allows programs to maximize performance by aligning code and 
+     * data on 16-byte boundaries.
+     */
+    base = ((desc->a >> 16) & 0xFFFF) | ((desc->b & 0xFF) << 16) |
+           (((desc->b >> 24) & 0xFF) << 24);
+    printk("Segment Base address: %#x\n", base);
+
+    /* Another way to obtain base address of segment descriptor */
+    base = get_base(*desc);
+    printk("get_base() to obtian base address: %#x\n", base);
+#endif
+
     return 0;
 }
 

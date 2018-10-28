@@ -210,6 +210,12 @@ config DEBUG_SEG_DESC_LIMIT
 	help
 	  The limit field of segment.
 
+config DEBUG_SEG_DESC_BASE
+	bool "Base address field"
+	select DEBUG_SEG_DESC_COMMON
+	help
+	  The base address field of segment.
+
 endif # DEBUG_MMU_SEG_DESC
 
 endif # DEBUG_MMU_SEGMENT

@@ -467,3 +467,12 @@ stack-fault exceptions. Decreasing the value in the segment limit field for
 an expand-down segment allocates new memory at the bottom of the segment's 
 address space, rather than at the top. IA-32 architecture stacks always grow 
 downwards, making this mechanism convenient for expandable stacks.
+
+### Base address field
+
+Defines the location of byte 0 of the segment within the 4-GByte linear 
+address space. The processor puts together the three base address fields
+to from a single 32-bit value. Segment base addresses should be aligned to
+16-byte boundaries. Although 16-byte alignment is not required, this 
+alignment allows programs to maximize performance by aligning code and data
+on 16-byte boundaries.
