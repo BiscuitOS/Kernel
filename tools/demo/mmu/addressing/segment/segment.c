@@ -480,10 +480,6 @@ static int GDTR_entence(void)
      * used in application programs without causing an exception to be 
      * generated if CR4.UMIP = 0.
      */
-
-    /*
-     * Obtain base address and limit from GDTR
-     */
     __asm__ ("sgdt %0" : "=m" (GDTR));
     /* Base address */
     base = GDTR[1] | (GDTR[2] << 16);
@@ -872,9 +868,214 @@ static int TR_entence(void)
  */
 static int segment_descriptor_entence(void)
 {
+    unsigned short __unused CS;
+    unsigned short __unused DS;
+    unsigned short __unused SS;
     unsigned short __unused Sel;
+    unsigned int __unused limit;
+    unsigned int __unused base;
     struct desc_struct __unused * desc;
 
+#ifdef CONFIG_DEBUG_SEG_DESC_COMMON
+    /*
+     * A segment descriptor is a data struction in a GDT or LDT, and system
+     * defined a variable named 'gdt' to point global descriptor table or
+     * defined a pointer named 'ldt' on 'task_struct' to point local 
+     * descriptor table. The operating system utilzes a specify segment 
+     * selector to find a segment on GDT or LDT, though, the procedure can
+     * follow steps to obtain a specify segment descriptor.
+     */
+
+    /*
+     * Step 0: Obtain a specify segment selector.
+     *   The memory space is divided into various segments, which include CS (
+     *   Code segment), DS (Data segment), SS (Stask segment), and so on. 
+     *   Each segment contains specify data or code, and operating system use
+     *   segment selector to locate a segment descriptor on GDT or LDT, so
+     *   procedure should indicate segment selector at first. The details
+     *   inforamtion of segment selector as follow:
+     *
+     *   1) Global initial- or uninitial- variable or static local initial-
+     *      or uninitial- variable on kernel space belongs to DS (Data segment)
+     *      of kernel.  
+     *
+     *   2) Local initial- or uninitial- variable on kernel space belongs to
+     *      SS (Stack segment) of kernel.
+     *
+     *   3) Variable on kernel stack belongs to SS (Stack segment) of kernel.
+     *
+     *   4) Code of kernel procedure belongs to CS (Code segment) of kernel.
+     *
+     *   5) Global initial- or uninitial- variable or static local initial-
+     *      or uninitial- variable on user space belongs to DS (Data segment)
+     *      of user.  
+     *
+     *   6) Local initial- or uninitial- variable on user space belongs to
+     *      SS (Stack segment) of user.
+     *
+     *   7) Variable on user stack belongs to SS (Stack segment) of user.
+     *   
+     *   8) Segment descriptor points to LDT that belongs to segment selector 
+     *      which store on LDTR.
+     *   
+     *   9) Segment descriptor points to TSS that belongs to segment selector
+     *      which store on TR. 
+     */
+#ifdef CONFIG_SEG_DESC_KERNEL_CS
+    /* Kernel code segment selector */
+    __asm__ ("mov %%cs, %0" : "=m" (Sel));
+#elif defined CONFIG_SEG_DESC_KERNEL_DS
+    /* Kernel data segment selector */
+    __asm__ ("mov %%ds, %0" : "=m" (Sel));
+#elif defined CONFIG_SEG_DESC_KERNEL_SS
+    /* Kernel stack segment selector */
+    __asm__ ("mov %%ss, %0" : "=m" (Sel));
+#elif defined CONFIG_SEG_DESC_USER_CS
+    /* User code segment selector */
+    __asm__ ("mov %%cs, %0" : "=m" (Sel));
+#elif defined CONFIG_SEG_DESC_USER_FS
+    /* User data segment selector */
+    __asm__ ("mov %%fs, %0" : "=m" (Sel));
+#elif defined CONFIG_SEG_DESC_USER_SS
+    /* User stack segment selector */
+    __asm__ ("mov %%ss, %0" : "=m" (Sel));
+#elif defined CONFIG_SEG_DESC_LDT
+    /* LDT segent selector */
+    __asm__ ("sldt %0" : "=m" (Sel));
+#elif defined CONFIG_SEG_DESC_TSS
+    /* TSS segment selector */
+    __asm__ ("str %0" : "=m" (Sel));
+#else
+    /* NULL segment selector */
+    Sel = 0x0000;
+#endif
+
+    /*
+     * Step 1: Otbain segment descriptor on GDT or LDT
+     *   The operating system defined a variable named 'gdt' to hold global
+     *   descriptor table or a pointer named 'ldt' on 'task_struct' for 
+     *   current task that hold a local descriptor table. After obtian a
+     *   segment selector which points to a specify segment descriptor on GDT
+     *   or LDT. If the bit 2 of segment selector was set, the segment 
+     *   selector points to a segment descriptor on LDT; If the bit 2 of 
+     *   segment selector was cleared, the segment selector points to a 
+     *   segment descriptor on GDT. 
+     *
+     *       15                                        3    2     0
+     *       +-----------------------------------------+----+-----+
+     *       |               Index                     | TI | RPL |
+     *       +-----------------------------------------+----+-----+
+     *                                                    A    A
+     *                                                    |    |
+     *       Table Indicator -----------------------------o    |
+     *         0 = GDT                                         |
+     *         1 = LDT                                         |
+     *       Request Privilege Level (RPL) --------------------o
+     *
+     *
+     *   The bit 3 through 15 that selects one of 8192 descriptor in the GDT 
+     *   or LDT. The processor multiplies the index value by 8 (the number 
+     *   of bytes in a segment descriptor) and adds the result to the base
+     *   address of the GDT or LDT (from the GDTR or LDTR register).
+     *  
+     *   The bits 0 and 1 that specifies the privilege level of the selector.
+     *   The privilege level can range from 0 to 3, with 0 being the most
+     *   privileged level.
+     */
+    if (Sel & 0x4) {
+        /* Segment descriptor locate on LDT */
+        desc = current->ldt + (Sel >> 3);
+    } else {
+        /* Segment descriptor locate on GDT */
+        desc = gdt + (Sel >> 3);
+    }
+#endif
+
+#ifdef CONFIG_DEBUG_SEG_DESC_LIMIT
+    /*
+     * Segment limit field
+     *
+     * Specifies the size of the segment. The processor puts together the 
+     * two segment limit fields to form a 20-bit value. The processor 
+     * interprets the segment limit in one of two ways, depending on the 
+     * setting of the G (granularity) flag:
+     *
+     * * If the granularity flag is clear, the segment size can range from 
+     *   1 byte to 1 Mbyte, in byte increments.
+     *
+     * * If the granularity flag is set, the segment size can range from 
+     *   4KBytes to 4GBytes, in 4-KByte increments.
+     *
+     * The processor uses the segment limit in two different ways, depending
+     * on whether the segment is an expand-up or an expand-down segment. For
+     * expand-up segments, the offset in a logical address can range from 0 
+     * to the segment limit. Offsets greater than the segment limit generate 
+     * general-protection exceptions (#GP, for all segments other than SS) or
+     * stack-fault exception (#SS for the SS segment). For expand-down 
+     * segments, the segment limit has the reverse function; the offset can 
+     * range from the segment limit plus 1 to FFFFFFFFH or FFFFH, depending
+     * on the setting of the B flag. Offsets less than or equal to the segment
+     * limit generate general-protection exceptions or stack-fault exceptions.
+     * Decreasing the value in the segment limit field for an expand-down 
+     * segment allocates new memory at the bottom of the segment's address 
+     * space, rather than at the top. IA-32 architecture stacks always grow
+     * downwards, making this mechanism convenient for expandable stacks.
+     *
+     */
+
+    /* Step 0: Obtain limit value from segment descriptor.
+     *   The bit 0 through 15 as the lower two bytes, and bit 48 through 51
+     *   as the most 4 bits to form a 20-bit value. 
+     */
+    limit = ((desc->a & 0xFFFF ) | (((desc->b >> 16) & 0xF) << 16)) & 0xFFFFF;
+    limit += 1;
+
+    /* Step 1: Indicate the granularity for limit.
+     *   If the granularity flag is clear, the segment size can range from 1
+     *   byte to 1 Mbyte, in byte increments; If the granularity flag is set,
+     *   the segment size can range from 4KBytes to 4GBytes, in 4-KByte 
+     *   increaments.
+     */
+    if (desc->b & 0x800000) {
+        /* The G flag is set, the segment size can range from 4KBytes to 
+         * 4GBytes, in 4-KByte increaments. */
+        limit *= 4 * 1024;
+    } else {
+        /* The G flag is clear, the segment size can range from 1 byte to 1
+         * MByte, in byte increament.
+         */
+        limit *= 1;
+    }
+
+    /* Step 2: Indicate the segment range.
+     *   1) Expend-up segment: All segments except stack segment are expend-up
+     *      segment, the offset in a logical address can range from 0 to the
+     *      segment limit.
+     *   2) Expand-down segment: the stack segment is expand-down segment. the
+     *      offset can range from the segment limit plus 1 to 0xFFFFFFFFH or
+     *      0xFFFFH, depending on the setting of the B flag. If the B flag is
+     *      set, the upper bound is 0xFFFFFFFFH (4GBytes); If the B flag is
+     *      clear, the upper bound is 0xFFFFH (64 KBytes).
+     */
+#if defined CONFIG_SEG_DESC_KERNEL_SS | defined CONFIG_SEG_DESC_USER_SS
+    /* Segment is a expend-down segment */
+    if (desc->b & 0x400000) {
+        /* The B flag is set, range from limit plus 1 to 0xFFFFFFFFH */
+        printk("Expend-down segment range from %#x to 0xFFFFFFFFH\n", limit);
+    } else {
+        /* The B flag is clear, range from limit plus 1 to 0xFFFF */
+        printk("Expend-down segment range from %#x to 0xFFFFH\n", limit);
+    }
+#else
+    /* Segment is a expend-up segment, range from 0 to limit */
+    printk("Expend-up segment range from 0 to %#x\n", limit);
+#endif
+    
+    /* In the end, the operating-system can utilize another way to obtain
+     * limit by "LSL" instructions, as follow */
+    __asm__ ("lsl %1, %0" : "=r" (limit) : "r" (Sel));
+    printk("Limit from LSL instruction: %#x\n", limit + 1);
+#endif
 
     return 0;
 }
@@ -901,4 +1102,4 @@ static int segment_entence(void)
     return 0;
 }
 
-device_debugcall(segment_entence);
+late_debugcall(segment_entence);

@@ -177,11 +177,17 @@ config SEG_DESC_KERNEL_CS
 config SEG_DESC_KERNEL_DS
 	bool "DS: Kernel data segment selector"
 
+config SEG_DESC_KERNEL_SS
+	bool "SS: Kernel stack segment selector"
+
 config SEG_DESC_USER_CS
 	bool "CS: User code segment selector"
 
-config SEG_DESC_USER_DS
-	bool "DS: User data segment selector"
+config SEG_DESC_USER_FS
+	bool "FS: User data segment selector"
+
+config SEG_DESC_USER_SS
+	bool "SS: User stack segment selector"
 
 config SEG_DESC_LDT
 	bool "LDT: Local descriptor Table segment selector"
@@ -191,10 +197,18 @@ config SEG_DESC_TSS
 
 endchoice
 
-config DEBUG_SEG_DESC_NODE
+config DEBUG_SEG_DESC_COMMON
 	bool "Common procedure to obtain a segment descriptor"
 	help
 	  Common procedure to obtain a segment descriptor.
+
+comment "flags and field in segment descriptor"
+
+config DEBUG_SEG_DESC_LIMIT
+	bool "Segment limit field"
+	select DEBUG_SEG_DESC_COMMON
+	help
+	  The limit field of segment.
 
 endif # DEBUG_MMU_SEG_DESC
 
