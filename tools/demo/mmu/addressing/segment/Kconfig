@@ -259,6 +259,12 @@ config DEBUG_SEG_DESC_L
 	help
 	  64-bit code segment.
 
+config DEBUG_SEG_DESC_AVL
+	bool "AVL (Available for use by system software)"
+	select DEBUG_SEG_DESC_COMMON
+	help
+	  Available for use by system software.
+
 endif # DEBUG_MMU_SEG_DESC
 
 endif # DEBUG_MMU_SEGMENT

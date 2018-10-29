@@ -565,13 +565,18 @@ compatibility mode. If L-bit is set, then D-bit must be cleared. When not in
 IA-32e mode or for non-code segments, bit 21 is reserved and should always by 
 set to 0.
 
+#### Available and reserved bits
+
+Bit 20 of the second doubleword of the segment descriptor is available for use
+by system software.
+
 ## Segment Types
 
 The descriptor types fall into two categories: 
 
 * **system segment** 
 
-* **data** or **code** segment. 
+* **data** or **code segment**. 
 
 They are determined by **S flag** and **Type filed** on segment descriptor.
 
