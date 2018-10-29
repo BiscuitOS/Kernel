@@ -1311,6 +1311,24 @@ static int segment_descriptor_entence(void)
     printk("DPL: %#x\n", DPL);
 #endif
 
+#ifdef CONFIG_DEBUG_SEG_DESC_P
+    /*
+     * P (Segment-present) flag
+     *
+     * Indicates whether the segment is present in memory (set) or not present
+     * (clear). If this flag is clear, the processor generates a segment-not-
+     * present exception (#NP) when a segment selector that points to the 
+     * segment descriptor is loaded into a segment register. Memory management
+     * software can use this flag to control which segments are actually loaded
+     * into physical memory at a given time. It offers a control in addition to
+     * paging for managing virtual memory.
+     */
+    if (desc->b & 0x8000) 
+        printk("Segment-Present flag set.\n");
+    else
+        printk("Segment-Present flag clear.\n");
+#endif
+
     return 0;
 }
 

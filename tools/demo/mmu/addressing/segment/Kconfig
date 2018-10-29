@@ -235,6 +235,12 @@ config DEBUG_SEG_DESC_DPL
 	help
 	  Descriptor privilege level field.
 
+config DEBUG_SEG_DESC_P
+	bool "P (Descriptor-Present) flag (bit 47)"
+	select DEBUG_SEG_DESC_COMMON
+	help
+	  Descriptor privilege level field.
+
 endif # DEBUG_MMU_SEG_DESC
 
 endif # DEBUG_MMU_SEGMENT

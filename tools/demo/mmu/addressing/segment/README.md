@@ -497,6 +497,23 @@ Specifies the privilege level of the segment. The privilege level can range
 from 0 to 3, with 0 being the most privileged level. The DPL is used to 
 control access to the segment.
 
+#### P (Segment-present) flag
+
+Indicates whether the segment is present in memory (set) or not present 
+(clear). If this flag is clear, the processor generates a segment-not-present
+exception (#NP) when a segment selector that points to the segment descriptor
+is loaded into a segment register. Memory management software can use this 
+flag to control which segments are actually loaded into physical memory at a
+given time. It offers a control in addition to paging for managing virtual 
+memory.
+
+Figure show the format of a segment descriptor when the segment-present flag
+is clear. When this flag is clear, the operating system or executive is free
+to use the locations marked 'Available' to store its own data, such as 
+information regarding the whereabouts of the missing segment.
+
+![Segment Descriptor When Segment-Present Flag is Clear](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000402.png)
+
 ## Segment Types
 
 The descriptor types fall into two categories: 
