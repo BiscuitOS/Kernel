@@ -247,6 +247,12 @@ config DEBUG_SEG_DESC_DB
 	help
 	  Default operation size.
 
+config DEBUG_SEG_DESC_G
+	bool "G (granularity) flag (bit 55)"
+	select DEBUG_SEG_DESC_COMMON
+	help
+	  Granularity for segment limit.
+
 endif # DEBUG_MMU_SEG_DESC
 
 endif # DEBUG_MMU_SEGMENT

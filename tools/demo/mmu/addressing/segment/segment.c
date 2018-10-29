@@ -1397,6 +1397,25 @@ static int segment_descriptor_entence(void)
     }
 #endif
 
+#ifdef CONFIG_DEBUG_SEG_DESC_G
+    /*
+     * G (granularity) flag
+     *
+     * Determines the scalling of the segment limit field. When the granularity
+     * flag is clear, the segment limit is interpreted in byte units; when flag
+     * is set, the segment limit is interpreted in 4-KByte units. (This flag 
+     * does not affect the granularity of the base address; it is always byte 
+     * granlar.) When the granularity flag is set, the twelve least significant
+     * bits of an offset are not tested when checking the offset against the
+     * segment limit. For example, when the granularity flag is set, a limit of
+     * 0 results in valid offsets from 0 to 4095.
+     */
+    if (desc->b & 0x800000)
+        printk("Limit granularity 4-KBytes\n");
+    else
+        printk("Limit granularity 1-Byte\n");
+#endif
+
     return 0;
 }
 
