@@ -216,6 +216,19 @@ config DEBUG_SEG_DESC_BASE
 	help
 	  The base address field of segment.
 
+config DEBUG_SEG_DESC_TYPE
+	bool "Type field"
+	select DEBUG_SEG_DESC_COMMON
+	select DEBUG_SEG_DESC_S
+	help
+	  The type field of segment descriptor.
+
+config DEBUG_SEG_DESC_S
+	bool "S (Descriptor type) flag (bit 44)"
+	select DEBUG_SEG_DESC_COMMON
+	help
+	  The descriptor type flag of segment.
+
 endif # DEBUG_MMU_SEG_DESC
 
 endif # DEBUG_MMU_SEGMENT

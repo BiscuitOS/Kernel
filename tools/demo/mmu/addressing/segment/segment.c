@@ -858,6 +858,163 @@ static int TR_entence(void)
 }
 
 /*
+ * Segment type
+ *
+ * Specifies whether the segment descriptor is for a system segment (S flag
+ * is clear) or a code or data segment (S flag is set).
+ */
+static int __unused segment_type_entence(struct desc_struct *desc)
+{
+
+    /*
+     * Code- and Data- Segment Types
+     *
+     *   When the S (desciptor type) flag in a segment descriptor is set, the
+     *   descriptor is for either a code or a data segment. The highest order
+     *   bit of the type field (bit 11 of the second double word of the 
+     *   segment descriptor) then determines whether the descriptor is for a
+     *   data segment (clear) or a code segment (set).
+     *
+     *   For data segment, the three low-order bits of the type field (bits 
+     *   8, 9, 10) are interpreted as accessed (A), write-enable (W), and
+     *   expansion-direction (E). See Table for a description of the encoding
+     *   of the bits in the byte field for code and data segments. Data 
+     *   segments can be read-only or read/write segments, depending on the 
+     *   setting of the write-enable bit.
+     */
+    if (desc->b & 0x1000) { /* S flag set for data- or code- segment */
+        /* Code segment descriptor */
+        if (desc->b & 0x800) {
+            printk("Code segment: ");
+            switch ((desc->b >> 8) & 0x7) {
+            case 0x0:
+                printk("Execute-Only\n");
+                break;
+            case 0x1:
+                printk("Execute-Only, accessed\n");
+                break;
+            case 0x2:
+                printk("Execute/Read\n");
+                break;
+            case 0x3:
+                printk("Execute/Read, accessed\n");
+                break;
+            case 0x4:
+                printk("Execute-Only, conforming\n");
+                break;
+            case 0x5:
+                printk("Execute-Only, conforming, accessed\n");
+                break;
+            case 0x6:
+                printk("Execute/Read, conforming\n");
+                break;
+            case 0x7:
+                printk("Execute/Read. conforming, accessed\n");
+            }
+        } else { 
+            /* Data segment descriptor */
+            printk("Data segment: ");
+            switch ((desc->b >> 8) & 0x7) {
+            case 0x0:
+                printk("Read-Only\n");
+                break;
+            case 0x1:
+                printk("Read-Only, accessed\n");
+                break;
+            case 0x2:
+                printk("Read/Write\n");
+                break;
+            case 0x3:
+                printk("Read/Write, accessed\n");
+                break;
+            case 0x4:
+                printk("Read-Only, expand-down\n");
+                break;
+            case 0x5:
+                printk("Read-Only, expand-down, accessed\n");
+                break;
+            case 0x6:
+                printk("Read/Write, expand-down\n");
+                break;
+            case 0x7:
+                printk("Read/Write, expand-down, accessed\n");
+                break;
+            }
+        }
+    } else {
+        /*
+         * System-Segment and Gate-Descriptor Types
+         *
+         * When the S (descriptor type) flag in segment descriptor is clear, 
+         * the descriptor type is a system descriptor. The processor recognizes
+         * the follow types of system descriptors:
+         *
+         * * Local descriptor-table (LDT) segment descriptor.
+         *
+         * * Task-state segment (TSS) descriptor.
+         *
+         * * Call-gate descriptor.
+         *
+         * * Interrupt-gate descriptor.
+         *
+         * * Trap-gate descriptor.
+         * 
+         * * Task-gate descriptor.
+         *
+         * These descriptor types fall into two categories: system-segment 
+         * descriptor and gate descriptors. System-segment descriptors point 
+         * to system segment (LDT and TSS segments). Gate descriptors are in 
+         * themselves **gates**, which hold pointers to procedure entry points
+         * in code segment (call, interrupt, and trap gates) or which hold 
+         * segment selector for TSS's (task gates).
+         */
+        switch ((desc->b >> 8) & 0xF) {
+        case 1:
+            printk("16-bit TSS (Available)\n");
+            break;
+        case 2:
+            printk("LDT\n");
+            break;
+        case 3:
+            printk("16-bit TSS (Busy)\n");
+            break;
+        case 4:
+            printk("16-bit Call Gate\n");
+            break;
+        case 5:
+            printk("Task Gate\n");
+            break;
+        case 6:
+            printk("16-bit interrupt Gate\n");
+            break;
+        case 7:
+            printk("16-bit Trap Gate\n");
+            break;
+        case 9:
+            printk("32-bit TSS (Available)\n");
+            break;
+        case 11:
+            printk("32-bit TSS (Busy)\n");
+            break;
+        case 12:
+            printk("32-bit Call Gate\n");
+            break;
+        case 14:
+            printk("32-bit Interrupt Gate\n");
+            break;
+        case 15:
+            printk("32-bit Trap Gate\n");
+            break;
+        default:
+            printk("Reserved\n");
+            break;
+        }
+    }
+
+    return 0;
+}
+
+/*
  * Segment Descriptor
  *
  * A segment descriptor is a data struction in a GDT or LDT that provides the
@@ -924,30 +1081,39 @@ static int segment_descriptor_entence(void)
 #ifdef CONFIG_SEG_DESC_KERNEL_CS
     /* Kernel code segment selector */
     __asm__ ("mov %%cs, %0" : "=m" (Sel));
+    printk("Kernel Code Segment Sel: %#x\n", Sel);
 #elif defined CONFIG_SEG_DESC_KERNEL_DS
     /* Kernel data segment selector */
     __asm__ ("mov %%ds, %0" : "=m" (Sel));
+    printk("Kernel Data Segment Sel: %#x\n", Sel);
 #elif defined CONFIG_SEG_DESC_KERNEL_SS
     /* Kernel stack segment selector */
     __asm__ ("mov %%ss, %0" : "=m" (Sel));
+    printk("Kernel Stack Segment Sel: %#x\n", Sel);
 #elif defined CONFIG_SEG_DESC_USER_CS
     /* User code segment selector */
     __asm__ ("mov %%cs, %0" : "=m" (Sel));
+    printk("User Code Segment Sel: %#x\n", Sel);
 #elif defined CONFIG_SEG_DESC_USER_FS
     /* User data segment selector */
     __asm__ ("mov %%fs, %0" : "=m" (Sel));
+    printk("User Data Segment Sel: %#x\n", Sel);
 #elif defined CONFIG_SEG_DESC_USER_SS
     /* User stack segment selector */
     __asm__ ("mov %%ss, %0" : "=m" (Sel));
+    printk("User Stack Segment Sel: %#x\n", Sel);
 #elif defined CONFIG_SEG_DESC_LDT
     /* LDT segent selector */
     __asm__ ("sldt %0" : "=m" (Sel));
+    printk("LDT Segment Sel: %#x\n", Sel);
 #elif defined CONFIG_SEG_DESC_TSS
     /* TSS segment selector */
     __asm__ ("str %0" : "=m" (Sel));
+    printk("TSS segment Sel: %#x\n", Sel);
 #else
     /* NULL segment selector */
     Sel = 0x0000;
+    printk("NULL Segment Selector\n");
 #endif
 
     /*
@@ -1056,20 +1222,37 @@ static int segment_descriptor_entence(void)
      *      0xFFFFH, depending on the setting of the B flag. If the B flag is
      *      set, the upper bound is 0xFFFFFFFFH (4GBytes); If the B flag is
      *      clear, the upper bound is 0xFFFFH (64 KBytes).
+     *
+     *   When the S (descriptor type) flag in a segment descriptor is set, the
+     *   descriptor is for either a code or a data segment. The highest order
+     *   bit of the type field (bit 11 of the second double word of the 
+     *   segment descriptor) then determines whether the descriptor is for a
+     *   data segment (clear) or a code segment (set).
+     *  
+     *   For data segments, the bit 10 are interpreted as expansion-direction
+     *   (E).
      */
-#if defined CONFIG_SEG_DESC_KERNEL_SS | defined CONFIG_SEG_DESC_USER_SS
-    /* Segment is a expend-down segment */
-    if (desc->b & 0x400000) {
-        /* The B flag is set, range from limit plus 1 to 0xFFFFFFFFH */
-        printk("Expend-down segment range from %#x to 0xFFFFFFFFH\n", limit);
+    /* Segment descriptor is a data segment */
+    if (desc->b & 0x1800) {
+        /* Segment is a expend-down segment */
+        if (desc->b & 0x400) {
+            if (desc->b & 0x400000) {
+                /* The B flag is set, range from limit plus 1 to 0xFFFFFFFFH */
+                printk("Expend-down segment range from %#x to 0xFFFFFFFFH\n", 
+                                                 limit);
+            } else {
+                /* The B flag is clear, range from limit plus 1 to 0xFFFF */
+                printk("Expend-down segment range from %#x to 0xFFFFH\n", 
+                                                 limit);
+            }
+        } else { /* Segment is a expend-up segment */
+            /* Segment is a expend-up segment, range from 0 to limit */
+            printk("Expend-up segment range from 0 to %#x\n", limit);
+        }
     } else {
-        /* The B flag is clear, range from limit plus 1 to 0xFFFF */
-        printk("Expend-down segment range from %#x to 0xFFFFH\n", limit);
+        /* Segment is a expend-up segment, range from 0 to limit */
+        printk("Expend-up segment range from 0 to %#x\n", limit);
     }
-#else
-    /* Segment is a expend-up segment, range from 0 to limit */
-    printk("Expend-up segment range from 0 to %#x\n", limit);
-#endif
     
     /* In the end, the operating-system can utilize another way to obtain
      * limit by "LSL" instructions, as follow */
@@ -1095,6 +1278,24 @@ static int segment_descriptor_entence(void)
     /* Another way to obtain base address of segment descriptor */
     base = get_base(*desc);
     printk("get_base() to obtian base address: %#x\n", base);
+#endif
+
+#ifdef CONFIG_DEBUG_SEG_DESC_TYPE
+    /*
+     * Type field
+     *
+     * Indicates the segment or gate type and specifies the kinds of access
+     * that can be made to the segment and the direction of growth. The 
+     * interpretation of this field depends on whether the descriptor type 
+     * flag specifies an application (code or data) descriptor or a system 
+     * descriptors. The encoding of the type field is different for code, 
+     * data, and system descriptor, for a descriptor of how this field is 
+     * used to specify code and data-segment types.
+     */
+#ifdef CONFIG_DEBUG_SEG_DESC_S
+    segment_type_entence(desc);
+#endif
+
 #endif
 
     return 0;

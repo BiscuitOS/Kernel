@@ -441,7 +441,7 @@ all types of segment descriptors.
 
 The flags and fields in a segment descriptor are as follows:
 
-### Segment limit field
+#### Segment limit field
 
 Specifies the size of the segment. The processor puts together the two 
 segment limit fields to form a 20-bit value. The processor interprets the 
@@ -468,7 +468,7 @@ an expand-down segment allocates new memory at the bottom of the segment's
 address space, rather than at the top. IA-32 architecture stacks always grow 
 downwards, making this mechanism convenient for expandable stacks.
 
-### Base address field
+#### Base address field
 
 Defines the location of byte 0 of the segment within the 4-GByte linear 
 address space. The processor puts together the three base address fields
@@ -476,3 +476,130 @@ to from a single 32-bit value. Segment base addresses should be aligned to
 16-byte boundaries. Although 16-byte alignment is not required, this 
 alignment allows programs to maximize performance by aligning code and data
 on 16-byte boundaries.
+
+#### Type field
+
+Indicates the segment or gate type and specifies the kinds of access that can
+be made to the segment and the direction of growth. The interpretation of this
+field depends on whether the descriptor type flag specifies an application (
+code or data) descriptor or a system descriptors. The encoding of the type
+field is different for code, data, and system descriptor, for a descriptor of
+how this field is used to specify code and data-segment types.
+
+#### S (Descriptor type) flag
+
+Specifies whether the segment descriptor is for a system segment (S flag is 
+clear) or a code or data segment (S flag is set).
+
+## Segment Types
+
+The descriptor types fall into two categories: 
+
+* **system segment** 
+
+* **data** or **code** segment. 
+
+They are determined by **S flag** and **Type filed** on segment descriptor.
+
+#### Code- and Data- Segment Descriptor Types
+
+When the S (descriptor type) flag in a segment descriptor is set, the 
+descriptor is for either a code or a data segment. The highest order bit of
+the type field (bit 11 of the second double word of the segment descriptor) 
+then determines whether the descriptor is for a data segment (clear) or a code
+segment (set).
+
+For data segments, the three low-order bits of the type field (bits 8, 9, 10) 
+are interpreted as **accessed** (**A**), **write-enable** (**W**), and 
+**expansion-direction** (**E**). See Table for a description of the encoding
+of the bits in the byte field for code and data segments. Data segments can
+be read-only or read/write segments, depending on the setting of the write-
+enable bit.
+
+![Code- and Data- Segment Type](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000400.png)
+
+Stack segments are data segments which must be read/write segments. Loading 
+the SS register with a segment selector for a nonwriteable data segment 
+generates a general-protection exception (#GP). If the size of a stack segment
+needs to be changed dynamically, the stack segment can be an expand-down data
+segment (expansion-direction flag set). Here, dynamically changeing the 
+segment limit causes stack space to be added to the bottom of the stack. If
+the size of a stack segment is intended to remain static, the stack segment
+may be either an expand-up or expand-down type.
+
+The accessed bit indicates whether the segment has been accessed since the 
+last time the operating-system or executive cleared the bit. The processor 
+sets this bit whenever it loads a segment selector for the segment into a
+segment register, assuming that the type of memory that contains the segment
+descriptor supports processor writes. The bit remains set until explicitly 
+cleared. This bit can be used both for virtual memory management and for 
+debugging.
+
+For code segments, the three low-order bits of the type field are interpreted
+as accessed (A), read enable (R), and conforming (C). Code segments can be 
+execute-only or execute/read, depending on the setting of the read-enable bit.
+A execute/read segment might be used when constants or other static data have
+been placed with instruction code in a ROM. Here, data can be read from the 
+code segment either by using an instruction with a CS override prefix or by
+loading a segment selector for the code segment in a data-segment register(the
+DS, ES, FS, or GS registers). In protected mode, code segments are not 
+writable.
+
+Code segments can be either conforming or nonconforming. A transfer of 
+execution into a more-privileged conforming segment allows execution to 
+continue at the current privilege level. A transfer into a nonconforming
+segment at a different privilege level results in a general-protection
+exception (#GP), unless a call gate or task gate is used. System utilities
+that do not access protected facilities and handlers for some types of
+exceptions (such as, divide error or overflow) may be loaded in conforming 
+code segments. Utilities that need to be protected from less privileged 
+programs and procedures should be placed in nonconforming code segment.
+
+**NOTE**
+
+> Execution cannot be transferred by a call or a jump to a less-privileged (
+> numerically higher privilege level) code segment, regardless of whether the
+> target segment is a conforming or nonconforming code segment. Attempting 
+> such an execution transfer will result in a general-protection exception.
+
+All data segments are nonconforming, meaning that they cannot be accessed by
+less privileged programs or procedures (code executing at numerically higher
+privilege levels). Unlink code segments, however, data segments can be accessed
+by more privileged programs or procedures (code executing at numerically lower
+privilege levels) without using a special access gate.
+
+If the segment descriptors in the GDT or an LDT are placed in ROM, the
+processor can enter an indefinite loop if software or the processor attempts
+to update (write to) the ROM-based segment descriptors. To prevent this 
+problem, set the accessed bits for all segment descriptors placed in a ROM. 
+Also, remove operating-system or executive code that attempts to modify segment
+descriptors located in ROM.
+
+#### System Descriptor Type
+
+When the S (descriptor type) flag in segment descriptor is clear, the 
+descriptor type is a system descriptor. The processor recognizes the follow
+types of system descriptors:
+
+* Local descriptor-table (LDT) segment descriptor.
+
+* Task-state segment (TSS) descriptor.
+
+* Call-gate descriptor.
+
+* Interrupt-gate descriptor.
+
+* Trap-gate descriptor.
+
+* Task-gate descriptor.
+
+These descriptor types fall into two categories: system-segment descriptor and
+gate descriptors. System-segment descriptors point to system segment (LDT and
+TSS segments). Gate descriptors are in themselves **gates**, which hold 
+pointers to procedure entry points in code segment (call, interrupt, and trap
+gates) or which hold segment selector for TSS's (task gates).
+
+Table shows the encoding of the type field for system-segment descriptors and
+gate descriptors.
+
+![System- segment and Gate- Descriptor Types](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000401.png)
