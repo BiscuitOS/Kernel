@@ -491,6 +491,12 @@ how this field is used to specify code and data-segment types.
 Specifies whether the segment descriptor is for a system segment (S flag is 
 clear) or a code or data segment (S flag is set).
 
+#### DPL (Descriptor privilege level) field
+
+Specifies the privilege level of the segment. The privilege level can range 
+from 0 to 3, with 0 being the most privileged level. The DPL is used to 
+control access to the segment.
+
 ## Segment Types
 
 The descriptor types fall into two categories: 

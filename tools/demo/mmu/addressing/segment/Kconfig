@@ -229,6 +229,12 @@ config DEBUG_SEG_DESC_S
 	help
 	  The descriptor type flag of segment.
 
+config DEBUG_SEG_DESC_DPL
+	bool "DPL (Descriptor Privilege Level) field"
+	select DEBUG_SEG_DESC_COMMON
+	help
+	  Descriptor privilege level field.
+
 endif # DEBUG_MMU_SEG_DESC
 
 endif # DEBUG_MMU_SEGMENT

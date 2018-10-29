@@ -1031,6 +1031,7 @@ static int segment_descriptor_entence(void)
     unsigned short __unused Sel;
     unsigned int __unused limit;
     unsigned int __unused base;
+    unsigned int __unused DPL;
     struct desc_struct __unused * desc;
 
 #ifdef CONFIG_DEBUG_SEG_DESC_COMMON
@@ -1296,6 +1297,18 @@ static int segment_descriptor_entence(void)
     segment_type_entence(desc);
 #endif
 
+#endif
+
+#ifdef CONFIG_DEBUG_SEG_DESC_DPL
+    /*
+     * DPL (Descriptor privilege level) field
+     *
+     * Specifies the privilege level of the segment. The privilege level can 
+     * range from 0 to 3, with 0 being the most privileged level. The DPL is
+     * used to control access to the segment.
+     */
+    DPL = (desc->b >> 13) & 0x3; 
+    printk("DPL: %#x\n", DPL);
 #endif
 
     return 0;
