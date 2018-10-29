@@ -241,6 +241,12 @@ config DEBUG_SEG_DESC_P
 	help
 	  Descriptor privilege level field.
 
+config DEBUG_SEG_DESC_DB
+	bool "D/B flag (bit 54)"
+	select DEBUG_SEG_DESC_COMMON
+	help
+	  Default operation size.
+
 endif # DEBUG_MMU_SEG_DESC
 
 endif # DEBUG_MMU_SEGMENT

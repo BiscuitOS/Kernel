@@ -514,6 +514,36 @@ information regarding the whereabouts of the missing segment.
 
 ![Segment Descriptor When Segment-Present Flag is Clear](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000402.png)
 
+#### D/B flag (bit 54)
+
+Performs different functions depending on whether the segment descriptor is an
+executable code segment, an expand-down data segment, or a stack segment. (
+This flag should always be set to 1 for 32-bit code and data segments and to
+0 for 16-bit code and data segments.)
+
+* **Executable code segment** -- The flag is called the D flag and it indicates
+  the default length for effective addresses and operands referenced by 
+  instructions in the segment. If the flag is set, 32-bit addresses and 32-bit
+  or 8-bit operands are assumed; if it is clear, 16-bit address and 16-bit or
+  8-bit operands are assumed.
+  The instruction prefix 66H can be used to select an operand size other than
+  the default, and the prefix 67H can be used select an address size other
+  then the default.
+
+* **Stack segment (data segment pointed to by the SS register)** -- The flag is
+  called the B (big) flag and it specifies the size of the stack pointer used
+  for implicit stack operations (such as pushes, pops, and calls). If the flag
+  is set, a 32-bit stack pointer is used, which is stored in the 32-bit ESP 
+  registger; if the flag is clear, a 16-bit stack pointer is used, which is 
+  stored in the 16-bit SP regsiter. If the stack segment is set up to be an
+  expand-down data segment (descriptor in the next paragraph), the B flag also
+  specifies the upper bound of the stack segment.
+
+* **Expand-down data segment** -- The flag is called the B flag and it 
+  specifies the upper bound of the segment. If the flag is set, the upper bound
+  is 0xFFFFFFFFH (4 GBytes); if the flag is clear, the upper bound is 0xFFFFH
+  (64 Kbytes).
+
 ## Segment Types
 
 The descriptor types fall into two categories: 
