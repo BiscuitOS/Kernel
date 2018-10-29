@@ -253,6 +253,12 @@ config DEBUG_SEG_DESC_G
 	help
 	  Granularity for segment limit.
 
+config DEBUG_SEG_DESC_L
+	bool "L (64-bit code segment) flag (bit 53)"
+	select DEBUG_SEG_DESC_COMMON
+	help
+	  64-bit code segment.
+
 endif # DEBUG_MMU_SEG_DESC
 
 endif # DEBUG_MMU_SEGMENT

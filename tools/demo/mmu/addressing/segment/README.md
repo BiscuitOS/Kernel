@@ -555,6 +555,16 @@ tested when checking the offset against the segment limit. For example, when
 the granularity flag is set, a limit of 0 results in valid offsets from 0 to
 4095.
 
+#### L (64-bit code segment) flag
+
+In IA-32e mode, bit 21 of the second doubleword of the segment descriptor
+indicates whether a code segment contains native 64-bit code. A value of 1 
+indicates instruction in this code segment are executed in 64-bit mode. A
+value of 0 indicates the instructions in this code segment are executed in 
+compatibility mode. If L-bit is set, then D-bit must be cleared. When not in 
+IA-32e mode or for non-code segments, bit 21 is reserved and should always by 
+set to 0.
+
 ## Segment Types
 
 The descriptor types fall into two categories: 

@@ -1416,6 +1416,26 @@ static int segment_descriptor_entence(void)
         printk("Limit granularity 1-Byte\n");
 #endif
 
+#ifdef CONFIG_DEBUG_SEG_DESC_L
+    /*
+     * L (64-bit code segment) flag
+     *
+     * In IA-32e mode, bit 21 of the second doubleword of the segment 
+     * descriptor indicates whether a code segment contains native 64-bit code.
+     * A value of 1 indicates instruction in this code segment are executed in
+     * 64-bit mode. A value of 0 indicates the instructions in this code
+     * segment are executed in compatibility mode. If L-bit is set, then D-bit
+     * must be cleared. When not in IA-32e mode or for non-code segments, bit
+     * 21 is reserved and should always by set to 0.
+     */
+#if defined CONFIG_SEG_DESC_KERNEL_CS | defined CONFIG_SEG_DESC_USER_CS
+    if ((desc->b & 0x200000) && desc->b & 0x400000)
+        printk("Code segment contain native 64-bit code\n");
+    else
+        printk("Code segment executed in compatiblity mode\n");
+#endif
+
+#endif
     return 0;
 }
 
