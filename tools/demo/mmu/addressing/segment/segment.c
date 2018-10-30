@@ -60,7 +60,7 @@
  * variable, but the values of selectors are usually assigned or modified by
  * link editors or links loaders, not application programs.
  */
-static int segment_selector_entence(void)
+static int __unused segment_selector_entence(void)
 {
     unsigned short __unused Sel;
     unsigned short __unused CS;
@@ -451,7 +451,7 @@ static int segment_selector_entence(void)
  * new base address must be loaded into the GDTR as part of the processor 
  * initialization process for protected-mode operation.
  */
-static int GDTR_entence(void)
+static int __unused GDTR_entence(void)
 {
     unsigned int __unused base;
     unsigned int __unused limit;
@@ -665,7 +665,7 @@ static int GDTR_entence(void)
  * On power up or reset of the processor, the segment selector and base address
  * are set to the default value of 0 and the limit is set to 0x0FFFFH.
  */
-static int LDTR_entence(void)
+static int __unused LDTR_entence(void)
 {
     unsigned short __unused Sel;
 
@@ -733,7 +733,7 @@ static int LDTR_entence(void)
  *      +--------------------------------+------------------------+
  *
  */
-static int IDTR_entence(void)
+static int __unused IDTR_entence(void)
 {
     unsigned short __unused IDTR[3];
     unsigned short __unused limit;
@@ -812,7 +812,7 @@ static int IDTR_entence(void)
  * the new TSS information into the register.
  *
  */
-static int TR_entence(void)
+static int __unused TR_entence(void)
 {
     unsigned short __unused TR;
 
@@ -1023,7 +1023,7 @@ static int __unused segment_type_entence(struct desc_struct *desc)
  * by compilers, linkers, loaders, or the operating system or executive, but 
  * not application programs. 
  */
-static int segment_descriptor_entence(void)
+static int __unused segment_descriptor_entence(void)
 {
     unsigned short __unused CS;
     unsigned short __unused DS;
@@ -1439,11 +1439,153 @@ static int segment_descriptor_entence(void)
     return 0;
 }
 
+/*
+ * Segment Descriptor Tables
+ *
+ * A segment descriptor table is an array of segment descriptor (see Figure). A
+ * descriptor table is variable in length and can contain up to 8192(2^13) 8-
+ * byte descriptors. There are two kinds of descriptor tables:
+ *
+ * * The globl descriptor table (GDT)
+ *
+ * * The local descriptor table (LDT)
+ */
+static int segment_descriptor_table_entence(void)
+{
+    unsigned short __unused Sel;
+    unsigned short __unused GDTR[3];
+    struct desc_struct __unused *desc;
+
+#ifdef CONFIG_DEBUG_MMU_SEG_GDT
+    /*
+     * Global Descriptor Table
+     *
+     * 0                                                               4G
+     * +--+-----+------------------------------------------------------+
+     * |  |     |                                                      |
+     * |  | GDT |            Linear address space                      |
+     * |  |     |                                                      |
+     * +--+-----+------------------------------------------------------+
+     *       A
+     *       |
+     * gdt --o   
+     *
+     * Each system must have one GDT defined, which may be used for all
+     * programs and tasks in the system. Optionally, one or more LDTs can be
+     * defined. For example, an LDT can be defined for each separate task
+     * being run, or some or all tasks can share the same LDT.
+     *
+     * The GDT is not a segment itself; instead, it is a data structure in
+     * linear address space. The base linear address and limit of the GDT must
+     * be loaded into the GDTR register. The base address of the GDT should be
+     * aligned on an eight-byte boundary to yield the best processor
+     * performance. The limit value for the GDT is expressed in bytes. As with
+     * segments, the limit value is added to the base address to get the
+     * address of the last valid byte. A limit value of 0 results in exactly
+     * one valid byte. Because segment descriptors are always 8 bytes long, the
+     * GDT limit should always be one less than an integral multiple of eight
+     * (that is, 8N - 1).
+     *
+     * The first descriptor in the GDT is not used by the processor. A segment
+     * selector to this **null descriptor** does not generate an exception when
+     * loaded into a data-segment register (DS, ES, FS, or GS), but it always
+     * generates a general-protection exception (#GP) when an attempt is made
+     * to access memory using the descriptor. By initializing the segment
+     * registers with this segment selector, accidental reference to unused
+     * segment register can be gearanteed to generate an exception.
+     *
+     * The kernel define a variable 'gdt' to point Global Descriptor Table
+     * on memory, and the location of 'gdt' is arch/x86/boot/head.S.
+     * And assembly code as follow:
+     *
+     * arch/x86/boot/head.S
+     * 
+     * .globl gdt
+     *
+     * .align 4
+     * .word 0
+     * gdt_descr:
+     *     .word (8+2*NR_TASKS)*8-1
+     *     .long 0xC0000000+gdt
+     *
+     * .align 4
+     * gdt:
+     *    .quad 0x0000000000000000    ; NULL descriptor
+     *    .quad 0x0000000000000000    ; not used 
+     *    .quad 0xc0c39a000000ffff    ; 0x10 kernel 1GB code at 0xC0000000
+     *    .quad 0xc0c392000000ffff    ; 0x18 kernel 1GB data at 0xC0000000
+     *    .quad 0x00cbfa000000ffff    ; 0x23 user   3GB code at 0x00000000
+     *    .quad 0x00cbf2000000ffff    ; 0x2b user   3GB data at 0x00000000
+     *    .quad 0x0000000000000000    ; not used
+     *    .quad 0x0000000000000000    ; not used
+     *    .fill 2*NR_TASKS,8,0        ; space for LDT's and TSS's etc
+     *
+     * e.g. Obtain a segment descriptor on GDT by segment selector.
+     */
+
+    /* Step 0: Obtain a specify segment selector */
+    __asm__ ("mov %%ss, %0" : "=m" (Sel));
+
+    /* Step 1: Obtain limit of GDT */
+    __asm__ ("sgdt %0" : "=m" (GDTR));
+
+    /* Step 2: Check whether segment selector over GDT boundary. */
+    if (((Sel >> 0x3) * 8) > GDTR[0])
+        panic("The segment selector over GDT limit");
+
+    /* Step 3: Locate the segment descriptor on GDT */
+    if ((Sel & 0x4) == 0x0)
+        desc = gdt + (Sel >> 0x3);
+        
+    /* Step 4: Check whether have right to access segment descriptor */
+    if ((Sel & 0x3) > ((desc->b >> 13) & 0x3))
+        panic("Procedure doesn't have permission to access segment descriptor");
+
+    printk("GDT: A segment descriptor: %#x base address: %#x limit %#x\n",
+         Sel, (unsigned int)get_base(*desc), (unsigned int)get_limit(Sel)) ;   
+
+    /* More inforamtion about "GDT", see GDTR register on 'GDTR_entence()' */
+#endif
+
+#ifdef CONFIG_DEBUG_MMU_SEG_LDT
+    /*
+     * Local Descriptor Table
+     *
+     * The LDT is located in a  system segment of the LDT type. The GDT must
+     * contain a segment descriptor for the LDT segment. If the system supports
+     * multiple LDTs, each must have a separate segment selector and segment
+     * descriptor in the GDT. The segment descriptor for an LDT can be located
+     * anywhere in the GDT.
+     *
+     * An LDT is accessed with its segment selector. To eliminate address
+     * translation when accessing the LDT, the segment selector, base linear
+     * address, limit, and access rights of the LDT are stored in the LDTR
+     * regsiter.
+     *
+     * When the GDTR register it stored (using the SGDT instruction), a 48-bit
+     * pseudo-descriptor is stored in memory. To avoid alignment check faults
+     * in user mode (privilege level 3), the pseudo descriptor should be
+     * located at an odd word address (that is, address MOd4 is equal to 2).
+     * This causes the proecssor to store an aligned word, followed by an
+     * aligned doubleword. User-mode programs normally do not store pseudo-
+     * descriptors, but the possibility of generating a check fault can be
+     * avoided by aligning pseudo-descriptors in this way. The same alignment
+     * should be used when storing the IDTR register using the SIDT
+     * instruction. When storing the LDTR or task register (using the SLDT or
+     * STR instruction, respectively), the pseudo-descriptor should be located
+     * at a doubleword address (that is, address MOD 4 is equal to 0).
+     */
+#endif
+
+    return 0;
+}
+
 static int segment_entence(void)
 {
     /* Segment selector entence */
     segment_selector_entence();
 
+#ifdef CONFIG_DEBUG_MMU_SEG_REGISTER
     /* Global Descriptor Table Register */
     GDTR_entence();
 
@@ -1455,9 +1597,14 @@ static int segment_entence(void)
 
     /* Task Register */
     TR_entence();
+#endif
 
     /* Segment Descriptor */
     segment_descriptor_entence();
+
+    /* Segment Descriptor Table */
+    segment_descriptor_table_entence();
+
     return 0;
 }
 

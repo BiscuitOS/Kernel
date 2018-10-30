@@ -682,3 +682,61 @@ Table shows the encoding of the type field for system-segment descriptors and
 gate descriptors.
 
 ![System- segment and Gate- Descriptor Types](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000401.png)
+
+## Segment Descriptor Tables
+
+A segment descriptor table is an array of segment descriptor (see Figure). A
+descriptor table is variable in length and can contain up to 8192(2^13) 8-byte
+descriptors. There are two kinds of descriptor tables:
+
+* The globl descriptor table (GDT)
+
+* The local descriptor table (LDT)
+
+#### GDT
+
+Each system must have one GDT defined, which may be used for all programs and 
+tasks in the system. Optionally, one or more LDTs can be defined. For example,
+an LDT can be defined for each separate task being run, or some or all tasks 
+can share the same LDT.
+
+The GDT is not a segment itself; instead, it is a data structure in linear
+address space. The base linear address and limit of the GDT must be loaded into
+the GDTR register. The base address of the GDT should be aligned on an eight-
+byte boundary to yield the best processor performance. The limit value for the
+GDT is expressed in bytes. As with segments, the limit value is added to the 
+base address to get the address of the last valid byte. A limit value of 0 
+results in exactly one valid byte. Because segment descriptors are always 8
+bytes long, the GDT limit should always be one less than an integral multiple
+of eight (that is, 8N - 1).
+
+The first descriptor in the GDT is not used by the processor. A segment 
+selector to this **null descriptor** does not generate an exception when loaded
+into a data-segment register (DS, ES, FS, or GS), but it always generates a
+general-protection exception (#GP) when an attempt is made to access memory
+using the descriptor. By initializing the segment registers with this segment
+selector, accidental reference to unused segment register can be gearanteed
+to generate an exception.
+
+#### LDT
+
+The LDT is located in a  system segment of the LDT type. The GDT must contain
+a segment descriptor for the LDT segment. If the system supports multiple LDTs,
+each must have a separate segment selector and segment descriptor in the GDT.
+The segment descriptor for an LDT can be located anywhere in the GDT. 
+
+An LDT is accessed with its segment selector. To eliminate address translation
+when accessing the LDT, the segment selector, base linear address, limit, and
+access rights of the LDT are stored in the LDTR regsiter.
+
+When the GDTR register it stored (using the SGDT instruction), a 48-bit 
+**pseudo-descriptor** is stored in memory. To avoid alignment check faults in
+user mode (privilege level 3), the pseudo descriptor should be located at an 
+odd word address (that is, address MOd4 is equal to 2). This causes the 
+proecssor to store an aligned word, followed by an aligned doubleword. User-
+mode programs normally do not store pseudo-descriptors, but the possibility of
+generating a check fault can be avoided by aligning pseudo-descriptors in this
+way. The same alignment should be used when storing the IDTR register using
+the SIDT instruction. When storing the LDTR or task register (using the SLDT
+or STR instruction, respectively), the pseudo-descriptor should be located at
+a doubleword address (that is, address MOD 4 is equal to 0).

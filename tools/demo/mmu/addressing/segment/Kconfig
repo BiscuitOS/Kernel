@@ -82,6 +82,13 @@ config DEBUG_SEG_INS_LAR
 
 endif # DEBUG_SEG_SEL
 
+config DEBUG_MMU_SEG_REGISTER
+	bool "Register: GDTR, LDTR, IDTR, and TR"
+	help
+	  Register: GDTRm LDTR, IDTR, and TR.
+
+if DEBUG_MMU_SEG_REGISTER
+
 config DEBUG_MMU_GDTR
         bool "GDTR: Global Descriptor Table Register and Instruction"
         help
@@ -160,6 +167,8 @@ config DEBUG_TR_LTR
 	  Load Task Register.
 
 endif # DEBUG_MMU_TR
+
+endif # DEBUG_MMU_SEG_REGISTER
 
 config DEBUG_MMU_SEG_DESC
 	bool "Segment Descriptor"
@@ -266,6 +275,25 @@ config DEBUG_SEG_DESC_AVL
 	  Available for use by system software.
 
 endif # DEBUG_MMU_SEG_DESC
+
+config DEBUG_MMU_SEG_TABLE
+	bool "Segment Descriptor Table"
+	help
+	  Segment Descriptor Table.
+
+if DEBUG_MMU_SEG_TABLE
+
+config DEBUG_MMU_SEG_GDT
+	bool "Global Descriptor Table (GDT)"
+	help
+	  Global Descriptor Table (GDT).
+
+config DEBUG_MMU_SEG_LDT
+	bool "Local Descriptor Table (LDT)"
+	help
+	  Local Descriptor Table (LDT).
+
+endif # DEBUG_MMU_SEG_TABLE
 
 endif # DEBUG_MMU_SEGMENT
 
