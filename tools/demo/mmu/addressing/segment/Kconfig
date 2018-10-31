@@ -295,6 +295,29 @@ config DEBUG_MMU_SEG_LDT
 
 endif # DEBUG_MMU_SEG_TABLE
 
+config DEBUG_MMU_SEG_TYPE
+	bool "Segment Descriptor Type"
+	help
+	  Variable segment descriptor type.
+
+if DEBUG_MMU_SEG_TYPE
+
+# Gate
+
+endif # DEBUG_MMU_SEG_TYPE
+
+config DEBUG_MMU_SEG_CHECK
+	bool "Protection Check mechanism"
+	help
+	  Protection Check mechanism.
+
+if DEBUG_MMU_SEG_CHECK
+
+# Privilege check mechansim
+source "tools/demo/mmu/addressing/segment/privilege/Kconfig"
+
+endif # DEBUG_MMU_SEG_CHECK
+
 endif # DEBUG_MMU_SEGMENT
 
 endmenu

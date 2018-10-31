@@ -1,0 +1,56 @@
+menu "Privilege levels Check: CPL, DPL, and RPL"
+
+config DEBUG_PL_CHECK
+	bool "Privilege levels check mechanism"
+	help
+	  The checking mechanism of privilegel levels.
+
+if DEBUG_PL_CHECK
+
+choice
+        prompt "Select specify segment selector"
+
+config SEG_CHECK_KERNEL_CS
+        bool "CS: Kernel code segment selector"
+
+config SEG_CHECK_KERNEL_DS
+        bool "DS: Kernel data segment selector"
+
+config SEG_CHECK_KERNEL_SS
+        bool "SS: Kernel stack segment selector"
+
+config SEG_CHECK_USER_CS
+        bool "CS: User code segment selector"
+
+config SEG_CHECK_USER_FS
+        bool "FS: User data segment selector"
+
+config SEG_CHECK_USER_SS
+        bool "SS: User stack segment selector"
+
+config SEG_CHECK_LDT
+        bool "LDT: Local descriptor Table segment selector"
+
+config SEG_CHECK_TSS
+        bool "TSS: Task Status segment selector"
+
+endchoice
+
+config DEBUG_MMU_PL_CPL
+	bool "CPL: Current Privilege level"
+	help
+	  CPL: Current privilege level.
+
+config DEBUG_MMU_PL_DPL
+	bool "DPL: Descriptor Privilege level"
+	help
+	  DPL: Descriptor Privilege level.
+
+config DEBUG_MMU_PL_RPL
+	bool "RPL: Requested Privilege level"
+	help
+	  PRL: Requested Privilege level.
+
+endif # DEBUG_PL_CHECK
+
+endmenu
