@@ -132,8 +132,6 @@ segment selector E0, because the CPL of code segment A0 and the RPL of segment
 selector E0 are equal to the DPL of data segment E0.
 
 ```
-CPL == RPL == DPL == 0
-
 +-----------------+       +------------------+        +-----------------+
 | Code Segment A0 |       | Segment Sel. E0  |        | Data Segment E0 |
 |                -|------>|                 -|------->|                 |
@@ -146,8 +144,6 @@ segment selector E1, because the CPL of code segment A1 and the RPL of segment
 selector E1 are equal to the DPL of data segment E1.
 
 ```
-CPL == RPL == DPL == 1
-
 +-----------------+       +------------------+        +-----------------+
 | Code Segment A1 |       | Segment Sel. E1  |        | Data Segment E1 |
 |                -|------>|                 -|------->|                 |
@@ -160,8 +156,6 @@ segment selector E2, because the CPL of code segment A2 and the RPL of segment
 selector E2 are equal to the DPL of data segment E2.
 
 ```
-CPL == RPL == DPL == 2
-
 +-----------------+       +------------------+        +-----------------+
 | Code Segment A2 |       | Segment Sel. E2  |        | Data Segment E2 |
 |                -|------>|                 -|------->|                 |
@@ -174,8 +168,6 @@ segment selector E3, because the CPL of code segment A3 and the RPL of segment
 selector E3 are equal to the DPL of data segment E3.
 
 ```
-CPL == RPL == DPL == 3
-
 +-----------------+       +------------------+        +-----------------+
 | Code Segment A3 |       | Segment Sel. E3  |        | Data Segment E3 |
 |                -|------>|                 -|------->|                 |

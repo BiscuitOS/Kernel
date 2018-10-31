@@ -51,6 +51,50 @@ config DEBUG_MMU_PL_RPL
 	help
 	  PRL: Requested Privilege level.
 
+config DEBUG_PL_DATA
+	bool "Privilege checking when accessing data segment"
+	select DEBUG_PL_DATA_ESTABLISH
+	help
+	  Privilege checking when accessing data segment.
+
+if DEBUG_PL_DATA
+
+config DEBUG_PL_DATA_ESTABLISH
+	bool "Extablish a specify segment selector and segment descriptor"
+	help
+	  Extablish a specify segment selector and segment descriptor.
+
+config DEBUG_PL_DATA_C0
+	bool "CPL == RPL == DPL"
+	help
+	  CPL == DPL == RPL.
+
+if DEBUG_PL_DATA_C0
+
+config DEBUG_PL_DATA_C0_P0
+	bool "CPL == RPL == DPL == 0"
+	help
+	  CPL == DPL == RPL == 0
+
+config DEBUG_PL_DATA_C0_P1
+	bool "CPL == RPL == DPL == 1"
+	help
+	  CPL == DPL == RPL == 1
+
+config DEBUG_PL_DATA_C0_P2
+	bool "CPL == RPL == DPL == 2"
+	help
+	  CPL == DPL == RPL == 2
+
+config DEBUG_PL_DATA_C0_P3
+	bool "CPL == RPL == DPL == 3"
+	help
+	  CPL == DPL == RPL == 3
+
+endif # DEBUG_PL_DATA_C0
+
+endif # DEBUG_PL_DATA
+
 endif # DEBUG_PL_CHECK
 
 endmenu
