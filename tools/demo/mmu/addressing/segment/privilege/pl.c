@@ -9,6 +9,7 @@
  */
 #include <linux/kernel.h>
 #include <linux/sched.h>
+#include <linux/unistd.h>
 
 #include <demo/debug.h>
 
@@ -237,22 +238,50 @@ static int __unused privilege_check_data_segment(void)
       * DPL: 00
       */
     Sel = 0x0200;
-    RPL = Sel & 0x2;
+    RPL = Sel & 0x3;
     desc = gdt + (Sel >> 3);
     DPL = (desc->b >> 13) & 0x3;
-    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    printk("Sel: %#x CPL: %#x RPL: %#x DPL: %#x\n", Sel, CPL, RPL, DPL);
 
     /* Trigger Privilege checking when load segment selector into segment
      * register.
      */
-    seg[1] = Sel & 0xFFFF;
-    seg[0] = (unsigned int)(unsigned long)hello;
-    __asm__ ("lds %1, %%eax\n\r"
-             "movl %%eax, %0"
-             : "=m" (offset) : "m" (seg));
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
     __asm__ ("mov %%ds, %0" : "=m" (DS));
 
-    printk("DS: %#x -- Char: %s\n", DS, (char *)(unsigned long)offset);
+    printk("DS: %#x -- Char: %s\n", DS, hello);
+#endif
+
+#ifdef CONFIG_DEBUG_PL_DATA_C0_P3
+    /*
+     * CPL == RPL == DPL == 0
+     *
+     * The procedure in code segment A3 is able to access data segment E3
+     * using segment selector E3, because the CPL of code segment A3 and the
+     * RPL of segment selector E3 are equal to the DPL of data segment E3.
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment A3 |       | Segment Sel. E3 |       | Data Segment E3 |
+     * |                -|------>|                -|------>|                 |
+     * | CPL = 3         |       | RPL = 3         |       | DPL = 3         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+    /* Utilize segment selector: 0x0203
+     * RPL: 03
+     * CPL: 03
+     * DPL: 03
+     */
+    Sel  = 0x02f3;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x CPL: %#x RPL: %#x DPL: %#x\n", Sel, CPL, RPL, DPL);
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+
+    printf("DS: %#x -- Char: %s\n", DS, hello);
 #endif
 
 #endif /* CONFIG_DEBUG_PL_DATA_C0 */
@@ -262,8 +291,8 @@ static int __unused privilege_check_data_segment(void)
 
 #if defined CONFIG_DEBUG_PL_DATA_C0_P0
 late_debugcall(privilege_check_data_segment);
-#else
-user1_debugcall(privilege_check_data_segment);
+#elif defined CONFIG_DEBUG_PL_DATA_C0_P3
+user1_debugcall_sync(privilege_check_data_segment);
 #endif
 
 #ifdef CONFIG_DEBUG_PL_DATA_ESTABLISH
@@ -324,7 +353,7 @@ static struct desc_struct __unused debug_desc[] = {
   { .a = 0x0000ffff, .b = 0xc0c39200},
   { .a = 0x0000ffff, .b = 0xc0c3b200},
   { .a = 0x0000ffff, .b = 0xc0c3d200},
-  { .a = 0x0000ffff, .b = 0xc0c3f200},
+  { .a = 0x0000ffff, .b = 0x00cbf200},
   { }
 };
 
@@ -336,7 +365,7 @@ static int __unused establish_debug_data_segment(void)
     struct desc_struct __unused *desc;
     unsigned short __unused i = 0;
 
-    for (Sel = start_Sel; Sel < end_Sel; Sel += 0x100, i++) {
+    for (Sel = start_Sel; Sel <= end_Sel; Sel += 0x10, i++) {
         desc = gdt + (Sel >> 0x3);
         desc->a = debug_desc[i].a;
         desc->b = debug_desc[i].b;

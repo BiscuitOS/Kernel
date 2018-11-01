@@ -60,9 +60,9 @@ config DEBUG_PL_DATA
 if DEBUG_PL_DATA
 
 config DEBUG_PL_DATA_ESTABLISH
-	bool "Extablish a specify segment selector and segment descriptor"
+	bool "Establish a specify segment selector and segment descriptor"
 	help
-	  Extablish a specify segment selector and segment descriptor.
+	  Establish a specify segment selector and segment descriptor.
 
 config DEBUG_PL_DATA_C0
 	bool "CPL == RPL == DPL"
