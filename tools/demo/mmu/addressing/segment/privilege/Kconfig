@@ -171,6 +171,84 @@ config DEBUG_PL_DATA_C2_P5
 
 endif # DEBUG_PL_DATA_C2
 
+config DEBUG_PL_DATA_C3
+	bool "CPL == RPL < DPL"
+	help
+	  CPL == RPL < DPL
+
+if DEBUG_PL_DATA_C3
+
+config DEBUG_PL_DATA_C3_P0
+	bool "CPL:1 == RPL:1 < DPL:0"
+	help
+	  CPL:1 == RPL:1 < DPL:0
+
+config DEBUG_PL_DATA_C3_P1
+	bool "CPL:2 == RPL:2 < DPL:0"
+	help
+	  CPL:2 == RPL:2 < DPL:0
+
+config DEBUG_PL_DATA_C3_P2
+	bool "CPL:3 == RPL:3 < DPL:0"
+	help
+	  CPL:3 == RPL:3 < DPL:0
+
+config DEBUG_PL_DATA_C3_P3
+	bool "CPL:2 == RPL:2 < DPL:1"
+	help
+	  CPL:2 == RPL:2 < DPL:1
+
+config DEBUG_PL_DATA_C3_P4
+	bool "CPL:3 == RPL:3 < DPL:1"
+	help
+	  CPL:3 == RPL:3 < DPL:1
+
+config DEBUG_PL_DATA_C3_P5
+	bool "CPL:3 == RPL:3 < DPL:2"
+	help
+	  CPL:3 == RPL:3 < DPL:2
+
+endif # DEBUG_PL_DATA_C3
+
+config DEBUG_PL_DATA_C4
+	bool "CPL < RPL == DPL"
+	help
+	  CPL < RPL == DPL
+
+if DEBUG_PL_DATA_C4
+
+config DEBUG_PL_DATA_C4_P0
+	bool "CPL:1 < RPL:0 == DPL:0"
+	help
+	  CPL:1 < RPL:0 == DPL:0
+
+config DEBUG_PL_DATA_C4_P1
+	bool "CPL:2 < RPL:0 == DPL:0"
+	help
+	  CPL:2 < RPL:0 == DPL:0
+
+config DEBUG_PL_DATA_C4_P2
+	bool "CPL:3 < RPL:0 == DPL:0"
+	help
+	  CPL:3 < RPL:0 == DPL:0
+
+config DEBUG_PL_DATA_C4_P3
+	bool "CPL:2 < RPL:1 == DPL:1"
+	help
+	  CPL:2 < RPL:1 == DPL:1
+
+config DEBUG_PL_DATA_C4_P4
+	bool "CPL:3 < RPL:1 == DPL:1"
+	help
+	  CPL:3 < RPL:1 == DPL:1
+
+config DEBUG_PL_DATA_C4_P5
+	bool "CPL:3 < RPL:2 == DPL:2"
+	help
+	  CPL:3 < RPL:2 == DPL:2
+
+endif # DEBUG_PL_DATA_C4
+
 endif # DEBUG_PL_DATA
 
 endif # DEBUG_PL_CHECK

@@ -232,23 +232,23 @@ static int __unused privilege_check_data_segment(void)
      * +-----------------+       +-----------------+       +-----------------+ 
      *
      */
-     /* Utilize segment selector: 0x0200
-      * RPL: 00
-      * CPL: 00
-      * DPL: 00
-      */
-    Sel = 0x0200;
-    RPL = Sel & 0x3;
-    desc = gdt + (Sel >> 3);
-    DPL = (desc->b >> 13) & 0x3;
-    printk("Sel: %#x CPL: %#x RPL: %#x DPL: %#x\n", Sel, CPL, RPL, DPL);
-
-    /* Trigger Privilege checking when load segment selector into segment
-     * register.
+    /* Utilize segment selector: 0x0200
+     * Segment Descriptor: 0xc0c392000000ffff
+     * RPL: 00
+     * CPL: 00
+     * DPL: 00
      */
+    Sel = 0x0200;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
     __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selector */
     __asm__ ("mov %%ds, %0" : "=m" (DS));
-
     printk("DS:  %#x -- Char: %s\n", DS, hello);
 
 #elif defined CONFIG_DEBUG_PL_DATA_C0_P3
@@ -268,6 +268,7 @@ static int __unused privilege_check_data_segment(void)
      *
      */
     /* Utilize segment selector: 0x03f3
+     * Segment Descriptor: 0x00cbf2000000ffff
      * RPL: 03
      * CPL: 03
      * DPL: 03
@@ -276,10 +277,13 @@ static int __unused privilege_check_data_segment(void)
     RPL  = Sel & 0x3;
     desc = gdt + (Sel >> 3);
     DPL  = (desc->b >> 13) & 0x3;
-    printf("Sel: %#x CPL: %#x RPL: %#x DPL: %#x\n", Sel, CPL, RPL, DPL);
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
     __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selector */
     __asm__ ("mov %%ds, %0" : "=m" (DS));
-
     printf("DS:  %#x -- Char: %s\n", DS, hello);
     
 #endif
@@ -304,16 +308,21 @@ static int __unused privilege_check_data_segment(void)
      *
      */
     /* Utilize segment selector: 0x0210
+     * Segment Descriptor: 0xc0c3b2000000ffff
      * CPL: 00
      * RPL: 00
      * DPL: 01
      */
     Sel  = 0x0210;
     RPL  = Sel & 0x3;
-    desc = gdt + (Sel >> 0x3);
+    desc = gdt + (Sel >> 3);
     DPL  = (desc->b >> 13) & 0x3;
-    printk("Sel: %#x CPL: %#x RPL: %#x DPL: %#x\n", Sel, CPL, RPL, DPL);
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
     __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selector */
     __asm__ ("mov %%ds, %0" : "=m" (DS));
     printk("DS:  %#x -- Char: %s\n", DS, hello);
 
@@ -336,16 +345,21 @@ static int __unused privilege_check_data_segment(void)
      */
     /*
      * Utilize segment selector: 0x0220
+     * Segment Descriptor: 0xc0c3d2000000ffff
      * CPL: 00
      * RPL: 00
      * DPL: 02
      */
     Sel  = 0x0220;
     RPL  = Sel & 0x3;
-    desc = gdt + (Sel >> 0x3);
+    desc = gdt + (Sel >> 3);
     DPL  = (desc->b >> 13) & 0x3;
-    printk("Sel: %#x CPL: %#x RPL: %#x DPL: %#x\n", Sel, CPL, RPL, DPL);
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
     __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selector */
     __asm__ ("mov %%ds, %0" : "=m" (DS));
     printk("DS:  %#x -- Char: %s\n", DS, hello);
 
@@ -368,16 +382,21 @@ static int __unused privilege_check_data_segment(void)
      */
     /*
      * Utilize segment selector: 0x0230
+     * Segment Descriptor: 0xc0c3f2000000ffff
      * CPL: 00
      * RPL: 00
      * DPL: 03
      */
     Sel  = 0x0230;
     RPL  = Sel & 0x3;
-    desc = gdt + (Sel >> 0x3);
+    desc = gdt + (Sel >> 3);
     DPL  = (desc->b >> 13) & 0x3;
-    printk("Sel: %#x CPL: %#x RPL: %#x DPL: %#x\n", Sel, CPL, RPL, DPL);
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
     __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selector */
     __asm__ ("mov %%ds, %0" : "=m" (DS));
     printk("DS:  %#x -- Char: %s\n", DS, hello);
 
@@ -405,16 +424,21 @@ static int __unused privilege_check_data_segment(void)
      */
     /*
      * Utilize segment selector: 0x0251
+     * Segment Descriptor: 0xc0c3b2000000ffff
      * CPL: 00
      * RPL: 01
      * DPL: 01
      */
     Sel  = 0x0251;
     RPL  = Sel & 0x3;
-    desc = gdt + (Sel >> 0x3);
+    desc = gdt + (Sel >> 3);
     DPL  = (desc->b >> 13) & 0x3;
-    printk("Sel: %#x CPL: %#x RPL:%#x DPL:%#x\n", Sel, CPL, RPL, DPL);
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
     __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selector */
     __asm__ ("mov %%ds, %0" : "=m" (DS));
     printk("DS:  %#x -- Char: %s\n", DS, hello);
 
@@ -438,6 +462,7 @@ static int __unused privilege_check_data_segment(void)
      */
     /*
      * Utilize segment selector: 0x02a2
+     * Segment Descriptor: 0xc0c3d2000000fffff
      * CPL: 00
      * RPL: 02
      * DPL: 02
@@ -446,8 +471,12 @@ static int __unused privilege_check_data_segment(void)
     RPL  = Sel & 0x3;
     desc = gdt + (Sel >> 3);
     DPL  = (desc->b >> 13) & 0x3;
-    printk("Sel: %#x CPL: %#x RPL:%#x DPL:%#x\n", Sel, CPL, RPL, DPL);
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
     __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selector */
     __asm__ ("mov %%ds, %0" : "=m" (DS));
     printk("DS:  %#x -- Char: %s\n", DS, hello);
 
@@ -471,22 +500,263 @@ static int __unused privilege_check_data_segment(void)
      */
     /*
      * Utilize segment selector: 0x02f3
+     * Segment Descriptor: 0xc0c3f2000000ffff
      * CPL: 00
      * PRL: 03
      * DPL: 03 
      */
     Sel  = 0x02f3;
     RPL  = Sel & 0x3;
-    desc = gdt + (Sel >> 0x3);
+    desc = gdt + (Sel >> 3);
     DPL  = (desc->b >> 13) & 0x3;
-    printk("Sel: %#x CPL: %#x RPL: %#x DPL: %#x\n", Sel, CPL, RPL, DPL);
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
     __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selector */
     __asm__ ("mov %%ds, %0" : "=m" (DS));
     printk("DS:  %#x -- Char: %s\n", DS, hello);
 
 #endif
 
-#endif /* CONFIG_DEBUG_PL_DATA_C2 */
+#elif defined CONFIG_DEBUG_PL_DATA_C3 /* CONFIG_DEBUG_PL_DATA_C2 */
+
+#ifdef CONFIG_DEBUG_PL_DATA_C3_P2
+    /*
+     * CPL3 == RPL:3 < DPL:0
+     *
+     * The procedure in code segment D2 is not able to access data segment E2
+     * using segment selector E2, because the CPL of code segment D2 and the
+     * RPL of segment selector E2 are both numerically greater than (less
+     * privilege) the DPL of data segment E2. (The CPL of code segmetn D2 is
+     * equal to RPL of segment selecotr E2).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment D2 |       | Segment Sel. E2 |       | Data Segment E2 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 3         |       | DPL = 0         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+    /*
+     * Utilize segment selector: 0x03C3
+     * Segment Descriptor: 0x00cb92000000ffff
+     * CPL: 03
+     * RPL: 03
+     * DPL: 00
+     */
+    Sel  = 0x03C3;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selector */
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+    printf("DS:  %#x -- Char: %s\n", DS, hello);
+
+#elif defined CONFIG_DEBUG_PL_DATA_C3_P4
+    /*
+     * CPL:3 == RPL:3 < DPL:1
+     *
+     * The procedure in code segment D4 is not able to access data segment E4
+     * using segment selector E4, because the CPL of code segment D4 and the
+     * RPL of segment selector E4 are both numerically greater than (less
+     * privilege) the DPL of data segment E4. (The CPL of code segmetn D4 is
+     * equal to RPL of segment selecotr E4).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment D4 |       | Segment Sel. E4 |       | Data Segment E4 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 3         |       | DPL = 1         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+    /*
+     * Utilize segment selector: 0x03d3
+     * Segment Descriptor: 0x00cbb2000000ffff
+     * CPL: 03
+     * RPL: 03
+     * DPL: 01
+     */
+    Sel  = 0x03d3;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selector */
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+    printf("DS:  %#x -- Char: %s\n", DS, hello);
+
+#elif defined CONFIG_DEBUG_PL_DATA_C3_P5
+    /*
+     * CPL:3 == RPL:3 < DPL:2
+     *
+     * The procedure in code segment D5 is not able to access data segment E5
+     * using segment selector E5, because the CPL of code segment D5 and the
+     * RPL of segment selector E5 are both numerically greater than (less
+     * privilege) the DPL of data segment E5. (The CPL of code segmetn D5 is
+     * equal to RPL of segment selecotr E5).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment D5 |       | Segment Sel. E5 |       | Data Segment E5 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 3         |       | DPL = 2         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+    /*
+     * Utilize segment selector: 0x03e3
+     * Segment Descriptor: 0x00cbd2000000ffff
+     * CPL: 03
+     * RPL: 03
+     * DPL: 02
+     */
+    Sel  = 0x03e3;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selector */
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+    printf("DS:  %#x -- Char: %s\n", DS, hello);
+
+#endif
+
+#elif CONFIG_DEBUG_PL_DATA_C4 /* CONFIG_DEBUG_PL_DATA_C3 */
+
+#ifdef CONFIG_DEBUG_PL_DATA_C4_P2
+    /*
+     * CPL:3 < RPL:0 == DPL:0
+     *
+     * The procedure in code segment E2 is not able to access data segment E2
+     * using segment selector E2, because the CPL of code segment E2 both are
+     * numerically greater than (less privilege) the RPL of segment selector
+     * E2 and the DPL of the data segment E2. (The RPL of segment selector E2
+     * is equal to DPL of the data segment E2).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment E2 |       | Segment Sel. E2 |       | Data Segment E2 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 0         |       | DPL = 0         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+    /*
+     * Utilize segment selector: 0x0300
+     * Segment Desscriptor: 0x00cb92000000ffff
+     * CPL: 03
+     * RPL: 00
+     * DPL: 00
+     */
+    Sel  = 0x0300;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selector */
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+    printf("DS:  %#x -- Char: %s\n", DS, hello);
+
+#elif defined CONFIG_DEBUG_PL_DATA_C4_P4
+    /*
+     * CPL:3 < RPL:1 == DPL:1
+     *
+     * The procedure in code segment E4 is not able to access data segment E4
+     * using segment selector E4, because the CPL of code segment E4 both are
+     * numerically greater than (less privilege) the RPL of segment selector
+     * E4 and the DPL of the data segment E4. (The RPL of segment selector E4
+     * is equal to DPL of the data segment E4).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment E4 |       | Segment Sel. E4 |       | Data Segment E4 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 1         |       | DPL = 1         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+    /*
+     * Utilize segment selector: 0x0351
+     * Segment Descriptor: 0x00cbb2000000ffff
+     * CPL: 03
+     * RPL: 01
+     * DPL: 01
+     */
+    Sel  = 0x0351;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selecotr */
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+    printf("DS:  %#x -- Char: %s\n", DS, hello);
+
+#elif defined CONFIG_DEBUG_PL_DATA_C4_P5
+    /*
+     * CPL:3 < RPL:2 == DPL:2
+     *
+     * The procedure in code segment E5 is not able to access data segment E5
+     * using segment selector E5, because the CPL of code segment E5 both are
+     * numerically greater than (less privilege) the RPL of segment selector
+     * E5 and the DPL of the data segment E5. (The RPL of segment selector E5
+     * is equal to DPL of the data segment E5).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment E5 |       | Segment Sel. E5 |       | Data Segment E5 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 2         |       | DPL = 2         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+    /*
+     * Utilize segment selector: 0x03a2
+     * Segment Descriptor: 0x00cbd2000000ffff
+     * CPL: 03
+     * RPL: 02
+     * DPL: 02
+     */
+    Sel  = 0x03a2;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    /* Load new data segment selector into DS register and trigger privilege
+     * checking. */
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    /* Store data segment selector */
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+    printf("DS:  %#x -- Char: %s\n", DS, hello);
+
+#endif
+
+#endif /* CONFIG_DEBUG_PL_DATA_C4 */
 
     return 0;
 }
@@ -496,7 +766,13 @@ static int __unused privilege_check_data_segment(void)
     defined CONFIG_DEBUG_PL_DATA_C2_P0 | defined CONFIG_DEBUG_PL_DATA_C2_P1 | \
     defined CONFIG_DEBUG_PL_DATA_C2_P2
 late_debugcall(privilege_check_data_segment);
-#elif defined CONFIG_DEBUG_PL_DATA_C0_P3
+#elif defined CONFIG_DEBUG_PL_DATA_C0_P3 | \
+      defined CONFIG_DEBUG_PL_DATA_C3_P2 | \
+      defined CONFIG_DEBUG_PL_DATA_C3_P4 | \
+      defined CONFIG_DEBUG_PL_DATA_C3_P5 | \
+      defined CONFIG_DEBUG_PL_DATA_C4_P2 | \
+      defined CONFIG_DEBUG_PL_DATA_C4_P4 | \
+      defined CONFIG_DEBUG_PL_DATA_C4_P5
 user1_debugcall_sync(privilege_check_data_segment);
 #endif
 
