@@ -93,6 +93,84 @@ config DEBUG_PL_DATA_C0_P3
 
 endif # DEBUG_PL_DATA_C0
 
+config DEBUG_PL_DATA_C1
+	bool "CPL == RPL > DPL"
+	help
+	  CPL == RPL > DPL
+
+if DEBUG_PL_DATA_C1
+
+config DEBUG_PL_DATA_C1_P0
+	bool "CPL:0 == RPL:0 > DPL:1"
+	help
+	  CPL == RPL == 0; DPL == 1
+
+config DEBUG_PL_DATA_C1_P1
+	bool "CPL:0 == PRL:0 > DPL:2"
+	help
+	  CPL == RPL == 0; DPL == 2
+
+config DEBUG_PL_DATA_C1_P2
+	bool "CPL:0 == RPL:0 > DPL:3"
+	help
+	  CPL == RPL == 0; DPL == 3
+
+config DEBUG_PL_DATA_C1_P3
+	bool "CPL:1 == RPL:1 > DPL:2"
+	help
+	  CPL == RPL == 1; DPL == 2
+
+config DEBUG_PL_DATA_C1_P4
+	bool "CPL:1 == RPL:1 > DPL:3"
+	help
+	  CPL == RPL == 1; DPL == 3
+
+config DEBUG_PL_DATA_C1_P5
+	bool "CPL:2 == RPL:2 > DPL:3"
+	help
+	  CPL == RPL == 2; DPL == 3
+
+endif # DEBUG_PL_DATA_C1
+
+config DEBUG_PL_DATA_C2
+	bool "CPL > RPL == DPL"
+	help
+	  CPL > RPL == DPL
+
+if DEBUG_PL_DATA_C2
+
+config DEBUG_PL_DATA_C2_P0
+	bool "CPL:0 > RPL:1 == DPL:1"
+	help
+	  CPL:0 > RPL:1 == DPL:1
+
+config DEBUG_PL_DATA_C2_P1
+	bool "CPL:0 > RPL:2 == DPL:2"
+	help
+	  CPL:0 > RPL:2 == DPL:2
+
+config DEBUG_PL_DATA_C2_P2
+	bool "CPL:0 > RPL:3 == DPL:3"
+	help
+	  CPL:0 > RPL:3 == DPL:3
+
+config DEBUG_PL_DATA_C2_P3
+	bool "CPL:1 > RPL:2 == DPL:2"
+	help
+	  CPL:1 > RPL:2 == DPL:2
+
+config DEBUG_PL_DATA_C2_P4
+	bool "CPL:1 > RPL:3 == DPL:3"
+	help
+	  CPL:1 > RPL:3 == DPL:3
+
+config DEBUG_PL_DATA_C2_P5
+	bool "CPL:2 > RPL:3 == DPL:3"
+	help
+	  CPL:2 > RPL:3 == DPL:3
+
+endif # DEBUG_PL_DATA_C2
+
 endif # DEBUG_PL_DATA
 
 endif # DEBUG_PL_CHECK

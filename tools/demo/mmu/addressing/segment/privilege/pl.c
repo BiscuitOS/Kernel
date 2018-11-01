@@ -249,10 +249,9 @@ static int __unused privilege_check_data_segment(void)
     __asm__ ("mov %0, %%ds" :: "r" (Sel));
     __asm__ ("mov %%ds, %0" : "=m" (DS));
 
-    printk("DS: %#x -- Char: %s\n", DS, hello);
-#endif
+    printk("DS:  %#x -- Char: %s\n", DS, hello);
 
-#ifdef CONFIG_DEBUG_PL_DATA_C0_P3
+#elif defined CONFIG_DEBUG_PL_DATA_C0_P3
     /*
      * CPL == RPL == DPL == 0
      *
@@ -268,12 +267,12 @@ static int __unused privilege_check_data_segment(void)
      * +-----------------+       +-----------------+       +-----------------+
      *
      */
-    /* Utilize segment selector: 0x0203
+    /* Utilize segment selector: 0x03f3
      * RPL: 03
      * CPL: 03
      * DPL: 03
      */
-    Sel  = 0x02f3;
+    Sel  = 0x03f3;
     RPL  = Sel & 0x3;
     desc = gdt + (Sel >> 3);
     DPL  = (desc->b >> 13) & 0x3;
@@ -281,15 +280,221 @@ static int __unused privilege_check_data_segment(void)
     __asm__ ("mov %0, %%ds" :: "r" (Sel));
     __asm__ ("mov %%ds, %0" : "=m" (DS));
 
-    printf("DS: %#x -- Char: %s\n", DS, hello);
+    printf("DS:  %#x -- Char: %s\n", DS, hello);
+    
 #endif
 
-#endif /* CONFIG_DEBUG_PL_DATA_C0 */
+#elif defined CONFIG_DEBUG_PL_DATA_C1 /* CONFIG_DEBUG_PL_DATA_C0 */
+
+#ifdef CONFIG_DEBUG_PL_DATA_C1_P0
+    /*
+     * CPL:0 == RPL:0 > DPL:1
+     *
+     * The procedure in code segment B0 is able to access data segment E0
+     * using segment selector E0, because the CPL of code segment B0 and the
+     * RPL of segment selector E0 are both numerically lower than (more
+     * privileged) the DPL of data segment E0.
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment B0 |       | Segment Sel. E0 |       | Data Segment E0 |
+     * |                -|------>|                -|------>|                 |
+     * | CPL = 0         |       | RPL = 0         |       | DPL = 1         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+    /* Utilize segment selector: 0x0210
+     * CPL: 00
+     * RPL: 00
+     * DPL: 01
+     */
+    Sel  = 0x0210;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 0x3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x CPL: %#x RPL: %#x DPL: %#x\n", Sel, CPL, RPL, DPL);
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+    printk("DS:  %#x -- Char: %s\n", DS, hello);
+
+#elif defined CONFIG_DEBUG_PL_DATA_C1_P1
+    /*
+     * CPL:0 == RPL:0 > DPL:2
+     *
+     * The procedure in code segment B1 is able to access data segment E1
+     * using segment selector E1, because the CPL of code segment B1 and the
+     * RPL of segment selector E1 are both numerically lower than (more
+     * privileged) the DPL of data segment E1.
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment B1 |       | Segment Sel. E1 |       | Data Segment E1 |
+     * |                -|------>|                -|------>|                 |
+     * | CPL = 0         |       | RPL = 0         |       | DPL = 2         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+    /*
+     * Utilize segment selector: 0x0220
+     * CPL: 00
+     * RPL: 00
+     * DPL: 02
+     */
+    Sel  = 0x0220;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 0x3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x CPL: %#x RPL: %#x DPL: %#x\n", Sel, CPL, RPL, DPL);
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+    printk("DS:  %#x -- Char: %s\n", DS, hello);
+
+#elif defined CONFIG_DEBUG_PL_DATA_C1_P2
+    /*
+     * CPL:0 == RPL:0 > DPL:3
+     *
+     * The procedure in code segment B3 is able to access data segment E3
+     * using segment selector E3, because the CPL of code segment B3 and the
+     * RPL of segment selector E3 are both numerically lower than (more
+     * privileged) the DPL of data segment E3.
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment B3 |       | Segment Sel. E3 |       | Data Segment E3 |
+     * |                -|------>|                -|------>|                 |
+     * | CPL = 0         |       | RPL = 0         |       | DPL = 3         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+    /*
+     * Utilize segment selector: 0x0230
+     * CPL: 00
+     * RPL: 00
+     * DPL: 03
+     */
+    Sel  = 0x0230;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 0x3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x CPL: %#x RPL: %#x DPL: %#x\n", Sel, CPL, RPL, DPL);
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+    printk("DS:  %#x -- Char: %s\n", DS, hello);
+
+#endif
+
+#elif defined CONFIG_DEBUG_PL_DATA_C2 /* CONFIG_DEBUG_PL_DATA_C1 */
+
+#ifdef CONFIG_DEBUG_PL_DATA_C2_P0
+    /*
+     * CPL:0 > RPL:1 == DPL:1
+     *
+     * The procedure in code segment C0 is able to access data segment E0
+     * using segment selector E0, because the CPL of code segment C0 is
+     * numerically lower than (more privilege) then RPL of segment selector
+     * E0, and the RPL of segment selector E0 is equal to DPL of data segment
+     * E0.
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment C0 |       | Segment Sel. E0 |       | Data Segment E0 |
+     * |                -|------>|                -|------>|                 |
+     * | CPL = 0         |       | RPL = 1         |       | DPL = 1         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+    /*
+     * Utilize segment selector: 0x0251
+     * CPL: 00
+     * RPL: 01
+     * DPL: 01
+     */
+    Sel  = 0x0251;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 0x3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x CPL: %#x RPL:%#x DPL:%#x\n", Sel, CPL, RPL, DPL);
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+    printk("DS:  %#x -- Char: %s\n", DS, hello);
+
+#elif defined CONFIG_DEBUG_PL_DATA_C2_P1
+    /*
+     * CPL:0 > RPL:2 == DPL:2
+     *
+     * The procedure in code segment C1 is able to access data segment E1
+     * using segment selector E1, because the CPL of code segment C1 is
+     * numerically lower than (more privilege) then RPL of segment selector
+     * E1, and the RPL of segment selector E1 is equal to DPL of data segment
+     * E1.
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment C1 |       | Segment Sel. E1 |       | Data Segment E1 |
+     * |                -|------>|                -|------>|                 |
+     * | CPL = 0         |       | RPL = 2         |       | DPL = 2         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+    /*
+     * Utilize segment selector: 0x02a2
+     * CPL: 00
+     * RPL: 02
+     * DPL: 02
+     */
+    Sel  = 0x02a2;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x CPL: %#x RPL:%#x DPL:%#x\n", Sel, CPL, RPL, DPL);
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+    printk("DS:  %#x -- Char: %s\n", DS, hello);
+
+#elif defined CONFIG_DEBUG_PL_DATA_C2_P2
+    /*
+     * CPL:0 > RPL:3 == DPL:3
+     *
+     * The procedure in code segment C2 is able to access data segment E2
+     * using segment selector E2, because the CPL of code segment C2 is
+     * numerically lower than (more privilege) then RPL of segment selector
+     * E2, and the RPL of segment selector E2 is equal to DPL of data segment
+     * E2.
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment C2 |       | Segment Sel. E2 |       | Data Segment E2 |
+     * |                -|------>|                -|------>|                 |
+     * | CPL = 0         |       | RPL = 3         |       | DPL = 3         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+    /*
+     * Utilize segment selector: 0x02f3
+     * CPL: 00
+     * PRL: 03
+     * DPL: 03 
+     */
+    Sel  = 0x02f3;
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 0x3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x CPL: %#x RPL: %#x DPL: %#x\n", Sel, CPL, RPL, DPL);
+    __asm__ ("mov %0, %%ds" :: "r" (Sel));
+    __asm__ ("mov %%ds, %0" : "=m" (DS));
+    printk("DS:  %#x -- Char: %s\n", DS, hello);
+
+#endif
+
+#endif /* CONFIG_DEBUG_PL_DATA_C2 */
 
     return 0;
 }
 
-#if defined CONFIG_DEBUG_PL_DATA_C0_P0
+#if defined CONFIG_DEBUG_PL_DATA_C0_P0 | defined CONFIG_DEBUG_PL_DATA_C1_P0 | \
+    defined CONFIG_DEBUG_PL_DATA_C1_P1 | defined CONFIG_DEBUG_PL_DATA_C1_P2 | \
+    defined CONFIG_DEBUG_PL_DATA_C2_P0 | defined CONFIG_DEBUG_PL_DATA_C2_P1 | \
+    defined CONFIG_DEBUG_PL_DATA_C2_P2
 late_debugcall(privilege_check_data_segment);
 #elif defined CONFIG_DEBUG_PL_DATA_C0_P3
 user1_debugcall_sync(privilege_check_data_segment);
@@ -301,66 +506,114 @@ user1_debugcall_sync(privilege_check_data_segment);
  *
  * Debug segment selector and segment descriptor list
  *
- * +-------------+--------------------+-------------+-----+-----+
- * | Segment Sel | Segment Descriptor | Kernel/User | RPL | DPL |
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x0200      | 0xc0c392000000ffff | kernel      | 00  | 00  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x0210      | 0xc0c392000000ffff | kernel      | 00  | 01  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x0220      | 0xc0c392000000ffff | kernel      | 00  | 02  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x0230      | 0xc0c392000000ffff | kernel      | 00  | 03  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x0241      | 0xc0c392000000ffff | kernel      | 01  | 00  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x0251      | 0xc0c392000000ffff | kernel      | 01  | 01  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x0261      | 0xc0c392000000ffff | kernel      | 01  | 02  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x0271      | 0xc0c392000000ffff | kernel      | 01  | 03  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x0282      | 0xc0c392000000ffff | kernel      | 02  | 00  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x0292      | 0xc0c392000000ffff | kernel      | 02  | 01  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x02a2      | 0xc0c392000000ffff | kernel      | 02  | 02  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x02b2      | 0xc0c392000000ffff | kernel      | 02  | 03  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x02c3      | 0xc0c392000000ffff | kernel      | 03  | 00  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x02d3      | 0xc0c392000000ffff | kernel      | 03  | 01  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x02e3      | 0xc0c392000000ffff | kernel      | 03  | 02  |             
- * +-------------+--------------------+-------------+-----+-----+
- * | 0x02f3      | 0xc0c392000000ffff | kernel      | 03  | 03  |             
- * +-------------+--------------------+-------------+-----+-----+
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | Segment Sel | Segment Descriptor | Kernel/User | CPL | RPL | DPL|
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0200      | 0xc0c392000000ffff | kernel      | 00  | 00  | 00 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0210      | 0xc0c3b2000000ffff | kernel      | 00  | 00  | 01 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0220      | 0xc0c3d2000000ffff | kernel      | 00  | 00  | 02 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0230      | 0xc0c3f2000000ffff | kernel      | 00  | 00  | 03 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0241      | 0xc0c392000000ffff | kernel      | 00  | 01  | 00 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0251      | 0xc0c3b2000000ffff | kernel      | 00  | 01  | 01 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0261      | 0xc0c3d2000000ffff | kernel      | 00  | 01  | 02 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0271      | 0xc0c3f2000000ffff | kernel      | 00  | 01  | 03 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0282      | 0xc0c392000000ffff | kernel      | 00  | 02  | 00 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0292      | 0xc0c3b2000000ffff | kernel      | 00  | 02  | 01 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x02a2      | 0xc0c3d2000000ffff | kernel      | 00  | 02  | 02 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x02b2      | 0xc0c3f2000000ffff | kernel      | 00  | 02  | 03 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x02c3      | 0xc0c392000000ffff | kernel      | 00  | 03  | 00 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x02d3      | 0xc0c3b2000000ffff | kernel      | 00  | 03  | 01 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x02e3      | 0xc0c3d2000000ffff | kernel      | 00  | 03  | 02 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x02f3      | 0xc0c3f2000000ffff | kernel      | 00  | 03  | 03 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0300      | 0x00cb92000000ffff | User        | 03  | 00  | 00 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0310      | 0x00cbb2000000ffff | User        | 03  | 00  | 01 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0320      | 0x00cbd2000000ffff | User        | 03  | 00  | 02 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0330      | 0x00cbf2000000ffff | User        | 03  | 00  | 03 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0341      | 0x00cb92000000ffff | User        | 03  | 01  | 00 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0351      | 0x00cbb2000000ffff | User        | 03  | 01  | 01 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0361      | 0x00cbd2000000ffff | User        | 03  | 01  | 02 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0371      | 0x00cbf2000000ffff | User        | 03  | 01  | 03 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0382      | 0x00cb92000000ffff | User        | 03  | 02  | 00 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x0392      | 0x00cbb2000000ffff | User        | 03  | 02  | 01 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x03a2      | 0x00cbd2000000ffff | User        | 03  | 02  | 02 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x03b2      | 0x00cbf2000000ffff | User        | 03  | 02  | 03 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x03c3      | 0x00cb92000000ffff | User        | 03  | 03  | 00 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x03d3      | 0x00cbb2000000ffff | User        | 03  | 03  | 01 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x03e3      | 0x00cbd2000000ffff | User        | 03  | 03  | 02 |
+ * +-------------+--------------------+-------------+-----+-----+----+
+ * | 0x03f3      | 0x00cbf2000000ffff | User        | 03  | 03  | 03 |
+ * +-------------+--------------------+-------------+-----+-----+----+
  */
 static struct desc_struct __unused debug_desc[] = {
-  { .a = 0x0000ffff, .b = 0xc0c39200},
-  { .a = 0x0000ffff, .b = 0xc0c3b200},
-  { .a = 0x0000ffff, .b = 0xc0c3d200},
-  { .a = 0x0000ffff, .b = 0xc0c3f200},
-  { .a = 0x0000ffff, .b = 0xc0c39200},
-  { .a = 0x0000ffff, .b = 0xc0c3b200},
-  { .a = 0x0000ffff, .b = 0xc0c3d200},
-  { .a = 0x0000ffff, .b = 0xc0c3f200},
-  { .a = 0x0000ffff, .b = 0xc0c39200},
-  { .a = 0x0000ffff, .b = 0xc0c3b200},
-  { .a = 0x0000ffff, .b = 0xc0c3d200},
-  { .a = 0x0000ffff, .b = 0xc0c3f200},
-  { .a = 0x0000ffff, .b = 0xc0c39200},
-  { .a = 0x0000ffff, .b = 0xc0c3b200},
-  { .a = 0x0000ffff, .b = 0xc0c3d200},
-  { .a = 0x0000ffff, .b = 0x00cbf200},
+  { .a = 0x0000ffff, .b = 0xc0c39200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3b200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3d200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3f200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c39200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3b200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3d200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3f200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c39200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3b200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3d200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3f200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c39200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3b200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3d200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3f200}, /* kernel 1GB data at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0x00cb9200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cbb200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cbd200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cbf200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cb9200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cbb200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cbd200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cbf200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cb9200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cbb200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cbd200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cbf200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cb9200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cbb200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cbd200}, /* user   3GB data at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0x00cbf200}, /* user   3GB data at 0x00000000 */
   { }
 };
 
 static int __unused establish_debug_data_segment(void)
 {
     unsigned short __unused start_Sel = 0x0200;
-    unsigned short __unused end_Sel   = 0x02f0;
+    unsigned short __unused end_Sel   = 0x03f3;
     unsigned short __unused Sel;
     struct desc_struct __unused *desc;
     unsigned short __unused i = 0;
