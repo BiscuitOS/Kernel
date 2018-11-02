@@ -540,9 +540,23 @@ code segment F2 is able to access data segment E2.
 
 ```
 +-----------------+       +------------------+        +-----------------+
-| Code Segment F1 |       | Segment Sel. E1  |        | Data Segment E1 |
+| Code Segment F2 |       | Segment Sel. E2  |        | Data Segment E2 |
 |                -|------>|                 -|---X--->|                 |
 | CPL = 3         |       | RPL = 1          |        | DPL = 2         |
++-----------------+       +------------------+        +-----------------+
+```
+
+The procedure in code segment F3 is not able to access data segment E3 using
+segment selector E3. If the CPL of code segment F3 is numerically greate than
+(less privilege) the DPL of data segment E3, even the RPL of segment selector
+E3 is numerically less than (more privilege) the DPL of data segment E3, the
+code segment F3 is able to access data segment E3.
+
+```
++-----------------+       +------------------+        +-----------------+
+| Code Segment F3 |       | Segment Sel. E3  |        | Data Segment E3 |
+|                -|------>|                 -|---X--->|                 |
+| CPL = 3         |       | RPL = 0          |        | DPL = 2         |
 +-----------------+       +------------------+        +-----------------+
 ```
 
@@ -637,3 +651,17 @@ than the RPL of segment selector E2, so access is allowed.
 +-----------------+       +------------------+        +-----------------+
 ```
 
+The procedure in code segment H3 should be able to access data segment E3
+because code segment D's CPL is numerically less than the DPL of data segment
+E3. However, the RPL of segment selector E3 (which the code segment G3
+procedure is using to access data segment E3) is numerically less than the
+DPL of data segment E3, and the CPL of code segment G3 is numerically less
+than the RPL of segment selector E3, so access is allowed.
+
+```
++-----------------+       +------------------+        +-----------------+
+| Code Segment H3 |       | Segment Sel. E3  |        | Data Segment E3 |
+|                -|------>|                 -|------->|                 |
+| CPL = 0         |       | RPL = 1          |        | DPL = 3         |
++-----------------+       +------------------+        +-----------------+
+```
