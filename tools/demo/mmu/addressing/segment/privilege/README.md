@@ -665,3 +665,48 @@ than the RPL of segment selector E3, so access is allowed.
 | CPL = 0         |       | RPL = 1          |        | DPL = 3         |
 +-----------------+       +------------------+        +-----------------+
 ```
+
+As demonstarted in the previous examples, the addressable domain of a program
+or task varies as its CPL changes. When the CPL is 0, data segment at all 
+privilege levels are accessible; when the CPL is 1, only data segments at
+privilege levels 1 through 3 are accessible; when the CPL is 3, only data
+segment segments at privilege level 3 are accessbile.
+
+The RPL of a segment selector can always override the addressable domain of a 
+program or task. When properly used, PRLs can prevent problems caused by 
+accidental (or intensional) use of segment selectors for privilege data
+segments by less privilege program or procedure.
+
+It is important to note that the RPL of a segment selector for a data segment
+is under software control. For example, an application program running at a
+CPL of 3 can set the RPL for a data-segment to 0. With the RPL set to 0, only
+the CPL checks, not the PRL checks, will provide protection against deliberate,
+direct attempts to violate privilege-level security for the data segment. To
+prevent these types of privilege-level-check violations, a program or procedure
+can check access privileges whenever it receives a data-segment selector from
+another procedure.
+
+#### Accessing Data in Code Segments
+
+In some instances it may be desirable to access data structes that are 
+contained in a code segment. The following methods of accessing data in code 
+segments are possible:
+
+* Load a data-segment register with a segment selector for a nonconforming,
+  readable, code segment.
+
+* Load a data-segment register with a segment selector for a conforming,
+  readable, code segment.
+
+* User a code-segment override prefix(CS) to read a readable, code segment
+  whose selector is already loaded in the CS register.
+
+The same rules for accessing data segments apply to method 1. Method 2 is 
+always valid because the privilege level of a conforming code segment is 
+effectively the same as the CPL, regardless of its DPL. Method 3 is always
+valid because the DPL of the code segment selected by the CS register is the
+same as the CPL.
+
+## Privilege level checking when loading the SS register
+
+Privilege level checking also occurs when the SS register is loaded with
