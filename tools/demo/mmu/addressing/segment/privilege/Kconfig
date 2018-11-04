@@ -912,6 +912,303 @@ endif # DEBUG_PL_STACK_C7
 
 endif # DEBUG_PL_STACK
 
+config DEBUG_PL_CODE
+	bool "Privilege Checking when transferring program control between code segment without Gate"
+	select DEBUG_PL_CODE_ESTABLISH
+	help
+	  Privilege checking when transferring program control between code segment without Gate.
+
+if DEBUG_PL_CODE
+
+config DEBUG_PL_CODE_ESTABLISH
+	bool "Establish specify Code Segment Selector and Descriptor"
+	help
+	  Establish a specify segment selector and segment descriptor.
+
+choice
+	prompt "Select Code Segment Type"
+
+config DEBUG_PL_CODE_CFM
+	bool "Conforming, readable Code Segment"
+	help
+	  Conforming and readable Code Segment.
+
+config DEBUG_PL_CODE_UCFM
+	bool "UnConforming, readable Code Segment"
+	help
+	  UnConforming and readable Code Segment.
+
+endchoice
+
+config DEBUG_PL_CODE_C0
+	bool "CPL == RPL == DPL"
+	help
+	  CPL == RPL == DPL
+
+if DEBUG_PL_CODE_C0
+
+config DEBUG_PL_CODE_C0_P0
+	bool "CPL:0 == RPL:0 == DPL:0"
+	help
+	  CPL:0 == RPL:0 == DPL:0
+
+config DEBUG_PL_CODE_C0_P1
+	bool "CPL:1 == RPL:1 == DPL:1"
+	help
+	  CPL:1 == RPL:1 == DPL:1
+
+config DEBUG_PL_CODE_C0_P2
+	bool "CPL:2 == RPL:2 == DPL:2"
+	help
+	  CPL:2 == RPL:2 == DPL:2
+
+config DEBUG_PL_CODE_C0_P3
+	bool "CPL:3 == RPL:3 == DPL:3"
+	help
+	  CPL:3 == RPL:3 == DPL:3
+
+endif # DEBUG_PL_CODE_C0
+
+config DEBUG_PL_CODE_C1
+	bool "CPL == RPL > DPL"
+	help
+	  CPL == RPL > DPL
+
+if DEBUG_PL_CODE_C1
+
+config DEBUG_PL_CODE_C1_P0
+	bool "CPL:0 == RPL:0 > DPL:1"
+	help
+	  CPL == RPL == 0; DPL == 1
+
+config DEBUG_PL_CODE_C1_P1
+	bool "CPL:0 == PRL:0 > DPL:2"
+	help
+	  CPL == RPL == 0; DPL == 2
+
+config DEBUG_PL_CODE_C1_P2
+	bool "CPL:0 == RPL:0 > DPL:3"
+	help
+	  CPL == RPL == 0; DPL == 3
+
+config DEBUG_PL_CODE_C1_P3
+	bool "CPL:1 == RPL:1 > DPL:2"
+	help
+	  CPL == RPL == 1; DPL == 2
+
+config DEBUG_PL_CODE_C1_P4
+	bool "CPL:1 == RPL:1 > DPL:3"
+	help
+	  CPL == RPL == 1; DPL == 3
+
+config DEBUG_PL_CODE_C1_P5
+	bool "CPL:2 == RPL:2 > DPL:3"
+	help
+	  CPL == RPL == 2; DPL == 3
+
+endif # DEBUG_PL_CODE_C1
+
+config DEBUG_PL_CODE_C2
+	bool "CPL > RPL == DPL"
+	help
+	  CPL > RPL == DPL
+
+if DEBUG_PL_CODE_C2
+
+config DEBUG_PL_CODE_C2_P0
+	bool "CPL:0 > RPL:1 == DPL:1"
+	help
+	  CPL:0 > RPL:1 == DPL:1
+
+config DEBUG_PL_CODE_C2_P1
+	bool "CPL:0 > RPL:2 == DPL:2"
+	help
+	  CPL:0 > RPL:2 == DPL:2
+
+config DEBUG_PL_CODE_C2_P2
+	bool "CPL:0 > RPL:3 == DPL:3"
+	help
+	  CPL:0 > RPL:3 == DPL:3
+
+config DEBUG_PL_CODE_C2_P3
+	bool "CPL:1 > RPL:2 == DPL:2"
+	help
+	  CPL:1 > RPL:2 == DPL:2
+
+config DEBUG_PL_CODE_C2_P4
+	bool "CPL:1 > RPL:3 == DPL:3"
+	help
+	  CPL:1 > RPL:3 == DPL:3
+
+config DEBUG_PL_CODE_C2_P5
+	bool "CPL:2 > RPL:3 == DPL:3"
+	help
+	  CPL:2 > RPL:3 == DPL:3
+
+endif # DEBUG_PL_CODE_C2
+
+config DEBUG_PL_CODE_C3
+	bool "CPL == RPL < DPL"
+	help
+	  CPL == RPL < DPL
+
+if DEBUG_PL_CODE_C3
+
+config DEBUG_PL_CODE_C3_P0
+	bool "CPL:1 == RPL:1 < DPL:0"
+	help
+	  CPL:1 == RPL:1 < DPL:0
+
+config DEBUG_PL_CODE_C3_P1
+	bool "CPL:2 == RPL:2 < DPL:0"
+	help
+	  CPL:2 == RPL:2 < DPL:0
+
+config DEBUG_PL_CODE_C3_P2
+	bool "CPL:3 == RPL:3 < DPL:0"
+	help
+	  CPL:3 == RPL:3 < DPL:0
+
+config DEBUG_PL_CODE_C3_P3
+	bool "CPL:2 == RPL:2 < DPL:1"
+	help
+	  CPL:2 == RPL:2 < DPL:1
+
+config DEBUG_PL_CODE_C3_P4
+	bool "CPL:3 == RPL:3 < DPL:1"
+	help
+	  CPL:3 == RPL:3 < DPL:1
+
+config DEBUG_PL_CODE_C3_P5
+	bool "CPL:3 == RPL:3 < DPL:2"
+	help
+	  CPL:3 == RPL:3 < DPL:2
+
+endif # DEBUG_PL_CODE_C3
+
+config DEBUG_PL_CODE_C4
+	bool "CPL < RPL == DPL"
+	help
+	  CPL < RPL == DPL
+
+if DEBUG_PL_CODE_C4
+
+config DEBUG_PL_CODE_C4_P0
+	bool "CPL:1 < RPL:0 == DPL:0"
+	help
+	  CPL:1 < RPL:0 == DPL:0
+
+config DEBUG_PL_CODE_C4_P1
+	bool "CPL:2 < RPL:0 == DPL:0"
+	help
+	  CPL:2 < RPL:0 == DPL:0
+
+config DEBUG_PL_CODE_C4_P2
+	bool "CPL:3 < RPL:0 == DPL:0"
+	help
+	  CPL:3 < RPL:0 == DPL:0
+
+config DEBUG_PL_CODE_C4_P3
+	bool "CPL:2 < RPL:1 == DPL:1"
+	help
+	  CPL:2 < RPL:1 == DPL:1
+
+config DEBUG_PL_CODE_C4_P4
+	bool "CPL:3 < RPL:1 == DPL:1"
+	help
+	  CPL:3 < RPL:1 == DPL:1
+
+config DEBUG_PL_CODE_C4_P5
+	bool "CPL:3 < RPL:2 == DPL:2"
+	help
+	  CPL:3 < RPL:2 == DPL:2
+
+endif # DEBUG_PL_CODE_C4
+
+config DEBUG_PL_CODE_C5
+	bool "CPL < RPL && RPL > DPL (RPL > DPL > CPL)"
+	help
+	  CPL < RPL && RPL > DPL
+
+if DEBUG_PL_CODE_C5
+
+config DEBUG_PL_CODE_C5_P0
+	bool "CPL:2 < RPL:0 && RPL:0 > DPL:1"
+	help
+	  CPL:2 < DPL:1 < RPL:0
+
+config DEBUG_PL_CODE_C5_P1
+	bool "CPL:3 < RPL:0 && RPL:0 > DPL:1"
+	help
+	  CPL:3 < DPL:1 < RPL:0
+
+config DEBUG_PL_CODE_C5_P2
+	bool "CPL:3 < RPL:0 && RPL:0 > DPL:2"
+	help
+	  CPL:3 < DPL:2 < RPL:0
+
+config DEBUG_PL_CODE_C5_P3
+	bool "CPL:3 < RPL:1 && RPL:1 > DPL:2"
+	help
+	  CPL:3 < DPL:2 < RPL:1
+
+endif # DEBUG_PL_CODE_C5
+
+config DEBUG_PL_CODE_C6
+	bool "CPL > RPL && RPL < DPL (CPL > DPL > RPL)"
+	help
+	  CPL > DPL > RPL
+
+if DEBUG_PL_CODE_C6
+
+config DEBUG_PL_CODE_C6_P0
+	bool "CPL:0 > RPL:2 && RPL:2 < DPL:1"
+	help
+	  CPL:0 > DPL:1 > RPL:2
+
+config DEBUG_PL_CODE_C6_P1
+	bool "CPL:0 > RPL:3 && RPL:3 < DPL:1"
+	help
+	  CPL:0 > DPL:1 > RPL:3
+
+config DEBUG_PL_CODE_C6_P2
+	bool "CPL:1 > RPL:3 && RPL:3 < DPL:2"
+	help
+	  CPL:1 > DPL:2 > RPL:3
+
+endif # DEBUG_PL_CODE_C6
+
+config DEBUG_PL_CODE_C7
+	bool "CPL > RPL > DPL"
+	help
+	  CPL > RPL > DPL
+
+if DEBUG_PL_CODE_C7
+
+config DEBUG_PL_CODE_C7_P0
+	bool "CPL:0 > RPL:1 > DPL:2"
+	help
+	  CPL:0 > RPL:1 > DPL:2
+
+config DEBUG_PL_CODE_C7_P1
+	bool "CPL:0 > RPL:1 > DPL:3"
+	help
+	  CPL:0 > RPL:1 > DPL:3
+
+config DEBUG_PL_CODE_C7_P2
+	bool "CPL:0 > RPL:2 > DPL:3"
+	help
+	  CPL:0 > RPL:2 > DPL:3
+
+config DEBUG_PL_CODE_C7_P3
+	bool "CPL:1 > RPL:2 > DPL:3"
+	help
+	  CPL:1 > RPL:2 > DPL:3
+
+endif # DEBUG_PL_CODE_C7
+
+endif # DEBUG_PL_CODE
+
 endif # DEBUG_PL_CHECK
 
 endmenu

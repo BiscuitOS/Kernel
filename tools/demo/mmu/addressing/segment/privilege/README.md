@@ -715,3 +715,122 @@ the stack segment must match the CPL; that is, the CPL, the RPL of the stack
 segment selector, and the DPL of the stack-segment descriptor must be the same.
 If the RPL and DPL are not equal to the CPL, a general-protection exception 
 (#GP) is generated.
+
+
+```
+  CS Regsiter
+  +-------------------------+-----+
+  |                         | CPL |---------o
+  +-------------------------+-----+         |
+                                            |      +-----------------+
+                                            |      |                 |
+  Segment Selector for Stack Segment        o----->|                 |
+  +-------------------------+-----+                |                 |
+  |                         | RPL |--------------->| Privilege Check |
+  +-------------------------+-----+                |                 |
+                                            o----->|                 |
+                                            |      |                 |
+  Stack-Segment Descriptor                  |      +-----------------+
+  +-------------+-----+-----------+         |
+  |             | DPL |           |---------o
+  +-------------+-----+-----------+
+  +-------------------------------+
+  |                               |
+  +-------------------------------+
+```
+
+## Privilege level checking when transferring program control between code segments
+
+To transfer program control from one code segment to another, the segment 
+selector for the destination code segment must be loaded into the code-segment
+register (CS). As part of this loading process, the processor examines the
+segment descriptor for the destination code segment and performs various limit,
+type, and privilege checks. If these checks are successful, the CS register is
+loaded, program control is transferred to the new code segment, and program
+execution begins at the instruction pointed to by the EIP register.
+
+Program control transfers are carried out with the JMP, CALL, RET, SYSENTER,
+SYSEXIT, SYSCALL, SYSRET, INT n, and IRET instructions, as well as by the 
+exception and interrupt mechanisms. 
+
+A JMP or CALL instruction can reference another code segment in any of four
+ways:
+
+* The target operand contains the segment selector for the target code segment.
+
+* The target operand points to a call-gate descriptor, which contains the
+  segment selector for the target code segment.
+
+* The target operand points to a TSS, which contains the segment selector for
+  the target code segment.
+
+* The target operand points to a task gate, which points to a TSS, which in 
+  turn contains the segment selector for the target code segment.
+
+#### Direct Calls or Jump to Code Segments
+
+The near forms of the JMP, CALL, and RET instructions transfer program control
+within the current code segment, so privilege-level checks are not performed.
+The far forms the JMP, CALL, and RET instructions transfer control to other
+code segments, so the processor does perform privilege-level checks.
+
+When tranfering program control to another code segment without going through
+a gate, the processor examines four kind of privilege level and type
+information.
+
+```
+  CS Regsiter
+  +-------------------------+-----+
+  |                         | CPL |---------o
+  +-------------------------+-----+         |
+                                            |      +-----------------+
+                                            |      |                 |
+  Segment Selector for Code Segment         o----->|                 |
+  +-------------------------+-----+                |                 |
+  |                         | RPL |--------------->| Privilege Check |
+  +-------------------------+-----+                |                 |
+                                            o----->|                 |
+                                            |      |                 |
+  Code-Segment Descriptor                   |      +-----------------+
+  +-------------+-----+----+---+--+         |
+  |             | DPL |    | C |  |---------o
+  +-------------+-----+----+---+--+
+  +-------------------------------+
+  |                               |
+  +-------------------------------+
+```
+
+* The CPL. (Here, the CPL is the privilege level of the calling code segment;
+  that is, the code segment that contains the procedure that is making the call
+  or jump)
+
+* The DPL of the segment descriptor for the destination code segment that 
+  contains the called procedure.
+
+* The RPL of the segment selector of the destination code segment.
+
+* The conforming (C) flag in the segment descriptor for the destination code
+  segment, which determines whether the segment is a conforming (C flag is set)
+  or nonconforming (C flag is clear) code segment.
+
+The rules that the processor uses to check the CPL, RPL,and DPL depends on the 
+setting of the C flag, as described in the following sections.
+
+##### Accessing Nonconforming Code Segments
+
+When accessing nonconforming code segments, the CPL of the calling procedure
+must be equal to the DPL of the destinaiton code segment; otherwise, the 
+processor generates a general-protection exception (#GP). For example in 
+Figure:
+
+![Conforming or NonConforming](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000405.png)
+
+* Code segment C is a nonconforming code segment. A procedure in code segment
+  A can call a procedure in code segment C (using segment selector C1) because
+  they are at the same privilege level (CPL of code segment A is equal to the
+  DPL of code segment C).
+
+* A procedure in code segment B cannot call a procedure in code segment C (
+  using segmeng selector C2 or C1) because the two code segments are at 
+  difference privilege levels.
+

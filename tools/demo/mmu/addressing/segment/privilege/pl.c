@@ -3887,6 +3887,1530 @@ late_debugcall(privilege_check_stack_segment);
 user1_debugcall_sync(privilege_check_stack_segment);
 #endif
 
+#ifdef CONFIG_DEBUG_PL_CODE_ESTABLISH
+/*
+ * Establish a lot of debug code segment selectors and segment descriptors.
+ *
+ * Debug segment selector and segment descriptor list
+ *
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | Seg.Sel | Segment Descriptor | Ker/UR | Conforming/N | CPL | RPL | DPL |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0210  | 0xc0c39a000000ffff | Kernel | Non-Conform  | 00  | 00  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0220  | 0xc0c3ba000000ffff | Kernel | Non-Conform  | 00  | 00  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0230  | 0xc0c3da000000ffff | Kernel | Non-Conform  | 00  | 00  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0240  | 0xc0c3fa000000ffff | Kernel | Non-Conform  | 00  | 00  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0251  | 0xc0c39a000000ffff | Kernel | Non-Conform  | 00  | 01  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0261  | 0xc0c3ba000000ffff | Kernel | Non-Conform  | 00  | 01  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0271  | 0xc0c3da000000ffff | Kernel | Non-Conform  | 00  | 01  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0281  | 0xc0c3fa000000ffff | Kernel | Non-Conform  | 00  | 01  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0292  | 0xc0c39a000000ffff | Kernel | Non-Conform  | 00  | 02  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x02a2  | 0xc0c3ba000000ffff | Kernel | Non-Conform  | 00  | 02  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x02b2  | 0xc0c3da000000ffff | Kernel | Non-Conform  | 00  | 02  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x02c2  | 0xc0c3fa000000ffff | Kernel | Non-Conform  | 00  | 02  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x02d3  | 0xc0c39a000000ffff | Kernel | Non-Conform  | 00  | 03  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x02e3  | 0xc0c3ba000000ffff | Kernel | Non-Conform  | 00  | 03  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x02f3  | 0xc0c3da000000ffff | Kernel | Non-Conform  | 00  | 03  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0303  | 0xc0c3fa000000ffff | Kernel | Non-Conform  | 00  | 03  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0310  | 0x00cb9a000000ffff | User   | Non-Conform  | 03  | 00  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0320  | 0x00cbba000000ffff | User   | Non-Conform  | 03  | 00  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0330  | 0x00cbda000000ffff | User   | Non-Conform  | 03  | 00  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0340  | 0x00cbfa000000ffff | User   | Non-Conform  | 03  | 00  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0351  | 0x00cb9a000000ffff | User   | Non-Conform  | 03  | 01  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0361  | 0x00cbba000000ffff | User   | Non-Conform  | 03  | 01  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0371  | 0x00cbda000000ffff | User   | Non-Conform  | 03  | 01  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0381  | 0x00cbfa000000ffff | User   | Non-Conform  | 03  | 01  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0392  | 0x00cb9a000000ffff | User   | Non-Conform  | 03  | 02  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x03a2  | 0x00cbba000000ffff | User   | Non-Conform  | 03  | 02  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x03b2  | 0x00cbda000000ffff | User   | Non-Conform  | 03  | 02  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x03c2  | 0x00cbfa000000ffff | User   | Non-Conform  | 03  | 02  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x03d3  | 0x00cb9a000000ffff | User   | Non-Conform  | 03  | 03  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x03e3  | 0x00cbba000000ffff | User   | Non-Conform  | 03  | 03  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x03f3  | 0x00cbda000000ffff | User   | Non-Conform  | 03  | 03  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0403  | 0x00cbfa000000ffff | User   | Non-Conform  | 03  | 03  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0410  | 0xc0c39a000000ffff | Kernel |  Conforming  | 00  | 00  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0420  | 0xc0c3be000000ffff | Kernel |  Conforming  | 00  | 00  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0430  | 0xc0c3de000000ffff | Kernel |  Conforming  | 00  | 00  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0440  | 0xc0c3fe000000ffff | Kernel |  Conforming  | 00  | 00  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0451  | 0xc0c39e000000ffff | Kernel |  Conforming  | 00  | 01  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0461  | 0xc0c3be000000ffff | Kernel |  Conforming  | 00  | 01  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0471  | 0xc0c3de000000ffff | Kernel |  Conforming  | 00  | 01  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0481  | 0xc0c3fe000000ffff | Kernel |  Conforming  | 00  | 01  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0492  | 0xc0c39e000000ffff | Kernel |  Conforming  | 00  | 02  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x04a2  | 0xc0c3be000000ffff | Kernel |  Conforming  | 00  | 02  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x04b2  | 0xc0c3de000000ffff | Kernel |  Conforming  | 00  | 02  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x04c2  | 0xc0c3fe000000ffff | Kernel |  Conforming  | 00  | 02  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x04e3  | 0xc0c39e000000ffff | Kernel |  Conforming  | 00  | 03  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x04e3  | 0xc0c3be000000ffff | Kernel |  Conforming  | 00  | 03  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x04f3  | 0xc0c3de000000ffff | Kernel |  Conforming  | 00  | 03  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0503  | 0xc0c3fe000000ffff | Kernel |  Conforming  | 00  | 03  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0510  | 0x00cb9e000000ffff | User   |  Conforming  | 03  | 00  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0520  | 0x00cbbe000000ffff | User   |  Conforming  | 03  | 00  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0530  | 0x00cbde000000ffff | User   |  Conforming  | 03  | 00  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0540  | 0x00cbfe000000ffff | User   |  Conforming  | 03  | 00  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0551  | 0x00cb9e000000ffff | User   |  Conforming  | 03  | 01  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0561  | 0x00cbbe000000ffff | User   |  Conforming  | 03  | 01  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0571  | 0x00cbde000000ffff | User   |  Conforming  | 03  | 01  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0581  | 0x00cbfe000000ffff | User   |  Conforming  | 03  | 01  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0592  | 0x00cb9e000000ffff | User   |  Conforming  | 03  | 02  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x05a2  | 0x00cbbe000000ffff | User   |  Conforming  | 03  | 02  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x05b2  | 0x00cbde000000ffff | User   |  Conforming  | 03  | 02  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x05c2  | 0x00cbfe000000ffff | User   |  Conforming  | 03  | 02  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x05d3  | 0x00cb9e000000ffff | User   |  Conforming  | 03  | 03  | 00  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x05e3  | 0x00cbbe000000ffff | User   |  Conforming  | 03  | 03  | 01  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x05f3  | 0x00cbde000000ffff | User   |  Conforming  | 03  | 03  | 02  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ * | 0x0603  | 0x00cbfe000000ffff | User   |  Conforming  | 03  | 03  | 03  |
+ * +---------+--------------------+--------+--------------+-----+-----+-----+
+ */
+static struct desc_struct __unused debug_desc3[] = {
+    { .a = 0x0000ffff, .b = 0xc0c39a00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3ba00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3da00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3fa00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c39a00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3ba00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3da00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3fa00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c39a00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3ba00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3da00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3fa00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c39a00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3ba00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3da00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3fa00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0x00cb9a00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbba00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbda00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbfa00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cb9a00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbba00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbda00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbfa00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cb9a00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbba00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbda00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbfa00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cb9a00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbba00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbda00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbfa00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0xc0c39e00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3be00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3de00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3fe00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c39e00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3be00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3de00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3fe00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c39e00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3be00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3de00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3fe00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c39e00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3be00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3de00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0xc0c3fe00 }, /* kernel 1GB code at 0xC0000000 */
+    { .a = 0x0000ffff, .b = 0x00cb9e00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbbe00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbde00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbfe00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cb9e00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbbe00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbde00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbfe00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cb9e00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbbe00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbde00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbfe00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cb9e00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbbe00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbde00 }, /* user   3GB code at 0x00000000 */
+    { .a = 0x0000ffff, .b = 0x00cbfe00 }, /* user   3GB code at 0x00000000 */
+    { }
+};
+
+static int __unused establish_debug_code_segment2(void)
+{
+    unsigned short __unused start_Sel = 0x0210;
+    unsigned short __unused end_Sel   = 0x0603;
+    unsigned short __unused Sel;
+    struct desc_struct __unused *desc;
+    unsigned short __unused i = 0;
+
+    for (Sel = start_Sel; Sel <= end_Sel; Sel += 0x10, i++) {
+        desc = gdt + (Sel >> 0x3);
+        desc->a = debug_desc3[i].a;
+        desc->b = debug_desc3[i].b;
+    }
+
+    return 0;
+}
+device_debugcall(establish_debug_code_segment2);
+#endif
+
+#ifdef CONFIG_DEBUG_PL_CODE
+
+/*
+ * Far called procedure. 
+ */
+static int __unused far_called_procedure(void);
+
+/*
+ * Direct Calls or Jump to Code Segments.
+ *
+ * The near forms of the JMP, CALL, and RET instructions transfer program
+ * control within the current code segment, so privilege-level checks are not
+ * performed. The far forms the JMP, CALL, and RET instructions transfer
+ * control to other code segments, so the processor does perform
+ * privilege-level checks.
+ *
+ * When tranfering program control to another code segment without going
+ * through a gate, the processor examines four kind of privilege level and
+ * type information.
+ *
+ *
+ *  CS Regsiter
+ *  +-------------------------+-----+
+ *  |                         | CPL |---------o
+ *  +-------------------------+-----+         |
+ *                                            |      +-----------------+
+ *                                            |      |                 |
+ *  Segment Selector for Code Segment         o----->|                 |
+ *  +-------------------------+-----+                |                 |
+ *  |                         | RPL |--------------->| Privilege Check |
+ *  +-------------------------+-----+                |                 |
+ *                                            o----->|                 |
+ *                                            |      |                 |
+ *  Code-Segment Descriptor                   |      +-----------------+
+ *  +-------------+-----+----+---+--+         |
+ *  |             | DPL |    | C |  |---------o
+ *  +-------------+-----+----+---+--+
+ *  +-------------------------------+
+ *  |                               |
+ *  +-------------------------------+
+ *
+ */
+static int __unused privilege_check_code_segment_from_CS(void)
+{
+    unsigned short __unused CS;
+    unsigned short __unused DS;
+    unsigned short __unused Sel;
+    unsigned short __unused CPL;
+    unsigned short __unused RPL;
+    unsigned short __unused DPL;
+    struct desc_struct __unused *desc;
+    char __unused *hello = "hello BiscuitOS";
+
+    /* Obtain CPL from Code segment selector */
+    __asm__ ("mov %%cs, %0" : "=m" (CS));
+    CPL = CS & 0x3;
+
+#ifdef CONFIG_DEBUG_PL_CODE_C0
+
+#ifdef CONFIG_DEBUG_PL_CODE_C0_P0
+    /*
+     * CPL == RPL == DPL == 0
+     *
+     * Code segment E0 is a nonconforming code segment. A procedure in code 
+     * segment A0 can call a procedure in code segment E0 (using segment
+     * selector E0) because they are at the same privilege level (CPL of code
+     * segment A0 is equal to the DPL of code segment E0).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment A0 |       | Segment Sel. E0 |       | Code Segment E0 |
+     * |                -|------>|                -|------>|                 |
+     * | CPL = 0         |       | RPL = 0         |       | DPL = 0         |
+     * +-----------------+       +-----------------+       +-----------------+ 
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0410
+     * Segment Descriptor: 0xc0c39a000000ffff
+     * RPL: 00
+     * CPL: 00
+     * DPL: 00
+     */
+    Sel = 0x0410;
+    printk("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0210
+     * Segment Descriptor: 0xc0c39a000000ffff
+     * RPL: 00
+     * CPL: 00
+     * DPL: 00
+     */
+    Sel = 0x0210;
+    printk("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, 
+                       (unsigned int)desc->b, (unsigned int)desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0410, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0210, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C0_P3
+    /*
+     * CPL == RPL == DPL == 3
+     *
+     * Code segment E3 is a nonconforming code segment. A procedure in code 
+     * segment A3 can call a procedure in code segment E3 (using segment
+     * selector E3) because they are at the same privilege level (CPL of code
+     * segment A3 is equal to the DPL of code segment E3).
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment A3 |       | Segment Sel. E3 |       | Code Segment E3 |
+     * |                -|------>|                -|------>|                 |
+     * | CPL = 3         |       | RPL = 3         |       | DPL = 3         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0603
+     * Segment Descriptor: 0x00cbfe000000ffff
+     * RPL: 03
+     * CPL: 03
+     * DPL: 03
+     */
+    Sel = 0x0603;
+    printf("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0403
+     * Segment Descriptor: 0x00cbfa000000ffff
+     * RPL: 03
+     * CPL: 03
+     * DPL: 03
+     */
+    Sel = 0x0403;
+    printf("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+    
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0603, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0403, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C1 /* CONFIG_DEBUG_PL_CODE_C0 */
+
+#ifdef CONFIG_DEBUG_PL_CODE_C1_P0
+    /*
+     * CPL:0 == RPL:0 > DPL:1
+     *
+     * Code segment E0 is a nonconforming code segment. A procedure in code 
+     * segment B0 can't call a procedure in code segment E0 (using segment
+     * selector E0) because they are at the different privilege level (CPL 
+     * of code segment B0 is not equal to the DPL of code segment E0).
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment B0 |       | Segment Sel. E0 |       | Code Segment E0 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 0         |       | RPL = 0         |       | DPL = 1         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0420
+     * Segment Descriptor: 0xc0c3be000000ffff
+     * CPL: 00
+     * RPL: 00
+     * DPL: 01
+     */
+    Sel = 0x0420;
+    printk("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0220
+     * Segment Descriptor: 0xc0c3ba000000ffff
+     * CPL: 00
+     * RPL: 00
+     * DPL: 01
+     */
+    Sel = 0x0220;
+    printk("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel,
+                       (unsigned int)desc->b, (unsigned int)desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0420, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0220, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C1_P1
+    /*
+     * CPL:0 == RPL:0 > DPL:2
+     *
+     * Code segment E1 is a nonconforming code segment. A procedure in code 
+     * segment B1 can't call a procedure in code segment E1 (using segment
+     * selector E1) because they are at the different privilege level (CPL 
+     * of code segment B1 is not equal to the DPL of code segment E1).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment B1 |       | Segment Sel. E1 |       | Code Segment E1 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 0         |       | RPL = 0         |       | DPL = 2         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0430
+     * Segment Descriptor: 0xc0c3de000000ffff
+     * CPL: 00
+     * RPL: 00
+     * DPL: 02
+     */
+    Sel = 0x0430;
+    printk("Privilage Check when Access data on conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0230
+     * Segment Descriptor: 0xc0c3da000000ffff
+     * CPL: 00
+     * RPL: 00
+     * DPL: 02
+     */
+    Sel = 0x0230;
+    printk("Privilage Check when Access data on nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel,
+                       (unsigned int)desc->b, (unsigned int)desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0430, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0230, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C1_P2
+    /*
+     * CPL:0 == RPL:0 > DPL:3
+     *
+     * Code segment E3 is a nonconforming code segment. A procedure in code 
+     * segment B3 can't call a procedure in code segment E3 (using segment
+     * selector E3) because they are at the different privilege level (CPL 
+     * of code segment B3 is not equal to the DPL of code segment E3).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment B3 |       | Segment Sel. E3 |       | Code Segment E3 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 0         |       | RPL = 0         |       | DPL = 3         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0440
+     * Segment Descriptor: 0xc0c3fe000000ffff
+     * CPL: 00
+     * RPL: 00
+     * DPL: 03
+     */
+    Sel = 0x0440;
+    printk("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0240
+     * Segment Descriptor: 0xc0c3fa000000ffff
+     * CPL: 00
+     * RPL: 00
+     * DPL: 03
+     */
+    Sel = 0x0240;
+    printk("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel,
+                       (unsigned int)desc->b, (unsigned int)desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0440, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0240, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C2 /* CONFIG_DEBUG_PL_CODE_C1 */
+
+#ifdef CONFIG_DEBUG_PL_CODE_C2_P0
+    /*
+     * CPL:0 > RPL:1 == DPL:1
+     *
+     * Code segment E0 is a nonconforming code segment. A procedure in code 
+     * segment C0 can't call a procedure in code segment E0 (using segment
+     * selector E0) because they are at the different privilege level (CPL 
+     * of code segment C0 is not equal to the DPL of code segment E0).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment C0 |       | Segment Sel. E0 |       | Code Segment E0 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 0         |       | RPL = 1         |       | DPL = 1         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0461
+     * Segment Descriptor: 0xc0c3be000000ffff
+     * CPL: 00
+     * RPL: 01
+     * DPL: 01
+     */
+    Sel = 0x0461;
+    printk("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0261
+     * Segment Descriptor: 0xc0c3ba000000ffff
+     * CPL: 00
+     * RPL: 01
+     * DPL: 01
+     */
+    Sel = 0x0261;
+    printk("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel,
+                       (unsigned int)desc->b, (unsigned int)desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0461, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0261, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C2_P1
+    /*
+     * CPL:0 > RPL:2 == DPL:2
+     *
+     * Code segment E1 is a nonconforming code segment. A procedure in code 
+     * segment C1 can't call a procedure in code segment E1 (using segment
+     * selector E1) because they are at the different privilege level (CPL 
+     * of code segment C1 is not equal to the DPL of code segment E1).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment C1 |       | Segment Sel. E1 |       | Code Segment E1 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 0         |       | RPL = 2         |       | DPL = 2         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x04b2
+     * Segment Descriptor: 0xc0c3de000000ffff
+     * CPL: 00
+     * RPL: 02
+     * DPL: 02
+     */
+    Sel = 0x04b2;
+    printk("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x02b2
+     * Segment Descriptor: 0xc0c3da000000ffff
+     * CPL: 00
+     * RPL: 02
+     * DPL: 02
+     */
+    Sel = 0x02b2;
+    printk("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel,
+                       (unsigned int)desc->b, (unsigned int)desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x04b2, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x02b2, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C2_P2
+    /*
+     * CPL:0 > RPL:3 == DPL:3
+     *
+     * Code segment E2 is a nonconforming code segment. A procedure in code 
+     * segment C2 can't call a procedure in code segment E2 (using segment
+     * selector E2) because they are at the different privilege level (CPL 
+     * of code segment C2 is not equal to the DPL of code segment E2).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment C2 |       | Segment Sel. E2 |       | Code Segment E2 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 0         |       | RPL = 3         |       | DPL = 3         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0503
+     * Segment Descriptor: 0xc0c3fe000000ffff
+     * CPL: 00
+     * RPL: 03
+     * DPL: 03
+     */
+    Sel = 0x0503;
+    printk("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0303
+     * Segment Descriptor: 0xc0c3fa000000ffff
+     * CPL: 00
+     * RPL: 03
+     * DPL: 03
+     */
+    Sel = 0x0303;
+    printk("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel,
+                       (unsigned int)desc->b, (unsigned int)desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0503, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0303, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C3 /* CONFIG_DEBUG_PL_CODE_C2 */
+
+#ifdef CONFIG_DEBUG_PL_CODE_C3_P2
+    /*
+     * CPL3 == RPL:3 < DPL:0
+     *
+     * Code segment E2 is a nonconforming code segment. A procedure in code 
+     * segment D2 can't call a procedure in code segment E2 (using segment
+     * selector E2) because they are at the different privilege level (CPL 
+     * of code segment D2 is not equal to the DPL of code segment E2).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment D2 |       | Segment Sel. E2 |       | Code Segment E2 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 3         |       | DPL = 0         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x05d3
+     * Segment Descriptor: 0x00cb9e000000ffff
+     * CPL: 03
+     * RPL: 03
+     * DPL: 00
+     */
+    Sel = 0x05d3;
+    printf("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x03d3
+     * Segment Descriptor: 0x00cb9a000000ffff
+     * CPL: 03
+     * RPL: 03
+     * DPL: 00
+     */
+    Sel = 0x03d3;
+    printf("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x05d3, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x03d3, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C3_P4
+    /*
+     * CPL:3 == RPL:3 < DPL:1
+     *
+     * Code segment E4 is a nonconforming code segment. A procedure in code 
+     * segment D4 can't call a procedure in code segment E4 (using segment
+     * selector E4) because they are at the different privilege level (CPL 
+     * of code segment D4 is not equal to the DPL of code segment E4).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment D4 |       | Segment Sel. E4 |       | Code Segment E4 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 3         |       | DPL = 1         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x05e3
+     * Segment Descriptor: 0x00cbbe000000ffff
+     * CPL: 03
+     * RPL: 03
+     * DPL: 01
+     */
+    Sel = 0x05e3;
+    printf("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x03e3
+     * Segment Descriptor: 0x00cbba000000ffff
+     * CPL: 03
+     * RPL: 03
+     * DPL: 01
+     */
+    Sel = 0x03e3;
+    printf("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x05e3, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x03e3, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C3_P5
+    /*
+     * CPL:3 == RPL:3 < DPL:2
+     *
+     * Code segment E5 is a nonconforming code segment. A procedure in code 
+     * segment D5 can't call a procedure in code segment E5 (using segment
+     * selector E5) because they are at the different privilege level (CPL 
+     * of code segment D5 is not equal to the DPL of code segment E5).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment D5 |       | Segment Sel. E5 |       | Code Segment E5 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 3         |       | DPL = 2         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x05f3
+     * Segment Descriptor: 0x00cbde000000ffff
+     * CPL: 03
+     * RPL: 03
+     * DPL: 02
+     */
+    Sel = 0x05f3;
+    printf("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x03f3
+     * Segment Descriptor: 0x00cbda000000ffff
+     * CPL: 03
+     * RPL: 03
+     * DPL: 02
+     */
+    Sel = 0x03f3;
+    printf("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x05f3, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x03f3, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C4 /* CONFIG_DEBUG_PL_CODE_C3 */
+
+#ifdef CONFIG_DEBUG_PL_CODE_C4_P2
+    /*
+     * CPL:3 < RPL:0 == DPL:0
+     *
+     * Code segment E2 is a nonconforming code segment. A procedure in code 
+     * segment E2 can't call a procedure in code segment E2 (using segment
+     * selector E2) because they are at the different privilege level (CPL 
+     * of code segment E2 is not equal to the DPL of code segment E2).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment E2 |       | Segment Sel. E2 |       | Code Segment E2 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 0         |       | DPL = 0         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0510
+     * Segment Descriptor: 0x00cb9e000000ffff
+     * CPL: 03
+     * RPL: 00
+     * DPL: 00
+     */
+    Sel = 0x0510;
+    printf("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0310
+     * Segment Descriptor: 0x00cb9a000000ffff
+     * CPL: 03
+     * RPL: 00
+     * DPL: 00
+     */
+    Sel = 0x0310;
+    printf("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0510, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0310, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C4_P4
+    /*
+     * CPL:3 < RPL:1 == DPL:1
+     *
+     * Code segment E4 is a nonconforming code segment. A procedure in code 
+     * segment E4 can't call a procedure in code segment E4 (using segment
+     * selector E4) because they are at the different privilege level (CPL 
+     * of code segment E4 is not equal to the DPL of code segment E4).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment E4 |       | Segment Sel. E4 |       | Code Segment E4 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 1         |       | DPL = 1         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0561
+     * Segment Descriptor: 0x00cbbe000000ffff
+     * CPL: 03
+     * RPL: 01
+     * DPL: 01
+     */
+    Sel = 0x0561;
+    printf("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0361
+     * Segment Descriptor: 0x00cbba000000ffff
+     * CPL: 03
+     * RPL: 01
+     * DPL: 01
+     */
+    Sel = 0x0361;
+    printf("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0561, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0361, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C4_P5
+    /*
+     * CPL:3 < RPL:2 == DPL:2
+     *
+     * Code segment E5 is a nonconforming code segment. A procedure in code 
+     * segment E5 can't call a procedure in code segment E5 (using segment
+     * selector E5) because they are at the different privilege level (CPL 
+     * of code segment E5 is not equal to the DPL of code segment E5).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment E5 |       | Segment Sel. E5 |       | Code Segment E5 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 2         |       | DPL = 2         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x05b2
+     * Segment Descriptor: 0x00cbde000000ffff
+     * CPL: 03
+     * RPL: 02
+     * DPL: 02
+     */
+    Sel = 0x05b2;
+    printf("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x03b2
+     * Segment Descriptor: 0x00cbda000000ffff
+     * CPL: 03
+     * RPL: 02
+     * DPL: 02
+     */
+    Sel = 0x03b2;
+    printf("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x05b2, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x03b2, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C5 /* CONFIG_DEBUG_PL_CODE_C4 */
+
+#ifdef CONFIG_DEBUG_PL_CODE_C5_P1
+    /*
+     * CPL:3 < RPL:0 && RPL:0 > DPL:1
+     * CPL:3 < DPL:1 < RPL:0
+     *
+     * Code segment E1 is a nonconforming code segment. A procedure in code 
+     * segment F1 can't call a procedure in code segment E1 (using segment
+     * selector E1) because they are at the different privilege level (CPL 
+     * of code segment F1 is not equal to the DPL of code segment E1).
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment F1 |       | Segment Sel. E1 |       | Code Segment E1 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 0         |       | DPL = 1         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0520
+     * Segment Descriptor: 0x00cbbe000000ffff
+     * CPL: 03
+     * RPL: 00
+     * DPL: 01
+     */
+    Sel = 0x0520;
+    printf("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0320
+     * Segment Descriptor: 0x00cbba000000ffff
+     * CPL: 03
+     * RPL: 00
+     * DPL: 01
+     */
+    Sel = 0x0320;
+    printf("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0520, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0320, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+
+#elif defined CONFIG_DEBUG_PL_CODE_C5_P2
+    /*
+     * CPL:3 < RPL:0 && RPL:0 > DPL:2
+     * CPL:3 < DPL:2 < RPL:0
+     *
+     * Code segment E3 is a nonconforming code segment. A procedure in code 
+     * segment F3 can't call a procedure in code segment E3 (using segment
+     * selector E3) because they are at the different privilege level (CPL 
+     * of code segment F3 is not equal to the DPL of code segment E3).
+     *
+     * +-----------------+       +-----------------+        +-----------------+
+     * | Code Segment F3 |       | Segment Sel. E3 |        | Code Segment E3 |
+     * |                -|------>|                -|---X--->|                 |
+     * | CPL = 3         |       | RPL = 0         |        | DPL = 2         |
+     * +-----------------+       +-----------------+        +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0530
+     * Segment Descriptor: 0x00cbde000000ffff
+     * CPL: 03
+     * RPL: 00
+     * DPL: 02
+     */
+    Sel = 0x0530;
+    printf("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0330
+     * Segment Descriptor: 0x00cbda000000ffff
+     * CPL: 03
+     * RPL: 00
+     * DPL: 02
+     */
+    Sel = 0x0330;
+    printf("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0530, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0330, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+
+#elif defined CONFIG_DEBUG_PL_CODE_C5_P3
+    /*
+     * CPL:3 < RPL:1 && RPL:1 > DPL:2
+     * CPL:3 < DPL:2 < RPL:1
+     *
+     * Code segment E2 is a nonconforming code segment. A procedure in code 
+     * segment F2 can't call a procedure in code segment E2 (using segment
+     * selector E2) because they are at the different privilege level (CPL 
+     * of code segment F2 is not equal to the DPL of code segment E2).
+     *
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment F2 |       | Segment Sel. E2 |       | Code Segment E2 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 3         |       | RPL = 1         |       | DPL = 2         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0571
+     * Segment Descriptor: 0x00cbde000000ffff
+     * CPL: 03
+     * RPL: 01
+     * DPL: 02
+     */
+    Sel = 0x0571;
+    printf("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0371
+     * Segment Descriptor: 0x00cbda000000ffff
+     * CPL: 03
+     * RPL: 01
+     * DPL: 02
+     */
+    Sel = 0x0371;
+    printf("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printf("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0571, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0371, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C6 /* CONFIG_DEBUG_PL_CODE_C5 */
+
+#ifdef CONFIG_DEBUG_PL_CODE_C6_P0
+    /*
+     * CPL:0 > RPL:2 && RPL:2 < DPL:1
+     * CPL:0 > DPL:1 > RPL:2
+     *
+     * Code segment E0 is a nonconforming code segment. A procedure in code 
+     * segment G0 can't call a procedure in code segment E0 (using segment
+     * selector E0) because they are at the different privilege level (CPL 
+     * of code segment G0 is not equal to the DPL of code segment E0).
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment G0 |       | Segment Sel. E0 |       | Code Segment E0 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 0         |       | RPL = 2         |       | DPL = 1         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x04a2
+     * Segment Descriptor: 0xc0c3be000000ffff
+     * CPL: 00
+     * RPL: 02
+     * DPL: 01
+     */
+    Sel = 0x04a2;
+    printk("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x02a2
+     * Segment Descriptor: 0xc0c3ba000000ffff
+     * CPL: 00
+     * RPL: 02
+     * DPL: 01
+     */
+    Sel = 0x02a2;
+    printk("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, 
+                  (unsigned int)desc->b, (unsigned int)desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x04a2, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x02a2, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C6_P1
+    /*
+     * CPL:0 > RPL:3 && RPL:3 < DPL:1
+     * CPL:0 > DPL:1 > RPL:3
+     *
+     * Code segment E1 is a nonconforming code segment. A procedure in code 
+     * segment G1 can't call a procedure in code segment E1 (using segment
+     * selector E1) because they are at the different privilege level (CPL 
+     * of code segment G1 is not equal to the DPL of code segment E1).
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment G1 |       | Segment Sel. E1 |       | Code Segment E1 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 0         |       | RPL = 3         |       | DPL = 1         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x04e3
+     * Segment Descriptor: 0xc0c3be000000ffff
+     * CPL: 00
+     * RPL: 03
+     * DPL: 01
+     */
+    Sel = 0x04e3;
+    printk("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x02e3
+     * Segment Descriptor: 0xc0c3ba000000ffff
+     * CPL: 00
+     * RPL: 03
+     * DPL: 01
+     */
+    Sel = 0x02e3;
+    printk("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel,
+                        (unsigned int)desc->b, (unsigned int)desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x04e3, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x02e3, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C7 /* CONFIG_DEBUG_PL_CODE_C6 */
+
+#ifdef CONFIG_DEBUG_PL_CODE_C7_P0
+    /*
+     * CPL:0 > RPL:1 > DPL:2
+     *
+     * Code segment E0 is a nonconforming code segment. A procedure in code 
+     * segment H0 can't call a procedure in code segment E0 (using segment
+     * selector E0) because they are at the different privilege level (CPL 
+     * of code segment H0 is not equal to the DPL of code segment E0).
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment H0 |       | Segment Sel. E0 |       | Code Segment E0 |
+     * |                -|------>|                -|------>|                 |
+     * | CPL = 0         |       | RPL = 1         |       | DPL = 2         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0471
+     * Segment Descriptor: 0xc0c3de000000ffff
+     * CPL: 00
+     * RPL: 01
+     * DPL: 02
+     */
+    Sel = 0x0471;
+    printk("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0271
+     * Segment Descriptor: 0xc0c3da000000ffff
+     * CPL: 00
+     * RPL: 01
+     * DPL: 02
+     */
+    Sel = 0x0271;
+    printk("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel,
+                                (unsigned int)desc->b, (unsigned int)desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0471, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0271, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#elif defined CONFIG_DEBUG_PL_CODE_C7_P1
+    /*
+     * CPL:0 > RPL:1 > DPL:3
+     *
+     * Code segment E3 is a nonconforming code segment. A procedure in code 
+     * segment H3 can't call a procedure in code segment E3 (using segment
+     * selector E3) because they are at the different privilege level (CPL 
+     * of code segment H3 is not equal to the DPL of code segment E3).
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment H3 |       | Segment Sel. E3 |       | Code Segment E3 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 0         |       | RPL = 1         |       | DPL = 3         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x0481
+     * Segment Descriptor: 0xc0c3fe000000ffff
+     * CPL: 00
+     * RPL: 01
+     * DPL: 03
+     */
+    Sel = 0x0481;
+    printk("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x0281
+     * Segment Descriptor: 0xc0c3fa000000ffff
+     * CPL: 00
+     * RPL: 01
+     * DPL: 03
+     */
+    Sel = 0x0281;
+    printk("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel,
+                   (unsigned int)desc->b, (unsigned int)desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x0481, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x0281, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+ 
+#elif defined CONFIG_DEBUG_PL_CODE_C7_P2
+    /*
+     * CPL:0 > RPL:2 > DPL:3
+     *
+     * Code segment E1 is a nonconforming code segment. A procedure in code 
+     * segment H1 can't call a procedure in code segment E1 (using segment
+     * selector E1) because they are at the different privilege level (CPL 
+     * of code segment H1 is not equal to the DPL of code segment E1).
+     *
+     * +-----------------+       +-----------------+       +-----------------+
+     * | Code Segment H1 |       | Segment Sel. E1 |       | Code Segment E1 |
+     * |                -|------>|                -|---X-->|                 |
+     * | CPL = 0         |       | RPL = 2         |       | DPL = 3         |
+     * +-----------------+       +-----------------+       +-----------------+
+     *
+     */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    /* Conforming Code utilize segment selector: 0x04c2
+     * Segment Descriptor: 0xc0c3fe000000ffff
+     * CPL: 00
+     * RPL: 02
+     * DPL: 03
+     */
+    Sel = 0x04c2;
+    printk("Privilage Check when Access conforming Code segment.\n");
+#elif defined CONFIG_DEBUG_PL_CODE_UCFM
+    /* Non-Conforming utilize segment selector: 0x02c2
+     * Segment Descriptor: 0xc0c3fa000000ffff
+     * CPL: 00
+     * RPL: 02
+     * DPL: 03
+     */
+    Sel = 0x02c2;
+    printk("Privilage Check when Access nonconforming Code segment.\n");
+#endif
+    RPL  = Sel & 0x3;
+    desc = gdt + (Sel >> 3);
+    DPL  = (desc->b >> 13) & 0x3;
+    printk("Sel: %#x Segment Descriptor: %#08x%08x\n", Sel, 
+                         (unsigned int)desc->b, (unsigned int)desc->a);
+    printk("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    /* Invoking CALL instruction to process a far call to load new code segment
+     * selector and new EIP load into CS and EIP register. */
+#ifdef CONFIG_DEBUG_PL_CODE_CFM
+    __asm__ ("call $0x04c2, %0"
+             :: "i" (far_called_procedure));
+#else
+    __asm__ ("call $0x02c2, %0"
+             :: "i" (far_called_procedure));
+#endif
+
+#endif
+
+#endif /* CONFIG_DEBUG_PL_STACK_C7 */
+
+    return 0;
+}
+#endif
+
+#if \
+    defined CONFIG_DEBUG_PL_CODE_C0_P0 | \
+    defined CONFIG_DEBUG_PL_CODE_C1_P0 | \
+    defined CONFIG_DEBUG_PL_CODE_C1_P1 | \
+    defined CONFIG_DEBUG_PL_CODE_C1_P2 | \
+    defined CONFIG_DEBUG_PL_CODE_C2_P0 | \
+    defined CONFIG_DEBUG_PL_CODE_C2_P1 | \
+    defined CONFIG_DEBUG_PL_CODE_C2_P2 | \
+    defined CONFIG_DEBUG_PL_CODE_C6_P0 | \
+    defined CONFIG_DEBUG_PL_CODE_C6_P1 | \
+    defined CONFIG_DEBUG_PL_CODE_C7_P0 | \
+    defined CONFIG_DEBUG_PL_CODE_C7_P1 | \
+    defined CONFIG_DEBUG_PL_CODE_C7_P2
+late_debugcall(privilege_check_code_segment_from_CS);
+/*
+ * Far called procedure. 
+ */
+static int __unused far_called_procedure(void)
+{
+    unsigned short __unused CS;
+
+    __asm__ ("mov %%cs, %0" : "=m" (CS));
+    printk("CS   %#x\n", CS);
+    return 0;
+}
+#elif defined CONFIG_DEBUG_PL_CODE_C0_P3 | \
+      defined CONFIG_DEBUG_PL_CODE_C3_P2 | \
+      defined CONFIG_DEBUG_PL_CODE_C3_P4 | \
+      defined CONFIG_DEBUG_PL_CODE_C3_P5 | \
+      defined CONFIG_DEBUG_PL_CODE_C4_P2 | \
+      defined CONFIG_DEBUG_PL_CODE_C4_P4 | \
+      defined CONFIG_DEBUG_PL_CODE_C4_P5 | \
+      defined CONFIG_DEBUG_PL_CODE_C5_P1 | \
+      defined CONFIG_DEBUG_PL_CODE_C5_P2 | \
+      defined CONFIG_DEBUG_PL_CODE_C5_P3
+user1_debugcall_sync(privilege_check_code_segment_from_CS);
+/*
+ * Far called procedure. 
+ */
+static int __unused far_called_procedure(void)
+{
+    unsigned short __unused CS;
+
+    __asm__ ("mov %%cs, %0" : "=m" (CS));
+    printf("CS   %#x\n", CS);
+    return 0;
+}
+#endif
+
 static int segment_check_entence(void)
 {
     /* Obtain Segment selector and Segment descriptor */
