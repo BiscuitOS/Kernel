@@ -70,4 +70,41 @@ calling procedures stack to the new stack if a stack switch occurs. The
 parameter count specifies the number of words for 16-bit call gates and 
 doublewords for 32-bit call gates.
 
+Note that the P flag in a gate descriptor is normally always set to 1. If it is
+set to 0, a not present (#NP) exception is generated when a program attempts to
+access the descriptor. The operating system can use the P flag for special 
+purposes. For example, it could be used to track then number of times the gate
+is used. Here, the P flag is initially set to 0 causing a trap to the not-
+present exception handler. The exception handler then increments a counter and
+sets the P flag to 1, so that no returning from the handler, the gate 
+descriptor will be valid.
 
+## Accessing a Code Segment Though a Call Gate
+
+To access a call gate, a far pointer to the gate is provided as a target
+operand in a CALL or JMP instruction. The segment selector from this pointer
+identifies the call gate (See Figure); the offset from the pointer is required,
+but not used or checked by the processor. (The offset can be set to any value.)
+
+When the processor has accessed the call gate, it uses the segment selector 
+from the call gate to locate the segment descriptor for the destination code
+segment. (This segment descriptor can be in the GDT or the LDT.) It then 
+combines the base address from the code-segment descriptor with the offset
+from the call gate to form the linear address of the procedure entry point in
+the code segment.
+
+As shown in Figure, four different privilege levels are used to check the
+validity of a program control transfer through a call gate:
+
+* The CPL (current privilege level)
+
+* The RPL (requestor's privilege level) of the call gate's selector.
+
+* The DPL (descriptor privilege level) of the call gate descriptor.
+
+* The DPL of the segment descriptor of the destination code segment.
+
+The C flag (conforming) in the segment descriptor for the destination code 
+segment is also checked.
+
+![Call-Gate Mechanism](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000408.png)

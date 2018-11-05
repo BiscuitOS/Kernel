@@ -1,0 +1,48 @@
+menu "Gate Descriptor"
+
+config DEBUG_SEG_GATE
+	bool "Gates mechanism"
+	help
+	  Gates mechanism.
+
+if DEBUG_SEG_GATE
+
+choice
+	prompt "Gate Types"
+
+config DEBUG_SEG_GATE_CALL
+	select DEBUG_CALL_GATE_ESTABLISH
+	bool "Call Gates"
+	help
+	  Call Gate.
+
+config DEBUG_SEG_GATE_TRAP
+	bool "Trap Gates"
+	help
+	  Trap Gates.
+
+config DEBUG_SEG_GATE_INTERRUPT
+	bool "Interrupt Gates"
+	help
+	  Interrupt Gates.
+
+config DEBUG_SEG_GATE_TASK
+	bool "Task Gates"
+	help
+	  Task Gates.
+
+endchoice
+
+if DEBUG_SEG_GATE_CALL
+
+config DEBUG_CALL_GATE_ESTABLISH
+	bool "Establish Call Gates segment selectors and descriptors"
+	help
+	  Establish Call Gates segment selectors and segment descriptors on GDT.
+
+
+endif # DEBUG_SEG_GATE_CALL
+
+endif # DEBUG_SEG_GATE
+
+endmenu

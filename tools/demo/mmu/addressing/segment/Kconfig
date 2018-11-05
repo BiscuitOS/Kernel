@@ -303,6 +303,7 @@ config DEBUG_MMU_SEG_TYPE
 if DEBUG_MMU_SEG_TYPE
 
 # Gate
+source "tools/demo/mmu/addressing/segment/gate/Kconfig"
 
 endif # DEBUG_MMU_SEG_TYPE
 
