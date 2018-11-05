@@ -108,3 +108,68 @@ The C flag (conforming) in the segment descriptor for the destination code
 segment is also checked.
 
 ![Call-Gate Mechanism](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000408.png)
+
+```
+CS Register
++-----------------+-----+
+|                 | CPL |------------o
++-----------------+-----+            |
+                                     |
+Call-Gate Selector                   |
++-----------------+-----+            |
+|                 | RPL |---------o  |      +-----------------+
++-----------------+-----+         |  o----->|                 |
+                                  |         |                 |
+Call Gate (descriptor)            o-------->|                 |
++----------+-----+------+                   | Privilege Check |
+|          | DPL |     -|------------------>|                 |
++----------+-----+------+                   |                 |
++-----------------------+         o-------->|                 |
+|                       |         |         +-----------------+
++-----------------------+         |
+                                  |
+Destination Code-Segment          |
+Descriptor                        |
+Call Gate (descriptor)            |
++----------+-----+------+         |
+|          | DPL |     -|---------o
++----------+-----+------+
++-----------------------+
+|                       |
++-----------------------+
+```
+
+The privilege checking rules are different depending on whether the control
+transfer was initiated with a CALL or a JMP instruction, as follow:
+
+* CALL
+
+  CPL <= call gate DPL; RPL <= call gate DPL
+
+  Destination conforming code segment DPL <= CPL
+
+  Destination nonconforming code segment DPL <= CPL
+
+* JMP
+
+  CPL <= call gate DPL; RPL <= call gate DPL
+
+  Destination conforming code segment DPL <= CPL
+
+  Destination nonconforming code segment DPL = CPL
+
+The DPL field of the call-gate descriptor specifies the numerically highest 
+privilege level from which a calling procesordure can access the call gate.
+
+The RPL of the segment selector to a call gate must satisfy the same test as
+the CPL of the calling procedure; that is, the RPL must be than or equal to 
+the DPL of the call gate.
+
+If the privilege checks between the calling procedure and call gate are 
+successful, the procedure then checks the DPL of the code-segment descriptor
+against the CPL of the calling procedure. Here, the privilege check rules vary
+between CALL and JMP instructions.
+
+More example of accessing call gates at various privilege levels, please see
+**tools/demo/mmu/addressing/segment/privilege/pl.c** about **Call gates**.
+
