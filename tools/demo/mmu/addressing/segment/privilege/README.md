@@ -767,7 +767,7 @@ ways:
 * The target operand points to a task gate, which points to a TSS, which in 
   turn contains the segment selector for the target code segment.
 
-#### Direct Calls or Jump to Code Segments
+### Direct Calls or Jump to Code Segments
 
 The near forms of the JMP, CALL, and RET instructions transfer program control
 within the current code segment, so privilege-level checks are not performed.
@@ -816,7 +816,7 @@ information.
 The rules that the processor uses to check the CPL, RPL,and DPL depends on the 
 setting of the C flag, as described in the following sections.
 
-##### Accessing Nonconforming Code Segments
+#### Accessing Nonconforming Code Segments
 
 When accessing nonconforming code segments, the CPL of the calling procedure
 must be equal to the DPL of the destinaiton code segment; otherwise, the 
@@ -845,7 +845,7 @@ CS register, the privilege level field is not changed; that is, it remains at
 the CPL (which is the privilege level of the calling procedure). This is true,
 even if the RPL of the segment selector is different from the CPL.
 
-##### Accessing Conforming Code Segment
+#### Accessing Conforming Code Segment
 
 When accessing conforming code segments, the CPL of the calling procedure may
 be numerically equal to or greater than (less privileged) the DPL of the 
