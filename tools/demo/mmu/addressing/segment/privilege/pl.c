@@ -4187,6 +4187,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * | CPL = 0         |       | RPL = 0         |       | DPL = 0         |
      * +-----------------+       +-----------------+       +-----------------+ 
      *
+     * And, If Code segment E0 is a conforming code segment, the CPL of Code
+     * segment A0 is numerically equal to or greater than (less privilegeed) 
+     * the DPL of the Code segment E0, a procedure in code segment A0 can call
+     * a procedure in code segment E0. The RPL of segment selector E0 is not
+     * checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment A0 |              | Code Segment E0 |
+     * |                -|------------->|                 |
+     * | CPL = 0         |              | DPL = 0         |
+     * +-----------------+              +-----------------+ 
+     *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
     /* Conforming Code utilize segment selector: 0x0410
@@ -4238,6 +4250,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * |                -|------>|                -|------>|                 |
      * | CPL = 3         |       | RPL = 3         |       | DPL = 3         |
      * +-----------------+       +-----------------+       +-----------------+
+     *
+     * And, If Code segment E0 is a conforming code segment, the CPL of Code
+     * segment A3 is numerically equal to or greater than (less privilegeed) 
+     * the DPL of the Code segment E0, a procedure in code segment A3 can call
+     * a procedure in code segment E0. The RPL of segment selector E0 is not
+     * checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment A0 |              | Code Segment E0 |
+     * |                -|------------->|                 |
+     * | CPL = 0         |              | DPL = 0         |
+     * +-----------------+              +-----------------+ 
      *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
@@ -4294,6 +4318,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * | CPL = 0         |       | RPL = 0         |       | DPL = 1         |
      * +-----------------+       +-----------------+       +-----------------+
      *
+     * And, If Code segment E0 is a conforming code segment, the CPL of Code
+     * segment B0 is numerically less than (more privilegeed) the DPL of the
+     * Code segment E0, a procedure in code segment B0 can't call a procedure
+     * in code segment E0, and the processor generates a general-protection
+     * exception (#GP). The RPL of segment selector E0 is not checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment B0 |              | Code Segment E0 |
+     * |                -|------X------>|                 |
+     * | CPL = 0         |              | DPL = 1         |
+     * +-----------------+              +-----------------+
+     *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
     /* Conforming Code utilize segment selector: 0x0420
@@ -4347,6 +4383,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * | CPL = 0         |       | RPL = 0         |       | DPL = 2         |
      * +-----------------+       +-----------------+       +-----------------+
      *
+     * And, If Code segment E1 is a conforming code segment, the CPL of Code
+     * segment B1 is numerically less than (more privilegeed) the DPL of the
+     * Code segment E0, a procedure in code segment B1 can't call a procedure
+     * in code segment E1, and the processor generates a general-protection
+     * exception (#GP). The RPL of segment selector E1 is not checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment B1 |              | Code Segment E1 |
+     * |                -|------X------>|                 |
+     * | CPL = 0         |              | DPL = 2         |
+     * +-----------------+              +-----------------+
+     *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
     /* Conforming Code utilize segment selector: 0x0430
@@ -4399,6 +4447,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * |                -|------>|                -|---X-->|                 |
      * | CPL = 0         |       | RPL = 0         |       | DPL = 3         |
      * +-----------------+       +-----------------+       +-----------------+
+     *
+     * And, If Code segment E1 is a conforming code segment, the CPL of Code
+     * segment B1 is numerically less than (more privilegeed) the DPL of the
+     * Code segment E0, a procedure in code segment B1 can't call a procedure
+     * in code segment E1, and the processor generates a general-protection
+     * exception (#GP). The RPL of segment selector E1 is not checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment B1 |              | Code Segment E1 |
+     * |                -|------X------>|                 |
+     * | CPL = 0         |              | DPL = 3         |
+     * +-----------------+              +-----------------+
      *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
@@ -4457,6 +4517,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * | CPL = 0         |       | RPL = 1         |       | DPL = 1         |
      * +-----------------+       +-----------------+       +-----------------+
      *
+     * And, If Code segment E1 is a conforming code segment, the CPL of Code
+     * segment B1 is numerically less than (more privilegeed) the DPL of the
+     * Code segment E0, a procedure in code segment B1 can't call a procedure
+     * in code segment E1, and the processor generates a general-protection
+     * exception (#GP). The RPL of segment selector E1 is not checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment B1 |              | Code Segment E1 |
+     * |                -|------X------>|                 |
+     * | CPL = 0         |              | DPL = 1         |
+     * +-----------------+              +-----------------+
+     *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
     /* Conforming Code utilize segment selector: 0x0461
@@ -4510,6 +4582,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * | CPL = 0         |       | RPL = 2         |       | DPL = 2         |
      * +-----------------+       +-----------------+       +-----------------+
      *
+     * And, If Code segment E1 is a conforming code segment, the CPL of Code
+     * segment B1 is numerically less than (more privilegeed) the DPL of the
+     * Code segment E0, a procedure in code segment B1 can't call a procedure
+     * in code segment E1, and the processor generates a general-protection
+     * exception (#GP). The RPL of segment selector E1 is not checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment B1 |              | Code Segment E1 |
+     * |                -|------X------>|                 |
+     * | CPL = 0         |              | DPL = 2         |
+     * +-----------------+              +-----------------+
+     *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
     /* Conforming Code utilize segment selector: 0x04b2
@@ -4562,6 +4646,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * |                -|------>|                -|---X-->|                 |
      * | CPL = 0         |       | RPL = 3         |       | DPL = 3         |
      * +-----------------+       +-----------------+       +-----------------+
+     *
+     * And, If Code segment E1 is a conforming code segment, the CPL of Code
+     * segment B1 is numerically less than (more privilegeed) the DPL of the
+     * Code segment E0, a procedure in code segment B1 can't call a procedure
+     * in code segment E1, and the processor generates a general-protection
+     * exception (#GP). The RPL of segment selector E1 is not checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment B1 |              | Code Segment E1 |
+     * |                -|------X------>|                 |
+     * | CPL = 0         |              | DPL = 3         |
+     * +-----------------+              +-----------------+
      *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
@@ -4620,6 +4716,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * | CPL = 3         |       | RPL = 3         |       | DPL = 0         |
      * +-----------------+       +-----------------+       +-----------------+
      *
+     * And, If Code segment E0 is a conforming code segment, the CPL of Code
+     * segment A0 is numerically equal to or greater than (less privilegeed) 
+     * the DPL of the Code segment E0, a procedure in code segment A0 can call
+     * a procedure in code segment E0. The RPL of segment selector E0 is not
+     * checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment A0 |              | Code Segment E0 |
+     * |                -|------------->|                 |
+     * | CPL = 3         |              | DPL = 0         |
+     * +-----------------+              +-----------------+
+     *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
     /* Conforming Code utilize segment selector: 0x05d3
@@ -4672,6 +4780,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * | CPL = 3         |       | RPL = 3         |       | DPL = 1         |
      * +-----------------+       +-----------------+       +-----------------+
      *
+     * And, If Code segment E0 is a conforming code segment, the CPL of Code
+     * segment A0 is numerically equal to or greater than (less privilegeed) 
+     * the DPL of the Code segment E0, a procedure in code segment A0 can call
+     * a procedure in code segment E0. The RPL of segment selector E0 is not
+     * checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment A0 |              | Code Segment E0 |
+     * |                -|------------->|                 |
+     * | CPL = 3         |              | DPL = 1         |
+     * +-----------------+              +-----------------+
+     *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
     /* Conforming Code utilize segment selector: 0x05e3
@@ -4723,6 +4843,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * |                -|------>|                -|---X-->|                 |
      * | CPL = 3         |       | RPL = 3         |       | DPL = 2         |
      * +-----------------+       +-----------------+       +-----------------+
+     *
+     * And, If Code segment E0 is a conforming code segment, the CPL of Code
+     * segment A0 is numerically equal to or greater than (less privilegeed) 
+     * the DPL of the Code segment E0, a procedure in code segment A0 can call
+     * a procedure in code segment E0. The RPL of segment selector E0 is not
+     * checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment A0 |              | Code Segment E0 |
+     * |                -|------------->|                 |
+     * | CPL = 3         |              | DPL = 2         |
+     * +-----------------+              +-----------------+
      *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
@@ -4780,6 +4912,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * | CPL = 3         |       | RPL = 0         |       | DPL = 0         |
      * +-----------------+       +-----------------+       +-----------------+
      *
+     * And, If Code segment E0 is a conforming code segment, the CPL of Code
+     * segment A0 is numerically equal to or greater than (less privilegeed) 
+     * the DPL of the Code segment E0, a procedure in code segment A0 can call
+     * a procedure in code segment E0. The RPL of segment selector E0 is not
+     * checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment A0 |              | Code Segment E0 |
+     * |                -|------------->|                 |
+     * | CPL = 3         |              | DPL = 0         |
+     * +-----------------+              +-----------------+
+     *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
     /* Conforming Code utilize segment selector: 0x0510
@@ -4832,6 +4976,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * | CPL = 3         |       | RPL = 1         |       | DPL = 1         |
      * +-----------------+       +-----------------+       +-----------------+
      *
+     * And, If Code segment E0 is a conforming code segment, the CPL of Code
+     * segment A0 is numerically equal to or greater than (less privilegeed) 
+     * the DPL of the Code segment E0, a procedure in code segment A0 can call
+     * a procedure in code segment E0. The RPL of segment selector E0 is not
+     * checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment A0 |              | Code Segment E0 |
+     * |                -|------------->|                 |
+     * | CPL = 3         |              | DPL = 1         |
+     * +-----------------+              +-----------------+
+     *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
     /* Conforming Code utilize segment selector: 0x0561
@@ -4883,6 +5039,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * |                -|------>|                -|---X-->|                 |
      * | CPL = 3         |       | RPL = 2         |       | DPL = 2         |
      * +-----------------+       +-----------------+       +-----------------+
+     *
+     * And, If Code segment E0 is a conforming code segment, the CPL of Code
+     * segment A0 is numerically equal to or greater than (less privilegeed) 
+     * the DPL of the Code segment E0, a procedure in code segment A0 can call
+     * a procedure in code segment E0. The RPL of segment selector E0 is not
+     * checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment A0 |              | Code Segment E0 |
+     * |                -|------------->|                 |
+     * | CPL = 3         |              | DPL = 2         |
+     * +-----------------+              +-----------------+
      *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
@@ -4940,6 +5108,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * | CPL = 3         |       | RPL = 0         |       | DPL = 1         |
      * +-----------------+       +-----------------+       +-----------------+
      *
+     * And, If Code segment E0 is a conforming code segment, the CPL of Code
+     * segment A0 is numerically equal to or greater than (less privilegeed) 
+     * the DPL of the Code segment E0, a procedure in code segment A0 can call
+     * a procedure in code segment E0. The RPL of segment selector E0 is not
+     * checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment A0 |              | Code Segment E0 |
+     * |                -|------------->|                 |
+     * | CPL = 3         |              | DPL = 1         |
+     * +-----------------+              +-----------------+
+     *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
     /* Conforming Code utilize segment selector: 0x0520
@@ -4992,6 +5172,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * |                -|------>|                -|---X--->|                 |
      * | CPL = 3         |       | RPL = 0         |        | DPL = 2         |
      * +-----------------+       +-----------------+        +-----------------+
+     *
+     * And, If Code segment E0 is a conforming code segment, the CPL of Code
+     * segment A0 is numerically equal to or greater than (less privilegeed) 
+     * the DPL of the Code segment E0, a procedure in code segment A0 can call
+     * a procedure in code segment E0. The RPL of segment selector E0 is not
+     * checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment A0 |              | Code Segment E0 |
+     * |                -|------------->|                 |
+     * | CPL = 3         |              | DPL = 2         |
+     * +-----------------+              +-----------------+
      *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
@@ -5046,6 +5238,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * |                -|------>|                -|---X-->|                 |
      * | CPL = 3         |       | RPL = 1         |       | DPL = 2         |
      * +-----------------+       +-----------------+       +-----------------+
+     *
+     * And, If Code segment E0 is a conforming code segment, the CPL of Code
+     * segment A0 is numerically equal to or greater than (less privilegeed) 
+     * the DPL of the Code segment E0, a procedure in code segment A0 can call
+     * a procedure in code segment E0. The RPL of segment selector E0 is not
+     * checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment A0 |              | Code Segment E0 |
+     * |                -|------------->|                 |
+     * | CPL = 3         |              | DPL = 2         |
+     * +-----------------+              +-----------------+
      *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
@@ -5103,6 +5307,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * | CPL = 0         |       | RPL = 2         |       | DPL = 1         |
      * +-----------------+       +-----------------+       +-----------------+
      *
+     * And, If Code segment E1 is a conforming code segment, the CPL of Code
+     * segment B1 is numerically less than (more privilegeed) the DPL of the
+     * Code segment E0, a procedure in code segment B1 can't call a procedure
+     * in code segment E1, and the processor generates a general-protection
+     * exception (#GP). The RPL of segment selector E1 is not checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment B1 |              | Code Segment E1 |
+     * |                -|------X------>|                 |
+     * | CPL = 0         |              | DPL = 1         |
+     * +-----------------+              +-----------------+
+     *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
     /* Conforming Code utilize segment selector: 0x04a2
@@ -5155,6 +5371,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * |                -|------>|                -|---X-->|                 |
      * | CPL = 0         |       | RPL = 3         |       | DPL = 1         |
      * +-----------------+       +-----------------+       +-----------------+
+     *
+     * And, If Code segment E1 is a conforming code segment, the CPL of Code
+     * segment B1 is numerically less than (more privilegeed) the DPL of the
+     * Code segment E0, a procedure in code segment B1 can't call a procedure
+     * in code segment E1, and the processor generates a general-protection
+     * exception (#GP). The RPL of segment selector E1 is not checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment B1 |              | Code Segment E1 |
+     * |                -|------X------>|                 |
+     * | CPL = 0         |              | DPL = 1         |
+     * +-----------------+              +-----------------+
      *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
@@ -5212,6 +5440,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * | CPL = 0         |       | RPL = 1         |       | DPL = 2         |
      * +-----------------+       +-----------------+       +-----------------+
      *
+     * And, If Code segment E1 is a conforming code segment, the CPL of Code
+     * segment B1 is numerically less than (more privilegeed) the DPL of the
+     * Code segment E0, a procedure in code segment B1 can't call a procedure
+     * in code segment E1, and the processor generates a general-protection
+     * exception (#GP). The RPL of segment selector E1 is not checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment B1 |              | Code Segment E1 |
+     * |                -|------X------>|                 |
+     * | CPL = 0         |              | DPL = 2         |
+     * +-----------------+              +-----------------+
+     *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
     /* Conforming Code utilize segment selector: 0x0471
@@ -5263,6 +5503,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * |                -|------>|                -|---X-->|                 |
      * | CPL = 0         |       | RPL = 1         |       | DPL = 3         |
      * +-----------------+       +-----------------+       +-----------------+
+     *
+     * And, If Code segment E1 is a conforming code segment, the CPL of Code
+     * segment B1 is numerically less than (more privilegeed) the DPL of the
+     * Code segment E0, a procedure in code segment B1 can't call a procedure
+     * in code segment E1, and the processor generates a general-protection
+     * exception (#GP). The RPL of segment selector E1 is not checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment B1 |              | Code Segment E1 |
+     * |                -|------X------>|                 |
+     * | CPL = 0         |              | DPL = 3         |
+     * +-----------------+              +-----------------+
      *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM
@@ -5316,6 +5568,18 @@ static int __unused privilege_check_code_segment_from_CS(void)
      * |                -|------>|                -|---X-->|                 |
      * | CPL = 0         |       | RPL = 2         |       | DPL = 3         |
      * +-----------------+       +-----------------+       +-----------------+
+     *
+     * And, If Code segment E1 is a conforming code segment, the CPL of Code
+     * segment B1 is numerically less than (more privilegeed) the DPL of the
+     * Code segment E0, a procedure in code segment B1 can't call a procedure
+     * in code segment E1, and the processor generates a general-protection
+     * exception (#GP). The RPL of segment selector E1 is not checked.
+     *
+     * +-----------------+              +-----------------+
+     * | Code Segment B1 |              | Code Segment E1 |
+     * |                -|------X------>|                 |
+     * | CPL = 0         |              | DPL = 3         |
+     * +-----------------+              +-----------------+
      *
      */
 #ifdef CONFIG_DEBUG_PL_CODE_CFM

@@ -823,8 +823,6 @@ must be equal to the DPL of the destinaiton code segment; otherwise, the
 processor generates a general-protection exception (#GP). For example in 
 Figure:
 
-![Conforming or NonConforming](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000405.png)
-
 * Code segment C is a nonconforming code segment. A procedure in code segment
   A can call a procedure in code segment C (using segment selector C1) because
   they are at the same privilege level (CPL of code segment A is equal to the
@@ -834,3 +832,57 @@ Figure:
   using segmeng selector C2 or C1) because the two code segments are at 
   difference privilege levels.
 
+![Conforming or NonConforming](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000407.png)
+
+The RPL of the segment selector that points to a nonconforming code segment has
+a limited effect on the privilege check. The RPL must be numerically less than
+or equal to the CPL of the calling procedure for a successful control transfer
+to occur. So, in the example in Figure, the RPLs of segments C1 and C2 could
+legally be set to 0, 1, or 2, but not to 3.
+
+When the segment selector of a nonconforming code segment is loaded into the 
+CS register, the privilege level field is not changed; that is, it remains at
+the CPL (which is the privilege level of the calling procedure). This is true,
+even if the RPL of the segment selector is different from the CPL.
+
+##### Accessing Conforming Code Segment
+
+When accessing conforming code segments, the CPL of the calling procedure may
+be numerically equal to or greater than (less privileged) the DPL of the 
+destination code segment; the processor generates a general-protection 
+exception (#GP) only if the CPL is less than the DPL. (The segment selector
+RPL for the destination code segment is not checked if the segment is a 
+conforming code segment.)
+
+In the example in Figure, code segment D is a conforming code segment.
+Therefore, calling procedures in both code segment A and B can access code
+segment D (using eigher segment selector D1 or D2, respectively), because they
+both have CPLs that are greater than or equal to the DPL of the conforming code
+segment. For conforming code segment, the DPL represents the numerically lowest
+privilege level that calling procedure may be at to successful make a call to
+the code segment.
+
+![Conforming or NonConforming](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000407.png)
+
+(Note that segments selectors D1 and D2 are identical except for their 
+respective RPLs. But since RPLs are not checked when accessing conforming code
+segments, the two segment selectors are essentially interchangeable.)
+
+When program control is transferred to a conforming code segment, the CPL does
+not change, even if the DPL of the destination code segment is less than the
+CPL. This situation is the only one where the CPL may be different from the DPL
+of the current code segment. 
+
+Conforming segments are used for code modules such as math libraries and 
+exception handlers, which support applications but do not require access to
+protected system facilities. These modules are part of the operating system or
+executive software, but they can be executed at numerically higher privilege
+levels (less privileged levels). Keeping the CPL at the level of a calling code
+segment when switching to a conforming code segment prevents a application 
+program from accessing nonconforming code segments while at the privilege level
+(DPL) of a conforming code segment and thus prevents it from accessing more
+privileged data.
+
+Most code segment are nonconforming. For these segments, program control can
+be transferred only to code segments at the same level of privilege, unless
+the transfer is carried out through a call gate.
