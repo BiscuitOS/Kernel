@@ -5675,6 +5675,261 @@ static int __unused far_called_procedure(void)
 }
 #endif
 
+#ifdef CONFIG_DEBUG_PL_GATE_ESTABLISH
+/*
+ * Establish a lot of debug code segment selectors and segment descriptors.
+ *
+ * Debug segment selector and segment descriptor list
+ *
+ * +-------------+--------------------+-------------+----------+-----+
+ * | Segment Sel | Segment Descriptor | Conforming  | Ker/User | DPL |
+ * +-------------+--------------------+-------------+----------+-----+
+ * | 0x0200      | 0xc0c39e000000ffff | Conforming  | Kernel   | 00  |
+ * +-------------+--------------------+-------------+----------+-----+
+ * | 0x0210      | 0xc0c3be000000ffff | Conforming  | Kernel   | 01  |
+ * +-------------+--------------------+-------------+----------+-----+
+ * | 0x0220      | 0xc0c3de000000ffff | Conforming  | Kernel   | 02  |
+ * +-------------+--------------------+-------------+----------+-----+
+ * | 0x0230      | 0x00cbfe000000ffff | Conforming  | User     | 03  |
+ * +-------------+--------------------+-------------+----------+-----+
+ * | 0x0240      | 0xc0c39a000000ffff | Non-Conform | Kernel   | 00  |
+ * +-------------+--------------------+-------------+----------+-----+
+ * | 0x0250      | 0xc0c3ba000000ffff | Non-Conform | Kernel   | 01  |
+ * +-------------+--------------------+-------------+----------+-----+
+ * | 0x0260      | 0xc0c3da000000ffff | Non-Conform | Kernel   | 02  |
+ * +-------------+--------------------+-------------+----------+-----+
+ * | 0x0270      | 0x00cbfa000000ffff | Non-Conform | User     | 03  |
+ * +-------------+--------------------+-------------+----------+-----+
+ * | 0x0280      | 0x0000000000000000 | Gate        | Reserved | XX  |
+ * +-------------+--------------------+-------------+----------+-----+
+ */
+static struct desc_struct __unused debug_descY[] = {
+  { .a = 0x0000ffff, .b = 0xc0c39e00}, /* kernel 1GB code at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3be00}, /* kernel 1GB code at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3de00}, /* kernel 1GB code at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0x00cbfe00}, /* user   3GB code at 0x00000000 */
+  { .a = 0x0000ffff, .b = 0xc0c39a00}, /* kernel 1GB code at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3ba00}, /* kernel 1GB code at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0xc0c3da00}, /* kernel 1GB code at 0xC0000000 */
+  { .a = 0x0000ffff, .b = 0x00cbfa00}, /* user   3GB code at 0x00000000 */
+  { .a = 0x00000000, .b = 0x00000C00}, /* Reserved for Gates */
+  { }
+};
+
+static int __unused establish_debug_call_gate(void)
+{
+    unsigned short __unused start_Sel = 0x0200;
+    unsigned short __unused end_Sel   = 0x0280;
+    unsigned short __unused Sel;
+    struct desc_struct __unused *desc;
+    unsigned short __unused i = 0;
+
+    for (Sel = start_Sel; Sel <= end_Sel; Sel += 0x10, i++) {
+        desc = gdt + (Sel >> 0x3);
+        desc->a = debug_descY[i].a;
+        desc->b = debug_descY[i].b;
+    }
+ 
+    return 0;
+}
+device_debugcall(establish_debug_call_gate);
+#endif
+
+#ifdef CONFIG_DEBUG_PL_GATE
+
+static int __unused far_called_procedure(void);
+
+/*
+ * Privilege Checking when accessing Call Gates
+ *
+ * The DPL field of the call-gate descriptor specifies the numbercally highest
+ * privilege from which a calling procedure can access the call gate; that is,
+ * to access a call gate, the CPL of a calling procedure must be equal to or
+ * less than the DPL of the call gate. For example, in Figure, call gate A has
+ * a DPL of 3. So calling procedure at all CPLs (0 through 3) can access this
+ * call gate, which includes calling procedure in code segments A, B, and C.
+ * Call gate B has DPL of 2, so only calling procedures at a CPL or 0,1, or 2
+ * can access call gate B, which includes calling procedures in code segments
+ * B and C. The dotted line shows that a calling procedure in code segment A
+ * cannot access call gate B.
+ *
+ * The RPL of the segment selector to a call gate must satisfy the same test
+ * as the CPL of the calling procedure; that is, the RPL must be less than or
+ * equal to the DPL of the call gate. In the example in Figure, a calling
+ * procedure in code segment C can access call gate B using gate selector B2
+ * or B1, but it could not use gate selector B3 to access call gate B.
+ *
+ * If the privilege checks between the calling procedure and call gate are
+ * successful, the processor then checks the DPL of the code-segment descriptor
+ * against the CPL of the calling procedure. Here, the privilege check rules
+ * vary between CALL and JMP instructions. Only CALL instruction can use call
+ * gates to tranfer program control to more privilege (numerically lower
+ * privilege level) nonconforming code segment; that is, to nonconforming code
+ * segmetn with a DPL less than the CPL. A JMP instrcution can use a call gate
+ * only to transfer program control to a nonconforming code segment with a DPL
+ * equal to the CPL. CALL and JMP instruction can both transfer program control
+ * to a more privileged conforming code segment; that is, to a conforming code
+ * segment with a DPL less than or equal to the CPL.
+ *
+ * If a call is made to a more privilege (numerically lower privilege level)
+ * nonconforming destination code segment, the CPL is lowered to the DPL of the
+ * destination code segment and a stack switch occurs. If a call or jump is
+ * made to a more privileged conforming destination code segment, the CPL is
+ * not changed and no stack switch occurs.
+ */
+static int __unused privilege_check_call_gate(void)
+{
+    unsigned short __unused CS;
+    unsigned short __unused SS;
+    unsigned short __unused Sel;
+    unsigned short __unused Sel_called;
+    unsigned short __unused CPL;
+    unsigned short __unused RPL;
+    unsigned short __unused DPL;
+    unsigned short __unused DPL_called;
+    unsigned short __unused CMF;
+    struct desc_struct __unused *desc;
+    struct desc_struct __unused *desc_called;
+
+    /* Store CS and obtian CPL */
+    __asm__ ("mov %%cs, %0" : "=m" (CS));
+    CPL = CS & 0x3;
+    /* Store SS */
+    __asm__ ("mov %%ss, %0" : "=m" (SS));
+
+    /* Call Gate Segment Selector: 0x0280 */
+    Sel = 0x280;
+
+    /* Set up RPL of Call Gates from Kconfig */
+#ifdef CONFIG_DEBUG_PL_GATE_RPL0
+    Sel |= 0;
+#elif defined CONFIG_DEBUG_PL_GATE_RPL1
+    Sel |= 1;
+#elif defined CONFIG_DEBUG_PL_GATE_RPL2
+    Sel |= 2;
+#elif defined CONFIG_DEBUG_PL_GATE_RPL3
+    Sel |= 3;
+#endif
+    RPL = Sel & 0x3;
+
+    /* Set up segment selector of called procedure code segment */
+
+    Sel_called = 0x0200;
+
+#ifdef CONFIG_DEBUG_PL_GATE_CFM
+    /* Conforming Code Segment */
+    CMF = 0x0;
+#elif defined CONFIG_DEBUG_PL_GATE_UCFM
+    /* Non-Conforming Code Segment */
+    CMF = 0x1;
+#endif
+
+    /* Calculate Segment selector of called procedure */    
+#ifdef CONFIG_DEBUG_PL_GATE_DPLB0
+    Sel_called |= (4 * CMF + 0) << 4;
+#elif defined CONFIG_DEBUG_PL_GATE_DPLB1
+    Sel_called |= (4 * CMF + 1) << 4;
+#elif defined CONFIG_DEBUG_PL_GATE_DPLB2
+    Sel_called |= (4 * CMF + 2) << 4;
+#elif defined CONFIG_DEBUG_PL_GATE_DPLB3
+    Sel_called |= (4 * CMF + 3) << 4;
+#endif
+
+    /* Loading Call Gate descriptor */
+    desc = gdt + (Sel >> 3);
+    /* Set up segment selector field of called procedure code segment 
+     * on CALL Gates descriptor. */
+    desc->a |= (Sel_called & 0xFFFF) << 16;
+    /* Set up Offset filed for caled procedure code segment on CALL Gates
+     * descriptor. */
+    desc->a |= (unsigned long)far_called_procedure & 0xFFFF;
+    desc->b |= (((unsigned long)far_called_procedure >> 16) & 0xFFFF) << 16;
+
+    /* Set up DPL of Call Gate */
+#ifdef CONFIG_DEBUG_PL_GATE_DPLA0
+    desc->b |= 0 << 13;
+#elif defined CONFIG_DEBUG_PL_GATE_DPLA1
+    desc->b |= 1 << 13;
+#elif defined CONFIG_DEBUG_PL_GATE_DPLA2
+    desc->b |= 2 << 13;
+#elif defined CONFIG_DEBUG_PL_GATE_DPLA3
+    desc->b |= 3 << 13;
+#endif
+    DPL = (desc->b >> 13) & 0x3;
+
+    /* Set up P flag of CALL Gate */
+    desc->b |= 1 << 15;
+
+    /* Obtain segment descriptor for Called procedure code segment */
+    desc_called = gdt + (Sel_called >> 3);
+    DPL_called = (desc_called->b >> 13) & 0x3;
+
+#ifdef CONFIG_DEBUG_PL_GATE_CPL3
+    printf(
+#else
+    printk(
+#endif
+           "Calling Sel: %#x, Calling CPL: %#x CALL Gate RPL: %#x\n"
+           "CALL Gate: %#08x%08x, CALL Gate DPL: %#x SS: %#x\n"
+           "Called Sel: %#x, Called DPL: %#x, Called Descriptor: %#08x%08x\n",
+           Sel, CPL, RPL, (unsigned int)desc->b, (unsigned int)desc->a,
+           DPL, SS, Sel_called, DPL_called, (unsigned int)desc_called->b,
+           (unsigned int)desc_called->a);
+
+    /* Access code segment through Call gate. Privilege check rule for call
+     * Gates:
+     * CALL instruction:
+     *
+     *   CPL <= Call gate DPL; RPL <= Call Gate DPL
+     *   Destination conforming code segment DPL <= CPL
+     *   Destination nonconforming code segment DPL <= CPL
+     **/
+#ifdef CONFIG_DEBUG_PL_GATE_RPL0
+    __asm__ ("call $0x0280, %0" :: "i" (far_called_procedure));
+#elif defined CONFIG_DEBUG_PL_GATE_RPL1
+    __asm__ ("call $0x0281, %0" :: "i" (far_called_procedure));
+#elif defined CONFIG_DEBUG_PL_GATE_RPL2
+    __asm__ ("call $0x0282, %0" :: "i" (far_called_procedure));
+#elif defined CONFIG_DEBUG_PL_GATE_RPL3
+    __asm__ ("call $0x0283, %0" :: "i" (far_called_procedure));
+#endif
+ 
+    return 0;
+}
+
+#ifdef CONFIG_DEBUG_PL_GATE_CPL3
+user1_debugcall_sync(privilege_check_call_gate);
+
+/* far called procedure on userland */
+static int __unused far_called_procedure(void)
+{
+    unsigned short __unused CS;
+    unsigned short __unused SS;
+
+    __asm__ ("mov %%cs, %0" : "=m" (CS));
+    __asm__ ("mov %%ss, %0" : "=m" (SS));
+    printf("CS: %#x SS: %#x\n", CS, SS);
+
+    return 0;
+}
+#else
+late_debugcall(privilege_check_call_gate);
+
+/* far called procedure on kernel */
+static int __unused far_called_procedure(void)
+{
+    unsigned short __unused CS;
+    unsigned short __unused SS;
+
+    __asm__ ("mov %%cs, %0" : "=m" (CS));
+    __asm__ ("mov %%ss, %0" : "=m" (SS));
+    printk("CS: %#x SS: %#x\n", CS, SS);
+
+    return 0;
+}
+#endif
+#endif // CONFIG_DEBUG_PL_GATE
+
 static int segment_check_entence(void)
 {
     /* Obtain Segment selector and Segment descriptor */

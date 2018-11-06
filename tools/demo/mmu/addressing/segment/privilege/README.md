@@ -886,3 +886,114 @@ privileged data.
 Most code segment are nonconforming. For these segments, program control can
 be transferred only to code segments at the same level of privilege, unless
 the transfer is carried out through a call gate.
+
+#### Accessing a Code segment through a Call Gate
+
+To access a call gate, a far pointer to the gate is provided as a target 
+operand in a CALL or JMP instruction. The segment selector from this pointer
+identifies the call gate; the offset from the pointer is required, but not
+used or checked by the processor. (The offset can be set to any value.)
+
+When the processor has accessed the call gate, it uses the segment selector
+from the call gate to locate the segment descriptor for the destination code
+segment. (This segment descriptor can be in the GDT or the LDT.) It then
+combines the base address from the code-segment descriptor with the offset
+from the call gate to form the linear address of the procedure entry point in
+the code segment.
+
+As Figure, four different privilege levels are used to check the validity of a
+program control transfer through a call gate:
+
+* The CPL (current privilege level.)
+
+* The RPL (requestor's privilege level) of the call gate's selector.
+
+* The DPL (descriptor privilege level) of the call gate descriptor.
+
+* The DPL of the segment descriptor of the destination code segment.
+
+The C flag (conforming) in the segment descriptor for the destination code 
+segment is able checked.
+
+![Call-Gate mechanism](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000408.png)
+
+```
+CS Register
++-----------------+-----+
+|                 | CPL |------------o
++-----------------+-----+            |
+                                     |
+Call-Gate Selector                   |
++-----------------+-----+            |
+|                 | RPL |---------o  |      +-----------------+
++-----------------+-----+         |  o----->|                 |
+                                  |         |                 |
+Call Gate (descriptor)            o-------->|                 |
++----------+-----+------+                   | Privilege Check |
+|          | DPL |     -|------------------>|                 |
++----------+-----+------+                   |                 |
++-----------------------+         o-------->|                 |
+|                       |         |         +-----------------+
++-----------------------+         |
+                                  |
+Destination Code-Segment          |
+Descriptor                        |
+Call Gate (descriptor)            |
++----------+-----+------+         |
+|          | DPL |     -|---------o
++----------+-----+------+
++-----------------------+
+|                       |
++-----------------------+
+```
+
+The privilege checking rules are different depending on whether the control 
+transfer was initiated with a CALL or a JMP instruction, as follow:
+
+![Privilege check rules for call gate](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000409.png)
+
+The DPL field of the call-gate descriptor specifies the numbercally highest
+privilege from which a calling procedure can access the call gate; that is, to
+access a call gate, the CPL of a calling procedure must be equal to or less 
+than the DPL of the call gate. For example, in Figure, call gate A has a DPL
+of 3. So calling procedure at all CPLs (0 through 3) can access this call gate,
+which includes calling procedure in code segments A, B, and C. Call gate B has
+DPL of 2, so only calling procedures at a CPL or 0,1, or 2 can access call gate
+B, which includes calling procedures in code segments B and C. The dotted line
+shows that a calling procedure in code segment A cannot access call gate B.
+
+The RPL of the segment selector to a call gate must satisfy the same test as
+the CPL of the calling procedure; that is, the RPL must be less than or equal
+to the DPL of the call gate. In the example in Figure, a calling procedure in
+code segment C can access call gate B using gate selector B2 or B1, but it 
+could not use gate selector B3 to access call gate B.
+
+If the privilege checks between the calling procedure and call gate are 
+successful, the processor then checks the DPL of the code-segment descriptor
+against the CPL of the calling procedure. Here, the privilege check rules vary
+between CALL and JMP instructions. Only CALL instruction can use call gates
+to tranfer program control to more privilege (numerically lower privilege 
+level) nonconforming code segment; that is, to nonconforming code segmetn with
+a DPL less than the CPL. A JMP instrcution can use a call gate only to transfer
+program control to a nonconforming code segment with a DPL equal to the CPL.
+CALL and JMP instruction can both transfer program control to a more privileged
+conforming code segment; that is, to a conforming code segment with a DPL less
+than or equal to the CPL.
+
+If a call is made to a more privilege (numerically lower privilege level) 
+nonconforming destination code segment, the CPL is lowered to the DPL of the
+destination code segment and a stack switch occurs. If a call or jump is made
+to a more privileged conforming destination code segment, the CPL is not 
+changed and no stack switch occurs.
+
+![Accessing Call Gates At Various Privilege levels](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000410.png)
+
+Call gates allow a single code segment to have procedures that can be accessed
+at different privilege levels. For example, an operating system located in a 
+code segment may have some services which are intended to be used by both the
+operating system and application software (such as procedures for handling 
+character I/O). Call gates for these procedures can be set up that allow access
+at all privilege levels (0 through 3). More privileged call gates (with DPLs of
+0 or 1) can then be set up for other operating system services that are 
+intended to be used only by the operating system (such as procedures that
+initialize device drivers).

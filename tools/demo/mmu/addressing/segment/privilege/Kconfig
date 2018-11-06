@@ -1209,6 +1209,137 @@ endif # DEBUG_PL_CODE_C7
 
 endif # DEBUG_PL_CODE
 
+config DEBUG_PL_GATE
+	bool "Privilege Checking when accessing code segment with Call Gate"
+	select DEBUG_PL_GATE_ESTABLISH
+	help
+	  Privilege checking when transferring program control between 
+	  code segment with CALL Gates.
+
+if DEBUG_PL_GATE
+
+config DEBUG_PL_GATE_ESTABLISH
+	bool "Establish CALL gates, Code Segment Selector and Descriptor"
+	help
+	  Establish CALL Gates, Code segment selector and segment descriptor.
+
+choice
+	prompt "The CPL of Calling procedure"
+
+config DEBUG_PL_GATE_CPL0
+	bool "CPL 0: kernel"
+	help
+	  CPL 0: Kernel.
+
+config DEBUG_PL_GATE_CPL1
+	bool "CPL 1: Kernel (Unused on Linux)"
+	help
+	  CPL 1: Kernel (Unused on Linux).
+
+config DEBUG_PL_GATE_CPL2
+	bool "CPL 2: Kernel (Unused on Linux)"
+	help
+	  CPL 2: Kernel (Unused on Linux).
+
+config DEBUG_PL_GATE_CPL3
+	bool "CPL 3: User"
+	help
+	  CPL 3: User.
+
+endchoice # CPL of calling procedure
+
+choice
+	prompt "The RPL of CALL Gates"
+
+config DEBUG_PL_GATE_RPL0
+	bool "RPL 0: kernel"
+	help
+	  RPL 0: Kernel.
+
+config DEBUG_PL_GATE_RPL1
+	bool "RPL 1: Kernel (Unused on Linux)"
+	help
+	  RPL 1: Kernel (Unused on Linux).
+
+config DEBUG_PL_GATE_RPL2
+	bool "RPL 2: Kernel (Unused on Linux)"
+	help
+	  RPL 2: Kernel (Unused on Linux).
+
+config DEBUG_PL_GATE_RPL3
+	bool "RPL 3: User"
+	help
+	  RPL 3: User.
+
+endchoice # RPL of Call Gate
+
+choice
+	prompt "The DPL of CALL Gates"
+
+config DEBUG_PL_GATE_DPLA0
+	bool "DPL 0: kernel"
+	help
+	  DPL 0: Kernel.
+
+config DEBUG_PL_GATE_DPLA1
+	bool "DPL 1: Kernel (Unused on Linux)"
+	help
+	  DPL 1: Kernel (Unused on Linux).
+
+config DEBUG_PL_GATE_DPLA2
+	bool "DPL 2: Kernel (Unused on Linux)"
+	help
+	  DPL 2: Kernel (Unused on Linux).
+
+config DEBUG_PL_GATE_DPLA3
+	bool "DPL 3: User"
+	help
+	  DPL 3: User.
+
+endchoice # DPL of Call Gate
+
+choice
+	prompt "The DPL of Called procedure"
+
+config DEBUG_PL_GATE_DPLB0
+	bool "DPL 0: kernel"
+	help
+	  DPL 0: Kernel.
+
+config DEBUG_PL_GATE_DPLB1
+	bool "DPL 1: Kernel (Unused on Linux)"
+	help
+	  DPL 1: Kernel (Unused on Linux).
+
+config DEBUG_PL_GATE_DPLB2
+	bool "DPL 2: Kernel (Unused on Linux)"
+	help
+	  DPL 2: Kernel (Unused on Linux).
+
+config DEBUG_PL_GATE_DPLB3
+	bool "DPL 3: User"
+	help
+	  DPL 3: User.
+
+endchoice # DPL of called procedure
+
+choice
+	prompt "Called Code Segment Type"
+
+config DEBUG_PL_GATE_CFM
+	bool "Conforming, readable Code Segment"
+	help
+	  Conforming and readable Code Segment.
+
+config DEBUG_PL_GATE_UCFM
+	bool "UnConforming, readable Code Segment"
+	help
+	  UnConforming and readable Code Segment.
+
+endchoice # Conforming or nonConforming code
+
+endif # DEBUG_PL_GATE
+
 endif # DEBUG_PL_CHECK
 
 endmenu
