@@ -1,0 +1,83 @@
+menu "TSS: Task status Segment"
+
+config DEBUG_SEG_TSS
+	bool "TSS: Task Status Segment"
+	help
+	  TSS: Task Status Segment.
+
+if DEBUG_SEG_TSS
+
+config DEBUG_SEG_TSS_DESC
+	bool "TSS Segment Descriptor"
+	help
+	  TSS Segment Descriptor.
+
+if DEBUG_SEG_TSS_DESC
+
+comment "flags and field in TSS Descriptor"
+
+config DEBUG_TSS_DESC_BASE
+	bool "Base addres field"
+	help
+	  The base address field of TSS.
+
+config DEBUG_TSS_DESC_LIMIT
+	bool "TSS limit field"
+	help
+	  The limit field of TSS.
+
+config DEBUG_TSS_DESC_B
+	bool "B: Busy flag"
+	help
+	  The busy flag of TSS.
+
+config DEBUG_TSS_DESC_DPL
+	bool "DPL: Descriptor Privilege levels"
+	help
+	  The DPL of TSS.
+
+config DEBUG_TSS_DESC_P
+	bool "P: Present flag"
+	help
+	  The Present flag.
+
+config DEBUG_TSS_DESC_G
+	bool "G: Granularity flag"
+	help
+	  Granularity flag.
+
+config DEBUG_TSS_DESC_AVL
+	bool "AVL: Available for use by system software"
+	help
+	  Available for use by system software.
+
+endif # DEBUG_SEG_TSS_DESC
+
+config DEBUG_SEG_TSS_TR
+	bool "Task Register (Register and Instructions)"
+	help
+	  Task Register.
+
+if DEBUG_SEG_TSS_TR
+
+config DEBUG_TSS_TR_STR
+	bool "STR: Store Task Register"
+	help
+	  Store Task Register.
+
+config DEBUG_TSS_TR_LTR
+	bool "LTR: Load Task Register"
+	select DEBUG_TSS_TR_STR
+	help
+	  Load Task Register.
+
+endif # DEBUG_SEG_TSS_TR
+
+config DEBUG_SEG_TSS_CONTEXT
+	bool "TSS context of current task"
+	help
+	  TSS context of current task.
+
+endif # DEBUG_SEG_TSS
+
+endmenu
