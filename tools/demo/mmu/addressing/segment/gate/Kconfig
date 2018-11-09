@@ -40,6 +40,15 @@ config DEBUG_CALL_GATE_ESTABLISH
 	help
 	  Establish Call Gates segment selectors and segment descriptors on GDT.
 
+config DEBUG_CALL_GATE_NCF
+	bool "Access Conforming code segment through call gate"
+	help
+	  Access Conforming code segment through call gate.
+
+config DEBUG_CALL_GATE_SWTICH_STACK
+	bool "Stack switch through Call Gate"
+	help
+	  Swtich Stack through CALL Gates.
 
 endif # DEBUG_SEG_GATE_CALL
 

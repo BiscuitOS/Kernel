@@ -173,3 +173,121 @@ between CALL and JMP instructions.
 More example of accessing call gates at various privilege levels, please see
 **tools/demo/mmu/addressing/segment/privilege/pl.c** about **Call gates**.
 
+# Stack Switching
+
+Whenever a call gate is used to transfer program control to a more privileged
+nonconforming code segment (that is, when the DPL of the nonconforming 
+destination code segment is less than the CPL), the processor automatically
+switches to the stack for the destination code segment's privilege level. This
+stack switching is carried out to prevent more privileged procedures from 
+crashing due to insufficient stack space. It also prevents less privileged 
+procedures from interfering (by accident or intent) with more privileged 
+procedures through a shared stack.
+
+Each task must define up to 4 stacks: one for applications code (running at 
+privilege level 3) and one for each of the privilege level 2,1, and 0 that are
+used. (If only two privilege levels are used [3 and 0], then only two stacks
+must be defined.) Each of these stacks is located in a separate segment and is
+identified with a segment selector and an offset into the stack segment (a
+stack pointer).
+
+The segment selector and stack pointer for the privilege level 3 stack is
+located in the SS and ESP registers, respectively, when privilege-level-3 code
+is being executed and is automatically stored on the called procedure's stack
+when a stack switch occurs.
+
+Pointers to privilege level 0, 1, and 2 stacks are stored in the TSS for the 
+currently running task (See Figure). Each of these pointer consists of a
+segment selector and a task pointer (loaded into the ESP register). These
+initial pointers are strictly read-only values. The procedure does not change
+them while the task is running. They are used only to create new stacks when
+calls are made to more privilege levels (numberically lower privilege levels).
+These stack are disposed of when a return is made from the called procedure.
+The next time the procedure is called, a new stack is created using the inital
+stack pointer. (The TSS does not specify a stack for privilege level 3 because
+the processor does not allow a transfer of program control from a procedure
+running at a CPL of 0, 1, or 2 to a procedure running at a CPL of 3, except
+on a return.)
+
+The operating system is responsible for creating stacks and stack-segment 
+descriptor for all the privilege levels to be used and for loading initial
+pointers for these stacks into the TSS. Each stack must be read/write
+accessible (as specified in the type field of its segment descriptor) and must
+contain enough space (as specified in the limit field) to hold the following 
+items:
+
+* The contents of the SS, ESP, CS, and EIP registers for the calling procedure.
+
+* The parameters and temporary variables required by the called procedure.
+
+* The EFLAGS register and error code, when implicit calls are made to an
+  exception or interrupt handler.
+
+The stack will need to require enough spece to contain many frames of these
+items, because procedures often call other procedures, and an operating system
+may support nesting of multiple interrupts. Each stack should be large enough
+to allow for the worst case nesting scenario at its privilege level.
+
+(If the operating system does not use the processor's multitasking mechanism,
+it still must create at least on TSS for this stack-related purpose.)
+
+When a procedure call through a call gate results in a change in privilege
+level, the processor performs the following steps to switch stacks and begin
+execution of the called procedure at a new privilege level:
+
+1. Uses the DPL of the destination code segment (the new CPL) to select a 
+   pointer to the new stack (segment selector and stack pointer) from the TSS.
+
+2. Reads the segment selector and stack pointer for the stack to be switched to
+   from the current TSS. Any limit violations detected while reading the 
+   stack-segment selector, stack pointer, or stack-segment descriptor cause
+   an invalid TSS (#TS) exception to be generated.
+
+3. Checks the stack-segment descriptor for the proper privilege and type and
+   generates an invalid TSS (#TS) exception if violations are detected.
+
+4. Temporarily saves the current values of the SS and ESP registers.
+
+5. Loads the segment selector and stack pointer for the new stack in the SS
+   and ESP register.
+
+6. Pushes the temporarily saved valued for the SS and ESP registers (for the
+   calling procedure) onto the new stack.
+
+7. Copies the number of parameter specified in the parameter count field of the
+   call gate from the calling procedure's stack to the new stack. If the count
+   is 0, no parameters are copied.
+
+8. Pushes the return instruction pointer (the current contents of the CS and 
+   EIP registers) onto the new stack.
+
+9. Loads the segment selector for the new code segment and the new instruction
+   pointer from the call gate into the CS and EIP registers, respectively, and
+   begins execution of called procedure.
+
+```
+
+    Calling Procedure's Stack               Called Procedure's Stack
+
+     |                     |                 |                    |
+     +---------------------+                 +--------------------+
+     |     Parameter 1     |                 |     Calling SS     |
+     +---------------------+                 +--------------------+
+     |     Parameter 2     |                 |     Calling ESP    |
+     +---------------------+                 +--------------------+
+     |     Parameter 3     |<---- ESP        |     Parameter 1    |
+     +---------------------+                 +--------------------+
+     |                     |                 |     Parameter 2    |
+     +---------------------+                 +--------------------+
+     |                     |                 |     Parameter 3    |
+     +---------------------+                 +--------------------+
+     |                     |                 |     Calling CS     |
+     +---------------------+                 +--------------------+
+     |                     |                 |     Calling EIP    |<--- ESP
+     +---------------------+                 +--------------------+
+     |                     |                 |                    |
+     +---------------------+                 +--------------------+
+     |                     |                 |                    |
+     +---------------------+                 +--------------------+
+     |                     |                 |                    |
+```

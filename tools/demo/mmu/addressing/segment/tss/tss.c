@@ -9,6 +9,7 @@
  */
 #include <linux/kernel.h>
 #include <linux/sched.h>
+#include <linux/unistd.h>
 
 #include <demo/debug.h>
 
@@ -273,4 +274,69 @@ static int __unused tss_context(void)
     return 0;
 }
 user1_debugcall_sync(tss_context);
+#endif
+
+#ifdef CONFIG_DEBUG_TASK_GATE_ESTABLISH
+/*
+ * Establish a Task Gate.
+ *
+ * Debug segment selector and segment descriptor list
+ *
+ * +-------------+--------------------+----------+-----+
+ * | Segment Sel | Segment Descriptor | TSS Sel  | DPL |
+ * +-------------+--------------------+----------+-----+
+ * | 0x0203      | 0x0000e50000000000 | _TSS(0)  | 03  |
+ * +-------------+--------------------+----------+-----+
+ */
+
+static int __unused establish_debug_task_gate(void)
+{
+    unsigned short __unused Sel = 0x0203;
+    struct desc_struct __unused *desc;
+
+    desc = gdt + (Sel >> 0x3);
+    desc->a = _TSS(0) << 16;
+    desc->b = 0x0000e500;
+
+    return 0;
+}
+device_debugcall(establish_debug_task_gate);
+#endif
+
+#ifdef CONFIG_DEBUG_TASK_GATE_U2K
+
+static int __unused user_access_kernel(void)
+{
+    unsigned short __unused CS;
+    unsigned short __unused Sel;
+    unsigned short __unused CPL;
+    unsigned short __unused RPL;
+    unsigned short __unused DPL;
+    struct desc_struct __unused *desc;
+
+    /* Obtain current CPL */
+    __asm__ ("mov %%cs, %0" : "=m" (CS));
+    CPL = CS & 0x3;
+
+    /* Prepare segment selector for TSS Gates, we have establish a TSS Gates,
+     * and segment selector is 0x0203. 
+     */
+    Sel = 0x0203;
+    /* Obtain the RPL of TSS Gates */
+    RPL = Sel & 0x3;
+
+    /* Obtian TSS Gate */
+    desc = gdt + (Sel >> 3);
+    /* Obtain the DPL of TSS Gate */
+    DPL = (desc->b >> 13) & 0x3;
+
+    printf("Sel: %#x TSS Gates: %#08x%08x\n", Sel, desc->b, desc->a);
+    printf("CPL: %#x RPL: %#x DPL: %#x\n", CPL, RPL, DPL);
+
+    __asm__ ("ljmp *%0" :: "m" (Sel));
+    printk("Hello World\n");
+
+    return 0;
+}
+user1_debugcall_sync(user_access_kernel);
 #endif

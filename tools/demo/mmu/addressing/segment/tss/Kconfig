@@ -78,6 +78,36 @@ config DEBUG_SEG_TSS_CONTEXT
 	help
 	  TSS context of current task.
 
+config DEBUG_SEG_TASK_GATE
+	bool "Task Gates"
+	select DEBUG_TASK_GATE_ESTABLISH
+	help
+	  TSS Gates.
+
+if DEBUG_SEG_TASK_GATE
+
+config DEBUG_TASK_GATE_ESTABLISH
+	bool "Establish Specify Task Gates"
+	help
+	  Establish Specify Task Gates
+
+config DEBUG_TASK_GATE_U2K
+	bool "User access kernel through Task Gate"
+	help
+	  User access kernel through Task Gate.
+
+endif # DEBUG_SEG_TASK_GATE
+
+config DEBUG_SEG_TSS_SWITCH
+	bool "Task Switch when loading new TSS"
+	help
+	  Task Switch when loading new TSS.
+
+if DEBUG_SEG_TSS_SWITCH
+
+
+endif # DEBUG_SEG_TSS_SWITCH
+
 endif # DEBUG_SEG_TSS
 
 endmenu

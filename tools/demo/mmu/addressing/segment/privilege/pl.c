@@ -5843,7 +5843,7 @@ static int __unused privilege_check_call_gate(void)
     /* Set up Offset filed for caled procedure code segment on CALL Gates
      * descriptor. */
     desc->a |= (unsigned long)far_called_procedure & 0xFFFF;
-    desc->b |= (((unsigned long)far_called_procedure >> 16) & 0xFFFF) << 16;
+    desc->b |= (unsigned long)far_called_procedure & 0xFFFF0000;
 
     /* Set up DPL of Call Gate */
 #ifdef CONFIG_DEBUG_PL_GATE_DPLA0
@@ -5899,7 +5899,12 @@ static int __unused privilege_check_call_gate(void)
 
 #ifdef CONFIG_DEBUG_PL_GATE_CPL3
 user1_debugcall_sync(privilege_check_call_gate);
+#else
+late_debugcall(privilege_check_call_gate);
+#endif
+#endif // CONFIG_DEBUG_PL_GATE
 
+#ifdef CONFIG_DEBUG_PL_GATE_DPLB3
 /* far called procedure on userland */
 static int __unused far_called_procedure(void)
 {
@@ -5913,8 +5918,6 @@ static int __unused far_called_procedure(void)
     return 0;
 }
 #else
-late_debugcall(privilege_check_call_gate);
-
 /* far called procedure on kernel */
 static int __unused far_called_procedure(void)
 {
@@ -5928,7 +5931,6 @@ static int __unused far_called_procedure(void)
     return 0;
 }
 #endif
-#endif // CONFIG_DEBUG_PL_GATE
 
 static int segment_check_entence(void)
 {

@@ -222,87 +222,87 @@ static unsigned long lost_ticks = 0;
  */
 asmlinkage void schedule(void)
 {
-	int c;
-	struct task_struct * p;
-	struct task_struct * next;
-	unsigned long ticks;
+    int c;
+    struct task_struct * p;
+    struct task_struct * next;
+    unsigned long ticks;
 
-/* check alarm, wake up any interruptible tasks that have got a signal */
+    /* check alarm, wake up any interruptible tasks that have got a signal */
 
-	cli();
-	ticks = itimer_ticks;
-	itimer_ticks = 0;
-	itimer_next = ~0;
-	sti();
-	need_resched = 0;
-	p = &init_task;
-	for (;;) {
-		if ((p = p->next_task) == &init_task)
-			goto confuse_gcc1;
-		if (ticks && p->it_real_value) {
-			if (p->it_real_value <= ticks) {
-				send_sig(SIGALRM, p, 1);
-				if (!p->it_real_incr) {
-					p->it_real_value = 0;
-					goto end_itimer;
-				}
-				do {
-					p->it_real_value += p->it_real_incr;
-				} while (p->it_real_value <= ticks);
-			}
-			p->it_real_value -= ticks;
-			if (p->it_real_value < itimer_next)
-				itimer_next = p->it_real_value;
-		}
+    cli();
+    ticks = itimer_ticks;
+    itimer_ticks = 0;
+    itimer_next = ~0;
+    sti();
+    need_resched = 0;
+    p = &init_task;
+    for (;;) {
+        if ((p = p->next_task) == &init_task)
+            goto confuse_gcc1;
+        if (ticks && p->it_real_value) {
+            if (p->it_real_value <= ticks) {
+                send_sig(SIGALRM, p, 1);
+                if (!p->it_real_incr) {
+                    p->it_real_value = 0;
+                    goto end_itimer;
+                }
+                do {
+                    p->it_real_value += p->it_real_incr;
+                } while (p->it_real_value <= ticks);
+            }
+            p->it_real_value -= ticks;
+            if (p->it_real_value < itimer_next)
+                itimer_next = p->it_real_value;
+        }
 end_itimer:
-		if (p->state != TASK_INTERRUPTIBLE)
-			continue;
-		if (p->signal & ~p->blocked) {
-			p->state = TASK_RUNNING;
-			continue;
-		}
-		if (p->timeout && p->timeout <= jiffies) {
-			p->timeout = 0;
-			p->state = TASK_RUNNING;
-		}
-	}
+        if (p->state != TASK_INTERRUPTIBLE)
+            continue;
+        if (p->signal & ~p->blocked) {
+            p->state = TASK_RUNNING;
+            continue;
+        }
+        if (p->timeout && p->timeout <= jiffies) {
+            p->timeout = 0;
+            p->state = TASK_RUNNING;
+        }
+    }
 confuse_gcc1:
 
-/* this is the scheduler proper: */
+    /* this is the scheduler proper: */
 #if 0
-	/* give processes that go to sleep a bit higher priority.. */
-	/* This depends on the values for TASK_XXX */
-	/* This gives smoother scheduling for some things, but */
-	/* can be very unfair under some circumstances, so.. */
- 	if (TASK_UNINTERRUPTIBLE >= (unsigned) current->state &&
-	    current->counter < current->priority*2) {
-		++current->counter;
-	}
+    /* give processes that go to sleep a bit higher priority.. */
+    /* This depends on the values for TASK_XXX */
+    /* This gives smoother scheduling for some things, but */
+    /* can be very unfair under some circumstances, so.. */ 
+    if (TASK_UNINTERRUPTIBLE >= (unsigned) current->state &&
+                 current->counter < current->priority*2) {
+        ++current->counter;
+    }
 #endif
-	c = -1;
-	next = p = &init_task;
-	for (;;) {
-		if ((p = p->next_task) == &init_task)
-			goto confuse_gcc2;
-		if (p->state == TASK_RUNNING && p->counter > c)
-			c = p->counter, next = p;
-	}
+    c = -1;
+    next = p = &init_task;
+    for (;;) {
+        if ((p = p->next_task) == &init_task)
+            goto confuse_gcc2;
+        if (p->state == TASK_RUNNING && p->counter > c)
+            c = p->counter, next = p;
+    }
 confuse_gcc2:
-	if (!c) {
-		for_each_task(p)
-			p->counter = (p->counter >> 1) + p->priority;
-	}
-	if(current != next)
-		kstat.context_swtch++;
-	switch_to(next);
-	/* Now maybe reload the debug registers */
-	if(current->debugreg[7]){
-		loaddebug(0);
-		loaddebug(1);
-		loaddebug(2);
-		loaddebug(3);
-		loaddebug(6);
-	};
+    if (!c) {
+        for_each_task(p)
+            p->counter = (p->counter >> 1) + p->priority;
+    }
+    if(current != next)
+        kstat.context_swtch++;
+    switch_to(next);
+    /* Now maybe reload the debug registers */
+    if(current->debugreg[7]) {
+        loaddebug(0);
+        loaddebug(1);
+        loaddebug(2);
+        loaddebug(3);
+        loaddebug(6);
+    };
 }
 
 asmlinkage int sys_pause(void)

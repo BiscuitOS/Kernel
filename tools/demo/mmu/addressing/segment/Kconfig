@@ -305,6 +305,9 @@ if DEBUG_MMU_SEG_TYPE
 # Gate
 source "tools/demo/mmu/addressing/segment/gate/Kconfig"
 
+# TSS
+source "tools/demo/mmu/addressing/segment/tss/Kconfig"
+
 endif # DEBUG_MMU_SEG_TYPE
 
 config DEBUG_MMU_SEG_CHECK
