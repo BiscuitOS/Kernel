@@ -61,7 +61,7 @@ processor's paging mechanism.
 
 # Translation for linear-address
 
-### Translate logical address to virtual address
+### Translate logical address to linear address
 
 At the system-architecture level in protected mode, the processor uses two 
 stage of address translation to arrive at a physical address: logical-address
