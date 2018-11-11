@@ -1,0 +1,1 @@
+obj-$(CONFIG_DEBUG_REGISTER_CR0) += cr0.o

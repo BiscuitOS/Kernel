@@ -1,0 +1,27 @@
+menu "Paging mechanism"
+
+config DEBUG_MMU_PAGING
+	bool "X86 Paging mechanism"
+	help
+	  X86 architecture paging mechanism.
+
+if DEBUG_MMU_PAGING
+
+config DEBUG_PAGING_REGISTER
+	bool "Paging Control Bits on Register"
+	help
+	  Paging mechanism under register.
+
+if DEBUG_PAGING_REGISTER
+
+config DEBUG_PR_CR0
+	bool "CRO: Control Register 0"
+	help
+	  Paging control bit on CR0.
+
+endif # DEBUG_PAGING_REGISTER
+
+endif # DEBUG_MMU_PAGING
+
+
+endmenu

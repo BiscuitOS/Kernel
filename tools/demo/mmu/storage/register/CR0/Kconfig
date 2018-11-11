@@ -1,0 +1,43 @@
+menu "CR0:      Control Register 0"
+
+config DEBUG_REGISTER_CR0
+	bool "CR0: Control Register 0"
+	help
+	  CR0: Control Register.
+
+if DEBUG_REGISTER_CR0
+
+config DEBUG_CR0_BITMAP
+	bool "Bitmap of CR0"
+	help
+	  Bitmap of CR0.
+
+if DEBUG_CR0_BITMAP
+
+comment "CR0 BitMap"
+
+config DEBUG_CR0_PG
+	bool "Paging flag (bit 31)"
+	help
+	  Paging flag of CR0.
+
+config DEBUG_CR0_CD
+	bool "Cache Disable (bit 30)"
+	help
+	  Cache Disable flag of CR0.
+
+config DEBUG_CR0_NW
+	bool "Not Write-through (bit 29)"
+	help
+	  Not write-through.
+
+config DEBUG_CR0_AM
+	bool "Alignment Mask (bit 18 of CR0)"
+	help
+	  Enables automatic alignment checking.
+
+endif # DEBUG_CR0_BITMAP
+
+endif # DEBUG_REGISTER_CR0
+
+endmenu

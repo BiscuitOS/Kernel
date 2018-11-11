@@ -17,6 +17,9 @@ source "tools/demo/mmu/addressing/logical_address/Kconfig"
 # Segmentation
 source "tools/demo/mmu/addressing/segment/Kconfig"
 
+# Paging
+source "tools/demo/mmu/addressing/paging/Kconfig"
+
 endif
 
 endmenu
