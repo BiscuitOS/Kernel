@@ -90,6 +90,38 @@ static int __unused cr0_bitmap(void)
         printk("Disable automatic alignment checking.\n");
 #endif
 
+#ifdef CONFIG_DEBUG_CR0_WP
+    /*
+     * CR0.WP
+     *
+     * Write Protect(bit 16 of CR0) -- When set, inhibits supervisor-level
+     * procedure from writing into read-only pages; when clear, allows
+     * supervisor-level procedures to write into read-only pages (regardless
+     * of the U/S bit setting). The flag facilitiates implementation of the
+     * copy-on-write method of creating a new process (forking) used by
+     * operating systems such as UNIX.
+     */
+    if ((CR0 >> 16) & 0x1)
+        printk("Enable write protect\n");
+    else
+        printk("Disable write protect.\n");
+#endif
+
+#ifdef CONFIG_DEBUG_CR0_PE
+    /*
+     * CR0.PE
+     *
+     * Protection Enable(bit 0 of the CR0) -- Enables protected mode when set;
+     * enables real-address mode when clear. This flag does not enable paging
+     * directly. It only enables segment-level protection. To enable paging,
+     * both the PE and PG flags must be set.
+     */
+    if (CR0 & 0x1)
+        printk("Enable segment protection.\n");
+    else
+        printk("Disable segment protection.\n");
+#endif
+
     return 0;
 }
 late_debugcall(cr0_bitmap);

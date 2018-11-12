@@ -1,0 +1,58 @@
+menu "CR4:      Control Register 4"
+
+config DEBUG_REGISTER_CR4
+	bool "CR4: Control Register 4"
+	help
+	  CR4: Control Register 4.
+
+if DEBUG_REGISTER_CR4
+
+config DEBUG_CR4_BITMAP
+	bool "Bitmap of CR4"
+	help
+	  Bitmap of CR4.
+
+if DEBUG_CR4_BITMAP
+
+comment "CR4 BitMap"
+
+config DEBUG_CR4_PSE
+	bool "Page Size Extensions (bit 4 of CR4)"
+	help
+	  Page Size Extensions.
+
+config DEBUG_CR4_PAE
+	bool "Physical Address Extension (bit 5 of CR4)"
+	help
+	  Physcial Address extension.
+
+config DEBUG_CR4_PGE
+	bool "Page Global Enbale (bit 7 of CR4)"
+	help
+	  Page Global Enable.
+
+config DEBUG_CR4_PCID
+	bool "PCID-Enable Bite (bit 17 of CR4)"
+	help
+	  Enables process-context identifiers.
+
+config DEBUG_CR4_SMEP
+	bool "SMEP-Enable Bit (bit 20 of CR4)"
+	help
+	  Enables supervisor-mode execution prevention (SMEP).
+
+config DEBUG_CR4_SMAP
+	bool "SMAP-Enable Bit (bit 21 of CR4)"
+	help
+	  Enables supervisor-mode access prevention (SMAP).
+
+config DEBUG_CR4_PKE
+	bool "Protection-Key-Enable Bit (bit 22 of CR4)"
+	help
+	  Enables 4-level paging to associate each linear address.
+
+endif # DEBUG_CR4_BITMAP
+
+endif # DEBUG_REGISTER_CR4
+
+endmenu

@@ -1,4 +1,4 @@
-CRO (Control Register 0)
+CR0 (Control Register 0)
 ------------------------------------------------
 
 Control register CR0 determine operating system mode of the processor and the
@@ -46,4 +46,12 @@ the processor.
   **Write Protect(bit 16 of CR0)** -- When set, inhibits supervisor-level 
   procedure from writing into read-only pages; when clear, allows supervisor-
   level procedures to write into read-only pages (regardless of the U/S bit
-  setting). The flag facilitiates 
+  setting). The flag facilitiates implementation of the copy-on-write method
+  of creating a new process (forking) used by operating systems such as UNIX. 
+
+* CR0.PE
+
+  **Protection Enable(bit 0 of the CR0)** -- Enables protected mode when set;
+  enables real-address mode when clear. This flag does not enable paging 
+  directly. It only enables segment-level protection. To enable paging, both 
+  the PE and PG flags must be set.

@@ -70,6 +70,9 @@ source "tools/demo/mmu/storage/register/EFLAGS/Kconfig"
 # CR0 Register
 source "tools/demo/mmu/storage/register/CR0/Kconfig"
 
+# CR4 Register
+source "tools/demo/mmu/storage/register/CR4/Kconfig"
+
 endif
 
 endmenu

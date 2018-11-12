@@ -1,0 +1,1 @@
+obj-$(CONFIG_DEBUG_REGISTER_CR4) += cr4.o

@@ -36,6 +36,16 @@ config DEBUG_CR0_AM
 	help
 	  Enables automatic alignment checking.
 
+config DEBUG_CR0_WP
+	bool "Write Protect (bit 16 of CR0)"
+	help
+	  Enable write protect.
+
+config DEBUG_CR0_PE
+	bool "Protection Enable(bit 0 of CR0)"
+	help
+	  Enable Protection Enable.
+
 endif # DEBUG_CR0_BITMAP
 
 endif # DEBUG_REGISTER_CR0
