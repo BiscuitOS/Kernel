@@ -1,0 +1,40 @@
+menu "CR3:      Control Register 3"
+
+config DEBUG_REGISTER_CR3
+	bool "CR3: Control Register 3"
+	help
+	  CR3: Control Register 3.
+
+if DEBUG_REGISTER_CR3
+
+config DEBUG_CR3_BITMAP
+	bool "CR3 bitmap: flag and field"
+	help
+	  CR3 bitmap.
+
+if DEBUG_CR3_BITMAP
+
+comment "CR3 BitMap"
+
+config DEBUG_CR3_BASE
+	bool "Base physical address field (bit 12 through 31)"
+	help
+	  Base physical address of paging-structure.
+
+config DEBUG_CR3_PCD
+	bool "Page-level Cache Disable (bit 4 of CR3)"
+	help
+	  Page-level cache disable.
+
+config DEBUG_CR3_PWT
+	bool "Page-level Write-Through (bit 3 of CR3)"
+	help
+	  Page-level Write-Through.
+
+endif # DEBUG_CR3_BITMAP
+
+
+endif # DEBUG_REGISTER_CR3
+
+
+endmenu
