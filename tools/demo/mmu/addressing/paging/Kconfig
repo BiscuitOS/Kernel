@@ -7,19 +7,19 @@ config DEBUG_MMU_PAGING
 
 if DEBUG_MMU_PAGING
 
-config DEBUG_PAGING_REGISTER
-	bool "Paging Control Bits on Register"
+config DEBUG_PAGING_MODE
+	bool "Paging modes"
 	help
-	  Paging mechanism under register.
+	  Paging modes
 
-if DEBUG_PAGING_REGISTER
+if DEBUG_PAGING_MODE
 
-config DEBUG_PR_CR0
-	bool "CRO: Control Register 0"
+config DEBUG_PAGING_MODE_DETECT
+	bool "Detect Paging modes"
 	help
-	  Paging control bit on CR0.
+	  Detect Paging modes.
 
-endif # DEBUG_PAGING_REGISTER
+endif # DEBUG_PAGING_MODE
 
 endif # DEBUG_MMU_PAGING
 
