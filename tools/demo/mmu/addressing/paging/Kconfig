@@ -22,11 +22,26 @@ config DEBUG_PAGING_MODE_DETECT
 endif # DEBUG_PAGING_MODE
 
 config DEBUG_32BIT_PAGING
-	bool "32-bit Paging"
+	bool "32-bit Paging on kernel space"
 	help
 	  32-bit Paging.
 
 if DEBUG_32BIT_PAGING
+
+choice
+	prompt "Kernel/User virtual address"
+
+config DEBUG_32BIT_PAGING_KER
+	bool "Kernel space virtual address"
+	help
+	  Kernel space virtual address.
+
+config DEBUG_32BIT_PAGING_USER
+	bool "User space virtual address"
+	help
+	  User space virtual address.
+
+endchoice
 
 config DEBUG_PDE_BITMAP_4K
 	bool "PDE bitmap of 4-KByte Page"

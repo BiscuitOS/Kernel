@@ -12,6 +12,7 @@
 #include <linux/sched.h>
 #include <linux/page.h>
 #include <linux/malloc.h>
+#include <linux/unistd.h>
 
 #include <demo/debug.h>
 
@@ -297,8 +298,7 @@ static int __unused pte_bitmap(unsigned long pte)
 }
 #endif
 
-#ifdef CONFIG_DEBUG_32BIT_PAGING
-static int __unused paging_32bit(void)
+static int __unused paging_32bit(unsigned long linear)
 {
     unsigned long __unused *pgdir;
     unsigned long __unused *pde;
@@ -310,27 +310,7 @@ static int __unused paging_32bit(void)
     unsigned long __unused CR3;
     unsigned long __unused CR4;
     unsigned long __unused CR0;
-    unsigned long __unused virtual;
-    unsigned long __unused logical;
-    unsigned long __unused linear;
     unsigned long __unused *physical;
-    unsigned short __unused SS;
-    struct desc_struct __unused *desc;
-    char __unused *hello = "Hello BiscuitOS";
-
-    /* Obtain virual address of 'hello' */
-    virtual = (unsigned int)(unsigned long)hello;
-
-    /* Obtain logical address of 'hello' */
-    __asm__ ("mov %%ss, %0" : "=m" (SS));
-    /* Logical address means: logical = SS : virtual */
-
-    /* Obtain linear address of 'hello' */
-    if ((SS >> 2) & 0x1)
-        desc = current->ldt + (SS >> 3);
-    else
-        desc = gdt + (SS >> 3);
-    linear = get_base(*desc) + virtual;
 
     /* Obtain pgdir virtual address, linux 1.0 define 'swapper_pg_dir' to
      * point first page directory */
@@ -370,6 +350,8 @@ static int __unused paging_32bit(void)
      *
      */
     __asm__ ("mov %%cr3, %0" : "=r" (CR3));
+    printk("CR3: %#x\n", CR3);
+    printk("DDDD: %#x\n", current->tss.cr3);
     PDE = (unsigned long *)(CR3 & 0xFFFFF000);
     PDE = (unsigned long *)((unsigned long)PDE | 
                            (((linear >> 22) & 0x3FF) << 2));
@@ -497,12 +479,59 @@ static int __unused paging_32bit(void)
     page = (unsigned char *)(*pte & 0xFFFFF000);
     physical = (unsigned long *)&page[linear & 0xFFF];
 
+    printk("PHY: %#x\n", physical);
     if (PAGE != physical)
         panic("PAGE != physical");
 
     return 0;
 }
-late_debugcall(paging_32bit);
+
+#ifdef CONFIG_DEBUG_32BIT_PAGING_USER
+asmlinkage int sys_demo_paging(unsigned long linear)
+{
+    paging_32bit(linear);
+
+    return 0;
+}
+
+/* System call entry */
+inline _syscall1(int, demo_paging, unsigned long, linear);
+#endif
+
+static int __unused paging_32bit_entence(void)
+{
+    unsigned long __unused virtual;
+    unsigned long __unused logical;
+    unsigned long __unused linear;
+    unsigned short __unused SS;
+    struct desc_struct __unused *desc;
+    const char __unused *hello = "Hello biscuitOS";
+
+    /* Obtain virtual address for 'hello' */
+    virtual = (unsigned long)hello;
+
+    /* Obtain logical address: SS: offset */
+    __asm__ ("mov %%ss, %0" : "=m" (SS));
+
+    /* Obtain linear address */
+    if ((SS >> 2) & 0x1)
+        desc = current->ldt + (SS >> 3);
+    else
+        desc = gdt + (SS >> 3);
+    linear = get_base(*desc) + virtual;
+
+#ifdef CONFIG_DEBUG_32BIT_PAGING_USER
+    demo_paging(linear);
+#elif defined CONFIG_DEBUG_32BIT_PAGING_KER
+    paging_32bit(linear);
+#endif
+
+    return 0;
+}
+#ifdef CONFIG_DEBUG_32BIT_PAGING_USER
+user1_debugcall_sync(paging_32bit_entence);
+#elif defined CONFIG_DEBUG_32BIT_PAGING_KER
+late_debugcall(paging_32bit_entence);
 #endif
 
 #ifdef CONFIG_DEBUG_PAGING_ESTABLISH

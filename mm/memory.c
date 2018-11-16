@@ -208,61 +208,63 @@ int clone_page_tables(struct task_struct * tsk)
  */
 int copy_page_tables(struct task_struct * tsk)
 {
-	int i;
-	unsigned long old_pg_dir, *old_page_dir;
-	unsigned long new_pg_dir, *new_page_dir;
+    int i;
+    unsigned long old_pg_dir, *old_page_dir;
+    unsigned long new_pg_dir, *new_page_dir;
 
-	if (!(new_pg_dir = get_free_page(GFP_KERNEL)))
-		return -ENOMEM;
-	old_pg_dir = current->tss.cr3;
-	tsk->tss.cr3 = new_pg_dir;
-	old_page_dir = (unsigned long *) old_pg_dir;
-	new_page_dir = (unsigned long *) new_pg_dir;
-	for (i = 0 ; i < PTRS_PER_PAGE ; i++,old_page_dir++,new_page_dir++) {
-		int j;
-		unsigned long old_pg_table, *old_page_table;
-		unsigned long new_pg_table, *new_page_table;
+    if (!(new_pg_dir = get_free_page(GFP_KERNEL)))
+        return -ENOMEM;
+    old_pg_dir = current->tss.cr3;
+    tsk->tss.cr3 = new_pg_dir;
+    old_page_dir = (unsigned long *) old_pg_dir;
+    new_page_dir = (unsigned long *) new_pg_dir;
+    for (i = 0; i < PTRS_PER_PAGE; i++, old_page_dir++, new_page_dir++) {
+        int j;
+        unsigned long old_pg_table, *old_page_table;
+        unsigned long new_pg_table, *new_page_table;
 
-		old_pg_table = *old_page_dir;
-		if (!old_pg_table)
-			continue;
-		if (old_pg_table >= high_memory || !(old_pg_table & PAGE_PRESENT)) {
-			printk("copy_page_tables: bad page table: "
-				"probable memory corruption");
-			*old_page_dir = 0;
-			continue;
-		}
-		if (mem_map[MAP_NR(old_pg_table)] & MAP_PAGE_RESERVED) {
-			*new_page_dir = old_pg_table;
-			continue;
-		}
-		if (!(new_pg_table = get_free_page(GFP_KERNEL))) {
-			free_page_tables(tsk);
-			return -ENOMEM;
-		}
-		old_page_table = (unsigned long *) (PAGE_MASK & old_pg_table);
-		new_page_table = (unsigned long *) (PAGE_MASK & new_pg_table);
-		for (j = 0 ; j < PTRS_PER_PAGE ; j++,old_page_table++,new_page_table++) {
-			unsigned long pg;
-			pg = *old_page_table;
-			if (!pg)
-				continue;
-			if (!(pg & PAGE_PRESENT)) {
-				*new_page_table = swap_duplicate(pg);
-				continue;
-			}
-			if ((pg & (PAGE_RW | PAGE_COW)) == (PAGE_RW | PAGE_COW))
-				pg &= ~PAGE_RW;
-			*new_page_table = pg;
-			if (mem_map[MAP_NR(pg)] & MAP_PAGE_RESERVED)
-				continue;
-			*old_page_table = pg;
-			mem_map[MAP_NR(pg)]++;
-		}
-		*new_page_dir = new_pg_table | PAGE_TABLE;
-	}
-	invalidate();
-	return 0;
+        old_pg_table = *old_page_dir;
+        if (!old_pg_table)
+            continue;
+        if (old_pg_table >= high_memory || !(old_pg_table & PAGE_PRESENT)) {
+            printk("copy_page_tables: bad page table: "
+                      "probable memory corruption");
+            *old_page_dir = 0;
+            continue;
+        }
+        if (mem_map[MAP_NR(old_pg_table)] & MAP_PAGE_RESERVED) {
+            *new_page_dir = old_pg_table;
+            continue;
+        }
+        if (!(new_pg_table = get_free_page(GFP_KERNEL))) {
+            free_page_tables(tsk);
+            return -ENOMEM;
+        }
+        old_page_table = (unsigned long *) (PAGE_MASK & old_pg_table);
+        new_page_table = (unsigned long *) (PAGE_MASK & new_pg_table);
+        for (j = 0; j < PTRS_PER_PAGE; 
+                          j++, old_page_table++, new_page_table++) {
+            unsigned long pg;
+			
+            pg = *old_page_table;
+            if (!pg)
+                continue;
+            if (!(pg & PAGE_PRESENT)) {
+                *new_page_table = swap_duplicate(pg);
+                continue;
+            }
+            if ((pg & (PAGE_RW | PAGE_COW)) == (PAGE_RW | PAGE_COW))
+                pg &= ~PAGE_RW;
+            *new_page_table = pg;
+            if (mem_map[MAP_NR(pg)] & MAP_PAGE_RESERVED)
+                continue;
+            *old_page_table = pg;
+            mem_map[MAP_NR(pg)]++;
+        }
+        *new_page_dir = new_pg_table | PAGE_TABLE;
+    }
+    invalidate();
+    return 0;
 }
 
 /*
@@ -1019,7 +1021,7 @@ unsigned long paging_init(unsigned long start_mem, unsigned long end_mem)
     address = 0;
     pg_dir = swapper_pg_dir;
     while (address < end_mem) {
-        tmp = *(pg_dir + 768);    /* at virtual addr 0xC0000000 */
+        tmp = *(pg_dir + 768);    /* at linear addr 0xC0000000 */
         if (!tmp) {
             tmp = start_mem | PAGE_TABLE;
             *(pg_dir + 768) = tmp;
