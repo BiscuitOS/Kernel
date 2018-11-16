@@ -21,6 +21,208 @@ config DEBUG_PAGING_MODE_DETECT
 
 endif # DEBUG_PAGING_MODE
 
+config DEBUG_32BIT_PAGING
+	bool "32-bit Paging"
+	help
+	  32-bit Paging.
+
+if DEBUG_32BIT_PAGING
+
+config DEBUG_PDE_BITMAP_4K
+	bool "PDE bitmap of 4-KByte Page"
+	help
+	  PDE Bitmap of 4-KByte Page.
+
+if DEBUG_PDE_BITMAP_4K
+
+comment "32-Bit 4-KByte Page-Directory Entry Bitmap"
+
+config DEBUG_PDE_4KBP_P
+	bool "P flag (bit 0 on PDEs)"
+	help
+	  Present flag on PDE.
+
+config DEBUG_PDE_4KBP_RW
+	bool "R/W flag (bit 1 on PDEs)"
+	help
+	  Read/Write flag.
+
+config DEBUG_PDE_4KBP_US
+	bool "U/S flag (bit 2 on PDEs)"
+	help
+	  User/Supervisor flag.
+
+config DEBUG_PDE_4KBP_PWT
+	bool "PWT flag (bit 3 on PDEs)"
+	help
+	  Page-level write-through;
+
+config DEBUG_PDE_4KBP_PCD
+	bool "PCD flag (bit 4 on PDEs)"
+	help
+	  Page-level cache disable.
+
+config DEBUG_PDE_4KBP_A
+	bool "A flag (bit 5 on PDEs)"
+	help
+	  Accessed flag.
+
+config DEBUG_PDE_4KBP_PS
+	bool "PS flag (bit 7 on PDEs)"
+	help
+	  Page Size.
+
+config DEBUG_PDE_4KBP_AD
+	bool "Physical address field (bit 12 throug 31 on PDEs)"
+	help
+	  Physical address field.
+
+endif # DEBUG_PDE_BITMAP_4K
+
+config DEBUG_PDE_BITMAP_4M
+	bool "PDE bitmap of 4-MByte Page"
+	help
+	  PDE Bitmap of 4-MByte Page.
+
+if DEBUG_PDE_BITMAP_4M
+
+comment "32-Bit 4-MByte Page-Directory Entry Bitmap"
+
+config DEBUG_PDE_4MBP_P
+	bool "P flag (bit 0 on PDEs)"
+	help
+	  Present flag on PDE.
+
+config DEBUG_PDE_4MBP_RW
+	bool "R/W flag (bit 1 on PDEs)"
+	help
+	  Read/Write flag.
+
+config DEBUG_PDE_4MBP_US
+	bool "U/S flag (bit 2 on PDEs)"
+	help
+	  User/Supervisor flag.
+
+config DEBUG_PDE_4MBP_PWT
+	bool "PWT flag (bit 3 on PDEs)"
+	help
+	  Page-level write-through;
+
+config DEBUG_PDE_4MBP_PCD
+	bool "PCD flag (bit 4 on PDEs)"
+	help
+	  Page-level cache disable.
+
+config DEBUG_PDE_4MBP_A
+	bool "A flag (bit 5 on PDEs)"
+	help
+	  Accessed flag.
+
+config DEBUG_PDE_4MBP_D
+	bool "D flag (bit 6 on PDEs)"
+	help
+	  Dirty flag.
+
+config DEBUG_PDE_4MBP_PS
+	bool "PS flag (bit 7 on PDEs)"
+	help
+	  Page Size.
+
+config DEBUG_PDE_4MBP_G
+	bool "G flag (bit 8 on PDEs)"
+	help
+	  Global flag.
+
+config DEBUG_PDE_4MBP_PAT
+	bool "PAT flag (bit 12 on PDEs)"
+	help
+	  PAT support flag.
+
+config DEBUG_PDE_4MBP_AD
+	bool "Physical address field"
+	help
+	  Physical address field.
+
+endif # DEBUG_PDE_BITMAP_4M
+
+config DEBUG_PTE_BITMAP
+	bool "PTE bitmap"
+	help
+	  PTE Bitmap.
+
+if DEBUG_PTE_BITMAP
+
+comment "32-Bit Page-Table Entry maps a 4-KByte Page"
+
+config DEBUG_PTE_BP_P
+	bool "P flag (bit 0 on PTE)"
+	help
+	  Present flag.
+
+config DEBUG_PTE_BP_RW
+	bool "R/W flag (bit 1 on PTE)"
+	help
+	  Read/Write flag.
+
+config DEBUG_PTE_BP_US
+	bool "U/S flag (bit 2 on PTE)"
+	help
+	  User/Supervisor flag.
+
+config DEBUG_PTE_BP_PWT
+	bool "PWT flag (bit 3 on PTE)"
+	help
+	  Page-level write-through.
+
+config DEBUG_PTE_BP_PCD
+	bool "PCD flag (bit 4 on PTE)"
+	help
+	  Page-level cache disable.
+
+config DEBUG_PTE_BP_A
+	bool "A flag (bit 5 on PTE)"
+	help
+	  Accessed flag.
+
+config DEBUG_PTE_BP_D
+	bool "D flag (bit 6 on PTE)"
+	help
+	  Dirty flag.
+
+config DEBUG_PTE_BP_PAT
+	bool "PAT flag (bit 7 on PTE)"
+	help
+	  PAT support.
+
+config DEBUG_PTE_BP_G
+	bool "G flag (bit 8 on PTE)"
+	help
+	  Global flag.
+
+config DEBUG_PTE_BP_AD
+	bool "Phy address field (bits 12 through 31)"
+	help
+	  Physical address of the 4-KByte page.
+
+endif # DEBUG_PTE_BITMAP
+
+endif # DEBUG_32BIT_PAGING
+
+config DEBUG_PAE_PAGING
+	bool "PAE paging"
+	help
+	  PAE paging.
+
+config DEBUG_4LEVEL_PAGING
+	bool "4-level Paging"
+	help
+	  4-level Pageing.
+
+config DEBUG_PAGING_ESTABLISH
+	bool "Establish Paging Table"
+	help
+	  Establish Paging Table.
+
 endif # DEBUG_MMU_PAGING
 
 

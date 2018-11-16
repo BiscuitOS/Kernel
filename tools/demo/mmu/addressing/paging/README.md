@@ -147,6 +147,221 @@ frame). The lower portion of the linear address (called the page offset)
 identifies the specific address within that region to which the linear address
 translates.
 
-Each paging-structure used for any translation is located at the physical
-address in CR3. A linear address is translated using the following iterative 
-procedure.
+Each paging-structure entry contains a physical address, which is either the
+address of another paging structure or the address of a page frame. In the 
+first case, the entry is said to reference the other paging structure; in the
+latter, the entry is said to map a page. 
+
+The first paging structure used for any translation is located at the physical
+address in CR3. A linear address is translated using the following iterative
+procedure. A portion of the linear address (initially the uppermost bits) 
+selects an entry in a paging structure (initially the one located using CR3).
+If that entry references another paging structure, the processor continues with
+that paing structure and with portion of the linear address immediately below
+that just used. If instead the entry maps a page, the process completes: the 
+physical address in the entry is that of the page frame and the remaining lower
+portion of the linear address is the page offset.
+
+The following items give an example for each of the three paging modes (each
+example locates a 4-KByte page frame):
+
+* With 32-bit paging, each paging structure comprises 1024 = 2^10 entries. For
+  this reason, the translation process uses 10 bits at a time from a 32-bit
+  linear address. Bits 31:22 identify the first paging-structure entry and
+  21:12 identify a second. The latter identifies the page frame. Bits 11:0 of 
+  the linear address are the page offset within the 4-Kbyte page frame. As
+  Figure.
+
+  ![Linear-Address 4-KBytes](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000421.png)
+
+* With PAE paging, the first paging structure comprises only 4 = 2^2 entries.
+  Translation thus begins by using bits 31:30 from a 32-bit linear address to
+  identify the first paging-structure entry. Other paging structures comprise
+  512 = 2^9 entries, so the process continues by using 9 bits at a time. Bits
+  29:21 identify a second paging-structure entry and bits 20:12 identify a 
+  third. This last identifies the page frame. See Figure.
+
+  ![Linear-Address 4-KBytes PAE](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000422.png)
+
+* With 4-level paging, each paging structure comprises 512 = 2^9 entries and
+  translation uses 9 bits at a time from a 48-bit linear address. Bits 47:39
+  identify the first paging-structure entry, bits 38:30 identify a second, bits
+  29:21 a third, and bits 20:12 identify a fourth. Again, the last identifies
+  the page frame. See Figure.
+
+  ![Linear-Address 4-level](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000423.png)
+
+The translation process in each of the examples above completes by identifying
+a page frame; the page frame is part of the translation of the original linear
+address. In some cases, however, the paging structures may be configured so
+that the translation process terminates before identifying a page frame. This
+occurs if the process encounters a paging-structure entry that is marked "not
+present" (because its P flag -- bit 0 -- is clear) or in which a reserved bit
+is set. In this case, there is no translation for the linear address; an access
+to that address causes a page-fault exception..
+
+In the example above, a paging-structure entry maps a page with a 4-KByte page
+frame when only 12 bits remain in the linear address; entries identified 
+earlier always refernce other paging structures. That may not apply in other
+cases. The following items identify when an entry maps a page and when it 
+references another paging structure:
+
+* If more than 12 bits remain in the linear address, bit 7 (PS -- page size) of
+  the current paging-structure entry is consulted. If the bit is 0, the entry
+  references another paging structure; if the bit is 1, the entry maps a page.
+
+* If only 12 bits remain in the linear address, the current paging-structure
+  entry always maps a page (bit 7 is used for other purposes).
+
+# 32-Bit Paging
+
+A logical processor uses 32-bit paging if CR0.PG = 1 and CR4.PAE = 0. 32-bit
+paging translates 32-bit linear addresses to 40-bit physical addresses.
+Although 40 bits corresponds to 1 TByte, linear addresses are limited to 32
+bits; at most 4 GBytes of linear-address space may be accessed at any given
+time.
+
+32-bit paging uses a hierarchy of paging structures to produce a translation
+for a linear address. CR3 is used to locate the first paging-structure, the 
+page directory. Table illustrates how CR3 is used with 32-bit paging.
+
+![Use of CR3 with 32-bit Paging](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000424.png)
+
+32-bit paging may map linear addresses to either 4-KByte pages or 4-MByte 
+pages. Figure 4-2 illustrates the translate process when it uses a 4-Kbyte
+page; Figure 4-3 covers the case of a 4-MByte page. The following items
+describe the 32-bit paging process in more detail as well as how the page size
+is tetermined:
+
+![Figure 4-2](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000425.png)
+
+![Tigure 4-3](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000426.png)
+
+* A 4-KByte naturally aligned page directory is located at the physical address
+  specified in bits 31:12 of CR3. A page directory comprise 1024 32-bit entries
+  (PDEs). A PDE is selected using the physical address defined as follow:
+
+  -- Bits 39:32 are all 0.
+
+  -- Bits 31:12 are from CR3.
+
+  -- Bits 11:2 are bits 31:22 of the linear address.
+
+  -- Bits 1:0 are 0.
+
+```
+CR3
+31                    12
++-----------------------+----+
+| Base Physical Address |    |     
++-----------------------+----+
+           |
+           |
+           |             Linear address
+           |             31         22  
+           |             +------------+---------------+
+           |             | PDE offset |               |
+           |             +------------+---------------+
+           |                   |
+           |                   |
+ PDE       |                   |
+ 31        V            12     V     2     0
+ +-----------------------+------------+----+
+ |                       |            | 00 |
+ +-----------------------+------------+----+
+
+```
+
+Because a PDE is identified using bits 31:22 of the linear address, it controls
+access to a 4-Mbyte region of the linear-address space. Use of the PDE depends
+on CR4.PSE and the PDE's PS flag (bit 7):
+
+* If CR4.PSE = 1 and the PDE's PS flag is 1, the PDE maps a 4-MByte page. The
+  final physical address is computed as follows:
+
+  -- Bits 39:32 are bits 20:13 of the PDE.
+
+  -- Bits 31:22 are bits 31:22 of the PDE.
+
+  -- Bits 21:0 are from the original linear address.
+
+* If CR4.PSE = 0 or the PDE's PS flag is 0, a 4-KByte naturally aligned page
+  table is located at the physical address specified in bits 31:12 of the PDE.
+  A page table comprises 1024 entries (PTEs). A PTE is selected using the 
+  physical address defined as follows:
+
+  -- Bits 39:32 are all 0.
+
+  -- Bits 31:12 are from the PDE.
+
+  -- Bits 11:2 are bits 21:12 of the linear address.
+
+  -- Bits 1:0 are 0.
+
+```
+ PDE
+ 31                    12
+ +-----------------------+----+
+ | Base Physical Address |    |     
+ +-----------------------+----+
+           |
+           |
+           |   Linear address
+           |   31            21        12        0
+           |   +------------+------------+-------+
+           |   |            | PTE offset |       |
+           |   +------------+------------+-------+
+           |                   |
+           |                   |
+ PTE       |                   |
+ 31        V            12     V     2     0
+ +-----------------------+------------+----+
+ |                       |            | 00 |
+ +-----------------------+------------+----+
+```
+
+* Because a PTE is identified using bits 31:12 of the linear address, every PTE
+  maps a 4-KByte page. The final physical address is computed as follow:
+
+  -- Bits 39:32 are all 0.
+
+  -- Bits 31:12 are from the PTE.
+
+  -- Bits 11:0 are from the original linear address.
+
+```
+ PTE
+ 31                    12
+ +-----------------------+----+
+ | Base Physical Address |    |     
+ +-----------------------+----+
+           |
+           |
+           |  Linear address
+           |  31         12  
+           |  +------------+---------------+
+           |  |            | Original addr |
+           |  +------------+---------------+
+           |                   |
+           |                   |
+ Physical  |                   |
+ 31        V            12     V           0
+ +-----------------------+-----------------+
+ |                       |                 |
+ +-----------------------+-----------------+
+
+```
+
+A reference using a linear address that is successfully translated to a 
+physical address is performed only if allowed by the access rights of the 
+translation.
+
+![Tigure 4-4](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000427.png)
+
+![Table 4-3](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000428.png)
+
+![Table 4-4](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000429.png)
+
+![Table 4-5](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000430.png)
+
+![Table 4-6](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000431.png)
