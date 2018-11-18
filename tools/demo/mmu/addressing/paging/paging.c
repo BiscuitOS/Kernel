@@ -350,8 +350,6 @@ static int __unused paging_32bit(unsigned long linear)
      *
      */
     __asm__ ("mov %%cr3, %0" : "=r" (CR3));
-    printk("CR3: %#x\n", CR3);
-    printk("DDDD: %#x\n", current->tss.cr3);
     PDE = (unsigned long *)(CR3 & 0xFFFFF000);
     PDE = (unsigned long *)((unsigned long)PDE | 
                            (((linear >> 22) & 0x3FF) << 2));
@@ -479,7 +477,6 @@ static int __unused paging_32bit(unsigned long linear)
     page = (unsigned char *)(*pte & 0xFFFFF000);
     physical = (unsigned long *)&page[linear & 0xFFF];
 
-    printk("PHY: %#x\n", physical);
     if (PAGE != physical)
         panic("PAGE != physical");
 
@@ -534,59 +531,346 @@ user1_debugcall_sync(paging_32bit_entence);
 late_debugcall(paging_32bit_entence);
 #endif
 
-#ifdef CONFIG_DEBUG_PAGING_ESTABLISH
-static int __unused paging_32bit_init(void)
+#ifdef CONFIG_DEBUG_PAGING_COPY_TABLE
+static int __unused copy_paging_table(void)
 {
-    unsigned long __unused start_mem = 0x100000;
-    unsigned long __unused end_mem   = 0x1000000;
-    unsigned long __unused *pg_dir;
-    unsigned long __unused *pg_table;
-    unsigned long __unused tmp;
-    unsigned long __unused address;
+    struct task_struct __unused *task;
+    unsigned long __unused old_pg_dir, *old_page_dir;
+    unsigned long __unused new_pg_dir, *new_page_dir;
+    int __unused i;
 
-    __asm__ ("mov $1024*2, %%ecx\n\r"
-             "xorl %%eax, %%eax\n\r"
-             "movl $swapper_pg_dir, %%edi\n\r"
-             "cld\n\r"
-             "rep stosl\n\r"
-             "movl $pg0+7, swapper_pg_dir\n\r"
-             "movl $pg0+7, swapper_pg_dir+3072\n\r"
-             "movl $pg0+4092, %edi\n\r"
-             "movl $0x03ff007, %%eax\n\r"
-             "std\n\r"
-             "1: stosl\n\r"
-             "subl $0x1000, %%eax\n\r"
-             "jge 1b\n\r"
-             "cld\n\r"
-             "movl $swapper_pg_dir, %%eax\n\r"
-             "movl %%eax, %%cr3\n\r"
-             "movl %%cr0, %%eax\n\r"
-             "orl $0x80000000, %%eax\n\r"
-             "movl %%eax, %%cr0");
+    /* Establish a new task struct */
+    task = (struct task_struct *) __get_free_page(GFP_KERNEL);
 
-    start_mem = PAGE_ALIGN(start_mem);
+    /* Allocate new physical page to new page directory */
+    if (!(new_pg_dir = get_free_page(GFP_KERNEL)))
+        return -ENOMEM;
+
+    old_pg_dir = current->tss.cr3;
+    task->tss.cr3 = new_pg_dir; /* Aligned with PAGE(4K) */
+    old_page_dir = (unsigned long *) old_pg_dir;
+    new_page_dir = (unsigned long *) new_pg_dir;
+    for (i = 0; i < PTRS_PER_PAGE; i++, old_page_dir++, new_page_dir++) {
+        unsigned long old_pg_table, *old_page_table;
+        unsigned long new_pg_table, *new_page_table;
+        int j;
+
+        old_pg_table = *old_page_dir;
+        /* Verify whether page table is valid? */
+        if (!old_pg_table)
+            continue;
+        /* Verify whether P flag is set for Page table, and check whether
+         * range of page table over high memory? */
+        if (old_pg_table >= high_memory || !(old_pg_table & PAGE_PRESENT)) {
+            printk("copy_page_tables: bad page table: "
+                       "probable memory corruption\n");
+            *old_page_dir = 0;
+            continue;
+        }
+        if (mem_map[MAP(old_pg_table)] & MAP_PAGE_RESERVED) {
+            *new_page_dir = old_pg_table;
+            continue;
+        }
+      
+    }
+
+    return 0;
+}
+late_debugcall(copy_paging_table);
+#endif
+
+#ifdef CONFIG_DEBUG_MEM_ESTABLISH
+
+/*
+ * Paging table
+ *
+ * +------------+ 4K
+ * |            |
+ * +------------+
+ * |            |
+ * +------------+
+ * |            |
+ * +------------+
+ * |    768    -|------o
+ * +------------+      |
+ * |            |      |
+ * +------------+      |
+ * |            |      |          +-----------------+ 4K
+ * +------------+      |          |                 |
+ * |            |      |          +-----------------+
+ * +------------+      |          |                -|---------> 4K_Page
+ * |            |      |          +-----------------+
+ * +------------+      |          |                 |
+ * |            |      |          +-----------------+
+ * +------------+      |          |                 |
+ * |            |      |          +-----------------+
+ * +------------+      o--------->|                 |
+ * |     0     -|---------------->+-----------------+ 0
+ * +------------+ 0
+ */
+static int __unused paging_table_first(unsigned long memory_start,
+                             unsigned long memory_end)
+{
+    unsigned long *pg_dir;
+    unsigned long *pg_table;
+    unsigned long tmp;
+    unsigned long address;
+
+    memory_start = PAGE_ALIGN(memory_start);
     address = 0;
     pg_dir = swapper_pg_dir;
-    while (address < end_mem) {
-        tmp = *(pg_dir + (0xC000000 >> 22)); /* at linear addr 0xC000000 */
+    while (address < memory_end) {
+        tmp = *(pg_dir + (0xC0000000 >> 22)); /* linear address 0xC0000000 */
         if (!tmp) {
-            tmp = start_mem | PAGE_TABLE;
-            *(pg_dir + (0xC0000000 >> 22)) = tmp;
-            start_mem += PAGE_SIZE;
+            /* Page directry item is empty. */
+            tmp = memory_start | PAGE_TABLE;
+            *(pg_dir + (0xC0000000)) = tmp;
+            memory_end += PAGE_SIZE;
         }
-        *pg_dir = tmp; /* also map it in at linear addr 0x00000000 */
+        *pg_dir = tmp; /* Also map it in at 0x00000000 for init */
         pg_dir++;
         pg_table = (unsigned long *)(tmp & PAGE_MASK);
         for (tmp = 0; tmp < PTRS_PER_PAGE; tmp++, pg_table++) {
-            if (address < end_mem)
+            if (address < memory_end)
                 *pg_table = address | PAGE_SHARED;
             else
                 *pg_table = 0;
             address += PAGE_SIZE;
         }
     }
+    invalidate();
+
+    return memory_start;
+}
+
+/*
+ * #define PAGE_SHIFT   12
+ * #define MAP_NR(addr) ((addr) >> PAGE_SHIFT) 
+ *
+ *
+ *
+ * +------------------+-+-+-+-+-+-+-+-+-+----+-+-+-----------------------+
+ * |                  | | | | | | | | | |    | | |                       |
+ * |                  | | | | | | | | | | .. | | |                       |
+ * |                  | | | | | | | | | |    | | |                       |
+ * +------------------+-+-+-+-+-+-+-+-+-+----+-+-+-----------------------+
+ *                    A                          A
+ *                    |                          |
+ *                    |                          |
+ * memory_start0------o        memory_start1-----o
+ *                    |
+ * mem_map------------o
+ * 
+ *
+ *
+ *
+ */
+extern unsigned long pg0[1024];
+static int __unused memory_mapping(unsigned long low_memory_start,
+               unsigned long memory_start, unsigned long memory_end)
+{
+    int codepages = 0;
+    int reservedpages = 0;
+    int datapages = 0;
+    unsigned long tmp;
+    unsigned short *p;
+    extern char etext[];
+    unsigned short __unused *memory_map = NULL;
+    unsigned long __unused free_pages_list;
+    unsigned long __unused free_pages_nr;
+
+    cli();
+    memory_end &= PAGE_MASK;
+    high_memory = memory_end;
+    /* Aligned with (unsigned short) */
+    memory_start += 0x0000000f;
+    memory_start &= ~0x0000000f;
+    /*
+     * Establish a physical page map list.
+     *
+     *
+     *
+     *            | <-- MEM_NR(memory_end) -> |
+     *            |     + memory_map          |
+     * +--------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-------------------+
+     * |        | | | | | | | | | | | | | | | | |                   |
+     * | Kernel | | | | | | | | | | | | | | | | |                   |
+     * |        | | | | | | | | | | | | | | | | |                   |
+     * +--------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-------------------+
+     *            A                             A                   A
+     *            |                             |                   |
+     *            |                             |                   |
+     *            |                             |                   |
+     * memory_map o                memory_start-o       memory_end--o
+     *
+     */
+    tmp = MAP_NR(memory_end);
+    memory_map = (unsigned short *)memory_start;
+    p = memory_map + tmp;
+    memory_start = (unsigned long)p;
+    /* Mark all physical page as RESERVED */
+    while (p > memory_map)
+        *--p = MAP_PAGE_RESERVED;
+    /* Alignment to next page. */
+    low_memory_start = PAGE_ALIGN(low_memory_start);
+    memory_start = PAGE_ALIGN(memory_start);
+    /*
+     * Mark physical page which range from low_memory_start to 0xA0000 as free.
+     */
+    while (low_memory_start < 0xA0000) {
+        memory_map[MAP_NR(low_memory_start)] = 0;
+        low_memory_start += PAGE_SIZE;
+    }
+    /*
+     * Mark physical page which range from memory_start to memory_end.
+     */
+    while (memory_start < memory_end) {
+        memory_map[MAP_NR(memory_start)] = 0;
+        memory_start += PAGE_SIZE;
+    }
+    /*
+     * Here, the layout of memory_map[]
+     *
+     * +----------+-------------------------------+
+     * |          |                               |
+     * | Reserved |          free page            |
+     * |          |                               |
+     * +----------+-------------------------------+
+     */
+
+    free_pages_list = 0;
+    free_pages_nr = 0;
+    for (tmp = 0; tmp < memory_end; tmp += PAGE_SIZE) {
+        if (memory_map[MAP_NR(tmp)]) {
+            if (tmp >= 0xA0000 && tmp < 0x100000)
+                reservedpages++;
+            else if (tmp < (unsigned long)&etext)
+                codepages++;
+            else
+                datapages++;
+            continue;
+        }
+        /* list all free pages 
+         *
+         * +--------+      +--------+      +--------+      +--------+
+         * |        |      |        |      |        |      |        |
+         * +--------+      +--------+      +--------+      +--------+
+         * |        |      |        |      |        |      |        |
+         * +--------+      +--------+      +--------+      +--------+
+         * |        |      |        |      |        |      |        |
+         * +--------+      +--------+      +--------+      +--------+
+         * |        |      |        |      |        |      |        |
+         * +--------+      +--------+      +--------+      +--------+
+         * |        |      |        |      |        |      |        |
+         * +--------+      +--------+      +--------+      +--------+
+         * |        |      |        |      |        |      |        |
+         * +--------+      +--------+      +--------+      +--------+
+         * |        |      |        |      |        |      |        |
+         * +--------+      +--------+      +--------+      +--------+
+         * |   0    |<-----|-       |<-----|-       |<-----|-       |<---o
+         * +--------+      +--------+      +--------+      +--------+    |
+         * 0               4K              8K              12K           |
+         *                                                               |
+         *                                                               |
+         *                                                               |
+         *                                             free_pages_list---o
+         */
+        *(unsigned long *)tmp = free_pages_list;
+        free_pages_list = tmp;
+        free_pages_nr++;
+    }
+    tmp = free_pages_nr << PAGE_SHIFT;
+    /* Test if the WP bit is honoured in supervisor mode */
+    pg0[0] = PAGE_READONLY;
+    invalidate();
+    __asm__ __volatile__ ("movb 0, %%al\n\r"
+                          "movb %%al, 0" ::: "ax", "memory");
 
     return 0;
 }
-late_debugcall(paging_32bit_init);
+
+/*
+ * Layout of zero page.
+ *
+ * +----------+------------------------------------------------------+
+ * |  Offset  | Describe                                             |
+ * +----------+------------------------------------------------------+
+ * |  0x0002  | Extended memory size (over 1MByte memory)            |
+ * +----------+------------------------------------------------------+
+ * |          |  |
+ * +----------+------------------------------------------------------+
+ * |          |  |
+ * +----------+------------------------------------------------------+
+ * |          |  |
+ * +----------+------------------------------------------------------+
+ * |          |  |
+ * +----------+------------------------------------------------------+
+ * |          |  |
+ * +----------+------------------------------------------------------+
+ * |          |  |
+ * +----------+------------------------------------------------------+
+ * |          |  |
+ * +----------+------------------------------------------------------+
+ * |          |  |
+ */
+extern char empty_zero_page[PAGE_SIZE];
+
+/* End address of kernel code semgent */
+extern char end[];
+
+/*
+ *
+ * | <------ 1M ------> |
+ * +-------------+------+------------------+------+-------------+
+ * |             |      |                  |      |             |
+ * | Kernel code | hole |    Low momery    | hole | High memory |      
+ * |             |      |                  |      |             |
+ * +-------------+------+------------------+------+-------------+
+ * 0             A      A
+ *               |      |
+ *               |      |
+ * end ----------o      |
+ *                      |
+ *    start_mem --------o
+ */
+static int __unused paging_mem_init(void)
+{
+    unsigned long __unused low_memory_start;
+    unsigned long __unused memory_start;
+    unsigned long __unused memory_end;
+    unsigned long __unused extend_memory;
+
+    /* Obtain extend memory over 1-MByte. */
+    extend_memory = *(unsigned short *)(empty_zero_page + 2);
+    
+    /* Obtain the end memory: 1-MByte + extended memory */
+    memory_end = (1 << 20) + (extend_memory << 10);
+    memory_end &= PAGE_MASK;
+
+    /* Only use lower 16 MBytes memory */
+    if (memory_end > (16 * 1024 * 1024))
+        memory_end = 16 * 1024 * 1024;
+
+    /* If kernel code segment over 1MByte, the first low memory boundary with
+     * next page. */
+    if ((unsigned long)end >= (1024 * 1024)) {
+        memory_start = (unsigned long)end;
+        low_memory_start = PAGE_SIZE;
+    } else {
+        memory_start = 1024 * 1024;
+        low_memory_start = (unsigned long)end;
+    }
+    low_memory_start = PAGE_ALIGN(low_memory_start);
+
+#ifdef CONFIG_DEBUG_MEM_PAGING_TABLE
+    memory_start = paging_table_first(memory_start, memory_end);
+#endif
+
+#ifdef CONFIG_DEBUG_MEM_MAPPING
+    memory_mapping(low_memory_start, memory_start, memory_end);
+#endif
+
+    return 0;
+}
+subsys_debugcall(paging_mem_init);
 #endif
