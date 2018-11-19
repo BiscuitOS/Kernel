@@ -582,7 +582,52 @@ late_debugcall(copy_paging_table);
 #ifdef CONFIG_DEBUG_MEM_ESTABLISH
 
 /*
- * Paging table
+ * Establish first page table.
+ */
+static void __unused paging_table_boot(void)
+{
+    /*
+     * 0          4k         8k
+     * +----------+----------+----------+----------+----------+
+     * |          |          |          |          |          |
+     * |  page 0  |  pg_dir  |  page 1  | .....    |          |
+     * |          |          |          |          |          |
+     * +----------+----------+----------+----------+----------+
+     */
+    __asm__ ("movl $1024*2, %%ecx\n\r" /* 2 pages-swapper_pg_dir+1 page table*/
+             "xorl %%eax, %%eax\n\r"
+             /* swapper_pg_dir is at 0x1000 */
+             "movl $swapper_pg_dir, %%edi\n\r"
+             "cld; /*rep;stosl*/\n\r"
+             /* Identity-map the kernel in low 4MB memory for ease of 
+              * transition. */
+             /* set present bit/user r/w */
+             "movl $pg0+7, swapper_pg_dir\n\r"
+             /* But the real place is at 0xC0000000, set present bit/user 
+              * r/w */
+             "movl $pg0+7, swapper_pg_dir+3072\n\r"
+             /* Points to last item on first page table */
+             "movl $pg0+4092, %%edi\n\r"
+             /* 4Mb - 4096 + 7 (r/w user, p) */
+             "movl $0x03ff007, %%eax\n\r"
+             "std\n\r"
+             /* fill the page backwards - more efficitent :-) */
+             "1: stosl\n\r"
+             "subl $0x1000, %%eax\n\r"
+             "jge 1b\n\r"
+             "cld\n\r"
+             "movl $swapper_pg_dir, %%eax\n\r"
+             /* cr3 = page directory start */
+             "movl %%eax, %%cr3\n\r"
+             "movl %%cr0,%%eax\n\r"
+             "orl $0x80000000, %%eax\n\r"
+             /* set paging (PG) bit */
+             "movl %%eax,%%cr0"
+              ::: "cx" , "memory");
+}
+
+/*
+ * Establish Paging table which range from 0x0 to memory_end.
  *
  * +------------+ 4K
  * |            |
@@ -607,6 +652,7 @@ late_debugcall(copy_paging_table);
  * +------------+      o--------->|                 |
  * |     0     -|---------------->+-----------------+ 0
  * +------------+ 0
+ *
  */
 static int __unused paging_table_first(unsigned long memory_start,
                              unsigned long memory_end)
@@ -620,14 +666,15 @@ static int __unused paging_table_first(unsigned long memory_start,
     address = 0;
     pg_dir = swapper_pg_dir;
     while (address < memory_end) {
-        tmp = *(pg_dir + (0xC0000000 >> 22)); /* linear address 0xC0000000 */
+        tmp = *(pg_dir + (0xC0000000 >> 22)); /* linear 0xC0000000 + 10M */
         if (!tmp) {
             /* Page directry item is empty. */
             tmp = memory_start | PAGE_TABLE;
-            *(pg_dir + (0xC0000000)) = tmp;
-            memory_end += PAGE_SIZE;
+            *(pg_dir + (0xC0000000 >> 22)) = tmp;
+            memory_start += PAGE_SIZE;
         }
-        *pg_dir = tmp; /* Also map it in at 0x00000000 for init */
+        /* Also map it in at 0x00000000 for init */
+        *pg_dir = tmp;
         pg_dir++;
         pg_table = (unsigned long *)(tmp & PAGE_MASK);
         for (tmp = 0; tmp < PTRS_PER_PAGE; tmp++, pg_table++) {
@@ -780,11 +827,6 @@ static int __unused memory_mapping(unsigned long low_memory_start,
         free_pages_nr++;
     }
     tmp = free_pages_nr << PAGE_SHIFT;
-    /* Test if the WP bit is honoured in supervisor mode */
-    pg0[0] = PAGE_READONLY;
-    invalidate();
-    __asm__ __volatile__ ("movb 0, %%al\n\r"
-                          "movb %%al, 0" ::: "ax", "memory");
 
     return 0;
 }
@@ -840,6 +882,10 @@ static int __unused paging_mem_init(void)
     unsigned long __unused memory_end;
     unsigned long __unused extend_memory;
 
+#ifdef CONFIG_DEBUG_MEM_PAGING_FIRST
+    paging_table_boot();
+#endif
+
     /* Obtain extend memory over 1-MByte. */
     extend_memory = *(unsigned short *)(empty_zero_page + 2);
     
@@ -865,12 +911,11 @@ static int __unused paging_mem_init(void)
 #ifdef CONFIG_DEBUG_MEM_PAGING_TABLE
     memory_start = paging_table_first(memory_start, memory_end);
 #endif
-
 #ifdef CONFIG_DEBUG_MEM_MAPPING
     memory_mapping(low_memory_start, memory_start, memory_end);
 #endif
 
     return 0;
 }
-subsys_debugcall(paging_mem_init);
+arch_debugcall(paging_mem_init);
 #endif

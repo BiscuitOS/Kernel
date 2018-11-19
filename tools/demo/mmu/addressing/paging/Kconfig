@@ -240,6 +240,11 @@ config DEBUG_MEM_ESTABLISH
 
 if DEBUG_MEM_ESTABLISH
 
+config DEBUG_MEM_PAGING_FIRST
+	bool "Establish first Paging Table in assembly"
+	help
+	  Establish first Paging Table in assembly.
+
 config DEBUG_MEM_PAGING_TABLE
 	bool "Establish Paging Table: 1M through 16M"
 	help
