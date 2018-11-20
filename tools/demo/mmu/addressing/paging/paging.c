@@ -312,9 +312,7 @@ static int __unused paging_32bit(unsigned long linear)
     unsigned long __unused CR0;
     unsigned long __unused *physical;
 
-    /* Obtain pgdir virtual address, linux 1.0 define 'swapper_pg_dir' to
-     * point first page directory */
-    pgdir = swapper_pg_dir;
+    pgdir = (unsigned long *)current->tss.cr3;
 
     /*
      * A 4-KByte naturally alignment page directory is located at the physical
@@ -480,6 +478,9 @@ static int __unused paging_32bit(unsigned long linear)
     if (PAGE != physical)
         panic("PAGE != physical");
 
+    printk("Linear-addr:   %#lx\n", linear);
+    printk("Physical-addr: %#lx\n", (unsigned long)physical);
+    printk("Translation:   %s\n", (char *)physical);
     return 0;
 }
 
@@ -508,7 +509,7 @@ static int __unused paging_32bit_entence(void)
     virtual = (unsigned long)hello;
 
     /* Obtain logical address: SS: offset */
-    __asm__ ("mov %%ss, %0" : "=m" (SS));
+    __asm__ ("mov %%ds, %0" : "=m" (SS));
 
     /* Obtain linear address */
     if ((SS >> 2) & 0x1)
