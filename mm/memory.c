@@ -118,37 +118,37 @@ static void free_one_table(unsigned long * page_dir)
  */
 void clear_page_tables(struct task_struct * tsk)
 {
-	int i;
-	unsigned long pg_dir;
-	unsigned long * page_dir;
+    int i;
+    unsigned long pg_dir;
+    unsigned long * page_dir;
 
-	if (!tsk)
-		return;
-	if (tsk == task[0])
-		panic("task[0] (swapper) doesn't support exec()\n");
-	pg_dir = tsk->tss.cr3;
-	page_dir = (unsigned long *) pg_dir;
-	if (!page_dir || page_dir == swapper_pg_dir) {
-		printk("Trying to clear kernel page-directory: not good\n");
-		return;
-	}
-	if (mem_map[MAP_NR(pg_dir)] > 1) {
-		unsigned long * new_pg;
+    if (!tsk)
+        return;
+    if (tsk == task[0])
+        panic("task[0] (swapper) doesn't support exec()\n");
+    pg_dir = tsk->tss.cr3;
+    page_dir = (unsigned long *) pg_dir;
+    if (!page_dir || page_dir == swapper_pg_dir) {
+        printk("Trying to clear kernel page-directory: not good\n");
+        return;
+    }
+    if (mem_map[MAP_NR(pg_dir)] > 1) {
+        unsigned long * new_pg;
 
-		if (!(new_pg = (unsigned long*) get_free_page(GFP_KERNEL))) {
-			oom(tsk);
-			return;
-		}
-		for (i = 768 ; i < 1024 ; i++)
-			new_pg[i] = page_dir[i];
-		free_page(pg_dir);
-		tsk->tss.cr3 = (unsigned long) new_pg;
-		return;
-	}
-	for (i = 0 ; i < 768 ; i++,page_dir++)
-		free_one_table(page_dir);
-	invalidate();
-	return;
+        if (!(new_pg = (unsigned long*) get_free_page(GFP_KERNEL))) {
+            oom(tsk);
+            return;
+        }
+        for (i = 768 ; i < 1024 ; i++)
+            new_pg[i] = page_dir[i];
+        free_page(pg_dir);
+        tsk->tss.cr3 = (unsigned long) new_pg;
+        return;
+    }
+    for (i = 0; i < 768; i++, page_dir++)
+        free_one_table(page_dir);
+    invalidate();
+    return;
 }
 
 /*
@@ -156,33 +156,33 @@ void clear_page_tables(struct task_struct * tsk)
  */
 void free_page_tables(struct task_struct * tsk)
 {
-	int i;
-	unsigned long pg_dir;
-	unsigned long * page_dir;
+    int i;
+    unsigned long pg_dir;
+    unsigned long * page_dir;
 
-	if (!tsk)
-		return;
-	if (tsk == task[0]) {
-		printk("task[0] (swapper) killed: unable to recover\n");
-		panic("Trying to free up swapper memory space");
-	}
-	pg_dir = tsk->tss.cr3;
-	if (!pg_dir || pg_dir == (unsigned long) swapper_pg_dir) {
-		printk("Trying to free kernel page-directory: not good\n");
-		return;
-	}
-	tsk->tss.cr3 = (unsigned long) swapper_pg_dir;
-	if (tsk == current)
-		__asm__ __volatile__("movl %0,%%cr3": :"a" (tsk->tss.cr3));
-	if (mem_map[MAP_NR(pg_dir)] > 1) {
-		free_page(pg_dir);
-		return;
-	}
-	page_dir = (unsigned long *) pg_dir;
-	for (i = 0 ; i < PTRS_PER_PAGE ; i++,page_dir++)
-		free_one_table(page_dir);
-	free_page(pg_dir);
-	invalidate();
+    if (!tsk)
+        return;
+    if (tsk == task[0]) {
+        printk("task[0] (swapper) killed: unable to recover\n");
+        panic("Trying to free up swapper memory space");
+    }
+    pg_dir = tsk->tss.cr3;
+    if (!pg_dir || pg_dir == (unsigned long) swapper_pg_dir) {
+        printk("Trying to free kernel page-directory: not good\n");
+        return;
+    }
+    tsk->tss.cr3 = (unsigned long) swapper_pg_dir;
+    if (tsk == current)
+        __asm__ __volatile__("movl %0,%%cr3": :"a" (tsk->tss.cr3));
+    if (mem_map[MAP_NR(pg_dir)] > 1) {
+        free_page(pg_dir);
+        return;
+    }
+    page_dir = (unsigned long *) pg_dir;
+    for (i = 0; i < PTRS_PER_PAGE; i++, page_dir++)
+        free_one_table(page_dir);
+    free_page(pg_dir);
+    invalidate();
 }
 
 /*

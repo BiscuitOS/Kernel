@@ -27,6 +27,7 @@
 #define __NR_demo_exit            (DEBUG_SYSCALL_NR + 13)
 #define __NR_vfs_ext2fs           (DEBUG_SYSCALL_NR + 14)
 #define __NR_demo_paging          (DEBUG_SYSCALL_NR + 15)
+#define __NR_demo_pgt_entence     (DEBUG_SYSCALL_NR + 16)
 
 int demo_setup(void *BIOS);
 int demo_open(const char *filename, int flag, int mode);
@@ -44,6 +45,7 @@ int demo_chdir(const char *filename);
 int demo_exit(int exit_code);
 int vfs_ext2fs(int fd);
 int demo_paging(unsigned long linear);
+int demo_pgt_entence(void);
 
 #endif // __FILE_DEBUGCALL_NR__
 
@@ -151,6 +153,13 @@ extern int sys_vfs_ext2fs();
 extern int sys_demo_paging();
 #else
 #define sys_demo_paging sys_null
+#endif
+
+#if defined CONFIG_DEBUG_PAGE_TABLE_CLEAR | \
+    defined CONFIG_DEBUG_PAGE_TABLE_FREE
+extern int sys_demo_pgt_entence();
+#else
+#define sys_demo_pgt_entence sys_null
 #endif
 
 #endif // __FILE_SYS_DEBUGCALL__

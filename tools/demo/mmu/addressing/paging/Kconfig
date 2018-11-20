@@ -233,8 +233,15 @@ config DEBUG_4LEVEL_PAGING
 	help
 	  4-level Pageing.
 
+config DEBUG_PGT_BASE
+	bool "Page Table"
+	help
+	  Page Table routine.
+
+if DEBUG_PGT_BASE
+
 config DEBUG_MEM_ESTABLISH
-	bool "Basic memory mapping and paging table establish"
+	bool "Basic Memory Mapping and Page Table establish"
 	help
 	  Establish 
 
@@ -252,15 +259,33 @@ config DEBUG_MEM_PAGING_TABLE
 
 config DEBUG_MEM_MAPPING
 	bool "Memory mapping"
+	select DEBUG_MEM_PAGING_TABLE
 	help
 	  Memory mapping.
 
 endif # DEBUG_MEM_ESTABLISH
 
-config DEBUG_PAGING_COPY_TABLE
-	bool "Copy Paging Table from father task."
+config DEBUG_PAGE_TABLE_COPY
+	bool "Copy Page Table from father task."
 	help
-	  Copy paging table from father task.
+	  Copy page table from father task.
+
+config DEBUG_PAGE_TABLE_CLONE
+	bool "Clone Page Table from father task."
+	help
+	  Clone page table from father task.
+
+config DEBUG_PAGE_TABLE_CLEAR
+	bool "Clear user-level Page Table."
+	help
+	  Clear page table from current task.
+
+config DEBUG_PAGE_TABLE_FREE
+	bool "Free or Release all Page Table."
+	help
+	  Free or Release one Page Table.
+
+endif # DEBUG_PGT_BASE
 
 endif # DEBUG_MMU_PAGING
 

@@ -531,54 +531,6 @@ user1_debugcall_sync(paging_32bit_entence);
 late_debugcall(paging_32bit_entence);
 #endif
 
-#ifdef CONFIG_DEBUG_PAGING_COPY_TABLE
-static int __unused copy_paging_table(void)
-{
-    struct task_struct __unused *task;
-    unsigned long __unused old_pg_dir, *old_page_dir;
-    unsigned long __unused new_pg_dir, *new_page_dir;
-    int __unused i;
-
-    /* Establish a new task struct */
-    task = (struct task_struct *) __get_free_page(GFP_KERNEL);
-
-    /* Allocate new physical page to new page directory */
-    if (!(new_pg_dir = get_free_page(GFP_KERNEL)))
-        return -ENOMEM;
-
-    old_pg_dir = current->tss.cr3;
-    task->tss.cr3 = new_pg_dir; /* Aligned with PAGE(4K) */
-    old_page_dir = (unsigned long *) old_pg_dir;
-    new_page_dir = (unsigned long *) new_pg_dir;
-    for (i = 0; i < PTRS_PER_PAGE; i++, old_page_dir++, new_page_dir++) {
-        unsigned long old_pg_table, *old_page_table;
-        unsigned long new_pg_table, *new_page_table;
-        int j;
-
-        old_pg_table = *old_page_dir;
-        /* Verify whether page table is valid? */
-        if (!old_pg_table)
-            continue;
-        /* Verify whether P flag is set for Page table, and check whether
-         * range of page table over high memory? */
-        if (old_pg_table >= high_memory || !(old_pg_table & PAGE_PRESENT)) {
-            printk("copy_page_tables: bad page table: "
-                       "probable memory corruption\n");
-            *old_page_dir = 0;
-            continue;
-        }
-        if (mem_map[MAP(old_pg_table)] & MAP_PAGE_RESERVED) {
-            *new_page_dir = old_pg_table;
-            continue;
-        }
-      
-    }
-
-    return 0;
-}
-late_debugcall(copy_paging_table);
-#endif
-
 #ifdef CONFIG_DEBUG_MEM_ESTABLISH
 
 /*
@@ -839,21 +791,6 @@ static int __unused memory_mapping(unsigned long low_memory_start,
  * +----------+------------------------------------------------------+
  * |  0x0002  | Extended memory size (over 1MByte memory)            |
  * +----------+------------------------------------------------------+
- * |          |  |
- * +----------+------------------------------------------------------+
- * |          |  |
- * +----------+------------------------------------------------------+
- * |          |  |
- * +----------+------------------------------------------------------+
- * |          |  |
- * +----------+------------------------------------------------------+
- * |          |  |
- * +----------+------------------------------------------------------+
- * |          |  |
- * +----------+------------------------------------------------------+
- * |          |  |
- * +----------+------------------------------------------------------+
- * |          |  |
  */
 extern char empty_zero_page[PAGE_SIZE];
 
@@ -918,4 +855,431 @@ static int __unused paging_mem_init(void)
     return 0;
 }
 arch_debugcall(paging_mem_init);
+#endif
+
+#ifdef CONFIG_DEBUG_PAGE_TABLE_COPY
+static int __unused page_table_copy(void)
+{
+    unsigned long __unused old_pg_dir, *old_page_dir;
+    unsigned long __unused new_pg_dir, *new_page_dir;
+    struct task_struct __unused *tsk;
+    int i;
+
+    /* Establish a new task */
+    if (!(tsk = (struct task_struct *) get_free_page(GFP_KERNEL)))
+        return -ENOMEM;
+
+    /* Estalish a new page dirent */
+    if (!(new_pg_dir = get_free_page(GFP_KERNEL)))
+        return -ENOMEM;
+
+    old_pg_dir = current->tss.cr3;
+    tsk->tss.cr3 = new_pg_dir;
+
+    /*
+     * Obtain the base address of page dirent.
+     *
+     *
+     *                  Old page dirent                  New page dirent
+     *                  +----------+                     +----------+
+     *                  |          |                     |          |
+     *                  +----------+                     +----------+
+     *                  |          |                     |          |
+     *                  +----------+                     +----------+
+     *                  |          |                     |          |
+     *                  +----------+                     +----------+
+     *                  |          |                     |          |
+     *                  +----------+                     +----------+
+     *                  |          |                     |          |
+     *                  +----------+                     +----------+
+     * old_page_dir     |          |                     |          |
+     * o--------------->+----------+    new_page_dir---->+----------+
+     * |
+     * |      CR3
+     * |      +--------------------------+
+     * o------|-       old_pg_dir        |            
+     *        +--------------------------+
+     * 
+     * 
+     */
+    old_page_dir = (unsigned long *) old_pg_dir;
+    new_page_dir = (unsigned long *) new_pg_dir;
+
+    for (i = 0; i < PTRS_PER_PAGE; i++, old_page_dir++, new_page_dir++) {
+        unsigned long old_pg_table, *old_page_table;
+        unsigned long new_pg_table, *new_page_table;
+        int j;
+
+        /* Obtain the value of page dirent 
+         *
+         *
+         *                  Old page dirent
+         *                  +------------------+
+         *                  |                  |
+         *                  +------------------+
+         *                  |                  |
+         *                  +------------------+
+         *                  |                  |
+         *                  +------------------+
+         *                  |                  |
+         *                  +------------------+
+         *                  |                  |
+         *                  +------------------+
+         *                  |                  |
+         *                  +------------------+
+         *                  |                  |
+         *                  +------------------+
+         * old_page_dir     |   old_pg_table   |
+         * o--------------->+------------------+
+         * |
+         * |                CR3
+         * |                +--------------------------+
+         * o----------------|-       old_pg_dir        |            
+         *                  +--------------------------+
+         */
+        old_pg_table = *old_page_dir;
+        /* Doesn't copy empty page table. */
+        if (!old_pg_table)
+            continue;
+        if (old_pg_table >= high_memory || !(old_pg_table & PAGE_PRESENT)) {
+            printk("page_table_copy: bad page table: "
+                       "probable memory corruption\n");
+            *old_page_dir = 0;
+            continue;
+        }
+        /* Only copy all Reserved page dirent */
+        if (mem_map[MAP_NR(old_pg_table)] & MAP_PAGE_RESERVED) {
+            *new_page_dir = old_pg_table;
+            continue;
+        }
+
+        /* Allocate new memory to new page table */
+        if (!(new_pg_table = get_free_page(GFP_KERNEL))) {
+            /* Free register pages. */
+            return -ENOMEM;
+        }
+        /* Obtain the base address of page table 
+         *
+         *                                                    Old Page Table
+         *                  Old Page Dirent                   +-----------+
+         *                  +---------------+                 |           |
+         *                  |               |                 +-----------+
+         *                  +---------------+                 |           |
+         *                  |               |                 +-----------+
+         *                  +---------------+                 |           |
+         *                  |               |                 +-----------+
+         *                  +---------------+                 |           |
+         *                  |               |                 +-----------+
+         *                  +---------------+                 |           |
+         *                  |               |                 +-----------+
+         *                  +---------------+                 |           |
+         *                  |               |                 +-----------+
+         *                  +---------------+                 |           |
+         *                  |               |                 +-----------+
+         *                  +---------------+ old_page_table  |    pg     |
+         * old_page_dir     | old_pg_table -|---------------->+-----------+
+         * o--------------->+---------------+
+         * |
+         * |                CR3
+         * |                +--------------------------+
+         * o----------------|-       old_pg_dir        |            
+         *                  +--------------------------+
+         *
+         */ 
+        old_page_table = (unsigned long *)(PAGE_MASK & old_pg_table);
+        new_page_table = (unsigned long *)(PAGE_MASK & new_pg_table);
+
+        for (j = 0; j < PTRS_PER_PAGE;
+                j++, old_page_table++, new_page_table++) {
+            unsigned long pg;
+
+            pg = *old_page_table;
+            /* Skip all unused page table */
+            if (!pg)
+                continue;
+            if (!(pg & PAGE_PRESENT)) {
+                /* SWAP PAGE? */
+                continue;
+            }
+            /* Mark father page table as READONLY */
+            if ((pg & (PAGE_RW | PAGE_COW)) == (PAGE_RW | PAGE_COW))
+                pg &= ~PAGE_RW;
+            *new_page_table = pg;
+
+            /* Kernel alway writes and read those pages. */
+            if (mem_map[MAP_NR(pg)] & MAP_PAGE_RESERVED)
+                continue;
+            /* Prevent father task from writting the specify page. */
+            *old_page_table = pg;
+            /* Adding reference counter for specify page. */
+            mem_map[MAP_NR(pg)]++;
+        }
+        *new_page_dir = new_pg_table | PAGE_TABLE;
+    }
+    invalidate();
+    return 0;
+}
+late_debugcall(page_table_copy);
+#endif
+
+#ifdef CONFIG_DEBUG_PAGE_TABLE_CLONE
+static int __unused page_table_clone(void)
+{
+    struct task_struct __unused *tsk;
+    unsigned long __unused pg_dir;
+
+    if (!(tsk = (struct task_struct *) get_free_page(GFP_KERNEL)))
+        return -ENOMEM;
+
+    pg_dir = current->tss.cr3;
+    mem_map[MAP_NR(pg_dir)]++;
+    tsk->tss.cr3 = pg_dir;
+
+    return 0;
+}
+late_debugcall(page_table_clone);
+#endif
+
+/*
+ * free_one_table - free one page table.
+ *
+ */
+static void __unused free_one_table(unsigned long *page_dir)
+{
+    unsigned long pg_table = *page_dir;
+    unsigned long *page_table;
+    int j;
+
+    /* Return if page table is empty. */
+    if (!pg_table)
+        return;
+
+    /* Clear value on specify page directory item. */
+    *page_dir = 0;
+
+    /* Warning if page locate on high memory or page is not present on 
+     * memory. */
+    if (pg_table >= high_memory || !(pg_table & PAGE_PRESENT))
+        printk("Bad page table: [%p]=%08lx\n", page_dir, pg_table);
+
+    /* Doesn't release kernel page table. */
+    if (mem_map[MAP_NR(pg_table)] & MAP_PAGE_RESERVED)
+        return;
+
+    /* Release all page table item. */
+    page_table = (unsigned long *)(pg_table & PAGE_MASK);
+    for (j = 0; j < PTRS_PER_PAGE; j++, page_table++) {
+        unsigned long pg = *page_table;
+
+        if (!pg)
+            continue;
+        *page_table = 0;
+        if (pg & PAGE_PRESENT)
+            free_page(PAGE_MASK & pg);
+        else
+            swap_free(pg);
+    }
+    /* Release this page. */
+    free_page(PAGE_MASK & pg_table);
+}
+
+#ifdef CONFIG_DEBUG_PAGE_TABLE_CLEAR
+/*
+ * This function clears all user-level page table of a processor - this is
+ * needed by execve(), so that old pages aren't in the way. Note that unlike
+ * 'free_page_tables()', this function still leaves a valid page-table-tree
+ * in memory: it just remove the user pages. The two functions are similar,
+ * but there is a fundamental difference.
+ */
+static int __unused pgt_clear_entence(void)
+{
+    unsigned long __unused pg_dir;
+    unsigned long __unused *page_dir;
+    struct task_struct __unused *tsk = current;
+    int i;
+
+    if (!tsk)
+        return -EINVAL;
+    if (tsk == task[0]) {
+        printk("task[0] (swapper) killed: unable to recover\n");
+        panic("Trying to free up swapper memory space");
+    }
+
+    /*
+     *                                       Page Directory
+     *                                      +---------------+
+     *                                      |               |
+     *                                      +---------------+
+     *                                      |               |
+     *                                      +---------------+
+     *                                      |               |
+     *                                      +---------------+
+     *                                      |               |
+     *                                      +---------------+
+     *                                      |               |
+     *                                      +---------------+
+     *                                      |               |
+     *                                      +---------------+
+     *                                      |               |
+     * CR3                                  +---------------+
+     * +------------------------+ page_dir  |               |
+     * | tsk->tss.cr3 (pg_dir) -|---------->+---------------+
+     * +------------------------+
+     */
+    pg_dir = tsk->tss.cr3;
+    page_dir = (unsigned long *) pg_dir;
+
+    /* Only free user page table */
+    if (!page_dir || page_dir == swapper_pg_dir) {
+        printk("Trying to clear kernel page-directory: not good\n");
+        return -EINVAL;
+    }
+
+    /*
+     * If other proceessor reference this page-directory, we only remove user
+     * page-directory and re-store kernel page-directory.
+     */
+    if (mem_map[MAP_NR(pg_dir)] > 1) {
+        unsigned long *new_pg;
+
+        if (!(new_pg = (unsigned long *) get_free_page(GFP_KERNEL))) {
+            oom(tsk);
+            return -EINVAL;
+        }
+        for (i = (0xC0000000 >> 22); i < 1024; i++) 
+            new_pg[i] = page_dir[i];
+        free_page(pg_dir);
+        tsk->tss.cr3 = (unsigned long) new_pg;
+        return 0;
+    }
+
+    /* Remove all user page-direntroy and hold kerenl page-directory tree
+     * on memory. */
+    for (i = 0; i < (0xC0000000 >> 22); i++, page_dir++)
+        free_one_table(page_dir);
+    invalidate();
+
+    return 0;
+}
+#endif
+
+#ifdef CONFIG_DEBUG_PAGE_TABLE_FREE
+/*
+ * This function frees up all page tables of a process when it exits.
+ */
+static int __unused pgt_free_entence(void)
+{
+    struct task_struct __unused *tsk = current;
+    unsigned long pg_dir;
+    unsigned long *page_dir;
+    int i;
+
+    if (!tsk)
+        return -EINVAL;
+    if (tsk == task[0]) {
+        printk("task[0] (swapper) killed: unable to recover\n");
+        panic("Trying to free up swapper memory space.\n");
+    }
+    /*
+     *                                       Page Directory
+     *                                      +---------------+
+     *                                      |               |
+     *                                      +---------------+
+     *                                      |               |
+     *                                      +---------------+
+     *                                      |               |
+     *                                      +---------------+
+     *                                      |               |
+     *                                      +---------------+
+     *                                      |               |
+     *                                      +---------------+
+     *                                      |               |
+     *                                      +---------------+
+     *                                      |               |
+     * CR3                                  +---------------+
+     * +------------------------+ page_dir  |               |
+     * | tsk->tss.cr3 (pg_dir) -|---------->+---------------+
+     * +------------------------+
+     */
+
+    pg_dir = tsk->tss.cr3;
+    if (!pg_dir || pg_dir == (unsigned long) swapper_pg_dir) {
+        printk("Trying to free kernel page-directory: not good\n");
+        return -EINVAL;
+    }
+    tsk->tss.cr3 = (unsigned long) swapper_pg_dir;
+    if (tsk == current)
+        __asm__ __volatile__ ("movl %0, %%cr3" :: "a" (tsk->tss.cr3));
+    if (mem_map[MAP_NR(pg_dir)] > 1) {
+        free_page(pg_dir);
+    }
+    page_dir = (unsigned long *) pg_dir;
+    for (i = 0; i < PTRS_PER_PAGE; i++, page_dir++)
+        free_one_table(page_dir);
+    free_page(pg_dir);
+    invalidate();
+
+    return 0;
+}
+#endif
+
+#if defined CONFIG_DEBUG_PAGE_TABLE_CLEAR | \
+    defined CONFIG_DEBUG_PAGE_TABLE_FREE 
+asmlinkage int sys_demo_pgt_entence(void)
+{
+#ifdef CONFIG_DEBUG_PAGE_TABLE_CLEAR
+    pgt_clear_entence();
+#endif
+
+#ifdef CONFIG_DEBUG_PAGE_TABLE_FREE
+    pgt_free_entence();
+#endif
+    return 0;
+}
+/* System call entry */
+inline _syscall0(int, demo_pgt_entence);
+#endif
+
+#ifdef CONFIG_DEBUG_PAGE_TABLE_CLEAR
+static inline _syscall0(int,fork);
+
+static int __unused page_table_clear(void)
+{
+    int pid;
+
+    if (!(pid = fork())) {
+        /* Child process */
+        printf("Child PID: %#x waiting and clear user page table....\n", pid);
+        demo_pgt_entence();
+        while (1);
+    }
+    if (pid > 0) {
+        /* Father wait */
+        printf("Father PID: %#x always running....\n", pid);
+    }
+    return 0;
+}
+user1_debugcall_sync(page_table_clear);
+#endif
+
+#ifdef CONFIG_DEBUG_PAGE_TABLE_FREE
+static inline _syscall0(int,fork);
+
+static int __unused page_table_free(void)
+{
+    int pid;
+
+    if (!(pid = fork())) {
+        /* Child process */
+        printf("Child PID: %#x waiting and free all page table....\n", pid);
+        demo_pgt_entence();
+        while (1);
+    }
+    if (pid > 0) {
+        /* Father wait */
+        printf("Father PID: %#x always running....\n", pid);
+    }
+    return 0;
+}
+user1_debugcall_sync(page_table_free);
 #endif
