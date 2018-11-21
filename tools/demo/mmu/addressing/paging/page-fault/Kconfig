@@ -1,0 +1,51 @@
+menu "page-fault exception"
+
+config DEBUG_MMU_PAGE_FAULT
+	bool "page-fault mechanism"
+	help
+	  Page-Fault mechanism.
+
+if DEBUG_MMU_PAGE_FAULT
+
+config DEBUG_TRIGGER_PF_ADDR
+	hex "Page-Fault linear address"
+	help
+	  The page-fault linear address.
+
+choice
+	prompt "Trigger #PF conditions"
+
+config DEBUG_MMU_PF_NP
+	bool "Paging structure isn't present"
+	help
+	  The page directory or page table isn't present.
+
+config DEBUG_MMU_PF_WP
+	bool "Its access rights don't permit the access"
+	help
+	  Its access rights do not permit the access.
+
+endchoice # Trigger #PF conditions
+
+config DEBUG_MMU_PF_ERROR
+	bool "Bitmap of #PF error code"
+	help
+	  Bitmap of #PF error code.
+
+if DEBUG_MMU_PF_ERROR
+
+config DEBUG_PF_ERROR_P
+	bool "P flag (bit 0)"
+	help
+	  Indicate Present causing #PF.
+
+config DEBUG_PF_ERROR_WR
+	bool "W/R flag (bit 1)"
+	help
+	  Indicate access causing #PF.
+
+endif # DEBUG_MMU_PF_ERROR
+
+endif # DEBUG_MMU_PAGE_FAULT
+
+endmenu
