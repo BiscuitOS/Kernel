@@ -125,3 +125,5 @@ from it:
   Because such a violation can occur only if there is no ordinary page fault,
   this flag is set only if the P flag (bit 0) is 1 and the RSVD flag (bit 3)
   and the PK flag (bit 5) are both 0.
+
+![Error code bitmap](https://github.com/EmulateSpace/PictureSet/blob/master/BiscuitOS/kernel/MMU000432.png)
