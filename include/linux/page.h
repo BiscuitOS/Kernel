@@ -22,7 +22,8 @@
 
 			/* to find an entry in a page-table-directory */
 #define PAGE_DIR_OFFSET(base,address)	((unsigned long*)((base)+\
-  ((unsigned long)(address)>>(PAGE_SHIFT-SIZEOF_PTR_LOG2)*2&PTR_MASK&~PAGE_MASK)))
+      ((unsigned long)(address)>>(PAGE_SHIFT-SIZEOF_PTR_LOG2) * 2 & \
+      PTR_MASK&~PAGE_MASK)))
 			/* to find an entry in a page-table */
 #define PAGE_PTR(address)		\
   ((unsigned long)(address)>>(PAGE_SHIFT-SIZEOF_PTR_LOG2)&PTR_MASK&~PAGE_MASK)

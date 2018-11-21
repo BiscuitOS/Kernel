@@ -7,32 +7,53 @@ config DEBUG_MMU_PAGE_FAULT
 
 if DEBUG_MMU_PAGE_FAULT
 
+comment "Linear address trigger Page-fault exception"
+
 config DEBUG_TRIGGER_PF_ADDR
-	hex "Page-Fault linear address"
+	hex "Setup #PF linear address <================>"
+	default 0xFFFFFFFF
 	help
 	  The page-fault linear address.
 
+comment "Choice trigger #PF condition"
+
 choice
-	prompt "Trigger #PF conditions"
+	prompt "Page-Fault Condition"
 
-config DEBUG_MMU_PF_NP
-	bool "Paging structure isn't present"
+config DEBUG_PF_NP_USR_PD
+	bool "User linear address: Page directory is not present."
 	help
-	  The page directory or page table isn't present.
+	  User linear address no translation which page directory P flag
+	  was cleared.
 
-config DEBUG_MMU_PF_WP
-	bool "Its access rights don't permit the access"
+config DEBUG_PF_NP_USR_PT
+	bool "User linear address: Page Table is not present."
 	help
-	  Its access rights do not permit the access.
+	  User linear address no translation which page table P flag was
+	  cleared.
+
+config DEBUG_PF_NP_KERN_PD
+	bool "Kernel linear address: Page directory is not present."
+	help
+	  Kernel linear address no translation which page directory P flag
+	  was cleared.
+
+config DEBUG_PF_NP_KERN_PT
+	bool "Kernel linear address: Page Table is not present."
+	help
+	  Kernel linear address no translation which page table P flag was
+	  cleared.
 
 endchoice # Trigger #PF conditions
 
 config DEBUG_MMU_PF_ERROR
-	bool "Bitmap of #PF error code"
+	bool "Page-Fault Exception Error Code"
 	help
-	  Bitmap of #PF error code.
+	  Page-Fault Exception Error Code.
 
 if DEBUG_MMU_PF_ERROR
+
+comment "#PF Error Code BitMap"
 
 config DEBUG_PF_ERROR_P
 	bool "P flag (bit 0)"
@@ -43,6 +64,31 @@ config DEBUG_PF_ERROR_WR
 	bool "W/R flag (bit 1)"
 	help
 	  Indicate access causing #PF.
+
+config DEBUG_PF_ERROR_US
+	bool "U/S flag (bit 2)"
+	help
+	  Indicate access on user-mode/supervisor-mode.
+
+config DEBUG_PF_ERROR_RSVD
+	bool "RSVD flag (bit 3)"
+	help
+	  Set reserved bit on paging-structure.
+
+config DEBUG_PF_ERROR_ID
+	bool "I/D flag (bit 4)"
+	help
+	  Instruction fetch trigger #PF.
+
+config DEBUG_PF_ERROR_PK
+	bool "PK flag (bit 5)"
+	help
+	  Protection Key.
+
+config DEBUG_PF_ERROR_SGX
+	bool "SGX flag (bit 15)"
+	help
+	  SGX trigger #PF.
 
 endif # DEBUG_MMU_PF_ERROR
 

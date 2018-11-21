@@ -99,6 +99,29 @@ from it:
   linear address because the P flag was 0 in one of the paging-structure 
   entries used to translate that address.
 
-  **W/R (bit 1)** -- If the access causing the page-fault exception was a
+  **W/R flag (bit 1)** -- If the access causing the page-fault exception was a
   write, this flag is 1; otherwise, it is 0. This flag describes the access
   casusing the page-fault exception, not the access rights specified by paging.
+
+  **U/S flag (bit 2)** -- If a user-mode access caused the page-fault
+  exception, this flag is 1; it is 0 if a supervisor-mode access did so. This
+  flag describes the access causing the page-fault exception, not the access
+  rights specified by paging.
+
+  **RSVD flag (bit 3)** -- This flag is 1 if there is no translation for the
+  linear address because a reserved bit was set in one of the paging-structure
+  entries used to translate that address.
+
+  **I/D flag (bit 4)** -- This flag is 1 if the access causing the page-fault
+  exception was an instruction fetch. This flag describes the access causing
+  the page-fault exception, not the access rights specified by paging.
+
+  **PK flag (bit 5)** -- This flag is 1 if the access causing the page-fault
+  exception was a data access to a user-mode address with protection key 
+  disallowed by the value of the PKRU register.
+
+  **SGX flag (bit 15)** -- This flag is 1 if the exception is unrelated to 
+  paging and result from violation of SGX-specific access-control requirements.
+  Because such a violation can occur only if there is no ordinary page fault,
+  this flag is set only if the P flag (bit 0) is 1 and the RSVD flag (bit 3)
+  and the PK flag (bit 5) are both 0.

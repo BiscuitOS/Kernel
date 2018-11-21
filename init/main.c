@@ -397,6 +397,9 @@ asmlinkage void start_kernel(void)
     if (strncmp((char*)0x0FFFD9, "EISA", 4) == 0)
         EISA_bus = 1;
     trap_init();
+#ifdef CONFIG_DEBUG_DEBUGCALL
+    do_debugcall(DEBUG_ARCH_SYNC);
+#endif
     init_IRQ();
     sched_init();
     parse_options(command_line);

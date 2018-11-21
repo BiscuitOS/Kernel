@@ -287,6 +287,9 @@ config DEBUG_PAGE_TABLE_FREE
 
 endif # DEBUG_PGT_BASE
 
+# page-fault
+source "tools/demo/mmu/addressing/paging/page-fault/Kconfig"
+
 endif # DEBUG_MMU_PAGING
 
 

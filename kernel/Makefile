@@ -20,11 +20,17 @@ obj-y += module.o
 obj-y += time.o
 obj-y += ksyms2.o
 
+ifdef CONFIG_DEBUG_MMU_PAGE_FAULT
+  LC_CPP_FLAGS += -DCONFIG_DEBUG_MMU_PAGE_FAULT
+else
+  LC_CPP_FLAGS +=
+endif
+
 $(obj)/%.o: $(obj)/%.s FORCE
 	$(Q)$(AS) $(KBUILD_AFLAGS_KERNEL) -o $@ $<
 
 $(obj)/system.s: $(obj)/sys_call.S FORCE
-	$(Q)$(CPP) -traditional -I$(srctree)/include $< -o $@
+	$(Q)$(CPP) -traditional $(LC_CPP_FLAGS) -I$(srctree)/include $< -o $@
 
 $(obj)/ksyms.list: $(obj)/ksyms.S FORCE
 	$(Q)$(CPP) -traditional -I$(srctree)/include $< -o $@

@@ -89,6 +89,10 @@ ENOSYS = 38
 .globl alignment_check,page_fault
 .globl ret_from_sys_call
 
+#ifdef CONFIG_DEBUG_MMU_PAGE_FAULT
+.globl debug_page_fault
+#endif
+
 #define SAVE_ALL \
 	cld; \
 	push %gs; \
@@ -388,3 +392,10 @@ alignment_check:
 page_fault:
 	pushl $do_page_fault
 	jmp error_code
+
+#ifdef CONFIG_DEBUG_MMU_PAGE_FAULT
+.align 4
+debug_page_fault:
+	pushl $page_fault_entence
+	jmp error_code
+#endif

@@ -19,6 +19,19 @@ extern unsigned long pg0[1024];    /* page table for 0-4MB for everybody */
 
 extern void die_if_kernel(char *,struct pt_regs *,long);
 
+/* debug entence */
+static int pf_debug = 0;
+
+static inline void pf_debug_detect(unsigned long address)
+{
+    if (address == CONFIG_DEBUG_TRIGGER_PF_ADDR)
+        pf_debug = 1;
+}
+
+#define pf_debug(...) \
+    if (pf_debug == 1) \
+        printk(__VA_ARGS__)
+
 #define copy_page(from,to) \
     __asm__ ("cld ; rep ; movsl" : : "S" (from), "D" (to), "c" (1024))
 
@@ -159,17 +172,70 @@ static void debug_do_wp_page(unsigned long error_code, unsigned long address,
      * +---------------+
      */
     pg_table = PAGE_DIR_OFFSET(tsk->tss.cr3, address);
-    while (1);
     page = *pg_table;
 
     /* Page table is empty or invalide */
     if (!page)
         return;
     if ((page & PAGE_PRESENT) && page < high_memory) {
+        /*
+         *
+         *                                            Page Table
+         *   Page Directory                       +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+      pg_table      |                 |
+         * |      page      -|------------------->+-----------------+
+         * +-----------------+
+         * |                 |
+         * +-----------------+
+         * |                 |
+         * +-----------------+
+         */
         pg_table = (unsigned long *)((page & PAGE_MASK) + PAGE_PTR(address));
+        /*
+         *
+         *                                            Page Table
+         *   Page Directory                       +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+                    |                 |
+         * |                 |                    +-----------------+
+         * +-----------------+      pg_table      |      page       |
+         * |                -|------------------->+-----------------+
+         * +-----------------+
+         * |                 |
+         * +-----------------+
+         * |                 |
+         * +-----------------+
+         */
         page = *pg_table;
+        /* In Case, page must be present! */
         if (!(page & PAGE_PRESENT))
             return;
+        /* In Case, page must can't access! */
         if (page & PAGE_RW)
             return;
         if (!(page & PAGE_COW)) {
@@ -181,7 +247,8 @@ static void debug_do_wp_page(unsigned long error_code, unsigned long address,
                 return;
             }
         }
-        if (mem_map[MAP_NR(page) == 1]) {
+        /* If reference count is 1 for page, set page can access and write! */
+        if (mem_map[MAP_NR(page)] == 1) {
             *pg_table |= PAGE_RW | PAGE_DIRTY;
             invalidate();
             return;
@@ -284,6 +351,101 @@ ok_no_page:
     get_empty_page(tsk, address);
 }
 
+#ifdef CONFIG_DEBUG_MMU_PF_ERROR
+/*
+ * An error code on the stack. The error code for a page fault has a format
+ * different from that for other exceptions.
+ */
+static int __unused page_fault_error_code(unsigned long error_code)
+{
+#ifdef CONFIG_DEBUG_PF_ERROR_P
+    /*
+     * P flag (bit 0)
+     *   This flag is 0 if there is no translation for the linear address 
+     *   because the P flag was 0 in one of the paging-structure entries used
+     *   to translate that address.
+     */
+    if (!(error_code & 0x1))
+        printk("P flag was 0 in one of the paging-structure entries\n");
+#endif
+
+#ifdef CONFIG_DEBUG_PF_ERROR_WR
+    /*
+     * W/R flag (bit 1)
+     *   If the access causing the page-fault exception was a write, this flag
+     *   is 1; otherwise, it is 0. This flag describes the access casusing the
+     *   page-fault exception, not the access rights specified by paging.
+     */
+    if ((error_code >> 1) & 0x1)
+        printk("Access cause #PF, not the access rights by paging.\n");
+#endif
+
+#ifdef CONFIG_DEBUG_PF_ERROR_US
+    /*
+     * U/S flag (bit 2)
+     *   If a user-mode access caused the page-fault exception, this flag is 1;
+     *   it is 0 if a supervisor-mode access did so. This flag describes the
+     *   access causing the page-fault exception, not the access rights 
+     *   specified by paging.
+     */
+    if ((error_code >> 2) & 0x1)
+        printk("User-mode access caused the #PF.\n");
+    else
+        printk("Supervisor-mode access caused the #PF.\n");
+#endif
+
+#ifdef CONFIG_DEBUG_PF_ERROR_RSVD
+    /*
+     * RSVD flag (bit 3)
+     *   This flag is 1 if there is no translation for the linear address
+     *    because a reserved bit was set in one of the paging-structure entries
+     *    used to translate that address.  
+     */
+    if ((error_code >> 3) & 0x1)
+        printk("Set reserved bit on paging-structure to trigger #PF.\n");
+#endif
+
+#ifdef CONFIG_DEBUG_PF_ERROR_ID
+    /*
+     * I/D flag (bit 4)
+     *   This flag is 1 if the access causing the page-fault exception was an 
+     *   instruction fetch. This flag describes the access causing the 
+     *   page-fault exception, not the access rights specified by paging.
+     */
+    if ((error_code >> 4) & 0x1)
+        printk("Instruction fetch access trigger #PF\n");
+    else
+        printk("Data fetch access trigger #PF\n");
+#endif
+
+#ifdef CONFIG_DEBUG_PF_ERROR_PK
+    /*
+     * PK flag (bit 5) 
+     *   This flag is 1 if the access causing the page-fault exception was a 
+     *   data access to a user-mode address with protection key disallowed by
+     *   the value of the PKRU register.
+     */
+    if ((error_code >> 5) & 0x1)
+        printk("Protection Key cause #PF\n");
+#endif
+
+#ifdef CONFIG_DEBUG_PF_ERROR_SGX
+    /*
+     * SGX flag (bit 15) 
+     *   This flag is 1 if the exception is unrelated to paging and result from
+     *   violation of SGX-specific access-control requirements. Because such a
+     *   violation can occur only if there is no ordinary page fault, this flag
+     *   is set only if the P flag (bit 0) is 1 and the RSVD flag (bit 3) and 
+     *   the PK flag (bit 5) are both 0.
+     */
+    if ((error_code >> 15) & 0x1)
+        printk("SGX trigger #PF\n");
+#endif
+
+    return 0;
+}
+#endif
+
 asmlinkage void __unused page_fault_entence(struct pt_regs *regs, 
                                               unsigned long error_code)
 {
@@ -291,8 +453,18 @@ asmlinkage void __unused page_fault_entence(struct pt_regs *regs,
     unsigned long user_esp = 0;
     unsigned int bit;
 
+#ifdef CONFIG_DEBUG_MMU_PF_ERROR
+    page_fault_error_code(error_code);
+#endif
+
     /* get the address */
     __asm__ ("movl %%cr2, %0" : "=r" (address));
+
+    /* Only used to debug */
+    pf_debug_detect(address);
+
+   // pf_debug("#PF address: %#lx Error_code: %#lx\n", address, error_code);
+
     if (address < TASK_SIZE) {
         if (error_code & 4) { /* User mode access? */
             if (regs->eflags & VM_MASK) {
@@ -302,9 +474,10 @@ asmlinkage void __unused page_fault_entence(struct pt_regs *regs,
             } else
                 user_esp = regs->esp;
         }
+        /* Access right triggers #PF */
         if (error_code & 1)
             debug_do_wp_page(error_code, address, current, user_esp);
-        else
+        else /* P flag is clear on paging structure triggers #PF */
             debug_do_no_page(error_code, address, current, user_esp);
         return;
     }
@@ -338,9 +511,34 @@ static int __unused page_fault_init(void)
 arch_debugcall_sync(page_fault_init);
 
 /* Trigger Page-fault(#PF) entence */
-static int __unused trigger_PF(void)
+static int __unused trigger_PF_user0(void)
 {
+    unsigned long __unused virtual;
+    unsigned long __unused linear;
+    unsigned long __unused base;
+    unsigned short __unused Sel;
+    struct desc_struct __unused *desc;
+
+    /* Obtain base linear address on special segment */
+    __asm__ ("mov %%ss, %0" : "=m" (Sel));
+    if ((Sel >> 2) & 0x1) 
+        desc = current->ldt + (Sel >> 3);
+    else
+        desc = gdt + (Sel >> 3);
+    base = get_base(*desc);
+
+    /* Check linear address and obtain virtual address */
+    linear = CONFIG_DEBUG_TRIGGER_PF_ADDR;
+
+    if (linear < base) {
+        printf("Invalid linear address, please choice a correct one!\n");
+        return -EINVAL;
+    }
+    virtual = linear - base;
+    printf("vitual address: %#x linear: %#x\n", virtual, linear);
+    /* Trigger Page-Fault */
+    *(char *)virtual = 'a';
 
     return 0;
 }
-
+user1_debugcall_sync(trigger_PF_user0);
