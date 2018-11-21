@@ -1,0 +1,8 @@
+menu "CR2:      Control Register 2"
+
+config DEBUG_REGISTER_CR2
+	bool "CR2: Control Register 2"
+	help
+	  CR2: Control Register 2.
+
+endmenu

@@ -70,6 +70,9 @@ source "tools/demo/mmu/storage/register/EFLAGS/Kconfig"
 # CR0 Register
 source "tools/demo/mmu/storage/register/CR0/Kconfig"
 
+# CR2 Register
+source "tools/demo/mmu/storage/register/CR2/Kconfig"
+
 # CR3 Register
 source "tools/demo/mmu/storage/register/CR3/Kconfig"
 

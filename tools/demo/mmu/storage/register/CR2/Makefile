@@ -1,0 +1,1 @@
+obj-$(CONFIG_DEBUG_REGISTER_CR2) += cr2.o
