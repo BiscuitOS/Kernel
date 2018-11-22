@@ -49,6 +49,17 @@ The following items detail how paging determines access rights:
 
    Access rights depend on the value of CR4.SMAP:
 
-   * If CR4.SMAP = 0, data may be read from any user-mode address
+   * If CR4.SMAP = 0, data may be read from any user-mode address with a 
+     protection key for which read access is permitted.
+
+   * If CR4.SMAP = 1, access rights depend on the value of EFLAGS.AC and 
+     whether the access is implicit or explicit:
+
+     -- If EFLAGS.AC = 1 and the access is explicit, data may be read from any
+        user-mode address with a protetion key for which read access is 
+        permitted.
+
+     -- If EFLAGS.AC = 0 or access is implicit, data may not be read from any
+        user-mode address.
 
      
