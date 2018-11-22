@@ -40,13 +40,14 @@ user-mode address.
 
 The following items detail how paging determines access rights:
 
-##### supervisor-mode accesses
+### supervisor-mode accesses
 
 -- Data may be read (implicitly or explicitly) from any supervisor-mode 
    address.
 
 -- Data reads from user-mode pages.
 
+```
    Access rights depend on the value of CR4.SMAP:
 
    * If CR4.SMAP = 0, data may be read from any user-mode address with a 
@@ -61,5 +62,7 @@ The following items detail how paging determines access rights:
 
      -- If EFLAGS.AC = 0 or access is implicit, data may not be read from any
         user-mode address.
+```
+   
 
-     
+  
