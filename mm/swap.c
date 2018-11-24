@@ -727,112 +727,112 @@ asmlinkage int sys_swapoff(const char * specialfile)
  */
 asmlinkage int sys_swapon(const char * specialfile)
 {
-	struct swap_info_struct * p;
-	struct inode * swap_inode;
-	unsigned int type;
-	int i,j;
-	int error;
+    struct swap_info_struct * p;
+    struct inode * swap_inode;
+    unsigned int type;
+    int i,j;
+    int error;
 
-	if (!suser())
-		return -EPERM;
-	p = swap_info;
-	for (type = 0 ; type < nr_swapfiles ; type++,p++)
-		if (!(p->flags & SWP_USED))
-			break;
-	if (type >= MAX_SWAPFILES)
-		return -EPERM;
-	if (type >= nr_swapfiles)
-		nr_swapfiles = type+1;
-	p->flags = SWP_USED;
-	p->swap_file = NULL;
-	p->swap_device = 0;
-	p->swap_map = NULL;
-	p->swap_lockmap = NULL;
-	p->lowest_bit = 0;
-	p->highest_bit = 0;
-	p->max = 1;
-	error = namei(specialfile,&swap_inode);
-	if (error)
-		goto bad_swap;
-	error = -EBUSY;
-	if (swap_inode->i_count != 1)
-		goto bad_swap;
-	error = -EINVAL;
-	if (S_ISBLK(swap_inode->i_mode)) {
-		p->swap_device = swap_inode->i_rdev;
-		iput(swap_inode);
-		error = -ENODEV;
-		if (!p->swap_device)
-			goto bad_swap;
-		error = -EBUSY;
-		for (i = 0 ; i < nr_swapfiles ; i++) {
-			if (i == type)
-				continue;
-			if (p->swap_device == swap_info[i].swap_device)
-				goto bad_swap;
-		}
-	} else if (S_ISREG(swap_inode->i_mode))
-		p->swap_file = swap_inode;
-	else
-		goto bad_swap;
-	p->swap_lockmap = (unsigned char *) get_free_page(GFP_USER);
-	if (!p->swap_lockmap) {
-		printk("Unable to start swapping: out of memory :-)\n");
-		error = -ENOMEM;
-		goto bad_swap;
-	}
-	read_swap_page(SWP_ENTRY(type,0), (char *) p->swap_lockmap);
-	if (memcmp("SWAP-SPACE",p->swap_lockmap+4086,10)) {
-		printk("Unable to find swap-space signature\n");
-		error = -EINVAL;
-		goto bad_swap;
-	}
-	memset(p->swap_lockmap+PAGE_SIZE-10,0,10);
-	j = 0;
-	p->lowest_bit = 0;
-	p->highest_bit = 0;
-	for (i = 1 ; i < 8*PAGE_SIZE ; i++) {
-		if (test_bit(i,p->swap_lockmap)) {
-			if (!p->lowest_bit)
-				p->lowest_bit = i;
-			p->highest_bit = i;
-			p->max = i+1;
-			j++;
-		}
-	}
-	if (!j) {
-		printk("Empty swap-file\n");
-		error = -EINVAL;
-		goto bad_swap;
-	}
-	p->swap_map = (unsigned char *) vmalloc(p->max);
-	if (!p->swap_map) {
-		error = -ENOMEM;
-		goto bad_swap;
-	}
-	for (i = 1 ; i < p->max ; i++) {
-		if (test_bit(i,p->swap_lockmap))
-			p->swap_map[i] = 0;
-		else
-			p->swap_map[i] = 0x80;
-	}
-	p->swap_map[0] = 0x80;
-	memset(p->swap_lockmap,0,PAGE_SIZE);
-	p->flags = SWP_WRITEOK;
-	p->pages = j;
-	nr_swap_pages += j;
-	printk("Adding Swap: %dk swap-space\n",j<<2);
-	return 0;
+    if (!suser())
+        return -EPERM;
+    p = swap_info;
+    for (type = 0 ; type < nr_swapfiles ; type++,p++)
+        if (!(p->flags & SWP_USED))
+            break;
+    if (type >= MAX_SWAPFILES)
+        return -EPERM;
+    if (type >= nr_swapfiles)
+        nr_swapfiles = type+1;
+    p->flags = SWP_USED;
+    p->swap_file = NULL;
+    p->swap_device = 0;
+    p->swap_map = NULL;
+    p->swap_lockmap = NULL;
+    p->lowest_bit = 0;
+    p->highest_bit = 0;
+    p->max = 1;
+    error = namei(specialfile,&swap_inode);
+    if (error)
+        goto bad_swap;
+    error = -EBUSY;
+    if (swap_inode->i_count != 1)
+        goto bad_swap;
+    error = -EINVAL;
+    if (S_ISBLK(swap_inode->i_mode)) {
+        p->swap_device = swap_inode->i_rdev;
+        iput(swap_inode);
+        error = -ENODEV;
+        if (!p->swap_device)
+            goto bad_swap;
+        error = -EBUSY;
+        for (i = 0 ; i < nr_swapfiles ; i++) {
+            if (i == type)
+                continue;
+            if (p->swap_device == swap_info[i].swap_device)
+                goto bad_swap;
+        }
+    } else if (S_ISREG(swap_inode->i_mode))
+        p->swap_file = swap_inode;
+    else
+        goto bad_swap;
+    p->swap_lockmap = (unsigned char *) get_free_page(GFP_USER);
+    if (!p->swap_lockmap) {
+        printk("Unable to start swapping: out of memory :-)\n");
+        error = -ENOMEM;
+        goto bad_swap;
+    }
+    read_swap_page(SWP_ENTRY(type,0), (char *) p->swap_lockmap);
+    if (memcmp("SWAP-SPACE",p->swap_lockmap+4086,10)) {
+        printk("Unable to find swap-space signature\n");
+        error = -EINVAL;
+        goto bad_swap;
+    }
+    memset(p->swap_lockmap+PAGE_SIZE-10,0,10);
+    j = 0;
+    p->lowest_bit = 0;
+    p->highest_bit = 0;
+    for (i = 1 ; i < 8*PAGE_SIZE ; i++) {
+        if (test_bit(i,p->swap_lockmap)) {
+            if (!p->lowest_bit)
+                p->lowest_bit = i;
+            p->highest_bit = i;
+            p->max = i+1;
+            j++;
+        }
+    }
+    if (!j) {
+        printk("Empty swap-file\n");
+        error = -EINVAL;
+        goto bad_swap;
+    }
+    p->swap_map = (unsigned char *) vmalloc(p->max);
+    if (!p->swap_map) {
+        error = -ENOMEM;
+        goto bad_swap;
+    }
+    for (i = 1 ; i < p->max ; i++) {
+        if (test_bit(i,p->swap_lockmap))
+            p->swap_map[i] = 0;
+        else
+            p->swap_map[i] = 0x80;
+    }
+    p->swap_map[0] = 0x80;
+    memset(p->swap_lockmap,0,PAGE_SIZE);
+    p->flags = SWP_WRITEOK;
+    p->pages = j;
+    nr_swap_pages += j;
+    printk("Adding Swap: %dk swap-space\n",j<<2);
+    return 0;
 bad_swap:
-	free_page((long) p->swap_lockmap);
-	vfree(p->swap_map);
-	iput(p->swap_file);
-	p->swap_device = 0;
-	p->swap_file = NULL;
-	p->swap_map = NULL;
-	p->swap_lockmap = NULL;
-	p->flags = 0;
-	return error;
+    free_page((long) p->swap_lockmap);
+    vfree(p->swap_map);
+    iput(p->swap_file);
+    p->swap_device = 0;
+    p->swap_file = NULL;
+    p->swap_map = NULL;
+    p->swap_lockmap = NULL;
+    p->flags = 0;
+    return error;
 }
 
 void si_swapinfo(struct sysinfo *val)
