@@ -307,12 +307,11 @@ static int __unused paging_32bit(unsigned long linear)
     unsigned long __unused *PDE;
     unsigned long __unused *PTE;
     unsigned long __unused *PAGE;
+    unsigned long __unused tmp;
     unsigned long __unused CR3;
     unsigned long __unused CR4;
     unsigned long __unused CR0;
     unsigned long __unused *physical;
-
-    pgdir = (unsigned long *)current->tss.cr3;
 
     /*
      * A 4-KByte naturally alignment page directory is located at the physical
@@ -354,7 +353,7 @@ static int __unused paging_32bit(unsigned long linear)
     PDE = (unsigned long *)((unsigned long)PDE & 0xFFFFFFFC);
 
     /* pdt points to PDEs */
-    pde = &pgdir[linear >> 22];
+    pde = PAGE_DIR_OFFSET(current->tss.cr3, linear);
 
     if (pde != PDE)
         panic("PDE != pde");
@@ -423,9 +422,10 @@ static int __unused paging_32bit(unsigned long linear)
         PTE = (unsigned long *)((unsigned long)PTE & 0xFFFFFFFC);
 
         /* Obtain PTE page base address */
-        pde = (unsigned long *)(*pde & 0xFFFFF000);
+        tmp = (*pde & PAGE_MASK);
+        tmp += PAGE_PTR(linear);
         /* pte points to Page table */
-        pte = &pde[(linear >> 12) & 0x3FF];
+        pte = (unsigned long *)tmp;
 
         /* Verify pte and PTE */
         if (pte != PTE)
@@ -472,7 +472,7 @@ static int __unused paging_32bit(unsigned long linear)
     PAGE = (unsigned long *)((unsigned long)PAGE | (linear & 0xFFF));
 
     /* Obtain page address from pte */
-    page = (unsigned char *)(*pte & 0xFFFFF000);
+    page = (unsigned char *)(*pte & PAGE_MASK);
     physical = (unsigned long *)&page[linear & 0xFFF];
 
     if (PAGE != physical)

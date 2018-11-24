@@ -30,7 +30,7 @@ static inline void pf_debug_detect(unsigned long address)
 
 #define pf_debug(...) \
     if (pf_debug == 1) \
-        printk(__VA_ARGS__)
+        printk(__VA_ARGS__); while(1)
 
 #define copy_page(from,to) \
     __asm__ ("cld ; rep ; movsl" : : "S" (from), "D" (to), "c" (1024))
@@ -260,12 +260,39 @@ static void debug_do_wp_page(unsigned long error_code, unsigned long address,
     *pg_table = 0;
 }
 
+/*
+ * Fill in an empty page-table if none exists.
+ */
 static inline unsigned long get_empty_pgtable(struct task_struct *tsk, 
                  unsigned long address)
 {
     unsigned long page;
     unsigned long *p;
 
+    /*
+     *                                          Page Directory 
+     *                                       +------------------+
+     *                                       |                  |
+     *                                       +------------------+
+     *                                       |                  |
+     *                                       +------------------+
+     *                                       |                  |
+     *                                       +------------------+
+     *                                       |                  |
+     *                                       +------------------+
+     *                                       |                  |
+     * linear address                        +------------------+
+     * +-----------------------+          p  |       *p         |
+     * |        address       -|-----(+)---->+------------------+
+     * +-----------------------+      |      |                  |
+     *                                |      +------------------+
+     *                                |      |                  |
+     * CR3                            |      +------------------+
+     * +-----------------------+      |      |                  |
+     * |     tsk->tss.cr3     -|------o----->+------------------+
+     * +-----------------------+
+     *
+     */
     p = PAGE_DIR_OFFSET(tsk->tss.cr3, address);
     if (PAGE_PRESENT & *p)
         return *p;
@@ -273,6 +300,7 @@ static inline unsigned long get_empty_pgtable(struct task_struct *tsk,
         printk("get_empty_pgtable: bad page-directory entry \n");
         *p = 0;
     }
+    /* Allocate new page as new page table */
     page = get_free_page(GFP_KERNEL);
     p = PAGE_DIR_OFFSET(tsk->tss.cr3, address);
     if (PAGE_PRESENT & *p) {
@@ -283,10 +311,12 @@ static inline unsigned long get_empty_pgtable(struct task_struct *tsk,
         printk("get_empty_pgtable: bad page-directory entry \n");
         *p = 0;
     }
+    /* If success to obtain new page, and mark new page as a page table. */
     if (page) {
         *p = page | PAGE_TABLE;
         return *p;
     }
+    /* Dump oom, and no more free memory */
     oom(current);
     *p = BAD_PAGETABLE | PAGE_TABLE;
     return 0;
@@ -299,10 +329,60 @@ static void debug_do_no_page(unsigned long error_code, unsigned long address,
     unsigned long page;
     struct vm_area_struct *mpnt;
 
+    /* Verify whether page table exists! If no, and allocate a new page as
+     * page table. */
     page = get_empty_pgtable(tsk, address);
     if (!page)
         return;
     page &= PAGE_MASK;
+    /*
+     *
+     * #define PAGE_SHIFT                12
+     * #define SIZEOF_PTR_LOG2           2
+     * #define PAGE_SIZE                 ((unsigned long)1 << PAGE_SHIFT)
+     * #define PTR_MASK                  (~(sizeof(void *)-1))
+     * #define PAGE_MASK                 (~(PAGE_SIZE - 1))
+     * #define PAGE_PTR(address) \
+     *      ((unsigned long)(address)>>(PAGE_SHIFT - SIZEOF_PTR_LOG2) & \
+     *                                  PTR_MASK & ~PAGE_MASK)
+     *
+     * address:
+     * 31                 22 21                     10 9                  0
+     * +--------------------+-------------------------+-------------------+
+     * |                    |                         |                   |
+     * +--------------------+-------------------------+-------------------+
+     *                      | <- PAGE_PTR(address) -> | 
+     *
+     *
+     *
+     *                                                      Page Table
+     *                                                   +---------------+
+     *                                                   |               |
+     *                                                   +---------------+
+     * Linear address                                    |               |
+     * +--------------------+      PAGE_PTR(address)     +---------------+
+     * |                   -|------------(+)------------>|      tmp      |
+     * +--------------------+             |              +---------------+
+     *                                    |              |               |
+     *    Page Directory                  |              +---------------+
+     * +--------------------+             |              |               |
+     * |                    |             |              +---------------+
+     * +--------------------+             |              |               |
+     * |                    |             |              +---------------+
+     * +--------------------+             |              |               |
+     * |        page       -|-------------o------------->+---------------+
+     * +--------------------+           
+     * |                    |
+     * +--------------------+           
+     * |                    |
+     * +--------------------+           
+     * |                    |
+     * +--------------------+          CR3
+     * |                    |          +----------------------+
+     * +--------------------+<---------|-                     |
+     *                                 +----------------------+
+     *   
+     */
     page += PAGE_PTR(address);
     tmp = *(unsigned long *)page;
     if (tmp & PAGE_PRESENT)

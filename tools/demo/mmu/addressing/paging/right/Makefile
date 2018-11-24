@@ -1,0 +1,1 @@
+obj-$(CONFIG_DEBUG_MMU_PAGING_RIGHT) += right.o

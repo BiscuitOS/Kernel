@@ -1,0 +1,277 @@
+menu "Paging Access Right Control"
+
+config DEBUG_MMU_PAGING_RIGHT
+	bool "Paging access right control"
+	help
+	  Paging access right control
+
+if DEBUG_MMU_PAGING_RIGHT
+
+comment "Supervisor-/User-mode"
+
+choice
+
+	prompt "Choice access mode"
+
+config DEBUG_MMU_RT_SUP
+	bool "supervisor-mode access"
+	help
+	  For supevisor-mode access.
+
+config DEBUG_MMU_RT_USER
+	bool "user-mode access"
+	help
+	  For user-mode access.
+
+endchoice
+
+config DEBUG_MMU_RT_ESTABLISH
+	bool "Establish specify supervisor-/user- mode paging structure"
+	help
+	  Establish specify supervisor-mode/user-mode paging structure.
+
+if DEBUG_MMU_RT_ESTABLISH
+
+choice
+	prompt "Choice address mode"
+
+config DEBUG_RT_EST_SUP
+	bool "establish supervisor-mode address"
+	help
+	  Establish supervisor-mode address.
+
+config DEBUG_RT_EST_USER
+	bool "establish user-mode address"
+	help
+	  Establish user-mode address.
+
+endchoice
+
+config DEBUG_RT_EST_VA
+	hex "establish virtual address"
+	default 0x06400000
+	help
+	  Establish virtual address.
+
+config DEBUG_RT_EST_VL
+	hex "establish default value on virtual address"
+	default 0x66886688
+	help
+	  The value of virtual address.
+
+endif # DEBUG_MMU_RT_ESTABLISH
+
+if DEBUG_MMU_RT_SUP
+
+config DEBUG_RT_SUP_SUPDATA
+	bool "Read data from supervisor-mode address"
+	help
+	  Data read from supervisor-mode address.
+
+config DEBUG_RT_SUP_USERDATA
+	bool "Read data from user-mode address"
+	help
+	  Data read from user-mode address.
+
+if DEBUG_RT_SUP_USERDATA
+
+choice
+	prompt "Choice CR4.SMAP"
+
+config DEBUG_RT_SUP_RU_SMAP0
+	bool "CR4.SMAP == 0 (read any user-mode address)"
+	help
+	  Read any user-mode address.
+
+config DEBUG_RT_SUP_RU_SMAP1
+	bool "CR4.SMAP == 1 (read depend on EFLAGS.AC)"
+	help
+	  Read depend on EFLAGS.AC.
+
+endchoice # CR4.SMAP
+
+if DEBUG_RT_SUP_RU_SMAP1
+
+choice
+	prompt "Choice EFLAGS.AC"
+
+config DEBUG_RT_SUP_RU_EFLAGSAC0
+	bool "EFLAGS.AC == 0 Doesn't read user-mode address"
+	help
+	  Read any user-mode with protect key.
+
+config DEBUG_RT_SUP_RU_EFLAGSAC1
+	bool "EFLAGS.AC == 1 Read any user-mode with protect key"
+
+endchoice # EFLAGS.AC
+
+endif # DEBUG_RT_SUP_RU_SMAP1
+
+endif # DEBUG_RT_SUP_USERDATA
+
+config DEBUG_RT_WR_SUP
+	bool "Write Data into supervisor-mode address"
+	help
+	  Write data into supervisor-mode address.
+
+if DEBUG_RT_WR_SUP
+
+choice 
+
+	prompt "Choice CR0.WP"
+
+config DEBUG_RT_WR_SUP_WP0
+	bool "CR0.WP == 0 (write to any supervisor-mode address)"
+	help
+	  Write data into any supervisor-mode address.
+
+config DEBUG_RT_WR_SUP_WP1
+	bool "CR0.WP == 1 (write depend on W/R on paging-structure)"
+	help
+	  Write data into supervisor-mode address depend W/R flag
+	  on paging-structure.
+
+endchoice
+
+if DEBUG_RT_WR_SUP_WP1
+
+choice 
+
+	prompt "Choice W/R on Page-Directory"
+
+config DEBUG_RT_WR_SUP_PGD_WR
+	bool "Set R/W flag on Page-Directory"
+	help
+	  Write and Read on Page-Table.
+
+config DEBUG_RT_WR_SUP_PGD_NW
+	bool "Clear R/W flag on Page-Directory"
+	help
+	  No write and read on Page-Table.
+
+endchoice  # WR on PGD
+
+choice 
+
+	prompt "Choice W/R on Page-Table"
+
+config DEBUG_RT_WR_SUP_PTE_WR
+	bool "Set R/W flag on Page-Table"
+	help
+	  Write and Read on Page.
+
+config DEBUG_RT_WR_SUP_PTE_NW
+	bool "Clear R/W flag on Page-Table"
+	help
+	  No write and read on Page.
+
+endchoice # WR on PGT
+
+endif # DEBUG_RT_WR_SUP_WP1
+
+endif # DEBUG_RT_WR_SUP
+
+config DEBUG_RT_WR_USER
+	bool "Write Data into user-mode address"
+	help
+	  Write data into user-mode address.
+
+if DEBUG_RT_WR_USER
+
+choice 
+	prompt "Choice CR0.WP control bit"
+
+config DEBUG_RT_WR_USER_CR0WP0
+	bool "CR0.WP == 0"
+	help
+	  CR0.WP == 0
+
+config DEBUG_RT_WR_USER_CR0WP1
+	bool "CR0.WP == 1"
+	help
+	  CR0.WP == 1
+
+endchoice # CR0.WR 
+
+choice
+	prompt "Choice CR4.SMAP control bit"
+
+config DEBUG_RT_WR_USER_CR4SMAP0
+	bool "CR4.SMAP == 0"
+	help
+	  CR4.SMAP == 0
+
+config DEBUG_RT_WR_USER_CR4SMAP1
+	bool "CR4.SMAP == 1"
+	help
+	  CR4.SMAP == 1
+
+endchoice # CR4.SMAP
+
+if DEBUG_RT_WR_USER_CR0WP1
+
+choice 
+
+	prompt "Choice Page-Direct R/W flag"
+
+config DEBUG_RT_WR_USER_PGD_RDONLY
+	bool "R/W == 0"
+	help
+	  R/W == 0
+
+config DEBUG_RT_WR_USER_PGD_RW
+	bool "R/W == 1"
+	help
+	  R/W == 1
+
+endchoice # PGD-R/W
+
+choice 
+
+	prompt "Choice Page-Table R/W flag"
+
+config DEBUG_RT_WR_USER_PGT_RDONLY
+	bool "R/W == 0"
+	help
+	  R/W == 0
+
+config DEBUG_RT_WR_USER_PGT_WR
+	bool "R/W == 1"
+	help
+	  R/W == 1
+
+endchoice # PGT-R/W
+
+endif # DEBUG_RT_WR_USER_CR0WP1
+
+if DEBUG_RT_WR_USER_CR4SMAP1
+
+choice 
+
+	prompt "Choice EFLAGS.AC flag"
+
+config DEBUG_RT_WR_USER_EFLAGSAC0
+	bool "EFLAGS.AC == 0"
+	help
+	  EFLAG.AC == 0
+
+config DEBUG_RT_WR_USER_EFLAGSAC1
+	bool "EFLAGS.AC == 1"
+	help
+	  EFLAGS.AC == 1
+
+endchoice # EFLAGS.AC
+
+endif # DEBUG_RT_WR_USER_CR4SMAP1
+
+endif # DEBUG_RT_WR_USER
+
+endif # DEBUG_MMU_RT_SUP
+
+if DEBUG_MMU_RT_USER
+
+endif # DEBUG_MMU_RT_USER
+
+endif # DEBUG_MMU_PAGING_RIGHT
+
+endmenu

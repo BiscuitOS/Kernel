@@ -290,6 +290,9 @@ endif # DEBUG_PGT_BASE
 # page-fault
 source "tools/demo/mmu/addressing/paging/page-fault/Kconfig"
 
+# paging right
+source "tools/demo/mmu/addressing/paging/right/Kconfig"
+
 endif # DEBUG_MMU_PAGING
 
 
