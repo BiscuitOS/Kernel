@@ -2,7 +2,7 @@
 # Logical-address Mechanism
 #
 
-menu "logical-address addressable/addresssing"
+menu "Logical address"
 
 config DEBUG_MMU_LA
 	bool "Logical-address"

@@ -456,7 +456,7 @@ clean: $(clean-dirs)
 		-o -name '.*.d' -o -name '.*.tmp' -o -name '*.mod.c' \
 		-o -name modules.builtin -o -name '.tmp_*.o.*' \
 		-o -name '.debug.*' \
-		-o -name '*.i' \
+		-o -name '*.i' -o -name '*.elf' \
 		-o -name vmlinux.lds \
 		-o -name 'bootsect' -o -name 'setup' \
 		-o -name '.debug_*' -o -name 'bootloader' \

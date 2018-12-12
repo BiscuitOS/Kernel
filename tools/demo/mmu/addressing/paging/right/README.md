@@ -122,4 +122,36 @@ The following items detail how paging determines access rights:
           to any user-mode address.
 ```
   
+### User-mode access
 
+-- Data read
+
+```
+   Access rights depends on the mode of the linear address:
+
+   * Data may be read from any user-mode address with a protection key for 
+     which read access is permitted.
+
+   * Data may not be read from any supervisor-mode address.
+```
+
+-- Data write
+
+```
+   Access rights depend on the mode of the linear address:
+
+   * Data may be written to any user-mode address with a translation for which
+     the R/W flag is 1 in every paging-structure entry controlling the 
+     translation and with a protection key for which write access is permitted.
+     
+   * Data may not be written to any supervisor-mode address.
+```
+
+A processor may cache information from the paging-structure entries in TLB and
+paging-structure caches. These structures may include information about access
+rights. The processor may enforce access rights based on the TLBs and 
+paging-structure caches instead of on the paging structure in memory.
+
+This fact implies that, if software modifies a paging-structure entry to change
+access rights, the processor might not use that change for a subsequent access
+to an effected linear address.

@@ -1,4 +1,4 @@
-menu "Segmentation mechanism: segment/selector/descriptor"
+menu "Segmentation"
 
 config DEBUG_MMU_SEGMENT
 	bool "Segmentation mechanism on IA32"

@@ -1,4 +1,4 @@
-menu "Paging mechanism"
+menu "Paging"
 
 config DEBUG_MMU_PAGING
 	bool "X86 Paging mechanism"
@@ -292,6 +292,9 @@ source "tools/demo/mmu/addressing/paging/page-fault/Kconfig"
 
 # paging right
 source "tools/demo/mmu/addressing/paging/right/Kconfig"
+
+# TLB
+source "tools/demo/mmu/addressing/paging/TLB/Kconfig"
 
 endif # DEBUG_MMU_PAGING
 

@@ -1,0 +1,169 @@
+menu "Virtual address"
+
+config DEBUG_MMU_VA
+	bool "Virtual address and Virtual space"
+	help
+	  Virtual address and Virtual space.
+
+if DEBUG_MMU_VA
+
+choice
+
+	prompt "Choice Kernel/User Virtual Address Space"
+
+config DEBUG_VA_KERNEL
+	bool "Kernel Virtual Address Space"
+	help
+	  Kernel Virtual Address Space.
+
+config DEBUG_VA_USER
+	bool "User Virtual Address Space"
+	help
+	  User Virtual Address Space.
+
+endchoice
+
+if DEBUG_VA_KERNEL
+
+config DEBUG_VA_CODE
+	bool ".text or .code segment"
+	help
+	  Code segment virtual space.
+
+if DEBUG_VA_CODE
+
+
+endif # DEBUG_VA_CODE
+
+config DEBUG_VA_DATA
+	bool ".data segment"
+	help
+	  Data segment virtual space.
+
+config DEBUG_VA_BSS
+	bool ".bss segment"
+	help
+	  BSS, uninitialize, or zero various.
+
+config DEBUG_VA_HEAP
+	bool "Heap"
+	help
+	  Heap
+
+config DEBUG_VA_MMAP
+	bool "mmap segment"
+	help
+	  Mmap segment.
+
+config DEBUG_VA_STACK
+	bool "Stack"
+	help
+	  Stack 
+
+endif # DEBUG_VA_KERNEL
+
+if DEBUG_VA_USER
+
+comment "1. Choice Target Architecture"
+
+choice
+
+	prompt "Choice Architecture Compiler"
+
+config DEBUG_VA_USER_I386
+	bool "Intel i386 (32bit) Machine"
+	help
+	  I386 32bit Mechine.
+
+config DEBUG_VA_USER_IA64
+	bool "Intel IA64 (64 bit) Mechine"
+	help
+	  IA64 64bit Mechine.
+
+endchoice
+
+config DEBUG_VA_USER_DATA
+	bool ".data segment"
+	help
+	  Data segment.
+
+if DEBUG_VA_USER_DATA
+
+config DEBUG_VA_USER_DATA_GNINIT
+	bool "Global Un-Initialize Data"
+	help
+	  Global Un-Initizlize Data.
+
+config DEBUG_VA_USER_DATA_GINITZERO
+	bool "Global Inited Zero Data"
+	help
+	  Global Inited Zero Data.
+
+config DEBUG_VA_USER_DATA_GINITNZERO
+	bool "Global Inited Non-Zero Data"
+	help
+	  Globl Inited No-Zero Data.
+
+config DEBUG_VA_USER_DATA_SNINIT
+	bool "Static Un-Initialize Data"
+	help
+	  Static Un-Initialize Data.
+
+config DEBUG_VA_USER_DATA_SINITZERO
+	bool "Static Inited Zero Data"
+	help
+	  Static Inited Zero Data.
+
+config DEBUG_VA_USER_DATA_SINITNZERO
+	bool "Static Inited Non-Zero Data"
+	help
+	  Static Inited Non-Zero Data.
+
+config DEBUG_VA_USER_DATA_LSNINIT
+	bool "Local Static Un-Initialize Data"
+	help
+	  Local Static Un-Initialize Data.
+
+config DEBUG_VA_USER_DATA_LSINITZERO
+	bool "Local Static Inited Zero Data"
+	help
+	  Local Static Inited Zero Data.
+
+config DEBUG_VA_USER_DATA_LSINITNZERO
+	bool "Local Static Inited Non-Zero Data"
+	help
+	  Local Static Inited Non-Zero Data.
+
+config DEBUG_VA_USER_DATA_LNINIT
+	bool "Local Un-Initialize Data"
+	help
+	  Local Un-Initizlize Data.
+
+config DEBUG_VA_USER_DATA_LINITZERO
+	bool "Local Inited Zero Data"
+	help
+	  Local Inited Zero Data.
+
+config DEBUG_VA_USER_DATA_LINITNZERO
+	bool "Local Inited Non-Zero Data"
+	help
+	  Local Inited No-Zero Data.
+
+config DEBUG_VA_USER_DATA_HEAP
+	bool "Heap Data"
+	help
+	  Data on Heap.
+
+config DEBUG_VA_USER_DATA_MMAP
+	bool "Mmap Data"
+	help
+	  Data on Mmap.
+
+endif # DEBUG_VA_USER_DATA
+
+endif # DEBUG_VA_USER
+
+endif # DEBUG_MMU_VA
+
+
+endmenu

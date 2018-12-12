@@ -1,0 +1,19 @@
+menu "Translation lookaside Buffers (TLBs)"
+
+config DEBUG_MMU_TLB
+	bool "Translation lookaside buffer (TLB)"
+	help
+	  Translation lookaside buffer (TLB).
+
+if DEBUG_MMU_TLB
+
+
+config DEBUG_TLB_PCID
+	bool "Process-Context Identifies (PCIDs)"
+	help
+	  The PCIDs.
+
+endif # DEBUG_MMU_TLB
+
+
+endmenu

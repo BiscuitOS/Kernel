@@ -11,8 +11,17 @@ config DEBUG_ADDRESSING
 
 if DEBUG_ADDRESSING
 
+# Virtual address
+source "tools/demo/mmu/addressing/virtual_address/Kconfig"
+
 # Logical address
 source "tools/demo/mmu/addressing/logical_address/Kconfig"
+
+# Linear address
+source "tools/demo/mmu/addressing/linear_address/Kconfig"
+
+# Physical address
+source "tools/demo/mmu/addressing/physical_address/Kconfig"
 
 # Segmentation
 source "tools/demo/mmu/addressing/segment/Kconfig"
