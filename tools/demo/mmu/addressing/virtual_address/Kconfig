@@ -23,44 +23,6 @@ config DEBUG_VA_USER
 
 endchoice
 
-if DEBUG_VA_KERNEL
-
-config DEBUG_VA_CODE
-	bool ".text or .code segment"
-	help
-	  Code segment virtual space.
-
-if DEBUG_VA_CODE
-
-
-endif # DEBUG_VA_CODE
-
-config DEBUG_VA_DATA
-	bool ".data segment"
-	help
-	  Data segment virtual space.
-
-config DEBUG_VA_BSS
-	bool ".bss segment"
-	help
-	  BSS, uninitialize, or zero various.
-
-config DEBUG_VA_HEAP
-	bool "Heap"
-	help
-	  Heap
-
-config DEBUG_VA_MMAP
-	bool "mmap segment"
-	help
-	  Mmap segment.
-
-config DEBUG_VA_STACK
-	bool "Stack"
-	help
-	  Stack 
-
-endif # DEBUG_VA_KERNEL
 
 if DEBUG_VA_USER
 
@@ -71,7 +33,7 @@ choice
 	prompt "Choice Architecture Compiler"
 
 config DEBUG_VA_USER_I386
-	bool "Intel i386 (32bit) Machine"
+	bool "Intel i386 (32bit) Mechine"
 	help
 	  I386 32bit Mechine.
 
@@ -81,6 +43,8 @@ config DEBUG_VA_USER_IA64
 	  IA64 64bit Mechine.
 
 endchoice
+
+endif # DEBUG_VA_USER 
 
 config DEBUG_VA_USER_DATA
 	bool ".data segment"
@@ -159,9 +123,12 @@ config DEBUG_VA_USER_DATA_MMAP
 	help
 	  Data on Mmap.
 
-endif # DEBUG_VA_USER_DATA
+config DEBUG_VA_USER_DATA_CONST
+	bool "Const Data"
+	help
+	  Const Data.
 
-endif # DEBUG_VA_USER
+endif # DEBUG_VA_USER_DATA
 
 endif # DEBUG_MMU_VA
 
