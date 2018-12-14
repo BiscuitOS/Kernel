@@ -119,6 +119,20 @@ static int   *SInitNZeroP_int   = &SInitNZero_int;
 static long  *SInitNZeroP_long  = &SInitNZero_long;
 #endif
 
+#ifdef CONFIG_DEBUG_VA_USER_DATA_CONST
+#define CONST_STR    "Hello BiscuitOS"
+
+int const const_int = 0x99;
+
+enum CONST_DATA {
+    CONST_ZERO,
+    CONST_ONE,
+    CONST_TWO,
+    CONST_THREE
+};
+enum CONST_DATA CDATA;
+#endif
+
 int main()
 {
     /* Defined on ld-scripts */
@@ -132,10 +146,10 @@ int main()
     int mmap_fd;
 
     heap_base = (char *)malloc(sizeof(char));
-    mmap_fd = open("/dev/mem", O_RDONLY);
+    mmap_fd = open("/dev/mem", O_RDWR | O_SYNC);
     if (mmap_fd > 0)
-        mmap_base = (unsigned long *)mmap(0, 4096, PROT_READ, MAP_SHARED,
-                                                  mmap_fd, 50000000);
+        mmap_base = (unsigned long *)mmap((void *)0x80000000, 1024, 
+                PROT_READ | PROT_WRITE, MAP_SHARED, mmap_fd, 0x50000000);
 
 #ifdef CONFIG_DEBUG_VA_USER_DATA_LSNINIT
     /* Local static un-initialize data */
@@ -640,6 +654,16 @@ int main()
            (unsigned long)MP_short,
            (unsigned long)MP_int,
            (unsigned long)MP_long);
+#endif
+
+#ifdef CONFIG_DEBUG_VA_USER_DATA_CONST
+    printf("\nContant Data:\n"
+           "[*]#define CONST_STR          address: %#lx o\n"
+           "[*]int const const_int        address: %#lx |\n"
+           "[*]enum CONST_DATA            address: %#lx V\n",
+           (unsigned long)CONST_STR,
+           (unsigned long)&const_int,
+           (unsigned long)&CDATA);
 #endif
 
     if (mmap_base)

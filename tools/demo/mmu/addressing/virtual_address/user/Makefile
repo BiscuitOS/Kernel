@@ -68,5 +68,12 @@ ifdef CONFIG_DEBUG_VA_USER_DATA_MMAP
 INDIC_FLAGS += -DCONFIG_DEBUG_VA_USER_DATA_MMAP
 endif
 
+ifdef CONFIG_DEBUG_VA_USER_DATA_CONST
+INDIC_FLAGS += -DCONFIG_DEBUG_VA_USER_DATA_CONST
+endif
+
+## BBS not on COMMON 
+INDIC_FLAGS += -fno-common
+
 DO_HERE     :=$(shell $(obj)/do.sh $(INDIC_FLAGS))
 $(info " SH      tools/demo/mmu/addressing/virtual_address/user$(DO_HERE)")
