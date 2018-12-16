@@ -76,4 +76,4 @@ endif
 INDIC_FLAGS += -fno-common
 
 DO_HERE     :=$(shell $(obj)/do.sh $(INDIC_FLAGS))
-$(info " SH      tools/demo/mmu/addressing/virtual_address/user$(DO_HERE)")
+$(info " SH      tools/demo/mmu/addressing/virtual_address/data/user$(DO_HERE)")

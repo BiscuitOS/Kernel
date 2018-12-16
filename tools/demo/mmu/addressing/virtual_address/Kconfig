@@ -11,15 +11,25 @@ choice
 
 	prompt "Choice Kernel/User Virtual Address Space"
 
-config DEBUG_VA_KERNEL
+config DEBUG_VA_KERN
 	bool "Kernel Virtual Address Space"
 	help
 	  Kernel Virtual Address Space.
+
+config DEBUG_VA_KERN_LEG
+	bool "Legacy Kernel Virtual Address Space"
+	help
+	  Kernel Virtual Address Space on legacy kernel version.
 
 config DEBUG_VA_USER
 	bool "User Virtual Address Space"
 	help
 	  User Virtual Address Space.
+
+config DEBUG_VA_USER_LEG
+	bool "Legacy User Virtual Address Space"
+	help
+	  User Virtual Address Space on legacy kernel version.
 
 endchoice
 

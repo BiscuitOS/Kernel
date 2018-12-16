@@ -1,7 +1,7 @@
 #/bin/bash
 
 CC=$*
-PWD=`pwd`"/tools/demo/mmu/addressing/virtual_address/user"
+PWD=`pwd`"/tools/demo/mmu/addressing/virtual_address/data/user"
 
 ##
 # Compile data.c
