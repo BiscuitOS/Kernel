@@ -194,6 +194,113 @@ certain kinds of security attacks. The details, of cause, are hardware and
 operating-system specific and likely to change over time. Of note is that both
 Standard C and C++ allow const items to be placed in the read-only memory.
 
+# Kernel Address Space
+
+Division of address space in a ration of 3:1 is only approximate reflection of
+the situation in the kernel as the kernel address space itself is split into 
+various sections. Figure graphically illustrates the situation.
+
+```
+4G +----------------+
+   |                |
+   |     Fixmpas    |
+   |                |
+   +----------------+ FIXADDR_START
+   |   Persistent   |
+   |    Mappings    |
+   +----------------+-- PKMAP_BASE
+   |                |
+   +----------------+-- VMALLOC_END
+   |                |
+   |                |
+   |    VMALLOC     |
+   |                |
+   |                |
+   +----------------+-- VMALLOC_START
+   |                | A
+   |                | |
+   |                | 8M
+   |                | |
+   |                | V
+   +----------------+ high_memory
+   |                |
+   |                |
+   |                |
+   | Mapping of all |
+   |  physical page |
+   |     frames     |
+   |                |
+   |                |
+   +----------------+
+   |     .bss       |
+   +----------------+
+   |     .data      |
+   +----------------+
+   | 8k thread size |
+   +----------------+ 
+   |     .init      |
+   +----------------+
+   |     .text      |
+   +----------------+ 0xC0008000
+   | swapper_pg_dir |
+   +----------------+ 0xC0004000
+   |                |
+3G +----------------+ TASK_SIZE
+   |                |
+   |                |
+   |                |
+0G +----------------+
+
+```
+
+#### Dirct mapping of physical page frames
+
+The first section of the address space is used to map all physical pages of the
+system into virtual address space of the kernel. Because this address space 
+begins at an offset of 0xC0000000 -- the frequently mentioned 3GB -- each
+virtual x corresponds to the physcial address x -- 0xC0000000, and is therefore
+a simple linear shift.
+
+As the figure shows, the direct mapping area extends from 0xC0000000 to the 
+**high_memory** address. Because the virtual address space of the kernel 
+comprises only 1GiB, a maximum of 1 GiB of RAM memory can be mapped. The fact
+that the maximum memory configuration on IA32 systems (without PAE) can be up 
+to 4 GiB raises the question of what to do with the remaining memory.
+
+Here's the bad news. The kernel cannot map the whose of physical memory at once
+if it is larger than 896 MiB. This value is even less than the previously 
+stated maximum limit of 1 GiB because the kernel must reserve the last 128 MiB
+of its address space for other purposes which 1 explain shortly. Adding these
+128 MiB to the 896 MiB of direct RAM mapping results in a total virtual kernel
+address space of 1024 MiB = 1 GiB. The kernel uses the two frequently employed
+abbreviations **normal** and **highmem** to distinguish between pages that can
+be mapped directly and those than cannot.
+
+#### VMALLOC
+
+Virtual contiguous memory areas that are not contiguous in physical memory can
+be reserved in the **vmalloc** area. While this mechanism is commonly used with
+user processor, the kernel itself tries to avoid non-contiguous physical 
+addresses as best it can. It usually succeeds because most of the large memory
+blocks are allocated for the kernel at boot time when RAM is not yet fragmented.
+However, on systems that have been running for longer periods, situations can
+arise in which the kernel requires physical memory but the space available is
+not contiguous. A prime example of such a situation is when modules are loaded
+dynamically.
+
+#### Persistent mapping
+
+Persisternt mappins are used to map non-persistent pages from the highmem area
+into the kernel.
+
+#### Fixmaps
+
+Fixmaps are virtual address space entries associated with a fixed but freely 
+selectable page in physical address space. In contrast to directly mapped page
+that are associated with RAM memory by means of a fixed formula, the 
+association between a virtual fixmap address and the position in RAM memory
+can be freely defined and is then always observed by the kernel.
+
 # Reference
 
 [Wikipedia: Virtual address space](https://en.wikipedia.org/wiki/Virtual_address_space)
@@ -203,3 +310,5 @@ Standard C and C++ allow const items to be placed in the read-only memory.
 [Linux Programming by Example: The Fundamentals: 3.1](http://www.informit.com/articles/article.aspx?p=173438)
 
 [Computer Architecture English note](https://biscuitos.github.io/blog/Architecture_English_note/)
+
+[Professional Linux Kernel Architecture](https://www.oreilly.com/library/view/professional-linux-kernel/9780470343432/)

@@ -54,8 +54,6 @@ config DEBUG_VA_USER_IA64
 
 endchoice
 
-endif # DEBUG_VA_USER 
-
 config DEBUG_VA_USER_DATA
 	bool ".data segment"
 	help
@@ -139,6 +137,41 @@ config DEBUG_VA_USER_DATA_CONST
 	  Const Data.
 
 endif # DEBUG_VA_USER_DATA
+
+endif # DEBUG_VA_USER 
+
+if DEBUG_VA_KERN
+
+config DEBUG_VA_KERN_DATA
+	bool ".data segment"
+	help
+	  Data segment.
+
+if DEBUG_VA_KERN_DATA
+
+config DEBUG_VA_KERNEL_DMA
+	bool "DMA Virtual Space (kmalloc: GFP_DMA)"
+	help
+	  Memory from DMA area.
+
+config DEBUG_VA_KERNEL_NORMAL
+	bool "Normal Virtual Space (kmalloc: GFP_KERNEL)"
+	help
+	  Memory from Normal area.
+
+config DEBUG_VA_KERNEL_VMALLOC
+	bool "Vmalloc Virtual Space (vmalloc)"
+	help
+	  Memory from Vmalloc.
+
+config DEBUG_VA_KERNEL_KMAP
+	bool "KMAP Virtual Space (kmap)"
+	help
+	  Memory from KMAP.
+
+endif # DEBUG_VA_KERN_DATA
+
+endif # DEBUG_VA_KERN
 
 endif # DEBUG_MMU_VA
 

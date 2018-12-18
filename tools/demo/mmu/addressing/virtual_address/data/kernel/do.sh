@@ -25,13 +25,13 @@ echo 'all:' >> ${MF}
 echo '\t$(MAKE) -C $(kern_dataDIR) M=$(PWD) modules' >> ${MF}
 echo '' >> ${MF}
 echo 'install:' >> ${MF}
-echo '\t$(Q)sudo insmod kern_data.ko' >> ${MF}
-echo '\tdmesg | tail -n 10' >> ${MF}
-echo '\t$(Q)sudo rmmod kern_data' >> ${MF}
+echo '\t@sudo insmod kern_data.ko' >> ${MF}
+echo '\t@dmesg | tail -n 10' >> ${MF}
+echo '\t@sudo rmmod kern_data' >> ${MF}
 echo '' >> ${MF}
 echo 'clean:' >> ${MF}
-echo '\trm -rf *.o *.o.d *~ core .depend .*.cmd *.ko *.ko.unsigned *.mod.c .tmp_ \' >> ${MF}
-echo '             .cache.mk *.save *.bak Modules.* modules.order Module.markers *.b' >> ${MF}
+echo '\t@rm -rf *.o *.o.d *~ core .depend .*.cmd *.ko *.ko.unsigned *.mod.c .tmp_ \' >> ${MF}
+echo '    .cache.mk *.save *.bak Modules.* modules.order Module.* *.b' >> ${MF}
 echo '' >> ${MF}
 echo 'CFLAGS_kern_data.o := -Wall $(DEMOINCLUDE)' >> ${MF}
 echo "CFLAGS_kern_data.o += $*" >> ${MF}
@@ -40,8 +40,9 @@ echo '' >> ${MF}
 # Copy SRC file
 cp ${SRC} ${PWD}/.tmp
 # Compile Kernel module
-make -s -C ${PWD}/.tmp > /dev/null 2>&1
+#make -s -C ${PWD}/.tmp > /dev/null 2>&1
+make -s -C ${PWD}/.tmp 
 # install ko
 cp ${DET} ${PWD}
 # Rmove tmpdir
-rm -rf ${PWD}/.tmp
+#rm -rf ${PWD}/.tmp

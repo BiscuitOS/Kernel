@@ -1,8 +1,28 @@
 obj-$(CONFIG_DEBUG_VA_KERN)   += data.o
 
 ## Newest Kernel version
+
+ifdef CONFIG_DEBUG_VA_KERNEL_DMA
+INDIC_FLAGS += -DCONFIG_DEBUG_VA_KERNEL_DMA
+endif
+
+ifdef CONFIG_DEBUG_VA_KERNEL_NORMAL
+INDIC_FLAGS += -DCONFIG_DEBUG_VA_KERNEL_NORMAL
+endif
+
+ifdef CONFIG_DEBUG_VA_KERNEL_HIGH
+INDIC_FLAGS += -DCONFIG_DEBUG_VA_KERNEL_HIGH
+endif
+
+ifdef CONFIG_DEBUG_VA_KERNEL_VMALLOC
+INDIC_FLAGS += -DCONFIG_DEBUG_VA_KERNEL_VMALLOC
+endif
+
+ifdef CONFIG_DEBUG_VA_KERNEL_KMAP
+INDIC_FLAGS += -DCONFIG_DEBUG_VA_KERNEL_KMAP
+endif
+
 INDIC_FLAGS += -fno-common 
-INDIC_FLAGS += -DDEBUG_A
 
 DO_HERE     :=$(shell $(obj)/do.sh $(INDIC_FLAGS))
 $(info " SH      tools/demo/mmu/addressing/virtual_address/data/kernel$(DO_HERE)")
