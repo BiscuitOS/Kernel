@@ -203,33 +203,48 @@ various sections. Figure graphically illustrates the situation.
 ```
 4G +----------------+
    |                |
-   |     Fixmpas    |
+   +----------------+-- FIXADDR_TOP
    |                |
-   +----------------+ FIXADDR_START
-   |   Persistent   |
-   |    Mappings    |
+   |                | FIX_KMAP_END
+   |     Fixmap     |
+   |                | FIX_KMAP_BEGIN
+   |                |
+   +----------------+-- FIXADDR_START
+   |                |
+   |                |
+   +----------------+--
+   |                | A
+   |                | |
+   |   Persistent   | | LAST_PKMAP * PAGE_SIZE
+   |    Mappings    | |
+   |                | V
    +----------------+-- PKMAP_BASE
    |                |
-   +----------------+-- VMALLOC_END
+   +----------------+-- VMALLOC_END / MODULE_END
    |                |
    |                |
    |    VMALLOC     |
    |                |
    |                |
-   +----------------+-- VMALLOC_START
+   +----------------+-- VMALLOC_START / MODULE_VADDR
    |                | A
    |                | |
-   |                | 8M
+   |                | | VMALLOC_OFFSET
    |                | |
    |                | V
-   +----------------+ high_memory
+   +----------------+-- high_memory
    |                |
    |                |
    |                |
    | Mapping of all |
    |  physical page |
    |     frames     |
+   |    (Normal)    |
    |                |
+   |                |
+   +----------------+-- MAX_DMA_ADDRESS
+   |                |
+   |      DMA       |
    |                |
    +----------------+
    |     .bss       |
@@ -245,7 +260,7 @@ various sections. Figure graphically illustrates the situation.
    | swapper_pg_dir |
    +----------------+ 0xC0004000
    |                |
-3G +----------------+ TASK_SIZE
+3G +----------------+-- TASK_SIZE / PAGE_OFFSET
    |                |
    |                |
    |                |

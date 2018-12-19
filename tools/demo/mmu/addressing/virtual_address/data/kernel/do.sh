@@ -26,7 +26,7 @@ echo '\t$(MAKE) -C $(kern_dataDIR) M=$(PWD) modules' >> ${MF}
 echo '' >> ${MF}
 echo 'install:' >> ${MF}
 echo '\t@sudo insmod kern_data.ko' >> ${MF}
-echo '\t@dmesg | tail -n 10' >> ${MF}
+echo '\t@dmesg | tail -n 18' >> ${MF}
 echo '\t@sudo rmmod kern_data' >> ${MF}
 echo '' >> ${MF}
 echo 'clean:' >> ${MF}

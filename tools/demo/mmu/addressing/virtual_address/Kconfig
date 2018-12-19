@@ -164,10 +164,20 @@ config DEBUG_VA_KERNEL_VMALLOC
 	help
 	  Memory from Vmalloc.
 
+config DEBUG_VA_KERNEL_MODULE
+	bool "Module Virtual Space (module)"
+	help
+	  Memory from module.
+
 config DEBUG_VA_KERNEL_KMAP
 	bool "KMAP Virtual Space (kmap)"
 	help
 	  Memory from KMAP.
+
+config DEBUG_VA_KERNEL_FIXMAP
+	bool "Fixmap Virtual Space (fixmap)"
+	help
+	  Memory from Fixmap.
 
 endif # DEBUG_VA_KERN_DATA
 
