@@ -93,9 +93,9 @@ QEMU_FLAGS += $(BLOCK_DEVICE)
 # Rootfs
 # -----------------------------------
 ifdef CONFIG_QEMU_ROOTFS_NAME
-ROOTFS := -hda $(srctree)/$(CONFIG_QEMU_ROOTFS_NAME)
+ROOTFS := -hda $(CONFIG_QEMU_ROOTFS_NAME)
 else
-ROOTFS := -hda $(srctree)/BiscuitOS-$(KERNELVERSION).img
+ROOTFS := -hda BiscuitOS.img
 endif
 
 QEMU_FLAGS += $(ROOTFS)
